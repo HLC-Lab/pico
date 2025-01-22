@@ -148,3 +148,17 @@ for algo in ${ALGOS[@]}; do
         done
     done
 done
+
+
+# TODO: this is only a proof of concept,
+# to be modified later
+COLL_TYPE=Allreduce
+MPI_TYPE=OpenMPI
+MPI_VERSION=0
+LIBSWING_VERSION=0
+OPERATOR=MPI_Sum
+OTHER=None
+
+python $RES_DIR/update_metadata.py "$LOCATION" "$TIMESTAMP" \
+      "$N_NODES" "$COLL_TYPE" "$ALGOS" "$MPI_TYPE" "$MPI_VERSION" \
+      "$LIBSWING_VERSION" "$ENABLE_CUDA" "$TYPES" "$OPERATOR" "$OTHER"

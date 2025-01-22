@@ -6,13 +6,14 @@
 
 /**
  * @enum allreduce_algo_t
+ *
  * @brief Defines the standard Allreduce algorithms implemented in Open MPI coll module,
- * swing algorithms in Ompi Test repo and algorithms in 
+ * swing algorithms in Ompi Test repo and algorithms in `libswing.a`
  *
  * It only provides symbolic names for algorithm selection, conditional checks (use Open MPI
  * or not, use Ompi_Test...) must be done in selection stage. 
  *
- * TODO: implement conditional checks in selection logic
+ * TODO: implement conditional checks for OMPI vs MPICH
  * */
 typedef enum{
   DEFAULT = 0,

@@ -86,21 +86,21 @@ The `scripts/` contains scripts to benchmark and debug the library. It also cont
 
 The project includes scripts to run the benchmark test suite and the debugging suite inside the `scripts/` directory.
 
-The suggested workflow is to sbatch the `scripts/submit.sh` script when benchmarking (and when modified also for debugging) if on cluster, instead run the test\debug suite script on its own if running on local machine.
+The suggested workflow is to sbatch the `scripts/submit.sbatch` script when benchmarking (and when modified also for debugging) if on cluster, instead run the test\debug suite script on its own if running on local machine.
 
 For now specific variables must be modified inside the run suites but it's planned to bring them on the submit script. Beware that everything for now it's extremely hand tailored on MY workflow and only now I'm polishing the program to let other people work with those scripts so a lot of modifications are still needed.
 
 
-### `scripts/submit.sh` - Submit Tests via SLURM
+### `scripts/submit.sbatch` - Submit Tests via SLURM
 
-For cluster-based environments that use SLURM for job scheduling, a template script `scripts/submit.sh` is provided. This script can be used to submit the test runs to the cluster via SLURM.
+For cluster-based environments that use SLURM for job scheduling, a template script `scripts/submit.sbatch` is provided. This script can be used to submit the test runs to the cluster via SLURM.
 
 To use it, you will need to customize the script as per your SLURM job submission requirements. The script includes placeholders and options for specifying the number of processes, job time, and output location.
 
-#### Example Usage for `submit.sh`
+#### Example Usage for `submit.sbatch`
 
 ```bash
-sbatch scripts/submit.sh
+sbatch scripts/submit.sbatch
 ```
 The script must be modified to select:
 - `<p_name>`: Name of the partition to run tests on on the target cluster.
@@ -119,34 +119,51 @@ It will be modified to allow for algorithm selection directly in this stage.
 ###### Warning
 Beware that, especially with big allocations, those scripts can fail and waste compute hours if left uncheck. It's suggested, if possible, for big allocations, to check if the script starts working. If it does it's unlikely that compute time will be wasted. Currently working on the reliability of this part.
 
-### `scripts/run_test_suite.sh` - Benchmarking Suite 
+### `scripts/run_test_suite.sh` - Benchmarking Suite
 
-To run the benchmarking test suite without relying on the submit script, execute the following command:
+This script runs a benchmarking test suite itself. To run it without relying to the sbatch script execute the following command:
 
 ```bash
-scripts/run_test_suite.sh <num_processes>
+scripts/run_test_suite.sh <num_processes> [timestamp] [location] [enable_cuda] [enable_ompi_test]
 ```
 
-- `<num_processes>`: The number of processes to use for the test run.
+- `<num_processes>` (required): The number of processes to use for the test run. Must be a valid positive integer greater than or equal to 2.
+- `[timestamp]` (optional): Timestamp for the test run. Defaults to the current date and time.
+- `[location]` (optional): Specifies the environment configuration script. Defaults to `local`.
+- `[enable_cuda]` (optional): Enable CUDA aware MPI support. Defaults to `no`.
+- `[enable_ompi_test]` (optional): Enable the use of the modified Open MPI library with Swing Allreduce algorithms. Defaults to `yes`.
 
-This script will set the necessary environmental variable based on the `location` variable.
-To configure environments, add a new .sh script in `scripts/environments/`, export the necessary variables, and update the `location` variable to point to the new script.
+The script uses the following key variables:
+- `ALGOS`: Specifies the Allreduce algorithm selection:
+  - `0`: Default Open MPI selection.
+  - `1-7`: Specific Open MPI algorithms.
+  - `8-13`: Swing versions within Open MPI.
+  - `14-16`: Swing over MPI implementations.
+- `ARR_SIZES`: An array specifying the sizes of the test data buffers.
+- `TYPES`: Specifies the data types for testing.
 
-Other two variables to set up in the script are `ompi_test` and `cuda`. The first one refers to the use of the modified Open MPI library with Swing Allreduce algorithms.
 
-Important variables for the test selection are:
-- `ALGO` selects the Allreduce algorithm. For now 0->default ompi selection, 1-7->specific ompi algorithm, 8-13->swing versions inside ompi, 14-16->swing over mpi.
-- `ARR_SIZES` select the size of the test in number of elements in send buffers.
-- `TYPES` select the datatype (or datatypes) to test.
+Test results are saved in the directory structure `$SWING_DIR/results/<location>/<timestamp>/data/`, alongside with the given node allocation in `$SWING_DIR/results/<location>/<timestamp>/alloc.csv`.
 
-At the end of the test, hostnames of nodes will be saved, but this functionality will be merged inside the `bin/test` executable to allow the mapping of MPI rank to actual node allocation (and not only guess it based on node number).
+Moreover, the script also invokes an updater of the `$SWING_DIR/results/<location>/<location>_metadata.csv` file, adding a row with the metadata of the last test.
+THIS FEATURE IS STILL IN DEVELOPMENT, IT HAS BEEN ADDED TO STREAMLINE LIBRARY TESTING.
 
-##### IMPORTANT
-SKIP contains the algorithm to skip when `<num_processes> < <arr_size>` and must not be modified.
+#### Add new environments
+The script automatically sets up required environment variables based on the `location` parameter. To define a new environment configuration:
+1. Create a new script in `scripts/environments/`.
+2. Export the necessary variables.
+3. Update the `location` parameter to point to the new script.
+
+##### Notes
+- `SKIP`: Defines algorithms to skip when `<num_processes>` is greater than `<arr_size>`. Do not modify this variable directly.
+- The script cleans and rebuilds the codebase since if `ENABLE_OMPI_TEST` is set to `yes`, it compiles with Open MPI Swing Allreduce support (`OMPI_TEST=1`).
+
 
 ### `scripts/run_debug_suite.sh` - Debug Suite
 
-Expect it to run like the test suite. Right now must be modified.
+Expect it to run like the test suite, but built over the `debug\` program.
+
+Right now is still in development.
 
 ## Data Analysis and Visualization
 
@@ -183,12 +200,11 @@ If you want to compile and build individual parts of the project you can either 
 In this repository, the results are stored in a directory that is automatically compressed into a `.tar` file to save storage space and keep the repository clean. The process works as follows:
 
 1. **Results directory:** All raw results are saved in a dedicated directory, different for each system on which tests are run.
-2. **Compression Script:** A script is included in the repository to compress the results directory into a `.tar` file. The script also add to `.gitignore` the uncompressed results subdirectory and remove possible duplicates from the `.gitignore` file.
-3. **Pre-Commit Hook:** A pre-commit hook is set up to run the compression script automatically before each commit. This ensures that any new results are compressed and added to the repository in a consistent manner.
+2. **Test metadata:** For each new test, `scripts/run_test_suite.sh` will invoke `results/metadata.py` script, to add the metadata of the new test into a `.csv` file containing metadata of tests ran on a given system.
+3. **Compression Script:** A script is included in the repository to compress the results directory into a `.tar` file. The script also add to `.gitignore` the uncompressed results subdirectory and remove possible duplicates from the `.gitignore` file.
+4. **Pre-Commit Hook:** A pre-commit hook is set up to run the compression script automatically before each commit. This ensures that any new results are compressed and added to the repository in a consistent manner.
 
-There is no need to run the script manually as everything is done automatically.
-
-A `.csv` file will be added to contain results metadata.
+There is no need to run the compression or the metadata script manually as everything is done automatically by the test suite script or the pre-commit hook.
 
 
 ## TODO
@@ -203,21 +219,20 @@ A `.csv` file will be added to contain results metadata.
 - [x] document functions and comment code
 - [x] create a function to write rank and allocation inside test without relying on normal `srun` in test suite
 - [x] use enum when possible for clarity
-- [ ] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
+- [x] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
+- [x] standardize .csv format to what was decided with professor De Sensi
 - [ ] separate and modularize ground truth check for different kinds of collectives
-- [ ] standardize .csv format to what was decided with professor De Sensi
-- [ ] create a function to add metadata in the .csv asked by the professor
 #### OMPI rules
 - [ ] change it so that it recognizes if the modified `Open MPI` is being run or not
 - [ ] modify to let it work also with `MPICH` algorithm selection
-#### Debug program
-- [ ] WRITE EVERYTHING (it really sucks now)
-#### Test/Debug suite Modifications
+#### Debug program and suite
+- [ ] WRITE EVERYTHING FROM SCRATCH
+#### Test suite
 - [x] add error handling and more explicit messages about what is being done
 - [x] separate results by system
 - [x] comment the code
+- [x] create a function to add metadata in the .csv asked by the professor
 - [ ] build a better and clearer interface to select variables for testing
-- [ ] separate common parts of `run_tests_scrips` and `run_debug_scrips` to separate subscripts to avoid code repetitions
 - [ ] add an env var to select between `MPICH` and `Open MPI` binaries, independently of `ompi_test` (obviously `ompi_test` must be no when MPICH is selected)
 #### Submit Script
 - [x] automatically inject `$N_NODES` inside suite based on selected `-N` without further modifications
@@ -226,11 +241,12 @@ A `.csv` file will be added to contain results metadata.
 #### Results folder
 - [x] add a script to compress the data
 - [x] add pre-commit hook that triggers the compression of the new data, adds the uncompressed data to the gitignore
-- [ ] add the script to build and update the .csv description
-- [ ] add tests present on my systems
+- [x] add the script to build and update the .csv description
+- [ ] add tests present on my systems (or maybe not)
 #### Plot python scripts
 - [x] add the possibility of selecting specific tests
 - [x] document and comment code
+- [ ] adjust everything to new structure
 - [ ] avoid working only with summaries, or at least give the possibility of not doing it
 - [ ] improve naming of output graphs so that they don't get overwritten by similar graphs
 - [ ] refactor to separate graph drawing functions to separate files
