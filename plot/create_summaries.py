@@ -110,10 +110,7 @@ def list_csv_files(directory):
         raise ValueError(f"Invalid directory: {directory}")
     return [os.path.join(directory, file) for file in os.listdir(directory) if file.endswith('.csv')]
 
-def main():
-    """
-    Main script logic to process all subfolders in the current working directory.
-    """
+if __name__ == "__main__":
     root_folder = os.getcwd()
 
     for subfolder in os.listdir(root_folder):
@@ -142,6 +139,3 @@ def main():
             df_results.to_json(os.path.join(summary_path, 'results_summary.json'), orient='records', lines=True)
 
             print(f"Processed {subfolder_path}, results saved in {summary_path}")
-
-if __name__ == "__main__":
-    main()

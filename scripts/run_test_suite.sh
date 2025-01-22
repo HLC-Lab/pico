@@ -50,6 +50,7 @@ fi
 
 # Load the environment-specific configuration based on the LOCATION
 if [ -f scripts/environments/${LOCATION}.sh ]; then
+    # FIX: do the MPI module load if OMPI_TEST is not used
     source scripts/environments/${LOCATION}.sh
     RES_DIR=$SWING_DIR/results/
     TEST_EXEC=$SWING_DIR/bin/test
@@ -149,7 +150,7 @@ for algo in ${ALGOS[@]}; do
     done
 done
 
-
+# FIX: Ensure python venv and modules are correctly set up
 # TODO: this is only a proof of concept,
 # to be modified later
 COLL_TYPE=Allreduce

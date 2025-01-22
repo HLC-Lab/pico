@@ -259,7 +259,7 @@ def add_labels(data) -> pd.DataFrame:
     return data
 
 
-def main():
+if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Generate graphs for \
                                     algorithms based on test results.")
@@ -312,6 +312,3 @@ def main():
                     {subfolder}, barplots not created.")
         else:
             generate_barplots(data, output_dir=graph_dir, system=system)
-
-if __name__ == "__main__":
-    main()

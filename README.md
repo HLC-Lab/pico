@@ -232,6 +232,7 @@ There is no need to run the compression or the metadata script manually as every
 - [x] separate results by system
 - [x] comment the code
 - [x] create a function to add metadata in the .csv asked by the professor
+- [ ] ensure python modules and environment is set up correctly
 - [ ] build a better and clearer interface to select variables for testing
 - [ ] add an env var to select between `MPICH` and `Open MPI` binaries, independently of `ompi_test` (obviously `ompi_test` must be no when MPICH is selected)
 #### Submit Script
