@@ -5,6 +5,7 @@
 
 #include <mpi.h>
 #include <string.h>
+#include <stdlib.h>
 
 static int rhos[SWING_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
@@ -157,30 +158,39 @@ static inline ptrdiff_t datatype_span(MPI_Datatype dtype, size_t count, ptrdiff_
 }
 
 
-static inline int mylog2(int x) {
-    return sizeof(int)*8 - 1 - __builtin_clz(x);
+/**
+ * @brief Returns log_2(value). Value must be a positive integer.
+ *
+ * @param value The **POSITIVE** integer value to return its log_2.
+ *
+ * @returns The log_2 of value or -1 for negative value.
+ */
+static inline int log_2(int value) {
+  if (1 > value) {
+    return -1;
+  }
+  return sizeof(int)*8 - 1 - __builtin_clz(value);
 }
 
 
 /**
  * @brief Returns next power-of-two greater of the given value.
  *
- * @param value The integer value to return power of 2
+ * @param value The **POSITIVE** integer value to return power of 2.
  *
- * @returns The next power of two
- *
- * WARNING: *NO* error checking is performed.  This is meant to be a
- * fast inline function.
- * Using __builtin_clz (count-leading-zeros) uses 4 cycles instead of 77
- * compared to the loop-version (on Intel Nehalem -- with icc-12.1.0 -O2).
+ * @returns The next power of two or -1 for negative values.
  */
 static inline int next_poweroftwo(int value)
 {
-    if (0 == value) {
-        return 1;
-    }
+  if (0 > value) {
+    return -1;
+  }
 
-    return 1 << (8 * sizeof(int) - __builtin_clz(value));
+  if (0 == value) {
+    return 1;
+  }
+
+  return 1 << (8 * sizeof(int) - __builtin_clz(value));
 }
 
 
@@ -201,18 +211,75 @@ static inline int next_poweroftwo(int value)
  */
 static inline int hibit(int value, int start)
 {
-    unsigned int mask;
+  unsigned int mask;
 
-    /* Only look at the part that the caller wanted looking at */
-    mask = value & ((1 << start) - 1);
+  /* Only look at the part that the caller wanted looking at */
+  mask = value & ((1 << start) - 1);
 
-    if (0 == mask) {
-        return -1;
+  if (0 == mask) {
+    return -1;
+  }
+
+  start = (8 * sizeof(int) - 1) - __builtin_clz(mask);
+
+  return start;
+}
+
+
+typedef struct {
+  MPI_Request* reqs;    // Pointer to the array of requests
+  int num_reqs;         // Current size of the array
+} request_manager_t;
+
+/**
+ * Ensures the array of MPI_Request is properly initialized and large enough.
+ * If the array is not initialized or is too small, it will be resized to fit the requested size.
+ *
+ * @param manager  Pointer to the mpi_request_manager_t structure managing the requests.
+ * @param nreqs    The desired number of requests in the array.
+ * @return         Pointer to the array of MPI_Request, or NULL if allocation failed.
+ */
+MPI_Request* alloc_reqs(request_manager_t* manager, int nreqs) {
+  if (nreqs == 0) {
+    return NULL;
+  }
+
+  // If the current array is too small, resize it
+  if (manager->num_reqs < nreqs) {
+    MPI_Request* new_reqs = realloc(manager->reqs, sizeof(MPI_Request) * nreqs);
+    if (new_reqs == NULL) {
+      // Allocation failed, reset the manager
+      manager->reqs = NULL;
+      manager->num_reqs = 0;
+      return NULL;
     }
 
-    start = (8 * sizeof(int) - 1) - __builtin_clz(mask);
+    // Update the pointer to the new array
+    manager->reqs = new_reqs;
 
-    return start;
+    // Initialize new entries to MPI_REQUEST_NULL
+    for (int i = manager->num_reqs; i < nreqs; i++) {
+      manager->reqs[i] = MPI_REQUEST_NULL;
+    }
+
+    // Update the current size of the array
+    manager->num_reqs = nreqs;
+  }
+
+  return manager->reqs;
+}
+
+/**
+ * Cleans up the request_manager_t structure by freeing the array of requests.
+ *
+ * @param manager  Pointer to the request_manager_t structure to clean up.
+ */
+void cleanup_reqs(request_manager_t* manager) {
+  if (manager->reqs != NULL) {
+    free(manager->reqs);
+    manager->reqs = NULL;
+  }
+  manager->num_reqs = 0;
 }
 
 #endif

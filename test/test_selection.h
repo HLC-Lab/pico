@@ -38,14 +38,15 @@ typedef enum{
 
 } allreduce_algo_t;
 
-    /** Algorithms:
-     *  {1, "linear"},
-     *  {2, "bruck"},
-     *  {3, "recursive_doubling"},
-     *  {4, "ring"},
-     *  {5, "neighbor"},
-     *  {6, "two_proc"}
-     */
+/**
+ * @enum allgather_algo_t
+ *
+ * @brief Defines the standard Allgather algorithms implemented in Open MPI coll module,
+ * and algorithms in `libswing.a`
+ *
+ * It only provides symbolic names for algorithm selection, conditional checks (use Open MPI
+ * or not, use Ompi_Test...) must be done in selection stage. 
+ * */
 typedef enum{
   ALLGATHER_DEFAULT = 0,
   ALLGATHER_LINEAR,
@@ -54,8 +55,33 @@ typedef enum{
   ALLGATHER_RING,
   ALLGATHER_NEIGHBOR,
   ALLGATHER_TWO_PROC,
+  ALLGATHER_K_BRUCK_OVER = 7,
+  ALLGATHER_RECURSIVE_DOUBLING_OVER,
+  ALLGATHER_RING_OVER,
+  ALLGATHER_SWING_STATIC_OVER = 10,
 
 }allgather_algo_t;
+
+/**
+ * @enum reduce_scatter_algo_t
+ *
+ * @brief Defines the standard Reduce Scatter algorithms implemented in Open MPI coll module,
+ * and algorithms in `libswing.a`
+ *
+ * It only provides symbolic names for algorithm selection, conditional checks (use Open MPI
+ * or not, use Ompi_Test...) must be done in selection stage. 
+ * */
+typedef enum{
+  REDUCE_SCATTER_DEFAULT = 0,
+  REDUCE_SCATTER_NON_OVERLAPPING,
+  REDUCE_SCATTER_RECURSIVE_HALVING,
+  REDUCE_SCATTER_RING,
+  REDUCE_SCATTER_BUTTERFLY,
+  REDUCE_SCATTER_RECURSIVE_HALVING_OVER = 5,
+  REDUCE_SCATTER_RING_OVER,
+  REDUCE_SCATTER_BUTTERFLY_OVER,
+
+}reduce_scatter_algo_t;
 
 /**
  * @typedef allreduce_func_ptr
