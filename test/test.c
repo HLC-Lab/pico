@@ -1,3 +1,4 @@
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,26 +85,14 @@ int main(int argc, char *argv[]) {
   }
 
   // Do a ground-truth check on the correctness of last iteration result
-  MPI_Reduce(sendbuf, recvbuf_gt, array_size, dtype, MPI_SUM, 0, comm);
-  MPI_Bcast(recvbuf_gt, array_size, dtype, 0, comm);
-  if(dtype != MPI_DOUBLE && dtype != MPI_FLOAT){
-    if (memcmp(recvbuf, recvbuf_gt, array_size * type_size) != 0){
-      fprintf(stderr, "Error: results are not valid. Aborting...\n");
-      line = __LINE__;
-      goto err_hndl;
-    }
-  } else{
-    // On floating point arithmetic ground-truth check also consider rounding errors
-    if (are_equal_eps(recvbuf_gt, recvbuf, array_size, type_string, comm_sz) == -1){
-      fprintf(stderr, "Error: results are not valid. Aborting...\n");
-      line = __LINE__;
-      goto err_hndl;
-    }
+  if (allreduce_gt_check(sendbuf, recvbuf, array_size, dtype, MPI_SUM, comm, recvbuf_gt) != 0){
+    line = __LINE__;
+    goto err_hndl;
   }
 
   // Gather all process times to rank 0 and find the highest execution time of each iteration
-  MPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
-  MPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
+  PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
+  PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
   
   // Save results to a .csv file inside `/data/` subdirectory. Bash script `run_test_suite.sh`
   // is responsible to create the `/data/` subdir.

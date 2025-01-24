@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
 #include <string.h>
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -33,6 +32,56 @@ const static TypeMap type_map[] = {
   {"double",  MPI_DOUBLE,   sizeof(double)},
   {"char",    MPI_CHAR,     sizeof(char)}
 };
+
+/**
+ * @brief Retrieve the size of an MPI_Datatype from the type_map array.
+ *
+ * @param dtype The MPI_Datatype for which the size is to be retrieved.
+ * @param[out] type_size Size of the datatype in bytes.
+ * @return 0 on success, -1 if the data type is invalid.
+ *
+ * @note This function relies on the global `type_map` array being defined.
+ *       Ensure that `type_map` contains valid mappings for the MPI datatypes.
+ *
+ * @warning If the datatype is not found in the `type_map`, the function will return 0.
+ *          This could indicate an unsupported or unregistered datatype.
+ */
+int get_type_size(MPI_Datatype dtype, size_t *type_size) {
+    int num_types = sizeof(type_map) / sizeof(type_map[0]);
+
+    for (size_t i = 0; i < num_types; i++) {
+        if (type_map[i].mpi_type == dtype) {
+            *type_size = type_map[i].t_size;
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "Error: datatype not in type_map. Aborting...\n");
+    return 0;
+}
+
+/**
+ * @brief Retrieves the MPI datatype and size based on a string identifier utilizing `type_map`.
+ *
+ * @param type_string String representation of the data type.
+ * @param[out] dtype MPI datatype corresponding to the string.
+ * @param[out] type_size Size of the datatype in bytes.
+ * @return 0 on success, -1 if the data type is invalid.
+ */
+int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_size) {
+  int num_types = sizeof(type_map) / sizeof(type_map[0]);
+
+  for (int i = 0; i < num_types; i++) {
+    if (strcmp(type_string, type_map[i].t_string) == 0) {
+      *dtype = type_map[i].mpi_type;
+      *type_size = type_map[i].t_size;
+      return 0;
+    }
+  }
+
+  fprintf(stderr, "Error: datatype not in type_map. Aborting...\n");
+  return -1;
+}
 
 /**
  * @brief Parses command-line arguments and extracts parameters.
@@ -85,28 +134,6 @@ int get_command_line_arguments(int argc, char** argv, size_t *array_size, int* i
   return 0;
 }
 
-/**
- * @brief Retrieves the MPI datatype and size based on a string identifier utilizing `type_map`.
- *
- * @param type_string String representation of the data type.
- * @param[out] dtype MPI datatype corresponding to the string.
- * @param[out] type_size Size of the datatype in bytes.
- * @return 0 on success, -1 if the data type is invalid.
- */
-int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_size) {
-  int num_types = sizeof(type_map) / sizeof(TypeMap);
-
-  for (int i = 0; i < num_types; i++) {
-    if (strcmp(type_string, type_map[i].t_string) == 0) {
-      *dtype = type_map[i].mpi_type;
-      *type_size = type_map[i].t_size;
-      return 0;
-    }
-  }
-
-  fprintf(stderr, "Error: Invalid datatype. Aborting...\n");
-  return -1;
-}
 
 /**
  * @brief Generates a random array based on the specified type and size.
@@ -155,48 +182,6 @@ int rand_array_generator(void *target, const char *type_string, size_t array_siz
   } else {
     fprintf(stderr, "Error: sendbuf not generated correctly. Aborting...\n");
     return -1;
-  }
-
-  return 0;
-}
-
-/**
- * @brief Compares two buffers with an epsilon tolerance for float or double datatypes.
- *
- * @param buf_1 First buffer.
- * @param buf_2 Second buffer.
- * @param array_size Size of the buffers.
- * @param type_string Data type as a string.
- * @param comm_sz Communication size to scale the epsilon.
- * @return 0 if buffers are equal within tolerance, -1 otherwise.
- */
-int are_equal_eps(const void *buf_1, const void *buf_2, size_t array_size, const char *type_string, int comm_sz) {
-  if (array_size == 0) return 0;
-
-  size_t i;
-
-  if (strcmp(type_string, "float") == 0) {
-    float *b1 = (float *) buf_1;
-    float *b2 = (float *) buf_2;
-
-    float epsilon = comm_sz * TEST_BASE_EPSILON_FLOAT * 100.0f;
-
-    for (i = 0; i < array_size; i++) {
-      if (fabs(b1[i] - b2[i]) > epsilon) {
-        return -1;
-      }
-    }
-  } else if (strcmp(type_string, "double") == 0) {
-    double *b1 = (double *) buf_1;
-    double *b2 = (double *) buf_2;
-
-    double epsilon = comm_sz * TEST_BASE_EPSILON_DOUBLE * 100.0;
-
-    for (i = 0; i < array_size; i++) {
-      if (fabs(b1[i] - b2[i]) > epsilon) {
-        return -1;
-      }
-    }
   }
 
   return 0;

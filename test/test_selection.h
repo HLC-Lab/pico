@@ -83,6 +83,13 @@ typedef enum{
 
 }reduce_scatter_algo_t;
 
+
+typedef enum{
+  ALLREDUCE = 0,
+  ALLGATHER,
+  REDUCE_SCATTER,
+}coll_t;
+
 /**
  * @typedef allreduce_func_ptr
  * 
