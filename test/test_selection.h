@@ -16,28 +16,46 @@
  * TODO: implement conditional checks for OMPI vs MPICH
  * */
 typedef enum{
-  DEFAULT = 0,
-  LINEAR,
-  NON_OVERLAPPING,
-  RECURSIVE_DOUBLING,
-  RING,
-  RING_SEGMENTED,
-  RABENSEIFNER,
-  ALLGATHER_REDUCE,
+  ALLREDUCE_DEFAULT = 0,
+  ALLREDUCE_LINEAR,
+  ALLREDUCE_NON_OVERLAPPING,
+  ALLREDUCE_RECURSIVE_DOUBLING,
+  ALLREDUCE_RING,
+  ALLREDUCE_RING_SEGMENTED,
+  ALLREDUCE_RABENSEIFNER,
+  ALLREDUCE_ALLGATHER_REDUCE,
 #ifdef OMPI_TEST
-  SWING_LAT = 8,
-  SWING_BDW_MEMCPY,
-  SWING_BDW_DT_1,
-  SWING_BDW_DT_2,
-  SWING_BDW_SEG,
-  SWING_BDW_STATIC,
+  ALLREDUCE_SWING_LAT = 8,
+  ALLREDUCE_SWING_BDW_MEMCPY,
+  ALLREDUCE_SWING_BDW_DT_1,
+  ALLREDUCE_SWING_BDW_DT_2,
+  ALLREDUCE_SWING_BDW_SEG,
+  ALLREDUCE_SWING_BDW_STATIC,
 #endif
-  RECURSIVE_DOUBLING_OVER = 14,
-  SWING_LAT_OVER,
-  SWING_BDW_STATIC_OVER
+  ALLREDUCE_RECURSIVE_DOUBLING_OVER = 14,
+  ALLREDUCE_SWING_LAT_OVER,
+  ALLREDUCE_SWING_BDW_STATIC_OVER
 
 } allreduce_algo_t;
 
+    /** Algorithms:
+     *  {1, "linear"},
+     *  {2, "bruck"},
+     *  {3, "recursive_doubling"},
+     *  {4, "ring"},
+     *  {5, "neighbor"},
+     *  {6, "two_proc"}
+     */
+typedef enum{
+  ALLGATHER_DEFAULT = 0,
+  ALLGATHER_LINEAR,
+  ALLGATHER_BRUCK,
+  ALLGATHER_RECURSIVE_DOUBLING,
+  ALLGATHER_RING,
+  ALLGATHER_NEIGHBOR,
+  ALLGATHER_TWO_PROC,
+
+}allgather_algo_t;
 
 /**
  * @typedef allreduce_func_ptr
@@ -81,11 +99,11 @@ static inline int allreduce_wrapper(const void *sendbuf, void *recvbuf, size_t c
  */
 static inline allreduce_func_ptr select_algorithm(allreduce_algo_t algorithm) {
   switch (algorithm) {
-    case RECURSIVE_DOUBLING_OVER:
+    case ALLREDUCE_RECURSIVE_DOUBLING_OVER:
       return allreduce_recursivedoubling;
-    case SWING_LAT_OVER:
+    case ALLREDUCE_SWING_LAT_OVER:
       return allreduce_swing_lat;
-    case SWING_BDW_STATIC_OVER:
+    case ALLREDUCE_SWING_BDW_STATIC_OVER:
       return allreduce_swing_bdw_static;
     default:
       return allreduce_wrapper;

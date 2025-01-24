@@ -6,13 +6,15 @@
 
 #define ALLREDUCE_ARGS    const void *sendbuf, void *recvbuf, size_t count, \
                           MPI_Datatype dtype, MPI_Op op, MPI_Comm comm
+#define ALLGATHER_ARGS    const void *sbuf, size_t scount, MPI_Datatype sdtype, \
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm
 
 int allreduce_swing_lat(ALLREDUCE_ARGS);
 int allreduce_swing_bdw_static(ALLREDUCE_ARGS);
 int allreduce_recursivedoubling(ALLREDUCE_ARGS);
 int allreduce_rabenseifner(ALLREDUCE_ARGS);
 
-int allgather_rabenseifner(const void *sbuf, size_t scount, MPI_Datatype sdtype,
-                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm);
+int allgather_rabenseifner(ALLGATHER_ARGS);
+int allgather_swing_bdw_static(ALLGATHER_ARGS);
 
 #endif
