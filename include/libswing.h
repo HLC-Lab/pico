@@ -14,7 +14,7 @@ int allreduce_swing_bdw_static(ALLREDUCE_ARGS);
 int allreduce_recursivedoubling(ALLREDUCE_ARGS);
 int allreduce_rabenseifner(ALLREDUCE_ARGS);
 
-int allgather_rabenseifner(ALLGATHER_ARGS);
-int allgather_swing_bdw_static(ALLGATHER_ARGS);
+int allgather_recursivedoubling(ALLGATHER_ARGS);
+int allgather_swing_static(ALLGATHER_ARGS);
 
 #endif

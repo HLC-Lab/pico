@@ -9,7 +9,7 @@
 
 
 
-int allgather_rabenseifner(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_recursive_doubling(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
     int line = -1, rank, size, pow2size, err;
@@ -28,7 +28,7 @@ int allgather_rabenseifner(const void *sbuf, size_t scount, MPI_Datatype sdtype,
        print warning and call bruck allgather algorithm with same parameters.
     */
     if (pow2size != size) {
-        fprintf(stderr, "ERROR! Rabenseifner allgather works only with po2 ranks!\n");
+        fprintf(stderr, "ERROR! Recoursive doubling allgather works only with po2 ranks!\n");
         goto err_hndl;
     }
 
@@ -82,7 +82,7 @@ int allgather_rabenseifner(const void *sbuf, size_t scount, MPI_Datatype sdtype,
 }
 
 
-int allgather_swing_bdw_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_swing_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
     int line = -1, rank, size, pow2size, steps, err, remote;
@@ -101,7 +101,7 @@ int allgather_swing_bdw_static(const void *sbuf, size_t scount, MPI_Datatype sdt
        print warning and call bruck allgather algorithm with same parameters.
     */
     if (pow2size != size) {
-        fprintf(stderr, "ERROR! Swing bdw static allgather works only with po2 ranks!\n");
+        fprintf(stderr, "ERROR! Swing static allgather works only with po2 ranks!\n");
         goto err_hndl;
 
     }
