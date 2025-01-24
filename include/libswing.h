@@ -21,6 +21,8 @@ int allgather_k_bruck(ALLGATHER_ARGS, int radix);
 int allgather_ring(ALLGATHER_ARGS);
 int allgather_swing_static(ALLGATHER_ARGS);
 
+int reduce_scatter_recursivehalving(REDUCE_SCATTER_ARGS);
 int reduce_scatter_ring(REDUCE_SCATTER_ARGS);
+int reduce_scatter_butterfly(REDUCE_SCATTER_ARGS);
 
 #endif

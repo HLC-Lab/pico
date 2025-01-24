@@ -6,6 +6,7 @@
 #include <mpi.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 static int rhos[SWING_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
@@ -239,7 +240,7 @@ typedef struct {
  * @param nreqs    The desired number of requests in the array.
  * @return         Pointer to the array of MPI_Request, or NULL if allocation failed.
  */
-MPI_Request* alloc_reqs(request_manager_t* manager, int nreqs) {
+static inline MPI_Request* alloc_reqs(request_manager_t* manager, int nreqs) {
   if (nreqs == 0) {
     return NULL;
   }
@@ -274,7 +275,7 @@ MPI_Request* alloc_reqs(request_manager_t* manager, int nreqs) {
  *
  * @param manager  Pointer to the request_manager_t structure to clean up.
  */
-void cleanup_reqs(request_manager_t* manager) {
+static inline void cleanup_reqs(request_manager_t* manager) {
   if (manager->reqs != NULL) {
     free(manager->reqs);
     manager->reqs = NULL;
@@ -282,5 +283,32 @@ void cleanup_reqs(request_manager_t* manager) {
   manager->num_reqs = 0;
 }
 
+/*
+ * sum_counts: Returns sum of counts [lo, hi]
+ *                  lo, hi in {0, 1, ..., nprocs_pof2 - 1}
+ */
+static inline size_t sum_counts(const int counts[], ptrdiff_t *displs, int nprocs_rem, int lo, int hi)
+{
+    /* Adjust lo and hi for taking into account blocks of excluded processes */
+    lo = (lo < nprocs_rem) ? lo * 2 : lo + nprocs_rem;
+    hi = (hi < nprocs_rem) ? hi * 2 + 1 : hi + nprocs_rem;
+    return displs[hi] + counts[hi] - displs[lo];
+}
+
+/*
+ * mirror_perm: Returns mirror permutation of nbits low-order bits
+ *                   of x [*].
+ * [*] Warren Jr., Henry S. Hacker's Delight (2ed). 2013.
+ *     Chapter 7. Rearranging Bits and Bytes.
+ */
+static inline unsigned int mirror_perm(unsigned int x, int nbits)
+{
+    x = (((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1));
+    x = (((x & 0xcccccccc) >> 2) | ((x & 0x33333333) << 2));
+    x = (((x & 0xf0f0f0f0) >> 4) | ((x & 0x0f0f0f0f) << 4));
+    x = (((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8));
+    x = ((x >> 16) | (x << 16));
+    return x >> (sizeof(x) * CHAR_BIT - nbits);
+}
 #endif
 
