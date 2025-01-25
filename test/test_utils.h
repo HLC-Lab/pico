@@ -15,6 +15,8 @@ int allreduce_gt_check(ALLREDUCE_ARGS, void *recvbuf_gt);
 int allgather_gt_check(ALLGATHER_ARGS, void *recvbuf_gt);
 int reduce_scatter_gt_check(REDUCE_SCATTER_ARGS, void *recvbuf_gt);
 
+int get_collective(coll_t *collective);
+
 int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_size);
 
 int rand_array_generator(void *target, const char *type_string, size_t array_size, int rank);

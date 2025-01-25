@@ -24,6 +24,13 @@ int main(int argc, char *argv[]) {
   
   size_t array_size;
   int iter;
+  
+  coll_t collective;
+  if (get_collective(&collective) == -1){
+    line = __LINE__;
+    goto err_hndl;
+  }
+
   allreduce_algo_t algorithm;
 
   const char* type_string, *outputdir;
@@ -127,7 +134,7 @@ int main(int argc, char *argv[]) {
   if (rank == 0){
     should_write_alloc = file_not_exists(alloc_fullpath);
   }
-  MPI_Bcast(&should_write_alloc, 1, MPI_INT, 0, comm);
+  PMPI_Bcast(&should_write_alloc, 1, MPI_INT, 0, comm);
   if (should_write_alloc == 1 && write_allocations_to_file(alloc_fullpath, comm) != MPI_SUCCESS){
     line = __LINE__;
     goto err_hndl;

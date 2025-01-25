@@ -34,33 +34,6 @@ const static TypeMap type_map[] = {
 };
 
 /**
- * @brief Retrieve the size of an MPI_Datatype from the type_map array.
- *
- * @param dtype The MPI_Datatype for which the size is to be retrieved.
- * @param[out] type_size Size of the datatype in bytes.
- * @return 0 on success, -1 if the data type is invalid.
- *
- * @note This function relies on the global `type_map` array being defined.
- *       Ensure that `type_map` contains valid mappings for the MPI datatypes.
- *
- * @warning If the datatype is not found in the `type_map`, the function will return 0.
- *          This could indicate an unsupported or unregistered datatype.
- */
-int get_type_size(MPI_Datatype dtype, size_t *type_size) {
-    int num_types = sizeof(type_map) / sizeof(type_map[0]);
-
-    for (size_t i = 0; i < num_types; i++) {
-        if (type_map[i].mpi_type == dtype) {
-            *type_size = type_map[i].t_size;
-            return 0;
-        }
-    }
-
-    fprintf(stderr, "Error: datatype not in type_map. Aborting...\n");
-    return 0;
-}
-
-/**
  * @brief Retrieves the MPI datatype and size based on a string identifier utilizing `type_map`.
  *
  * @param type_string String representation of the data type.
@@ -83,6 +56,18 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
   return -1;
 }
 
+int get_collective(coll_t *collective){
+  const char *coll_str = NULL;
+  coll_str = getenv("COLLECTIVE_TYPE");
+
+  if (NULL == coll_str){
+    fprintf(stderr, "Error! `COLLECTIVE_TYPE` envvar not valid. Aborting...\n");
+    return -1;
+  }
+
+
+  return 0;
+}
 /**
  * @brief Parses command-line arguments and extracts parameters.
  *
@@ -121,12 +106,12 @@ int get_command_line_arguments(int argc, char** argv, size_t *array_size, int* i
     fprintf(stderr, "Error: Invalid alg number. It must be in [0-16]. Aborting...\n");
     return -1;
   }
-  #ifndef OMPI_TEST
+#ifndef OMPI_TEST
   if (alg_number >= 8 && alg_number <= 13){
     fprintf(stdout, "Error: Invalid alg number. OMPI_TEST is not being used. Aborting...\n");
     return -1;
   }
-  #endif
+#endif
   *algorithm = (allreduce_algo_t) alg_number;
 
   *outputdir = argv[5];
@@ -224,91 +209,6 @@ int concatenate_path(const char *dir_path, const char *filename, char *fullpath)
   return 0;
 }
 
-// /**
-//  * @brief Writes timing results to a specified file using MPI parallel I/O.
-//  *
-//  * This function writes the timing values for all MPI ranks to a CSV file in parallel.
-//  * Each rank writes its own timing data into the correct position without redundant communication.
-//  *
-//  * The output format is:
-//  *   Header: rank0,rank1,...,rankN\n
-//  *   Iteration 0: time0_rank0,time0_rank1,...,time0_rankN\n
-//  *   Iteration 1: time1_rank0,time1_rank1,...,time1_rankN\n
-//  *   ...
-//  *
-//  * @param filename The full path to the output file.
-//  * @param local_times An array containing timing values for the calling rank across all iterations.
-//  * @param iter The number of iterations.
-//  * @param comm The MPI communicator.
-//  *
-//  * @return int Returns MPI_SUCCESS on success, MPI_ERR otherwise.
-//  *
-//  * @note Time is saved in nanoseconds (10^-9 seconds).
-//  */
-// int write_output_to_file(const char *filename, double *local_times, int iter, MPI_Comm comm) {
-//   int rank, comm_sz;
-//   MPI_Comm_rank(comm, &rank);  // Get the rank of the calling process
-//   MPI_Comm_size(comm, &comm_sz);  // Get the total number of processes
-//
-//   MPI_File output_file;
-//   MPI_Status status;
-//   MPI_Offset offset;
-//
-//   // Calculate time entry size dynamically
-//   // int time_entry_size = snprintf(NULL, 0, "%012" PRId64 ",", (int64_t)(1e12));
-//   int time_entry_size = 16;
-//   int line_length = (time_entry_size * comm_sz) + 1;  // Each line includes times for all ranks + newline
-//   MPI_Offset row_offset = line_length * rank;  // Offset to the correct position for each rank's data
-//   char *write_buffer;
-//   int buffer_size = iter * time_entry_size;
-//
-//   // Open the file for parallel writing
-//   if (MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &output_file) != MPI_SUCCESS) {
-//     if (rank == 0) {
-//       fprintf(stderr, "Error: Opening file %s for writing\n", filename);
-//     }
-//     return MPI_ERR_FILE;
-//   }
-//
-//   // Rank 0 writes the header (column labels)
-//   if (rank == 0) {
-//     write_buffer = (char *)malloc(line_length + 1);  // Allocate buffer for header row
-//     char *ptr = write_buffer;
-//     for (int i = 0; i < comm_sz; i++) {
-//       ptr += sprintf(ptr, (i == 0) ? "rank%d" : ",rank%d", i);
-//     }
-//     *ptr++ = '\n';  // Add newline at the end of the header
-//     MPI_File_write_at_all(output_file, 0, write_buffer, line_length, MPI_CHAR, &status);
-//     free(write_buffer);
-//   }
-//   MPI_Barrier(comm);  // Synchronize ranks before writing data
-//
-//   // Allocate buffer for rank's timing data
-//   write_buffer = (char *)malloc(buffer_size + 1);
-//   if (write_buffer == NULL) {
-//     fprintf(stderr, "Error: Memory allocation failed\n");
-//     MPI_File_close(&output_file);
-//     return -1;
-//   }
-//
-//   // Format local timing data into the buffer
-//   char *buf_ptr = write_buffer;
-//   for (int i = 0; i < iter; i++) {
-//     snprintf(buf_ptr, time_entry_size + 1, (i == iter - 1) ? "%012ld\n" : "%012ld,", (int64_t)(local_times[i] * 1e9));
-//     buf_ptr += time_entry_size;
-//   }
-//
-//   offset = (rank == 0 ? line_length : 0) + row_offset;  // Calculate offset, skipping header if rank 0
-//
-//   // Write each rank's timing data to its corresponding position
-//   for (int i = 0; i < iter; i++) {
-//     MPI_File_write_at_all(output_file, offset + i * line_length, write_buffer + i * time_entry_size, time_entry_size, MPI_CHAR, &status);
-//   }
-//
-//   free(write_buffer);  // Free allocated buffer
-//   MPI_File_close(&output_file);  // Close the file
-//   return MPI_SUCCESS;  // Return success
-// }
 
 /**
  * @brief Writes the timing results to a specified output file.

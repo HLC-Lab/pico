@@ -219,9 +219,9 @@ There is no need to run the compression or the metadata script manually as every
 - [x] document functions and comment code
 - [x] create a function to write rank and allocation inside test without relying on normal `srun` in test suite
 - [x] use enum when possible for clarity
-- [x] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
 - [x] standardize .csv format to what was decided with professor De Sensi
-- [ ] separate and modularize ground truth check for different kinds of collectives
+- [ ] separate and modularize ground truth check for different kinds of collectives (WIP)
+- [ ] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
 #### OMPI rules
 - [ ] change it so that it recognizes if the modified `Open MPI` is being run or not
 - [ ] modify to let it work also with `MPICH` algorithm selection
