@@ -24,8 +24,10 @@ fi
 # Default values for other parameters if not provided as arguments
 TIMESTAMP=${2:-$(date +"%Y_%m_%d___%H:%M:%S")}
 LOCATION=${3:-local}
-ENABLE_CUDA=${4:-no}
-ENABLE_OMPI_TEST=${5:-yes}
+COLLECTIVE_TO_TEST=${4:-ALLREDUCE}
+export COLLECTIVE_TYPE=$COLLECTIVE_TO_TEST
+ENABLE_CUDA=${5:-no}
+ENABLE_OMPI_TEST=${6:-yes}
 
 ALGOS=(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)
 ARR_SIZES=(8 64 512 2048 16384 131072 1048576 8388608 67108864)
@@ -94,10 +96,8 @@ run_test() {
     local type=$3
     local algo=$4
 
-    echo "Running -> $N_NODES processes, $size array size, $type \
-          datatype (Algo: $algo)"
-    $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $type $algo \
-          $OUTPUT_DIR
+    echo "Running -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
+    $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $type $algo $OUTPUT_DIR
 }
 
 # Create necessary output directories
@@ -150,16 +150,17 @@ for algo in ${ALGOS[@]}; do
     done
 done
 
-# FIX: Ensure python venv and modules are correctly set up
-# TODO: this is only a proof of concept,
-# to be modified later
-COLL_TYPE=Allreduce
-MPI_TYPE=OpenMPI
-MPI_VERSION=0
-LIBSWING_VERSION=0
-OPERATOR=MPI_Sum
-OTHER=None
-
-python $RES_DIR/update_metadata.py "$LOCATION" "$TIMESTAMP" \
-      "$N_NODES" "$COLL_TYPE" "$ALGOS" "$MPI_TYPE" "$MPI_VERSION" \
-      "$LIBSWING_VERSION" "$ENABLE_CUDA" "$TYPES" "$OPERATOR" "$OTHER"
+# # FIX: Ensure python venv and modules are correctly set up
+#
+# # TODO: this is only a proof of concept,
+# # to be modified later
+#
+# MPI_TYPE=OpenMPI
+# MPI_VERSION=0
+# LIBSWING_VERSION=0
+# OPERATOR=MPI_Sum
+# OTHER=None
+#
+# python $RES_DIR/update_metadata.py "$LOCATION" "$TIMESTAMP" \
+#       "$N_NODES" "$COLLECTIVE_TO_TEST" "$ALGOS" "$MPI_TYPE" "$MPI_VERSION" \
+#       "$LIBSWING_VERSION" "$ENABLE_CUDA" "$TYPES" "$OPERATOR" "$OTHER"

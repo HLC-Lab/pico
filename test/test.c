@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "test_utils.h"
-#include "test_selection.h"
 #include "libswing.h"
 
 
@@ -17,16 +16,14 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(comm, &comm_sz);
 
   // Declare beforehand the buffers to allow for correct `goto` error handling
-  char *sendbuf = NULL, *recvbuf = NULL, *recvbuf_gt = NULL;
+  char *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
-  double start_time, end_time;
-  
 
-  size_t array_size;
+  size_t count;
   int iter, algorithm;
   const char* type_string, *outputdir;
   // Get command line arguments
-  if (get_command_line_arguments(argc, argv, &array_size, &iter, &type_string,
+  if (get_command_line_arguments(argc, argv, &count, &iter, &type_string,
                                  &algorithm, &outputdir) == -1){
     line = __LINE__;
     goto err_hndl;
@@ -46,13 +43,13 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 
-  sendbuf = (char *)malloc(array_size * type_size);
-  recvbuf = (char *)malloc(array_size * type_size);
-  recvbuf_gt = (char *)malloc(array_size * type_size);
+  sbuf = (char *)malloc(count * type_size);
+  rbuf = (char *)malloc(count * type_size);
+  rbuf_gt = (char *)malloc(count * type_size);
   times = (double *)malloc(iter * sizeof(double));
   
   // Allocate memory for all ranks
-  if (sendbuf == NULL || recvbuf == NULL || recvbuf_gt == NULL || times == NULL) {
+  if (sbuf == NULL || rbuf == NULL || rbuf_gt == NULL || times == NULL) {
     fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
     line = __LINE__;
     goto err_hndl;
@@ -69,30 +66,32 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // randomly generate the sendbuf
-  if (rand_array_generator(sendbuf, type_string, array_size, rank) == -1){
+  // randomly generate the sbuf
+  if (rand_array_generator(sbuf, type_string, count, rank) == -1){
     line = __LINE__;
     goto err_hndl;
   }
   
-  // Use a function pointer to allow for both `MPI_Allreduce` and custom
-  // `Allreduce` defined in `include/libswing.a`
-  allreduce_func_ptr allreduce_func = select_algorithm(algorithm);
-
-  // Perform ITER iterations of MPI_Allreduce and measure time
-  for (int i = 0; i < iter; i++) {
-    MPI_Barrier(comm);
-    start_time = MPI_Wtime();
-    allreduce_func(sendbuf, recvbuf, array_size, dtype, MPI_SUM, comm);
-    end_time = MPI_Wtime();
-    times[i] = end_time - start_time;
+  switch (test_routine.collective){
+    case ALLREDUCE:
+      allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm,
+                          iter, times, test_routine.algorithm.allreduce_algorithm);
+      // Do a ground-truth check on the correctness of last iteration result
+      if (allreduce_gt_check(sbuf, rbuf, count, dtype, MPI_SUM, comm, rbuf_gt) != 0){
+        line = __LINE__;
+        goto err_hndl;
+      }
+      break;
+    // TODO: OTHER CASES
+    // case ALLGATHER:
+    //   allgather_test_loop(sbuf, scount, dtype, rbuf, rcount, rdtype, comm, iter, times, test_routine.algorithm.allgather_algorithm);
+    //   break;
+    default:
+      fprintf(stderr, "still not implemented, aborting...\n");
+      line = __LINE__;
+      goto err_hndl;
   }
 
-  // Do a ground-truth check on the correctness of last iteration result
-  if (allreduce_gt_check(sendbuf, recvbuf, array_size, dtype, MPI_SUM, comm, recvbuf_gt) != 0){
-    line = __LINE__;
-    goto err_hndl;
-  }
 
   // Gather all process times to rank 0 and find the highest execution time of each iteration
   PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
@@ -103,7 +102,7 @@ int main(int argc, char *argv[]) {
   if (rank == 0){
     char data_filename[128], data_fullpath[TEST_MAX_PATH_LENGTH];
     snprintf(data_filename, sizeof(data_filename), "data/%d_%ld_%s_%d.csv",
-             comm_sz, array_size, type_string, (int) algorithm);
+             comm_sz, count, type_string, (int) algorithm);
     if (concatenate_path(outputdir, data_filename, data_fullpath) == -1) {
       fprintf(stderr, "Error: Failed to create fullpath.\n");
       line = __LINE__;
@@ -138,9 +137,9 @@ int main(int argc, char *argv[]) {
   }
 
   // Clean up
-  free(sendbuf);
-  free(recvbuf);
-  free(recvbuf_gt);
+  free(sbuf);
+  free(rbuf);
+  free(rbuf_gt);
   free(times);
 
   if (rank == 0) {
@@ -155,9 +154,9 @@ int main(int argc, char *argv[]) {
 err_hndl:
   fprintf(stderr, "ERROR in\n%s:%4d\tRank %d\n", __FILE__, line, rank);
   (void)line;  // silence compiler warning
-  if (NULL != sendbuf)    free(sendbuf);
-  if (NULL != recvbuf)    free(recvbuf);
-  if (NULL != recvbuf_gt) free(recvbuf_gt);
+  if (NULL != sbuf)    free(sbuf);
+  if (NULL != rbuf)    free(rbuf);
+  if (NULL != rbuf_gt) free(rbuf_gt);
   if (NULL != times)      free(times);
 
   if (rank == 0) {

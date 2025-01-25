@@ -9,7 +9,7 @@
 
 
 
-int allgather_recursive_doubling(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                                  void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, pow2size, err;

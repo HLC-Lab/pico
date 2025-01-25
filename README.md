@@ -40,7 +40,9 @@ The `test/` directory contains a set of benchmark tests that are used to measure
 
 It will be modified to be independent of MPI implementation (i.e. to work also with standard Open MPI and MPICH).
 
-Algorithm selection is done via a command line parameter and, in case of `Open MPI` implementations, environmental variables and a rule file must be update accordingly before running the tests.
+Algorithm selection is done via a command line parameter and, in case of `OMPI_TEST` implementations, environmental variables and a rule file must be update accordingly before running the tests.
+
+Collective type instead is chosen via environmental variable `COLLECTIVE_TYPE` (for now only `ALLREDUCE` is fully functioning, `ALLGATHER` and `REDUCESCATTER` in development).
 
 The executable itself must be run with `srun` or `mpirun`/`mpiexec` and output is saved in `csv` format by rank 0.
 
@@ -48,7 +50,7 @@ Parameter required are:
 - `<array_size>`: Size of the array to run the collective on.
 - `<iter>`: Number of total iterations to run of the specific test.
 - `<type_string>`: The string codifying the datatype of the test. Currently some of them don't work and documentation will be added.
-- `<algorithm>`: Allreduce algorithm ID to run tests on.
+- `<algorithm>`: Algorithm ID to run tests on.
 - `<dirpath>`: Directory where results will be saved.
 
 Before saving the results, a ground truth check on the last iteration is performed to check for possible errors.
@@ -109,8 +111,9 @@ The script must be modified to select:
 - `<requested_time>`: The time requested for job allocation. Higher number of hours is suggested.
 - `<account_name>`: Account name on the target cluster.
 - `<LOCATION>`: Name of the machine, as defined in `scripts/environments/`.
-- `<CUDA>`: If use CUDA-aware MPI. Beware that this option works only on Open MPI for now.
-- `<OMPI_TEST>`: If use custom Open MPI library with swing implementations.
+- `<COLLECTIVE_TO_TEST>`: Collective type to test.
+- `<ENABLE_CUDA>`: If use CUDA-aware MPI. Beware that this option works only on Open MPI for now.
+- `<ENABLE_OMPI_TEST>`: If use custom Open MPI library with swing implementations.
 
 Also the standard output and error will be redirected into the results directory.
 
@@ -124,12 +127,13 @@ Beware that, especially with big allocations, those scripts can fail and waste c
 This script runs a benchmarking test suite itself. To run it without relying to the sbatch script execute the following command:
 
 ```bash
-scripts/run_test_suite.sh <num_processes> [timestamp] [location] [enable_cuda] [enable_ompi_test]
+scripts/run_test_suite.sh <num_processes> [timestamp] [location] [collective] [enable_cuda] [enable_ompi_test]
 ```
 
 - `<num_processes>` (required): The number of processes to use for the test run. Must be a valid positive integer greater than or equal to 2.
 - `[timestamp]` (optional): Timestamp for the test run. Defaults to the current date and time.
 - `[location]` (optional): Specifies the environment configuration script. Defaults to `local`.
+- `[collective]` (optional): Which collective to test. Defaults to `ALLREDUCE`
 - `[enable_cuda]` (optional): Enable CUDA aware MPI support. Defaults to `no`.
 - `[enable_ompi_test]` (optional): Enable the use of the modified Open MPI library with Swing Allreduce algorithms. Defaults to `yes`.
 
@@ -139,6 +143,7 @@ The script uses the following key variables:
   - `1-7`: Specific Open MPI algorithms.
   - `8-13`: Swing versions within Open MPI.
   - `14-16`: Swing over MPI implementations.
+  - **(This will be modified to allow for algorithm selection with different collective type)**
 - `ARR_SIZES`: An array specifying the sizes of the test data buffers.
 - `TYPES`: Specifies the data types for testing.
 
@@ -220,9 +225,12 @@ There is no need to run the compression or the metadata script manually as every
 - [x] create a function to write rank and allocation inside test without relying on normal `srun` in test suite
 - [x] use enum when possible for clarity
 - [x] standardize .csv format to what was decided with professor De Sensi
-- [ ] separate and modularize ground truth check for different kinds of collectives (WIP)
-- [ ] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
+- [x] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
+- [x] separate and modularize ground truth check for different kinds of collectives (WIP)
+- [ ] finish logic for allgather
+- [ ] finish logic for reducescatter
 #### OMPI rules
+- [ ] allow for multiple types of algorithm selection
 - [ ] change it so that it recognizes if the modified `Open MPI` is being run or not
 - [ ] modify to let it work also with `MPICH` algorithm selection
 #### Debug program and suite
@@ -232,6 +240,7 @@ There is no need to run the compression or the metadata script manually as every
 - [x] separate results by system
 - [x] comment the code
 - [x] create a function to add metadata in the .csv asked by the professor
+- [ ] integrate different collective testing (WIP)
 - [ ] ensure python modules and environment is set up correctly
 - [ ] build a better and clearer interface to select variables for testing
 - [ ] add an env var to select between `MPICH` and `Open MPI` binaries, independently of `ompi_test` (obviously `ompi_test` must be no when MPICH is selected)
