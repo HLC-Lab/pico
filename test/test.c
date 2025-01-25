@@ -12,8 +12,7 @@ int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
   MPI_Comm comm = MPI_COMM_WORLD;
 
-  int rank, comm_sz;
-  int line;
+  int rank, comm_sz, line;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
@@ -24,13 +23,6 @@ int main(int argc, char *argv[]) {
   
   size_t array_size;
   int iter;
-  
-  coll_t collective;
-  if (get_collective(&collective) == -1){
-    line = __LINE__;
-    goto err_hndl;
-  }
-
   allreduce_algo_t algorithm;
 
   const char* type_string, *outputdir;

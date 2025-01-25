@@ -1,3 +1,12 @@
+/**
+ * @file test_selection.h
+ * @brief Defines a structure for selecting collective operations and their corresponding algorithms.
+ *
+ * This structure is used to represent a decision regarding which collective 
+ * operation (e.g., allreduce, allgather, reduce-scatter) to perform and which 
+ * specific algorithm to use for that operation.
+ */
+
 #ifndef TEST_SELECTION_H
 #define TEST_SELECTION_H
 
@@ -5,13 +14,23 @@
 #include "libswing.h"
 
 /**
+ * @enum coll_t
+ *
+ * @brief Defines the collective operation to be used in this test. It only provide symbolic
+ * name for collective selection.
+ * */
+typedef enum{
+  ALLREDUCE = 0,
+  ALLGATHER,
+  REDUCE_SCATTER,
+}coll_t;
+
+/**
  * @enum allreduce_algo_t
  *
  * @brief Defines the standard Allreduce algorithms implemented in Open MPI coll module,
- * swing algorithms in Ompi Test repo and algorithms in `libswing.a`
- *
- * It only provides symbolic names for algorithm selection, conditional checks (use Open MPI
- * or not, use Ompi_Test...) must be done in selection stage. 
+ * swing algorithms in Ompi Test repo and algorithms in `libswing.a`. It only provides
+ * symbolic names for algorithm selection.
  *
  * TODO: implement conditional checks for OMPI vs MPICH
  * */
@@ -42,10 +61,7 @@ typedef enum{
  * @enum allgather_algo_t
  *
  * @brief Defines the standard Allgather algorithms implemented in Open MPI coll module,
- * and algorithms in `libswing.a`
- *
- * It only provides symbolic names for algorithm selection, conditional checks (use Open MPI
- * or not, use Ompi_Test...) must be done in selection stage. 
+ * and algorithms in `libswing.a`. It only provides symbolic names for algorithm selection.
  * */
 typedef enum{
   ALLGATHER_DEFAULT = 0,
@@ -66,10 +82,7 @@ typedef enum{
  * @enum reduce_scatter_algo_t
  *
  * @brief Defines the standard Reduce Scatter algorithms implemented in Open MPI coll module,
- * and algorithms in `libswing.a`
- *
- * It only provides symbolic names for algorithm selection, conditional checks (use Open MPI
- * or not, use Ompi_Test...) must be done in selection stage. 
+ * and algorithms in `libswing.a`. It only provides symbolic names for algorithm selection.
  * */
 typedef enum{
   REDUCE_SCATTER_DEFAULT = 0,
@@ -84,11 +97,28 @@ typedef enum{
 }reduce_scatter_algo_t;
 
 
-typedef enum{
-  ALLREDUCE = 0,
-  ALLGATHER,
-  REDUCE_SCATTER,
-}coll_t;
+/**
+ * @struct routine_decision_t
+ * @brief Represents a decision about a collective operation and its corresponding algorithm.
+ *
+ * This structure allows the user to specify:
+ * - The collective operation to be performed (`coll_t`).
+ * - The specific algorithm to use for that operation, based on the collective type.
+ */
+typedef struct {
+  coll_t collective; /**< Specifies the type of collective operation. */
+
+  /**
+    * @union algorithm
+    * @brief Holds the specific algorithm for the selected collective operation.
+    */
+  union {
+    allreduce_algo_t allreduce_algorithm;
+    allgather_algo_t allgather_algorithm;
+    reduce_scatter_algo_t reduce_scatter_algorithm;
+  } algorithm;
+
+} routine_decision_t;
 
 /**
  * @typedef allreduce_func_ptr
