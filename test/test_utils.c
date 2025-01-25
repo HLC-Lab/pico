@@ -56,18 +56,6 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
   return -1;
 }
 
-int get_collective(coll_t *collective){
-  const char *coll_str = NULL;
-  coll_str = getenv("COLLECTIVE_TYPE");
-
-  if (NULL == coll_str){
-    fprintf(stderr, "Error! `COLLECTIVE_TYPE` envvar not valid. Aborting...\n");
-    return -1;
-  }
-
-
-  return 0;
-}
 /**
  * @brief Parses command-line arguments and extracts parameters.
  *
@@ -80,9 +68,9 @@ int get_collective(coll_t *collective){
  * @param[out] outputdir Output directory path.
  * @return 0 on success, -1 on error.
  */
-int get_command_line_arguments(int argc, char** argv, size_t *array_size, int* iter, const char **type_string, allreduce_algo_t *algorithm, const char **outputdir) {
+int get_command_line_arguments(int argc, char** argv, size_t *array_size, int* iter, const char **type_string, int *alg_number, const char **outputdir) {
   if (argc != 6) {
-    fprintf(stderr, "Usage: %s <array_size> <iterations> <dtype> <algo> <outputdir>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <array_size> <iterations> <dtype> <alg_number> <outputdir>\n", argv[0]);
     return -1;
   }
 
@@ -101,18 +89,11 @@ int get_command_line_arguments(int argc, char** argv, size_t *array_size, int* i
 
   *type_string = argv[3];
 
-  int alg_number = (int) strtol(argv[4], &endptr, 10);
-  if (*endptr != '\0' || alg_number < 0 || alg_number > 16) {
-    fprintf(stderr, "Error: Invalid alg number. It must be in [0-16]. Aborting...\n");
+  *alg_number = (int) strtol(argv[4], &endptr, 10);
+  if (*endptr != '\0' || *alg_number < 0) {
+    fprintf(stderr, "Error: Invalid alg number. It must be >0. Aborting...\n");
     return -1;
   }
-#ifndef OMPI_TEST
-  if (alg_number >= 8 && alg_number <= 13){
-    fprintf(stdout, "Error: Invalid alg number. OMPI_TEST is not being used. Aborting...\n");
-    return -1;
-  }
-#endif
-  *algorithm = (allreduce_algo_t) alg_number;
 
   *outputdir = argv[5];
 

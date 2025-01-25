@@ -21,14 +21,19 @@ int main(int argc, char *argv[]) {
   double *times = NULL, *all_times = NULL, *highest = NULL;
   double start_time, end_time;
   
-  size_t array_size;
-  int iter;
-  allreduce_algo_t algorithm;
 
+  size_t array_size;
+  int iter, algorithm;
   const char* type_string, *outputdir;
   // Get command line arguments
   if (get_command_line_arguments(argc, argv, &array_size, &iter, &type_string,
                                  &algorithm, &outputdir) == -1){
+    line = __LINE__;
+    goto err_hndl;
+  }
+  
+  routine_decision_t test_routine;
+  if (get_routine(&test_routine, algorithm) == -1){
     line = __LINE__;
     goto err_hndl;
   }

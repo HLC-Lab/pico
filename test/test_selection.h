@@ -11,6 +11,7 @@
 #define TEST_SELECTION_H
 
 #include <mpi.h>
+
 #include "libswing.h"
 
 /**
@@ -23,7 +24,9 @@ typedef enum{
   ALLREDUCE = 0,
   ALLGATHER,
   REDUCE_SCATTER,
+  COLL_UNKNOWN
 }coll_t;
+
 
 /**
  * @enum allreduce_algo_t
@@ -66,7 +69,7 @@ typedef enum{
 typedef enum{
   ALLGATHER_DEFAULT = 0,
   ALLGATHER_LINEAR,
-  ALLGATHER_BRUCK,
+  ALLGATHER_K_BRUCK,
   ALLGATHER_RECURSIVE_DOUBLING,
   ALLGATHER_RING,
   ALLGATHER_NEIGHBOR,
@@ -119,6 +122,10 @@ typedef struct {
   } algorithm;
 
 } routine_decision_t;
+
+
+int get_routine(routine_decision_t *test_routine, int algorithm);
+
 
 /**
  * @typedef allreduce_func_ptr

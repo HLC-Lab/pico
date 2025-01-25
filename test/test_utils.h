@@ -24,7 +24,7 @@ int rand_array_generator(void *target, const char *type_string, size_t array_siz
 int concatenate_path(const char *dirpath, const char *filename, char *fullpath);
 
 int get_command_line_arguments(int argc, char** argv, size_t *array_size, int* iter,
-                               const char **type_string, allreduce_algo_t *algorithm,
+                               const char **type_string, int *alg_number,
                                const char ** outputdir);
 
 int write_output_to_file(const char *fullpath, double *highest, double *all_times, int iter);
