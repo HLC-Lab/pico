@@ -15,16 +15,17 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
-  // Declare beforehand the buffers to allow for correct `goto` error handling
-  char *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
+  // Declare beforehand the buffers to allow for correct
+  // error handling with goto
+  void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
 
   size_t count;
   int iter, algorithm;
   const char* type_string, *outputdir;
   // Get command line arguments
-  if (get_command_line_arguments(argc, argv, &count, &iter, &type_string,
-                                 &algorithm, &outputdir) == -1){
+  if (get_command_line_arguments(argc, argv, &count, &iter,
+                       &type_string, &algorithm, &outputdir) == -1){
     line = __LINE__;
     goto err_hndl;
   }
@@ -42,20 +43,27 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-
-  sbuf = (char *)malloc(count * type_size);
-  rbuf = (char *)malloc(count * type_size);
-  rbuf_gt = (char *)malloc(count * type_size);
-  times = (double *)malloc(iter * sizeof(double));
   
-  // Allocate memory for all ranks
-  if (sbuf == NULL || rbuf == NULL || rbuf_gt == NULL || times == NULL) {
-    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+  allocator_func_ptr allocator = get_allocator(test_routine);
+  if (NULL == allocator){
+    fprintf(stderr, "Error: allocator is NULL. Aborting...\n");
+    line = __LINE__;
+    goto err_hndl;
+  }
+  
+  // Allocate memory for the buffers based on the collective type
+  if (allocator(&sbuf, &rbuf, &rbuf_gt, count, type_size, comm) != 0){
     line = __LINE__;
     goto err_hndl;
   }
 
-  // Allocate memory for rank0-specific buffers
+  // Allocate memory for buffers independent of collective type
+  times = (double *)malloc(iter * sizeof(double));
+  if (times == NULL){
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    line = __LINE__;
+    goto err_hndl;
+  }
   if (rank == 0) {
     all_times = (double *)malloc(comm_sz * iter * sizeof(double));
     highest = (double *)malloc(iter * sizeof(double));
@@ -67,25 +75,38 @@ int main(int argc, char *argv[]) {
   }
 
   // randomly generate the sbuf
-  if (rand_array_generator(sbuf, type_string, count, rank) == -1){
+  if (rand_sbuf_generator(sbuf, type_string, count, comm, test_routine) == -1){
     line = __LINE__;
     goto err_hndl;
   }
-  
+
   switch (test_routine.collective){
     case ALLREDUCE:
-      allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm,
-                          iter, times, test_routine.algorithm.allreduce_algorithm);
+      // Perform the test benchmark for `iter` iterations
+      allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
+                          times, test_routine.algorithm.allreduce_algorithm);
+
       // Do a ground-truth check on the correctness of last iteration result
       if (allreduce_gt_check(sbuf, rbuf, count, dtype, MPI_SUM, comm, rbuf_gt) != 0){
         line = __LINE__;
         goto err_hndl;
       }
       break;
-    // TODO: OTHER CASES
-    // case ALLGATHER:
-    //   allgather_test_loop(sbuf, scount, dtype, rbuf, rcount, rdtype, comm, iter, times, test_routine.algorithm.allgather_algorithm);
-    //   break;
+    case ALLGATHER:
+      // Perform the test benchmark for `iter` iterations
+      allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
+                          rbuf, count / (size_t) comm_sz, dtype,
+                          comm, iter, times,
+                          test_routine.algorithm.allgather_algorithm);
+
+      // Do a ground-truth check on the correctness of last iteration result
+      if (allgather_gt_check(sbuf, count / (size_t) comm_sz, dtype,
+                             rbuf, count / (size_t) comm_sz, dtype,
+                             comm, rbuf_gt) != 0){
+        line = __LINE__;
+        goto err_hndl;
+      }
+      break;
     default:
       fprintf(stderr, "still not implemented, aborting...\n");
       line = __LINE__;
@@ -132,6 +153,7 @@ int main(int argc, char *argv[]) {
   }
   PMPI_Bcast(&should_write_alloc, 1, MPI_INT, 0, comm);
   if (should_write_alloc == 1 && write_allocations_to_file(alloc_fullpath, comm) != MPI_SUCCESS){
+    // TODO: delete the alloc file if it was created
     line = __LINE__;
     goto err_hndl;
   }
@@ -143,8 +165,8 @@ int main(int argc, char *argv[]) {
   free(times);
 
   if (rank == 0) {
-    if (NULL != all_times)  free(all_times);
-    if (NULL != highest)    free(highest);
+    free(all_times);
+    free(highest);
   }
 
   MPI_Finalize();
@@ -152,17 +174,19 @@ int main(int argc, char *argv[]) {
   return EXIT_SUCCESS;
 
 err_hndl:
-  fprintf(stderr, "ERROR in\n%s:%4d\tRank %d\n", __FILE__, line, rank);
+  fprintf(stderr, "%s:%4d\tRank %d\n", __FILE__, line, rank);
   (void)line;  // silence compiler warning
+
   if (NULL != sbuf)    free(sbuf);
   if (NULL != rbuf)    free(rbuf);
   if (NULL != rbuf_gt) free(rbuf_gt);
-  if (NULL != times)      free(times);
+  if (NULL != times)   free(times);
 
   if (rank == 0) {
     if (NULL != all_times)  free(all_times);
     if (NULL != highest)    free(highest);
-  } 
+  }
+
   MPI_Abort(comm, MPI_ERR_UNKNOWN);
 
   return EXIT_FAILURE;

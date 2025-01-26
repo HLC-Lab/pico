@@ -2,6 +2,12 @@
 MPICC = mpicc
 CFLAGS = -O3 -Wall -I../include
 
+# Colors for output styling
+GREEN := \033[1;32m
+YELLOW := \033[1;33m
+RED := \033[1;31m
+NC := \033[0m
+
 # Directories
 OBJ_DIR = ../obj/lib
 LIB_DIR = ../lib
@@ -17,16 +23,16 @@ all: $(STATIC_LIB)
 # Build static library
 $(STATIC_LIB): $(LIB_OBJS)
 	@mkdir -p $(LIB_DIR)
-	@echo -e "\033[1;32m[AR] Creating static library: $(STATIC_LIB)\033[0m"
+	@echo -e "$(GREEN)[AR] Creating static library: $(STATIC_LIB)$(NC)"
 	ar rcs $@ $^
 
 # Compile object files
 $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(OBJ_DIR)
-	@echo -e "\033[1;33m[MPICC] Compiling $< -> $@\033[0m"
+	@echo -e "$(YELLOW)[MPICC] Compiling $< -> $@...$(NC)"
 	$(MPICC) $(CFLAGS) -c $< -o $@
 
 # Clean target
 clean:
-	@echo -e "\033[1;31m[CLEAN] Removing object files and library...\033[0m"
+	@echo -e "$(RED)[CLEAN] Removing object files and library...$(NC)"
 	rm -rf $(OBJ_DIR) $(STATIC_LIB)

@@ -1,9 +1,27 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
 
 #include "libswing.h"
 #include "test_utils.h"
+
+int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
+                        size_t type_size, MPI_Comm comm) {
+  int comm_sz;
+  MPI_Comm_size(comm, &comm_sz);
+  
+  // sbuf must contain only the data specific to the current rank,
+  // while rbuf (and rbuf_gt) must contain the data from all ranks.
+  *sbuf = (char *)malloc(count * type_size / (size_t) comm_sz);
+  *rbuf = (char *)malloc(count * type_size);
+  *rbuf_gt = (char *)malloc(count * type_size);
+  if (*sbuf == NULL || *rbuf == NULL || *rbuf_gt == NULL) {
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    return -1;
+  }
+  return 0; // Success
+}
 
 /**
  * @brief Selects the appropriate allgather algorithm based on an algorithm number.

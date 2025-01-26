@@ -1,10 +1,16 @@
 #!/bin/bash
 
+# To style the output
+RED='\033[0;31m'  # Red
+GREEN='\033[0;32m' # Green
+NC='\033[0m'       # No Color (reset)
+
 # Function to handle cleanup on script termination
 # (e.g., Ctrl+C)
 cleanup() {
-    echo "Caught Ctrl+C! Stopping the script and \
-          killing all child processes..."
+    echo -e "\n${RED}=========================================="
+    echo -e "Caught Ctrl+C! Stopping the script and killing all child processes..."
+    echo -e "==========================================${NC}\n"
     pkill -P $$
     exit 1
 }
@@ -16,8 +22,10 @@ trap cleanup SIGINT
 N_NODES=$1
 if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] \
                        || [ "$N_NODES" -lt 2 ]; then
-    echo "Error: N_NODES is not given or not set correctly. \
-          Please provide a valid number of nodes as FIRST argument."
+    echo -e "\n${RED}=========================================="
+    echo -e "ERROR: N_NODES is not given or not set correctly."
+    echo -e "Please provide a valid number of nodes as FIRST argument."
+    echo -e "==========================================${NC}\n"
     exit 1
 fi
 
@@ -62,7 +70,9 @@ if [ -f scripts/environments/${LOCATION}.sh ]; then
     export OMPI_MCA_coll_hcoll_enable=0
     export OMPI_MCA_coll_tuned_use_dynamic_rules=1
 else
-    echo "ERROR: Environment script for '${LOCATION}' system not found!"
+    echo -e "\n${RED}=========================================="
+    echo -e "ERROR: Environment script for '${LOCATION}' system not found!"
+    echo -e "==========================================${NC}\n"
     exit 1
 fi
 
@@ -96,7 +106,7 @@ run_test() {
     local type=$3
     local algo=$4
 
-    echo "Running -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
+    echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
     $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $type $algo $OUTPUT_DIR
 }
 
@@ -110,10 +120,23 @@ mkdir -p "$DATA_DIR"
 # will inject it into `tests\...` files.
 make clean
 if [ "$ENABLE_OMPI_TEST" == "yes" ]; then
-    make all OMPI_TEST=1
+    if ! make all OMPI_TEST=1; then
+        echo -e "\n${RED}=========================================="
+        echo -e "❌ ERROR: 'make all OMPI_TEST=1' failed. Exiting."
+        echo -e "==========================================${NC}\n"
+        exit 1
+    fi
 else
-    make all
+    if ! make all; then
+        echo -e "\n${RED}=================================="
+        echo -e "❌ ERROR: 'make all' failed. Exiting."
+        echo -e "==================================${NC}\n"
+        exit 1
+    fi
 fi
+
+# Success message
+echo -e "\n${GREEN}✅ Make succeeded. Proceeding to benchmark...${NC}\n"
 
 # Test algorithms here, loop through:
 # - algorithms:

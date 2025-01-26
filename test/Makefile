@@ -2,6 +2,12 @@
 MPICC = mpicc
 CFLAGS = -O3 -Wall -I../include
 
+# Colors for output styling
+GREEN := \033[1;32m
+YELLOW := \033[1;33m
+RED := \033[1;31m
+NC := \033[0m
+
 ifeq ($(OMPI_TEST), 1)
 	CFLAGS += -DOMPI_TEST
 endif
@@ -22,16 +28,16 @@ all: $(OUTPUT)
 # Build the executable
 $(OUTPUT): $(OBJS)
 	@mkdir -p $(BIN_DIR)
-	@echo -e "\033[1;33m[LINK] Linking $@\033[0m"
+	@echo -e "$(GREEN)[LINK] Linking $@...$(NC)"
 	$(MPICC) $(CFLAGS) -o $@ $^ -L../lib -lswing -lm
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
-	@echo -e "\033[1;33m[MPICC] Compiling $< -> $@\033[0m"
+	@echo -e "$(YELLOW)[MPICC] Compiling $< -> $@...$(NC)"
 	$(MPICC) $(CFLAGS) -c $< -o $@
 
 # Clean target
 clean:
-	@echo -e "\033[1;31m[CLEAN] Removing test object files and binary...\033[0m"
+	@echo -e "$(RED)[CLEAN] Removing test object files and binary...$(NC)"
 	rm -rf $(OBJ_DIR) $(OUTPUT)

@@ -1,9 +1,24 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
 
 #include "libswing.h"
 #include "test_utils.h"
+
+int allreduce_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
+                        size_t count, size_t type_size, MPI_Comm comm) {
+  *sbuf = (char *)malloc(count * type_size);
+  *rbuf = (char *)malloc(count * type_size);
+  *rbuf_gt = (char *)malloc(count * type_size);
+
+  if (*sbuf == NULL || *rbuf == NULL || *rbuf_gt == NULL) {
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    return -1;
+  }
+
+  return 0; // Success
+}
 
 /**
  * @brief Selects the appropriate allreduce algorithm based on an algorithm number.

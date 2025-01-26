@@ -123,6 +123,64 @@ typedef struct {
 } routine_decision_t;
 
 //-----------------------------------------------------------------------------------------------
+//                    COLLECTIVE SPECIFIC MEMORY ALLOCATORS
+//-----------------------------------------------------------------------------------------------
+
+#define ALLOCATOR_ARGS    void **sbuf, void **rbuf, void **rbuf_gt, size_t count,\
+                          size_t type_size, MPI_Comm comm
+/**
+* @typedef allocator_func_ptr
+*
+* A function pointer type for custom memory allocation functions.
+*/
+typedef int (*allocator_func_ptr)(ALLOCATOR_ARGS);
+
+
+/**
+* @brief Allocates memory for the send buffer, receive buffer,
+* and ground-truth buffer for an Allreduce operation.
+*
+* @return 0 on success, -1 on error.
+*/
+int allreduce_allocator(ALLOCATOR_ARGS);
+
+/**
+* @brief Allocates memory for the send buffer, receive buffer,
+* and ground-truth buffer for an Allgather operation.
+*
+* @return 0 on success, -1 on error.
+*/
+int allgather_allocator(ALLOCATOR_ARGS);
+
+
+/**
+* @brief Select and returns the appropriate allocator function based
+* on the collective type. It returns NULL if the collective type is 
+* not supported.
+*
+* @param test_routine `routine_decision_t` structure containing the
+*                      collective type informations.
+*
+* @return Pointer to the selected allocator function, or NULL if the
+*         collective type is not supported.
+*
+* WARNING: While `count` always represents the number of elements in the
+* biggest buffer (be it send or receive), the actual memory allocation
+* for each buffer is determined by the collective type.
+*/
+static inline allocator_func_ptr get_allocator(routine_decision_t test_routine) {
+  switch (test_routine.collective) {
+    case ALLREDUCE:
+      return allreduce_allocator;
+    case ALLGATHER:
+      return allgather_allocator;
+    // case REDUCE_SCATTER:
+    //   return reduce_scatter_allocator;
+    default:
+      return NULL;
+  }
+}
+//-----------------------------------------------------------------------------------------------
 //                FUNCTION POINTER TYPES AND WRAPPER FOR CUSTOM COLLECTIVE FUNCTIONS
 // ----------------------------------------------------------------------------------------------
 
@@ -323,15 +381,18 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm);
 //-----------------------------------------------------------------------------------------------
 
 /**
- * @brief Generates a random array based on the specified type and size.
+ * @brief Generates a random sbuf based on the specified type, size and collective.
  *
- * @param target Pointer to the array to fill with random values.
+ * @param sbuf Pointer to the sbuf to fill with random values.
  * @param type_string Data type as a string.
  * @param array_size Number of elements in the array.
- * @param rank MPI rank to seed the random number generator.
+ * @param comm MPI communicator.
+ * @param test_routine Routine decision structure.
+ *
  * @return 0 on success, -1 if the data type is unsupported.
  */
-int rand_array_generator(void *target, const char *type_string, size_t array_size, int rank);
+int rand_sbuf_generator(void *sbuf, const char *type_string, size_t array_size,
+                         MPI_Comm comm, routine_decision_t test_routine);
 
 
 /**
@@ -350,11 +411,12 @@ int concatenate_path(const char *dirpath, const char *filename, char *fullpath);
  *
  * @param buf_1 First buffer.
  * @param buf_2 Second buffer.
- * @param buffer_count Size of the buffers.
+ * @param count Size of the buffers in number of elements.
  * @param dtype MPI_Datatype of the recvbuf.
  * @param comm_sz Communication size to scale the epsilon.
  * @return 0 if buffers are equal within tolerance, -1 otherwise.
  */
-int are_equal_eps(const void *buf_1, const void *buf_2, size_t buffer_count, const MPI_Datatype dtype, int comm_sz);
+int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
+                  MPI_Datatype dtype, int comm_sz);
 
 #endif
