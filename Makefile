@@ -3,7 +3,7 @@
 # Variables for colors
 BLUE := \033[1;34m
 RED := \033[1;31m
-NC := \033[0m  # No Color
+NC := \033[0m
 
 # Build all components
 all: libswing debug test ompi_rules
@@ -29,7 +29,7 @@ test: libswing
 # Build the change_collective_rules program
 ompi_rules:
 	@echo -e "$(BLUE)[BUILD] Compiling ompi_rules executable...$(NC)"
-	$(MAKE) -C ompi_rules
+	$(MAKE) -C ompi_rules $(if $(OMPI_TEST),OMPI_TEST=$(OMPI_TEST))
 	@echo ""
 
 # Clean all builds

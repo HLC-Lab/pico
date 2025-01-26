@@ -40,7 +40,7 @@ ENABLE_CUDA=${5:-no}
 ENABLE_OMPI_TEST=${6:-yes}
 DEBUG_MODE=${7:-no}
 
-ALGOS=(0 1 2 3 4 5 6)
+ALGOS=(0 1 3 4 5 8 9 10)
 #ALGOS=(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)
 ARR_SIZES=(8 64 512 2048 16384 131072 1048576 8388608 67108864)
 TYPES=('int64')                          # Data types to test
@@ -94,11 +94,9 @@ if ! $make_command ; then
     echo -e "❌ ERROR: '$make_command' failed. Exiting."
     echo -e "==========================================${NC}\n"
     exit 1
+else
+    echo -e "\n${GREEN}✅ Make succeeded. Proceeding to benchmark...${NC}\n"
 fi
-
-
-# Success message
-echo -e "\n${GREEN}✅ Make succeeded. Proceeding to benchmark...${NC}\n"
 
 # Output directories for results
 OUTPUT_DIR="$RES_DIR/$LOCATION/$TIMESTAMP/"

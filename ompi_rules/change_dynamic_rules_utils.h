@@ -33,10 +33,17 @@ int update_file(const char *filename, int new_value, rules_coll_t coll) {
 
   switch (coll) {
     case ALLREDUCE:
+      #ifdef OMPI_TEST
       if (new_value < 0 || new_value > 16) {
         fprintf(stderr, "ERROR: For allreduce, the number must be between 0 and 16.\n");
         return -1;
       }
+      #else
+      if (new_value < 0 || new_value > 16 || (new_value > 7 && new_value < 14)) {
+        fprintf(stderr, "ERROR: For allreduce, the number must be between 0 and 7 or between 14 and 16.\n");
+        return -1;
+      }
+      #endif
       if (new_value > 13) new_value = 0;
       target_line = 12;
       break;

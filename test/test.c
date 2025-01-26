@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // randomly generate the sbuf
+  // Randomly generate the sbuf
   if (rand_sbuf_generator(sbuf, type_string, count, comm, test_routine) == -1){
     line = __LINE__;
     goto err_hndl;
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
   // Write current allocations if and only if the file `alloc_fullpath`
   // does not exists (i.e. only the first time for each srun this function
   // is encountered the allocations will be registerd)
-  int should_write_alloc;
+  int should_write_alloc = 0;
   if (rank == 0){
     should_write_alloc = file_not_exists(alloc_fullpath);
   }

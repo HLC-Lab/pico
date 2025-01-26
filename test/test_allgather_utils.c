@@ -13,7 +13,7 @@ int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
   
   // sbuf must contain only the data specific to the current rank,
   // while rbuf (and rbuf_gt) must contain the data from all ranks.
-  *sbuf = (char *)malloc(count * type_size / (size_t) comm_sz);
+  *sbuf = (char *)malloc((count / (size_t) comm_sz) * type_size );
   *rbuf = (char *)malloc(count * type_size);
   *rbuf_gt = (char *)malloc(count * type_size);
   if (*sbuf == NULL || *rbuf == NULL || *rbuf_gt == NULL) {
@@ -66,9 +66,9 @@ void allgather_test_loop(ALLGATHER_ARGS, int iter, double *times, allgather_algo
 }
 
 
-int allgather_gt_check(ALLGATHER_ARGS, void *recvbuf_gt) {
+int allgather_gt_check(ALLGATHER_ARGS, void *rbuf_gt) {
   // Compute the ground-truth result using PMPI_Allgather.
-  PMPI_Allgather(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm);
+  PMPI_Allgather(sbuf, scount, sdtype, rbuf_gt, rcount, rdtype, comm);
 
   int comm_sz;
   MPI_Comm_size(comm, &comm_sz);
@@ -78,13 +78,13 @@ int allgather_gt_check(ALLGATHER_ARGS, void *recvbuf_gt) {
 
   if (rdtype != MPI_DOUBLE && rdtype != MPI_FLOAT) {
     // For non-floating-point types, use memcmp for exact comparison.
-    if (memcmp(rbuf, recvbuf_gt, rcount * (size_t) (type_size * comm_sz)) != 0) {
+    if (memcmp(rbuf, rbuf_gt, rcount * (size_t) (type_size * comm_sz)) != 0) {
       fprintf(stderr, "Error: results are not valid. Aborting...\n");
       return -1;
     }
   } else {
     // For floating-point types, use an epsilon-based comparison to account for rounding errors.
-    if (are_equal_eps(recvbuf_gt, rbuf, rcount * (size_t) comm_sz, rdtype, comm_sz) == -1) {
+    if (are_equal_eps(rbuf_gt, rbuf, rcount * (size_t) comm_sz, rdtype, comm_sz) == -1) {
       fprintf(stderr, "Error: results are not valid. Aborting...\n");
       return -1;
     }

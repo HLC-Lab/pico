@@ -7,6 +7,10 @@ RED := \033[1;31m
 YELLOW := \033[1;33m
 NC := \033[0m
 
+ifeq ($(OMPI_TEST), 1)
+	CFLAGS += -DOMPI_TEST
+endif
+
 # Directories
 SRC_FILE = change_dynamic_rules.c
 BIN_DIR = ../bin
