@@ -8,7 +8,7 @@ The suggested workflow is to use and modify the .sh files in `scripts/` director
 ```
 .
 ├── bin                   # Binaries (executables)
-├── debug                 # Debug program source code
+├── debug                 # Debug program source code (migrating and rewriting into test)
 ├── include               # Header file for libswing library containing the functions' signatures
 ├── lib                   # Compiled static library
 ├── libswing              # Libswing library source code
@@ -61,7 +61,7 @@ Naming of this file is temporary and will be changed.
 
 The first time this main is called (i.e. if used with a script test/debug suite, only on the first call), also a .csv file with MPI rank allocations will be saved.
 
-### `debug/` - Debugging `libswing`
+### `debug/` - Debugging `libswing` (INTEGRATING NOW WITH TEST)
 
 The `debug/` directory builds an executable `bin/debug` that links with the `libswing.a` library and is used for debugging purposes. It provides a controlled environment to test and debug `libswing`'s functionality. This component is useful when trying to locate issues in the library's code.
 
@@ -69,7 +69,9 @@ The `debug/` directory builds an executable `bin/debug` that links with the `lib
 
 ### `ompi_rules/` - Open MPI Rule File Generator
 
-The `ompi_rules/` directory contains the source for a program that generates rule files for `Open MPI`. These rule files define the collective communication rules that Open MPI uses. The program compiles into the executable `bin/change_collective_rules`, which is used to select MPI Allreduce algorithm.
+The `ompi_rules/` directory contains the source for a program that generates dynamic rule file for `Open MPI`. These rule files define the collective communication rules that Open MPI uses. The program compiles into the executable `bin/change_dynamic_rules`, which is used to select specified algorithms.
+
+For now it works with Allreduce and Allgather.
 
 Beware that the following environmental variables must be set after the rule file is generated:
 ```bash
@@ -111,6 +113,7 @@ The script must be modified to select:
 - `<requested_time>`: The time requested for job allocation. Higher number of hours is suggested.
 - `<account_name>`: Account name on the target cluster.
 - `<LOCATION>`: Name of the machine, as defined in `scripts/environments/`.
+- `<TIMESTAMP>`: Current time-stamp used to create the results folder. Can be changed to anything.
 - `<COLLECTIVE_TO_TEST>`: Collective type to test.
 - `<ENABLE_CUDA>`: If use CUDA-aware MPI. Beware that this option works only on Open MPI for now.
 - `<ENABLE_OMPI_TEST>`: If use custom Open MPI library with swing implementations.
@@ -127,13 +130,13 @@ Beware that, especially with big allocations, those scripts can fail and waste c
 This script runs a benchmarking test suite itself. To run it without relying to the sbatch script execute the following command:
 
 ```bash
-scripts/run_test_suite.sh <num_processes> [timestamp] [location] [collective] [enable_cuda] [enable_ompi_test]
+scripts/run_test_suite.sh <num_processes> [collective] [timestamp] [location] [enable_cuda] [enable_ompi_test]
 ```
 
 - `<num_processes>` (required): The number of processes to use for the test run. Must be a valid positive integer greater than or equal to 2.
-- `[timestamp]` (optional): Timestamp for the test run. Defaults to the current date and time.
-- `[location]` (optional): Specifies the environment configuration script. Defaults to `local`.
 - `[collective]` (optional): Which collective to test. Defaults to `ALLREDUCE`
+- `[timestamp]` (optional): Timestamp for the test run. Defaults to the current date and time. It works as the output (sub)directory of the test and can be set to anything.
+- `[location]` (optional): Specifies the environment configuration script. Defaults to `local`.
 - `[enable_cuda]` (optional): Enable CUDA aware MPI support. Defaults to `no`.
 - `[enable_ompi_test]` (optional): Enable the use of the modified Open MPI library with Swing Allreduce algorithms. Defaults to `yes`.
 
@@ -163,12 +166,6 @@ The script automatically sets up required environment variables based on the `lo
 - `SKIP`: Defines algorithms to skip when `<num_processes>` is greater than `<arr_size>`. Do not modify this variable directly.
 - The script cleans and rebuilds the codebase since if `ENABLE_OMPI_TEST` is set to `yes`, it compiles with Open MPI Swing Allreduce support (`OMPI_TEST=1`).
 
-
-### `scripts/run_debug_suite.sh` - Debug Suite
-
-Expect it to run like the test suite, but built over the `debug\` program.
-
-Right now is still in development.
 
 ## Data Analysis and Visualization
 

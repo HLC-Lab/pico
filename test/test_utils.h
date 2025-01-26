@@ -419,4 +419,11 @@ int concatenate_path(const char *dirpath, const char *filename, char *fullpath);
 int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
                   MPI_Datatype dtype, int comm_sz);
 
+//-----------------------------------------------------------------------------------------------
+//                          DEBUGGING FUNCTIONS
+//-----------------------------------------------------------------------------------------------
+#ifdef DEBUG
+void debug_sbuf_init(void *sbuf, MPI_Comm comm);
+#endif
+
 #endif

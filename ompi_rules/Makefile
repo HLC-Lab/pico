@@ -8,11 +8,11 @@ YELLOW := \033[1;33m
 NC := \033[0m
 
 # Directories
-SRC_FILE = change_collective_rules.c
+SRC_FILE = change_dynamic_rules.c
 BIN_DIR = ../bin
 
 # Output
-OUTPUT = $(BIN_DIR)/change_collective_rules
+OUTPUT = $(BIN_DIR)/change_dynamic_rules
 
 # Default target
 all: $(OUTPUT)

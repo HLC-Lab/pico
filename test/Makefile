@@ -12,6 +12,10 @@ ifeq ($(OMPI_TEST), 1)
 	CFLAGS += -DOMPI_TEST
 endif
 
+ifeq ($(DEBUG), 1)
+	CFLAGS += -DDEBUG
+endif
+
 # Directories
 SRC_DIR = .
 OBJ_DIR = ../obj/test

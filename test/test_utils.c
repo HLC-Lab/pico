@@ -122,3 +122,26 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
   return 0;
 }
 
+
+#ifdef DEBUG
+static inline int64_t int_pow(int base, int exp) {
+  int result = 1;
+  while (exp > 0) {
+    if (exp % 2 == 1) result *= base;
+    base *= base;
+    exp /= 2;
+  }
+  return (int64_t) result;
+}
+
+void debug_sbuf_init(void *sbuf, MPI_Comm comm) {
+  int rank, comm_sz;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &comm_sz);
+
+  for(int i=0; i<comm_sz; i++){
+    ((int64_t*)sbuf)[i] = int_pow(10, rank);
+  }
+}
+#endif
+

@@ -30,14 +30,18 @@ if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] \
 fi
 
 # Default values for other parameters if not provided as arguments
-TIMESTAMP=${2:-$(date +"%Y_%m_%d___%H:%M:%S")}
-LOCATION=${3:-local}
-COLLECTIVE_TO_TEST=${4:-ALLREDUCE}
+COLLECTIVE_TO_TEST=${2:-ALLREDUCE}
+# Exporting snce it's an env var value for `test/`
 export COLLECTIVE_TYPE=$COLLECTIVE_TO_TEST
+
+TIMESTAMP=${3:-$(date +"%Y_%m_%d___%H:%M:%S")}
+LOCATION=${4:-local}
 ENABLE_CUDA=${5:-no}
 ENABLE_OMPI_TEST=${6:-yes}
+DEBUG_MODE=${7:-no}
 
-ALGOS=(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)
+ALGOS=(0 1 2 3 4 5 6)
+#ALGOS=(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)
 ARR_SIZES=(8 64 512 2048 16384 131072 1048576 8388608 67108864)
 TYPES=('int64')                          # Data types to test
 # Algorithms to skip if $N_NODES > $ARR_SIZE
@@ -64,8 +68,8 @@ if [ -f scripts/environments/${LOCATION}.sh ]; then
     source scripts/environments/${LOCATION}.sh
     RES_DIR=$SWING_DIR/results/
     TEST_EXEC=$SWING_DIR/bin/test
-    RULE_UPDATER_EXEC=$SWING_DIR/bin/change_collective_rules
-    RULE_FILE_PATH=$SWING_DIR/ompi_rules/collective_rules.txt
+    RULE_UPDATER_EXEC=$SWING_DIR/bin/change_dynamic_rules
+    RULE_FILE_PATH=$SWING_DIR/ompi_rules/dynamic_rules.txt
 
     export OMPI_MCA_coll_hcoll_enable=0
     export OMPI_MCA_coll_tuned_use_dynamic_rules=1
@@ -76,16 +80,46 @@ else
     exit 1
 fi
 
+# Clean and compile the codebase.
+make clean
+# if `ENABLE_OMPI_TEST` is `yes`, the makefile
+# will inject it into `tests\...` files.
+# Same for `DEBUG_MODE`.
+make_command="make all"
+[ "$ENABLE_OMPI_TEST" == "yes" ] && make_command="$make_command OMPI_TEST=1"
+[ "$DEBUG_MODE" == "yes" ] && make_command="$make_command DEBUG=1"
+
+if ! $make_command ; then
+    echo -e "\n${RED}=========================================="
+    echo -e "❌ ERROR: '$make_command' failed. Exiting."
+    echo -e "==========================================${NC}\n"
+    exit 1
+fi
+
+
+# Success message
+echo -e "\n${GREEN}✅ Make succeeded. Proceeding to benchmark...${NC}\n"
 
 # Output directories for results
 OUTPUT_DIR="$RES_DIR/$LOCATION/$TIMESTAMP/"
 DATA_DIR="$OUTPUT_DIR/data/"
 
+# Create necessary output directories
+if [ $DEBUG_MODE == no ]; then
+    echo -e "\n${GREEN}📂 Creating output directories...${NC}\n"
+    mkdir -p "$RES_DIR"
+    mkdir -p "$OUTPUT_DIR"
+    mkdir -p "$DATA_DIR"
+fi
+
+
 # Function to determine the number of iterations
 # based on array size
 get_iterations() {
     size=$1
-    if [ $size -le 512 ]; then
+    if [ $DEBUG_MODE == yes ]; then
+        echo 1
+    elif [ $size -le 512 ]; then
         echo 20000
     elif [ $size -le 1048576 ]; then
         echo 2000
@@ -110,33 +144,6 @@ run_test() {
     $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $type $algo $OUTPUT_DIR
 }
 
-# Create necessary output directories
-mkdir -p "$RES_DIR"
-mkdir -p "$OUTPUT_DIR"
-mkdir -p "$DATA_DIR"
-
-# Clean and compile the codebase.
-# if `ENABLE_OMPI_TEST` is `yes`, the makefile
-# will inject it into `tests\...` files.
-make clean
-if [ "$ENABLE_OMPI_TEST" == "yes" ]; then
-    if ! make all OMPI_TEST=1; then
-        echo -e "\n${RED}=========================================="
-        echo -e "❌ ERROR: 'make all OMPI_TEST=1' failed. Exiting."
-        echo -e "==========================================${NC}\n"
-        exit 1
-    fi
-else
-    if ! make all; then
-        echo -e "\n${RED}=================================="
-        echo -e "❌ ERROR: 'make all' failed. Exiting."
-        echo -e "==================================${NC}\n"
-        exit 1
-    fi
-fi
-
-# Success message
-echo -e "\n${GREEN}✅ Make succeeded. Proceeding to benchmark...${NC}\n"
 
 # Test algorithms here, loop through:
 # - algorithms:
@@ -173,10 +180,10 @@ for algo in ${ALGOS[@]}; do
     done
 done
 
-# # FIX: Ensure python venv and modules are correctly set up
-#
 # # TODO: this is only a proof of concept,
 # # to be modified later
+#
+# # FIX: Ensure python venv and modules are correctly set up
 #
 # MPI_TYPE=OpenMPI
 # MPI_VERSION=0
