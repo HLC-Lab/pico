@@ -75,8 +75,14 @@ run_test() {
     local iter=$2
     local type=$3
     local algo=$4
+    local debug_mode=$5
 
-    echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
+    if [ "$debug_mode" == "yes" ]; then
+      echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
+    else
+      echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
+    fi
+
     $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $type $algo $OUTPUT_DIR
 }
 
@@ -93,6 +99,7 @@ run_all_tests() {
     local sizes=($3)
     local types=($4)
     local output_dir=$5
+    local debug_mode=$6
 
     for algo in ${algos[@]}; do
         # Update dynamic rule file for the algorithm
@@ -108,9 +115,9 @@ run_all_tests() {
 
             # Get the number of iterations for the size
             local iter=$(get_iterations $size)
-            for type in "${types[@]}"; do
+            for type in ${types[@]}; do
                 # Run the test for the given configuration
-                run_test $size $iter $type $algo
+                run_test $size $iter $type $algo $debug_mode
             done
         done
     done

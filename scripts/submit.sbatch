@@ -9,10 +9,10 @@
 
 LOCATION=leonardo # possible locations are leonardo, snellius and local
 COLLECTIVE_TYPE=ALLREDUCE
+DEBUG_MODE=no
 TIMESTAMP=$(date +"%Y_%m_%d___%H:%M:%S")
 ENABLE_CUDA=no
 ENABLE_OMPI_TEST=yes
-DEBUG_MODE=no
 
 # Create the results directory if it doesn't exist
 # (for redundacy will be done also in run_test_suite)
@@ -24,4 +24,4 @@ mkdir -p $HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/data
 #SBATCH --output=$HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/slurm-%j.out
 #SBATCH --error=$HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/slurm-%j.err
 
-$HOME/Swing_Test/scripts/run_test_suite.sh $SLURM_NNODES $COLLECTIVE_TYPE $TIMESTAMP $LOCATION $ENABLE_CUDA $ENABLE_OMPI_TEST $DEBUG_MODE
+$HOME/Swing_Test/scripts/run_test_suite.sh $SLURM_NNODES $COLLECTIVE_TYPE $DEBUG_MODE $TIMESTAMP $LOCATION $ENABLE_CUDA $ENABLE_OMPI_TEST

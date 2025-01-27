@@ -73,12 +73,28 @@ int main(int argc, char *argv[]) {
       goto err_hndl;
     }
   }
-
+  
+  #ifndef DEBUG
   // Randomly generate the sbuf
   if (rand_sbuf_generator(sbuf, type_string, count, comm, test_routine) == -1){
     line = __LINE__;
     goto err_hndl;
   }
+  #else
+  // Initialize the sbuf with a sequence of powers of 10
+  switch(test_routine.collective){
+    case ALLREDUCE:
+      debug_sbuf_init(sbuf, count, comm);
+      break;
+    case ALLGATHER:
+      debug_sbuf_init(sbuf, count / (size_t) comm_sz, comm);
+      break;
+    default:
+      fprintf(stderr, "still not implemented, aborting...\n");
+      line = __LINE__;
+      goto err_hndl;
+  }
+  #endif
 
   switch (test_routine.collective){
     case ALLREDUCE:
@@ -113,7 +129,7 @@ int main(int argc, char *argv[]) {
       goto err_hndl;
   }
 
-
+  #ifndef DEBUG
   // Gather all process times to rank 0 and find the highest execution time of each iteration
   PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
   PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
@@ -157,6 +173,7 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
+  #endif
 
   // Clean up
   free(sbuf);

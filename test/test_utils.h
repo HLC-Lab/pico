@@ -423,7 +423,25 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
 //                          DEBUGGING FUNCTIONS
 //-----------------------------------------------------------------------------------------------
 #ifdef DEBUG
-void debug_sbuf_init(void *sbuf, MPI_Comm comm);
+/**
+ * @brief Initializes the send buffer with a sequence of powers of 10.
+ *
+ * @param sbuf The send buffer to initialize.
+ * @param scount The number of elements in the send buffer.
+ * @param comm The MPI communicator.
+ */
+void debug_sbuf_init(void *sbuf, size_t scount, MPI_Comm comm);
+
+/**
+ * @brief Prints the contents of two buffers for debugging purposes.
+ *
+ * @param rbuf The buffer to print.
+ * @param rbuf_gt The ground-truth buffer to print.
+ * @param count The number of elements in the buffer.
+ * @param dtype The MPI datatype of the buffer.
+ * @param comm The MPI communicator.
+ */
+void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm);
 #endif
 
 #endif

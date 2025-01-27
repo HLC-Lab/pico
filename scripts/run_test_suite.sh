@@ -14,20 +14,22 @@ fi
 
 # Default parameters
 export COLLECTIVE_TYPE=${2:-ALLREDUCE}          # Type of collective operation
-TIMESTAMP=${3:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
-LOCATION=${4:-local}                            # Environment location
-ENABLE_CUDA=${5:-no}                            # Enable CUDA support (yes/no)
-ENABLE_OMPI_TEST=${6:-yes}                      # Enable OpenMPI tests (yes/no)
-DEBUG_MODE=${7:-no}                             # Enable debug mode (yes/no)
+DEBUG_MODE=${3:-no}                             # Enable debug mode (yes/no)
+TIMESTAMP=${4:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
+LOCATION=${5:-local}                            # Environment location
+ENABLE_CUDA=${6:-no}                            # Enable CUDA support (yes/no)
+ENABLE_OMPI_TEST=${7:-yes}                      # Enable OpenMPI tests (yes/no)
 
 # Define supported algorithms for each collective type
+# ALLREDUCE_ALLGATHER_REDUCE (7) is not tested since it can crash, potentially wasting compute hours. 
+# ALLGATHER_BRUCK (2, 7) does not work. Also avoid ALGATHER_TWO_PROC (6) since it is only for 2 processes.
 declare -A COLLECTIVE_ALGOS
-COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16"
-COLLECTIVE_ALGOS[ALLGATHER]="0 2 3 4 5 8 9 10"
+COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 14 15 16"
+COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 8 9"
 
 # Modify algorithms if OMPI_TEST (open mpi with swing allreduce) is not used
 if [ "$ENABLE_OMPI_TEST" == "no" ]; then
-    COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 7 14 15 16"
+    COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 14 15 16"
 fi
 
 # Algorithms to skip if $N_NODES > $ARR_SIZE
@@ -43,12 +45,13 @@ SIZES[ALLGATHER]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
 ALGOS=${COLLECTIVE_ALGOS[$COLLECTIVE_TYPE]}
 SKIP=${COLLECTIVE_SKIPS[$COLLECTIVE_TYPE]}
 ARR_SIZES=${SIZES[$COLLECTIVE_TYPE]}
-TYPES="int64"
-#TYPES="int32 int64 float double"
+TYPES="int64"               # Supported types are "int32 int64 float double"
 
+# Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
-    ARR_SIZES="8 64 512"                             # Smaller sizes for debug mode
-    TYPES="int64"                                 # Only int64 for debug mode
+    ALGOS="2 10"
+    ARR_SIZES="8"
+    TYPES="int64" # For now only int64 is supported in debug mode
 fi
 
 
@@ -85,7 +88,7 @@ fi
 
 
 # Run tests for all configurations
-run_all_tests "$N_NODES" "$ALGOS" "$ARR_SIZES" "$TYPES" "$OUTPUT_DIR"
+run_all_tests "$N_NODES" "$ALGOS" "$ARR_SIZES" "$TYPES" "$OUTPUT_DIR" "$DEBUG_MODE"
 
 
 # # TODO: this is only a proof of concept,

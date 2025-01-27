@@ -115,11 +115,11 @@ sbatch scripts/submit.sbatch
 - **`<requested_time>`:** The time requested for job allocation. Higher number of hours is suggested.
 - **`<account_name>`:** Account name on the target cluster.
 - **`<LOCATION>`:** Name of the machine, as defined in `scripts/environments/`.
+- **`<DEBUG_MODE>`:** If run on debug mode.
 - **`<TIMESTAMP>`:** Current time-stamp used to create the results folder. Can be changed to anything.
 - **`<COLLECTIVE_TO_TEST>`:** Collective type to test.
 - **`<ENABLE_CUDA>`:** If use CUDA-aware MPI. Beware that this option works only on Open MPI for now.
 - **`<ENABLE_OMPI_TEST>`:** If use custom Open MPI library with swing implementations.
-- **`<DEBUG_MODE>`:** If run on debug mode.
 
 Also the standard output and error will be redirected into the results directory.
 
@@ -134,17 +134,17 @@ This script runs a benchmarking test suite itself.
 To run it without relying to the `submit.sbatch` script execute the following command:
 
 ```bash
-scripts/run_test_suite.sh <N_NODES> [COLLECTIVE_TYPE] [TIMESTAMP] [LOCATION] [ENABLE_CUDA] [ENABLE_OMPI_TEST]
+scripts/run_test_suite.sh <N_NODES> [COLLECTIVE_TYPE] [DEBUG_MODE] [TIMESTAMP] [LOCATION] [ENABLE_CUDA] [ENABLE_OMPI_TEST]
 ```
 
 ##### Parameters:
 - **`<N_NODES>`** (required): The number of processes to use for the test run. Must be a valid positive integer greater than or equal to 2.
 - **`[COLLECTIVE_TYPE]`** (optional): Which collective to test. Defaults to `ALLREDUCE`
+- **`[DEBUG_MODE]`** (optional): Flag to enable debug mode . Defaults to `no`.
 - **`[TIMESTAMP]`** (optional): Timestamp for the test run. Defaults to the current date and time. It works as the output (sub)directory of the test and can be set to anything.
 - **`[LOCATION]`** (optional): Specifies the environment configuration script. Defaults to `local`.
 - **`[ENABLE_CUDA]`** (optional): Enable CUDA aware MPI support. Defaults to `no`.
 - **`[ENABLE_OMPI_TEST]`** (optional): Enable the use of the modified Open MPI library with Swing Allreduce algorithms. Defaults to `yes`.
-- **`[DEBUG_MODE]`** (optional): Flag to enable debug mode . Defaults to `no`.
 
 ##### Key Features:
 - Validates and initializes input parameters.
@@ -182,6 +182,9 @@ The script automatically sets up required environment variables based on the `lo
 1. Create a new script in `scripts/environments/`.
 2. Export the necessary variables.
 3. Update the `location` parameter to point to the new script.
+
+#### Debug mode
+When running on debug mode, manually select array sizes, algorithms and datatypes to run tests on. Debug mode will not save benchmark test time or allocations.
 
 ## Data Analysis and Visualization
 

@@ -79,12 +79,18 @@ int allgather_gt_check(ALLGATHER_ARGS, void *rbuf_gt) {
   if (rdtype != MPI_DOUBLE && rdtype != MPI_FLOAT) {
     // For non-floating-point types, use memcmp for exact comparison.
     if (memcmp(rbuf, rbuf_gt, rcount * (size_t) (type_size * comm_sz)) != 0) {
+      #ifdef DEBUG
+      debug_print_buffers(rbuf, rbuf_gt, rcount * (size_t) comm_sz, rdtype, comm);
+      #endif
       fprintf(stderr, "Error: results are not valid. Aborting...\n");
       return -1;
     }
   } else {
     // For floating-point types, use an epsilon-based comparison to account for rounding errors.
     if (are_equal_eps(rbuf_gt, rbuf, rcount * (size_t) comm_sz, rdtype, comm_sz) == -1) {
+      #ifdef DEBUG
+      debug_print_buffers(rbuf, rbuf_gt, rcount * (size_t) comm_sz, rdtype, comm);
+      #endif
       fprintf(stderr, "Error: results are not valid. Aborting...\n");
       return -1;
     }

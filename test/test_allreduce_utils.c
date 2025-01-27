@@ -61,9 +61,9 @@ void allreduce_test_loop(ALLREDUCE_ARGS, int iter, double *times, allreduce_algo
   }
 }
 
-int allreduce_gt_check(ALLREDUCE_ARGS, void *recvbuf_gt) {
+int allreduce_gt_check(ALLREDUCE_ARGS, void *rbuf_gt) {
   // Compute the ground-truth result using PMPI_Allreduce.
-  PMPI_Allreduce(sbuf, recvbuf_gt, count, dtype, op, comm);
+  PMPI_Allreduce(sbuf, rbuf_gt, count, dtype, op, comm);
 
   int comm_sz;
   MPI_Comm_size(comm, &comm_sz);
@@ -73,13 +73,19 @@ int allreduce_gt_check(ALLREDUCE_ARGS, void *recvbuf_gt) {
 
   if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {
     // For non-floating-point types, use memcmp for exact comparison.
-    if (memcmp(rbuf, recvbuf_gt, count * (size_t) type_size) != 0) {
+    if (memcmp(rbuf, rbuf_gt, count * (size_t) type_size) != 0) {
+      #ifdef DEBUG
+      debug_print_buffers(rbuf, rbuf_gt, count, dtype, comm);
+      #endif
       fprintf(stderr, "Error: results are not valid. Aborting...\n");
       return -1;
     }
   } else {
     // For floating-point types, use an epsilon-based comparison to account for rounding errors.
-    if (are_equal_eps(recvbuf_gt, rbuf, count, dtype, comm_sz) == -1) {
+    if (are_equal_eps(rbuf_gt, rbuf, count, dtype, comm_sz) == -1) {
+      #ifdef DEBUG
+      debug_print_buffers(rbuf, rbuf_gt, count, dtype, comm);
+      #endif
       fprintf(stderr, "Error: results are not valid. Aborting...\n");
       return -1;
     }
