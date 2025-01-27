@@ -32,6 +32,5 @@ clean:
 	@echo -e "[CLEAN] Cleaning all builds..."
 	@echo -e "==========================================${NC}\n"
 	$(MAKE) -C libswing clean
-	$(MAKE) -C debug clean
 	$(MAKE) -C test clean
 	$(MAKE) -C ompi_rules clean
