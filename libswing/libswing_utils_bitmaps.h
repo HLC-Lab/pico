@@ -1,5 +1,5 @@
-#ifndef LIBSWING_BITMAPS_H
-#define LIBSWING_BITMAPS_H
+#ifndef LIBSWING_UTILS_BITMAPS_H
+#define LIBSWING_UTILS_BITMAPS_H
 
 #include <stddef.h>
 

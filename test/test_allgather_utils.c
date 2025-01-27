@@ -39,6 +39,9 @@ int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
  */
 static inline allgather_func_ptr get_allgather_function(allgather_algo_t algorithm) {
   switch (algorithm) {
+    // TODO: Adjust kbruck logic, it has one more argument
+    // case ALLGATHER_K_BRUCK_OVER:
+    //   return allgather_k_bruck;
     case ALLGATHER_RECURSIVE_DOUBLING_OVER:
       return allgather_recursivedoubling;
     case ALLGATHER_RING_OVER:

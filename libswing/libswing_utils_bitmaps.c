@@ -1,4 +1,4 @@
-#include "libswing_bitmaps.h"
+#include "libswing_utils_bitmaps.h"
 
 #include <stddef.h>
 

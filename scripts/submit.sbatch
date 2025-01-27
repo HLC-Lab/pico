@@ -8,7 +8,7 @@
 #SBATCH --account=<account_name>     # Account name
 
 LOCATION=leonardo # possible locations are leonardo, snellius and local
-COLLECTIVE_TYPE=ALLREDUCE
+COLLECTIVE_TYPE=ALLREDUCE # possible collective types are ALLGATHER, ALLREDUCE, REDUCE_SCATTER
 DEBUG_MODE=no
 TIMESTAMP=$(date +"%Y_%m_%d___%H:%M:%S")
 ENABLE_CUDA=no

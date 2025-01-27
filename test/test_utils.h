@@ -152,6 +152,13 @@ int allreduce_allocator(ALLOCATOR_ARGS);
 */
 int allgather_allocator(ALLOCATOR_ARGS);
 
+/**
+* @brief Allocates memory for the send buffer, receive buffer,
+* and ground-truth buffer for a Reduce Scatter operation.
+*
+* @return 0 on success, -1 on error.
+*/
+int reduce_scatter_allocator(ALLOCATOR_ARGS);
 
 /**
 * @brief Select and returns the appropriate allocator function based
@@ -174,8 +181,8 @@ static inline allocator_func_ptr get_allocator(routine_decision_t test_routine) 
       return allreduce_allocator;
     case ALLGATHER:
       return allgather_allocator;
-    // case REDUCE_SCATTER:
-    //   return reduce_scatter_allocator;
+    case REDUCE_SCATTER:
+      return reduce_scatter_allocator;
     default:
       return NULL;
   }
@@ -241,11 +248,10 @@ void allreduce_test_loop(ALLREDUCE_ARGS, int iter, double *times, allreduce_algo
  */
 void allgather_test_loop(ALLGATHER_ARGS, int iter, double *times, allgather_algo_t algorithm);
 
-//TODO: IMPLEMENT THIS
 /**
  * @brief This fucntion benchmarks the reduce scatter operation using the selected algorithm.
  */
-// void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double start_time, double end_time, double *times, reduce_scatter_algo_t algorithm);
+void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double *times, reduce_scatter_algo_t algorithm);
 //
 
 //-----------------------------------------------------------------------------------------------
@@ -424,7 +430,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
 //-----------------------------------------------------------------------------------------------
 #ifdef DEBUG
 /**
- * @brief Initializes the send buffer with a sequence of powers of 10.
+ * @brief Initializes the send buffer with a sequence of powers of 10^rank.
  *
  * @param sbuf The send buffer to initialize.
  * @param scount The number of elements in the send buffer.

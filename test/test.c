@@ -19,6 +19,9 @@ int main(int argc, char *argv[]) {
   // error handling with goto
   void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
+  // Count array for reduce_scatter, always initialized to NULL
+  // Allocated only if the collective is REDUCE_SCATTER
+  int *red_scat_counts = NULL;
 
   size_t count;
   int iter, algorithm;
@@ -84,6 +87,7 @@ int main(int argc, char *argv[]) {
   // Initialize the sbuf with a sequence of powers of 10
   switch(test_routine.collective){
     case ALLREDUCE:
+    case REDUCE_SCATTER:    // Same init as ALLREDUCE
       debug_sbuf_init(sbuf, count, comm);
       break;
     case ALLGATHER:
@@ -122,6 +126,24 @@ int main(int argc, char *argv[]) {
         line = __LINE__;
         goto err_hndl;
       }
+      break;
+    case REDUCE_SCATTER:
+      // Reduce scatter requires an array of counts for each rank,
+      // looking for a more elegant way to implement this part
+      red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
+      for (int i = 0; i < comm_sz; i++){
+        red_scat_counts[i] = count / comm_sz;
+      }
+      // Perform the test benchmark for `iter` iterations
+      reduce_scatter_test_loop(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, iter,
+                           times, test_routine.algorithm.reduce_scatter_algorithm);
+      // Do a ground-truth check on the correctness of last iteration result
+      if (reduce_scatter_gt_check(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, rbuf_gt) != 0){
+        free(red_scat_counts);
+        line = __LINE__;
+        goto err_hndl;
+      }
+      free(red_scat_counts);
       break;
     default:
       fprintf(stderr, "still not implemented, aborting...\n");

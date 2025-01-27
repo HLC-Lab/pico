@@ -15,6 +15,7 @@
 typedef enum{
   ALLREDUCE = 0,
   ALLGATHER,
+  REDUCE_SCATTER,
   COLL_UNKNOWN
 }rules_coll_t;
 
@@ -22,6 +23,7 @@ typedef enum{
 rules_coll_t get_collective_from_string(const char *coll_str) {
   if (strcmp(coll_str, "ALLREDUCE") == 0)       return ALLREDUCE;
   if (strcmp(coll_str, "ALLGATHER") == 0)       return ALLGATHER;
+  if (strcmp(coll_str, "REDUCE_SCATTER") == 0)  return REDUCE_SCATTER;
   return COLL_UNKNOWN;
 }
 
@@ -54,6 +56,14 @@ int update_file(const char *filename, int new_value, rules_coll_t coll) {
       }
       if (new_value > 7) new_value = 0;
       target_line = 6;
+      break;
+    case REDUCE_SCATTER:
+      if (new_value < 0 || new_value > 7) {
+        fprintf(stderr, "ERROR: For reduce_scatter, the number must be between 0 and 7.\n");
+        return -1;
+      }
+      if (new_value > 4) new_value = 0;
+      target_line = 18;
       break;
     default:
       fprintf(stderr, "Error: Invalid collective type.\n");

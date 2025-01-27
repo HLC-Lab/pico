@@ -1,5 +1,7 @@
 # Project Overview
-Swing Allreduce is a modular project featuring a static library (`libswing.a`), test and benchmark executables (`bin/`), and SLURM-based scripts for benchmarking and debugging on clusters. Future updates will include data analysis and graphing tools.
+Swing_Test is the implementation, debug and benchmarking project for the Swing algorithm.
+
+It is a modular project featuring a static library (`libswing.a`), test and benchmark executables (`bin/`), and SLURM-based scripts for benchmarking and debugging on clusters. Future updates will include data analysis and graphing tools.
 
 The suggested workflow is to use and modify the .sh files in `scripts/` directory to set up environments, run debug tests and benchmarking tests.
 
@@ -15,8 +17,8 @@ The suggested workflow is to use and modify the .sh files in `scripts/` director
 ├── obj                   # Object files
 ├── plot                  # Python scripts for data analysis and visualization (in development)
 ├── results               # Results folder
-├── test                  # Test (benchmark) program source code
-├── ompi_rules            # Open MPI rule file generator
+├── test                  # Test program source code, includes benchmarking and debugging
+├── ompi_rules            # Open MPI dynamic rule file generator
 └── scripts               # Debug and benchmarking scripts
 ```
 
@@ -50,9 +52,9 @@ The executable itself must be run with `srun` or `mpirun`/`mpiexec` and output i
 - `<algorithm>`: Algorithm ID to run tests on.
 - `<dirpath>`: Directory where results will be saved.
 
-Collective type instead is chosen via environmental variable `COLLECTIVE_TYPE` (for now only `ALLREDUCE` is fully functioning, `ALLGATHER` and `REDUCESCATTER` in development).
+Collective type instead is chosen via environmental variable `COLLECTIVE_TYPE` (for now `ALLREDUCE`, `ALLGATHER` and `REDUCESCATTER` are implemented, other collectives coming soon).
 
-
+##### Saving benchmarking results
 Before saving the results, a ground truth check on the last iteration is performed to check for possible errors.
 
 For now results are saved as a matrix in which each row is one iteration of the test, the first column contain the highest time between the ranks and each other row is the time of a specific rank.
@@ -70,8 +72,6 @@ Also in this mode, `sbuf` will be initialized with a predefined sequence of powe
 
 The `ompi_rules/` directory contains the source for a program that generates dynamic rule file for `Open MPI`. These rule files define the collective communication rules that Open MPI uses. The program compiles into the executable `bin/change_dynamic_rules`, which is used to select specified algorithms.
 
-For now it works with Allreduce and Allgather.
-
 Beware that the following environmental variables must be set after the rule file is generated:
 ```bash
 export OMPI_MCA_coll_tuned_use_dynamic_rules=1
@@ -81,7 +81,6 @@ In the normal workflow, those variables are set up with the scripts to run tests
 
 It will be modified to work also for `MPICH` algorithm selection.
 
-
 ### `scripts` - Running benchmarks and debug tests
 The `scripts/` contains scripts to benchmark and debug the library. It also contains scripts to set up the environment based on where the library is being run.
 
@@ -89,7 +88,7 @@ The `scripts/` contains scripts to benchmark and debug the library. It also cont
 
 The project includes scripts to run the benchmark/debug suite inside the `scripts/` directory.
 
-The suggested workflow is to sbatch the `scripts/submit.sbatch` script when benchmarking if on cluster, instead run the test\debug suite script on its own if running on local machine.
+The suggested workflow is to `$ sbatch` the `scripts/submit.sbatch` script when benchmarking if on cluster, instead run the test\debug suite script on its own if running on local machine.
 
 For now specific variables must be modified inside the run suites but it's planned to bring them on the submit script. Beware that everything for now it's extremely hand tailored on MY workflow and only now I'm polishing the program to let other people work with those scripts so a lot of modifications are still needed.
 
@@ -103,7 +102,7 @@ To use it, you will need to customize the script as per your SLURM job submissio
 #### Example Usage for `submit.sbatch`
 
 ```bash
-sbatch scripts/submit.sbatch
+$ sbatch scripts/submit.sbatch
 ```
 ##### Parameters:
 - **`<p_name>`:** Name of the partition to run tests on on the target cluster.
@@ -131,7 +130,7 @@ This script runs a benchmarking test suite itself.
 To run it without relying to the `submit.sbatch` script execute the following command:
 
 ```bash
-scripts/run_test_suite.sh <N_NODES> [COLLECTIVE_TYPE] [DEBUG_MODE] [TIMESTAMP] [LOCATION] [ENABLE_CUDA] [ENABLE_OMPI_TEST]
+$ scripts/run_test_suite.sh <N_NODES> [COLLECTIVE_TYPE] [DEBUG_MODE] [TIMESTAMP] [LOCATION] [ENABLE_CUDA] [ENABLE_OMPI_TEST]
 ```
 
 ##### Parameters:
@@ -196,12 +195,12 @@ To build the project, use the following steps:
 
 1. **Build all components**:
    ```bash
-   make
+   $ make
    ```
 
 2. **Clean all builds**:
    ```bash
-   make clean
+   $ make clean
    ```
 
 The `Makefile` automatically handles the compilation and linking for each component, creating the necessary binaries and libraries in the `bin` and `lib` directories.
@@ -227,10 +226,12 @@ There is no need to run the compression or the metadata script manually as every
 
 ## TODO
 #### Makefile
+- [x] add error handling when building\linking the library (done by the test script)
 - [ ] make the current static `libswing.a` a dynamic `libswing.so` to be added with `LD_PRELOAD`
-- [ ] add error handling when building\linking the library
 #### Libswing modifications
 - [x] prepare for the possibility of implementing different collectives by refactoring code
+- [ ] debug allgather swing static
+- [ ] write reduce scatter swing
 - [ ] document functions and comment code
 #### Test program
 - [x] document functions and comment code
@@ -239,10 +240,11 @@ There is no need to run the compression or the metadata script manually as every
 - [x] standardize .csv format to what was decided with professor De Sensi
 - [x] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
 - [x] separate and modularize ground truth check for different kinds of collectives (WIP)
-- [ ] finish logic for allgather
-- [ ] finish logic for reducescatter
+- [x] finish logic for allgather
+- [x] finish logic for reducescatter
+- [ ] implement logic for allgather_k_bruck (radix selection) and debug both internal and external
 #### OMPI rules
-- [ ] allow for multiple types of algorithm selection
+- [x] allow for multiple types of algorithm selection
 - [ ] change it so that it recognizes if the modified `Open MPI` is being run or not
 - [ ] modify to let it work also with `MPICH` algorithm selection
 #### Test suite
@@ -250,9 +252,9 @@ There is no need to run the compression or the metadata script manually as every
 - [x] separate results by system
 - [x] comment the code
 - [x] create a function to add metadata in the .csv asked by the professor
-- [ ] integrate different collective testing (WIP)
+- [x] build a better and clearer interface to select variables for testing
+- [x] integrate different collective testing
 - [ ] ensure python modules and environment is set up correctly
-- [ ] build a better and clearer interface to select variables for testing
 - [ ] add an env var to select between `MPICH` and `Open MPI` binaries, independently of `ompi_test` (obviously `ompi_test` must be no when MPICH is selected)
 #### Submit Script
 - [x] automatically inject `$N_NODES` inside suite based on selected `-N` without further modifications

@@ -94,7 +94,8 @@ int rand_sbuf_generator(void *sbuf, const char *type_string, size_t count,
   
   // If generating sendbuf for an ALLGATHER, the number of element is
   // count / comm_sz
-  size_t real_sbuf_count = (test_routine.collective == ALLGATHER) ?
+  size_t real_sbuf_count =
+    (test_routine.collective == ALLGATHER) ?
                                         count / (size_t) comm_sz : count;
 
   if (strcmp(type_string, "int8") == 0) {

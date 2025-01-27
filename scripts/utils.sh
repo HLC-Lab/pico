@@ -17,7 +17,7 @@ success() {
 
 # Cleanup function for SIGINT
 cleanup() {
-    echo -e "\n${RED}Caught Ctrl+C! Killing all child processes...${NC}\n"
+    error "Caught Ctrl+C! Killing all child processes..."
     pkill -P $$
     exit 1
 }

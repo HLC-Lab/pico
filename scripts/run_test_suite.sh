@@ -21,11 +21,16 @@ ENABLE_CUDA=${6:-no}                            # Enable CUDA support (yes/no)
 ENABLE_OMPI_TEST=${7:-yes}                      # Enable OpenMPI tests (yes/no)
 
 # Define supported algorithms for each collective type
-# ALLREDUCE_ALLGATHER_REDUCE (7) is not tested since it can crash, potentially wasting compute hours. 
-# ALLGATHER_BRUCK (2, 7) does not work. Also avoid ALGATHER_TWO_PROC (6) since it is only for 2 processes.
+# WARNING:
+# ALLREDUCE_ALLGATHER_REDUCE (7) not included since can crash, wasting compute hours. 
+# ALLGATHER_K_BRUCK (2) does not work.
+# ALLGATHER_K_BRUCK_OVER (7) logic not implemented: requires an additional parameter.
+# ALLGATHER_TWO_PROC (6) not included since it is only for 2 processes.
+# ALLGATHER_SWING (10) does not work, debbugging now.
 declare -A COLLECTIVE_ALGOS
 COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 14 15 16"
 COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 8 9"
+COLLECTIVE_ALGOS[REDUCE_SCATTER]="0 1 2 3 4 5 6 7"
 
 # Modify algorithms if OMPI_TEST (open mpi with swing allreduce) is not used
 if [ "$ENABLE_OMPI_TEST" == "no" ]; then
@@ -36,10 +41,12 @@ fi
 declare -A COLLECTIVE_SKIPS
 COLLECTIVE_SKIPS[ALLREDUCE]="4 5 6 9 10 11 12 13 16"
 COLLECTIVE_SKIPS[ALLGATHER]=""
+COLLECTIVE_SKIPS[REDUCE_SCATTER]=""
 
 declare -A SIZES
 SIZES[ALLREDUCE]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
 SIZES[ALLGATHER]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
+SIZES[REDUCE_SCATTER]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
 
 
 ALGOS=${COLLECTIVE_ALGOS[$COLLECTIVE_TYPE]}
@@ -49,11 +56,11 @@ TYPES="int64"               # Supported types are "int32 int64 float double"
 
 # Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
-    ALGOS="2 10"
+    export COLLECTIVE_TYPE="ALLGATHER"
+    ALGOS="10"
     ARR_SIZES="8"
     TYPES="int64" # For now only int64 is supported in debug mode
 fi
-
 
 # Load configuration for the specified environment
 if ! source_environment "$LOCATION"; then

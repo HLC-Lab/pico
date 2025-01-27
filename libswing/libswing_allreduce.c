@@ -5,7 +5,7 @@
 
 #include "libswing.h"
 #include "libswing_utils.h"
-#include "libswing_bitmaps.h"
+#include "libswing_utils_bitmaps.h"
 
 
 
