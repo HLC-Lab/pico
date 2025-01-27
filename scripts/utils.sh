@@ -52,20 +52,19 @@ compile_code() {
 # Determine the number of iterations based on array size
 get_iterations() {
     local size=$1
-    # if [ "$DEBUG_MODE" == "yes" ]; then
-    #     echo 1
-    # elif [ $size -le 512 ]; then
-    #     echo 20000
-    # elif [ $size -le 1048576 ]; then
-    #     echo 2000
-    # elif [ $size -le 8388608 ]; then
-    #     echo 200
-    # elif [ $size -le 67108864 ]; then
-    #     echo 20
-    # else
-    #     echo 5
-    # fi
-    echo 10
+    if [ "$DEBUG_MODE" == "yes" ]; then
+        echo 1
+    elif [ $size -le 512 ]; then
+        echo 20000
+    elif [ $size -le 1048576 ]; then
+        echo 2000
+    elif [ $size -le 8388608 ]; then
+        echo 200
+    elif [ $size -le 67108864 ]; then
+        echo 20
+    else
+        echo 5
+    fi
 }
 
 
@@ -96,17 +95,21 @@ run_all_tests() {
     local output_dir=$5
 
     for algo in ${algos[@]}; do
+        # Update dynamic rule file for the algorithm
         $RULE_UPDATER_EXEC $RULE_FILE_PATH $algo
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${RULE_FILE_PATH}
 
         for size in "${sizes[@]}"; do
+            # Skip specific algorithms if conditions are met
             if [[ size -lt $nodes && " ${COLLECTIVE_SKIPS[$COLLECTIVE_TYPE]} " =~ " ${algo} " ]]; then
                 echo "Skipping algorithm $algo for size=$size < N_NODES=$nodes"
                 continue
             fi
 
+            # Get the number of iterations for the size
             local iter=$(get_iterations $size)
             for type in "${types[@]}"; do
+                # Run the test for the given configuration
                 run_test $size $iter $type $algo
             done
         done

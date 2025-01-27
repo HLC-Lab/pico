@@ -42,16 +42,18 @@ It will be modified to be independent of MPI implementation (i.e. to work also w
 
 Algorithm selection is done via a command line parameter and, in case of `OMPI_TEST` implementations, environmental variables and a rule file must be update accordingly before running the tests.
 
-Collective type instead is chosen via environmental variable `COLLECTIVE_TYPE` (for now only `ALLREDUCE` is fully functioning, `ALLGATHER` and `REDUCESCATTER` in development).
 
 The executable itself must be run with `srun` or `mpirun`/`mpiexec` and output is saved in `csv` format by rank 0.
 
-Parameter required are:
+##### Parameters:
 - `<array_size>`: Size of the array to run the collective on.
 - `<iter>`: Number of total iterations to run of the specific test.
 - `<type_string>`: The string codifying the datatype of the test. Currently some of them don't work and documentation will be added.
 - `<algorithm>`: Algorithm ID to run tests on.
 - `<dirpath>`: Directory where results will be saved.
+
+Collective type instead is chosen via environmental variable `COLLECTIVE_TYPE` (for now only `ALLREDUCE` is fully functioning, `ALLGATHER` and `REDUCESCATTER` in development).
+
 
 Before saving the results, a ground truth check on the last iteration is performed to check for possible errors.
 
@@ -106,17 +108,18 @@ To use it, you will need to customize the script as per your SLURM job submissio
 ```bash
 sbatch scripts/submit.sbatch
 ```
-The script must be modified to select:
-- `<p_name>`: Name of the partition to run tests on on the target cluster.
-- `<qos_name>`: Name of the required quality of service. (OPTIONAL)
-- `<n_nodes>`: The number of nodes to request for the SLURM job. Note that, for benchmarking reasons this must be the number of processes (i.e. one single process for node, irrespective of node cores).
-- `<requested_time>`: The time requested for job allocation. Higher number of hours is suggested.
-- `<account_name>`: Account name on the target cluster.
-- `<LOCATION>`: Name of the machine, as defined in `scripts/environments/`.
-- `<TIMESTAMP>`: Current time-stamp used to create the results folder. Can be changed to anything.
-- `<COLLECTIVE_TO_TEST>`: Collective type to test.
-- `<ENABLE_CUDA>`: If use CUDA-aware MPI. Beware that this option works only on Open MPI for now.
-- `<ENABLE_OMPI_TEST>`: If use custom Open MPI library with swing implementations.
+##### Parameters:
+- **`<p_name>`:** Name of the partition to run tests on on the target cluster.
+- **`<qos_name>`:** Name of the required quality of service. (OPTIONAL)
+- **`<n_nodes>`:** The number of nodes to request for the SLURM job. Note that, for benchmarking reasons this must be the number of processes (i.e. one single process for node, irrespective of node cores).
+- **`<requested_time>`:** The time requested for job allocation. Higher number of hours is suggested.
+- **`<account_name>`:** Account name on the target cluster.
+- **`<LOCATION>`:** Name of the machine, as defined in `scripts/environments/`.
+- **`<TIMESTAMP>`:** Current time-stamp used to create the results folder. Can be changed to anything.
+- **`<COLLECTIVE_TO_TEST>`:** Collective type to test.
+- **`<ENABLE_CUDA>`:** If use CUDA-aware MPI. Beware that this option works only on Open MPI for now.
+- **`<ENABLE_OMPI_TEST>`:** If use custom Open MPI library with swing implementations.
+- **`<DEBUG_MODE>`:** If run on debug mode.
 
 Also the standard output and error will be redirected into the results directory.
 
@@ -126,46 +129,59 @@ It will be modified to allow for algorithm selection directly in this stage.
 Beware that, especially with big allocations, those scripts can fail and waste compute hours if left uncheck. It's suggested, if possible, for big allocations, to check if the script starts working. If it does it's unlikely that compute time will be wasted. Currently working on the reliability of this part.
 
 ### `scripts/run_test_suite.sh` - Benchmarking Suite
+This script runs a benchmarking test suite itself.
 
-This script runs a benchmarking test suite itself. To run it without relying to the sbatch script execute the following command:
+To run it without relying to the `submit.sbatch` script execute the following command:
 
 ```bash
-scripts/run_test_suite.sh <num_processes> [collective] [timestamp] [location] [enable_cuda] [enable_ompi_test]
+scripts/run_test_suite.sh <N_NODES> [COLLECTIVE_TYPE] [TIMESTAMP] [LOCATION] [ENABLE_CUDA] [ENABLE_OMPI_TEST]
 ```
 
-- `<num_processes>` (required): The number of processes to use for the test run. Must be a valid positive integer greater than or equal to 2.
-- `[collective]` (optional): Which collective to test. Defaults to `ALLREDUCE`
-- `[timestamp]` (optional): Timestamp for the test run. Defaults to the current date and time. It works as the output (sub)directory of the test and can be set to anything.
-- `[location]` (optional): Specifies the environment configuration script. Defaults to `local`.
-- `[enable_cuda]` (optional): Enable CUDA aware MPI support. Defaults to `no`.
-- `[enable_ompi_test]` (optional): Enable the use of the modified Open MPI library with Swing Allreduce algorithms. Defaults to `yes`.
+##### Parameters:
+- **`<N_NODES>`** (required): The number of processes to use for the test run. Must be a valid positive integer greater than or equal to 2.
+- **`[COLLECTIVE_TYPE]`** (optional): Which collective to test. Defaults to `ALLREDUCE`
+- **`[TIMESTAMP]`** (optional): Timestamp for the test run. Defaults to the current date and time. It works as the output (sub)directory of the test and can be set to anything.
+- **`[LOCATION]`** (optional): Specifies the environment configuration script. Defaults to `local`.
+- **`[ENABLE_CUDA]`** (optional): Enable CUDA aware MPI support. Defaults to `no`.
+- **`[ENABLE_OMPI_TEST]`** (optional): Enable the use of the modified Open MPI library with Swing Allreduce algorithms. Defaults to `yes`.
+- **`[DEBUG_MODE]`** (optional): Flag to enable debug mode . Defaults to `no`.
 
-The script uses the following key variables:
-- `ALGOS`: Specifies the Allreduce algorithm selection:
-  - `0`: Default Open MPI selection.
-  - `1-7`: Specific Open MPI algorithms.
-  - `8-13`: Swing versions within Open MPI.
-  - `14-16`: Swing over MPI implementations.
-  - **(This will be modified to allow for algorithm selection with different collective type)**
-- `ARR_SIZES`: An array specifying the sizes of the test data buffers.
-- `TYPES`: Specifies the data types for testing.
-
+##### Key Features:
+- Validates and initializes input parameters.
+- Dynamically sets up environment and configurations.
+- Compiles the codebase.
+- Runs benchmarks for specified collective algorithms.
 
 Test results are saved in the directory structure `$SWING_DIR/results/<location>/<timestamp>/data/`, alongside with the given node allocation in `$SWING_DIR/results/<location>/<timestamp>/alloc.csv`.
 
 Moreover, the script also invokes an updater of the `$SWING_DIR/results/<location>/<location>_metadata.csv` file, adding a row with the metadata of the last test.
 THIS FEATURE IS STILL IN DEVELOPMENT, IT HAS BEEN ADDED TO STREAMLINE LIBRARY TESTING.
 
+**NOTE:** The script cleans and rebuilds the codebase since if `ENABLE_OMPI_TEST` or `DEBUG` are set to `yes`, the `test` and `change_dynamic_rules` binaries must be injected with `-DOMPI_TEST` or `-DDEBUG` (debug is specific only to test).
+
+##### Key Variables:
+- **COLLECTIVE_ALGOS**: Lists supported algorithms for each collective type.
+- **COLLECTIVE_SKIPS**: Specifies algorithms to skip for certain configurations.
+- **ARR_SIZES**: Array sizes used for benchmarking.
+- **TYPES**: Data types for testing (default: `int64`).
+
+
+#### Utils Script
+Provides utility functions to support the main script such as:
+1. **`error`**: Prints error messages in red.
+2. **`success`**: Prints success messages in green.
+3. **`cleanup`**: Handles SIGINT (Ctrl+C) signals and kills all child processes.
+4. **`source_environment`**: Sources the environment configuration based on the location.
+5. **`compile_code`**: Cleans and compiles the codebase with optional flags for OpenMPI tests and debug mode.
+6. **`get_iterations`**: Determines the number of iterations for benchmarking based on array size.
+7. **`run_test`**: Executes a single test case with specified parameters.
+8. **`run_all_tests`**: Iterates through configurations and runs tests for each combination.
+
 #### Add new environments
 The script automatically sets up required environment variables based on the `location` parameter. To define a new environment configuration:
 1. Create a new script in `scripts/environments/`.
 2. Export the necessary variables.
 3. Update the `location` parameter to point to the new script.
-
-##### Notes
-- `SKIP`: Defines algorithms to skip when `<num_processes>` is greater than `<arr_size>`. Do not modify this variable directly.
-- The script cleans and rebuilds the codebase since if `ENABLE_OMPI_TEST` is set to `yes`, it compiles with Open MPI Swing Allreduce support (`OMPI_TEST=1`).
-
 
 ## Data Analysis and Visualization
 
