@@ -8,7 +8,6 @@ The suggested workflow is to use and modify the .sh files in `scripts/` director
 ```
 .
 ├── bin                   # Binaries (executables)
-├── debug                 # Debug program source code (migrating and rewriting into test)
 ├── include               # Header file for libswing library containing the functions' signatures
 ├── lib                   # Compiled static library
 ├── libswing              # Libswing library source code
@@ -42,7 +41,6 @@ It will be modified to be independent of MPI implementation (i.e. to work also w
 
 Algorithm selection is done via a command line parameter and, in case of `OMPI_TEST` implementations, environmental variables and a rule file must be update accordingly before running the tests.
 
-
 The executable itself must be run with `srun` or `mpirun`/`mpiexec` and output is saved in `csv` format by rank 0.
 
 ##### Parameters:
@@ -63,11 +61,10 @@ Naming of this file is temporary and will be changed.
 
 The first time this main is called (i.e. if used with a script test/debug suite, only on the first call), also a .csv file with MPI rank allocations will be saved.
 
-### `debug/` - Debugging `libswing` (INTEGRATING NOW WITH TEST)
+##### Debugging
+When compiled with -DDEBUG it will not save benchmark results and, if ground truth check returns an error, it will print `rbuf` and `rbuf_gt` before invoking `MPI_Abort`.
 
-The `debug/` directory builds an executable `bin/debug` that links with the `libswing.a` library and is used for debugging purposes. It provides a controlled environment to test and debug `libswing`'s functionality. This component is useful when trying to locate issues in the library's code.
-
-**RIGHT NOW IT'S NOT USEFUL AND WILL BE COMPLETELY REWRITTEN.**
+Also in this mode, `sbuf` will be initialized with a predefined sequence of power of 10, in order to help for debugging purpose.
 
 ### `ompi_rules/` - Open MPI Rule File Generator
 
@@ -90,9 +87,9 @@ The `scripts/` contains scripts to benchmark and debug the library. It also cont
 
 ## Running Tests and Benchmark
 
-The project includes scripts to run the benchmark test suite and the debugging suite inside the `scripts/` directory.
+The project includes scripts to run the benchmark/debug suite inside the `scripts/` directory.
 
-The suggested workflow is to sbatch the `scripts/submit.sbatch` script when benchmarking (and when modified also for debugging) if on cluster, instead run the test\debug suite script on its own if running on local machine.
+The suggested workflow is to sbatch the `scripts/submit.sbatch` script when benchmarking if on cluster, instead run the test\debug suite script on its own if running on local machine.
 
 For now specific variables must be modified inside the run suites but it's planned to bring them on the submit script. Beware that everything for now it's extremely hand tailored on MY workflow and only now I'm polishing the program to let other people work with those scripts so a lot of modifications are still needed.
 
@@ -231,7 +228,6 @@ There is no need to run the compression or the metadata script manually as every
 ## TODO
 #### Makefile
 - [ ] make the current static `libswing.a` a dynamic `libswing.so` to be added with `LD_PRELOAD`
-- [ ] separate build process from testing\debugging
 - [ ] add error handling when building\linking the library
 #### Libswing modifications
 - [x] prepare for the possibility of implementing different collectives by refactoring code
@@ -249,8 +245,6 @@ There is no need to run the compression or the metadata script manually as every
 - [ ] allow for multiple types of algorithm selection
 - [ ] change it so that it recognizes if the modified `Open MPI` is being run or not
 - [ ] modify to let it work also with `MPICH` algorithm selection
-#### Debug program and suite
-- [ ] WRITE EVERYTHING FROM SCRATCH
 #### Test suite
 - [x] add error handling and more explicit messages about what is being done
 - [x] separate results by system

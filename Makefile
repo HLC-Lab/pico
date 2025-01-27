@@ -1,4 +1,4 @@
-.PHONY: all clean libswing debug test ompi_rules
+.PHONY: all clean libswing test ompi_rules
 
 # Variables for colors
 BLUE := \033[1;34m
@@ -6,18 +6,12 @@ RED := \033[1;31m
 NC := \033[0m
 
 # Build all components
-all: libswing debug test ompi_rules
+all: libswing test ompi_rules
 
 # Build the libswing static library
 libswing:
 	@echo -e "$(BLUE)[BUILD] Compiling libswing static library...$(NC)"
 	$(MAKE) -C libswing
-	@echo ""
-
-# Build the debug executable
-debug: libswing
-	@echo -e "$(BLUE)[BUILD] Compiling debug executable...$(NC)"
-	$(MAKE) -C debug
 	@echo ""
 
 # Build the test executable
