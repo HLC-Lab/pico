@@ -99,7 +99,7 @@ run_all_tests() {
         $RULE_UPDATER_EXEC $RULE_FILE_PATH $algo
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${RULE_FILE_PATH}
 
-        for size in "${sizes[@]}"; do
+        for size in ${sizes[@]}; do
             # Skip specific algorithms if conditions are met
             if [[ size -lt $nodes && " ${COLLECTIVE_SKIPS[$COLLECTIVE_TYPE]} " =~ " ${algo} " ]]; then
                 echo "Skipping algorithm $algo for size=$size < N_NODES=$nodes"

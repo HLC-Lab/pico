@@ -35,19 +35,22 @@ declare -A COLLECTIVE_SKIPS
 COLLECTIVE_SKIPS[ALLREDUCE]="4 5 6 9 10 11 12 13 16"
 COLLECTIVE_SKIPS[ALLGATHER]=""
 
+declare -A SIZES
+SIZES[ALLREDUCE]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
+SIZES[ALLGATHER]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
+
+
 ALGOS=${COLLECTIVE_ALGOS[$COLLECTIVE_TYPE]}
 SKIP=${COLLECTIVE_SKIPS[$COLLECTIVE_TYPE]}
-
-# Define array sizes for testing
-ARR_SIZES=(8 64 512 2048 16384 131072 1048576 8388608 67108864)
-if [ "$DEBUG_MODE" == yes ]; then
-    ARR_SIZES=(8 64 512)                             # Smaller sizes for debug mode
-fi
-
-TYPES=('int64')                          # Data types to test
-# TYPES=('int32' 'int64' 'float' 'double' 'char' 'int8' 'int16') # Uncomment for all types 
+ARR_SIZES=${SIZES[$COLLECTIVE_TYPE]}
+TYPES="'int64'"
+# TYPES="'int32' 'int64' 'float' 'double' 'char' 'int8' 'int16'" # Uncomment for all types 
 # NOTE: problems with char, int8, int16
 
+if [ "$DEBUG_MODE" == yes ]; then
+    ARR_SIZES="8 64 512"                             # Smaller sizes for debug mode
+    TYPES=" 'int64'"                                 # Only int64 for debug mode
+fi
 
 
 # Load configuration for the specified environment
