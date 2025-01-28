@@ -18,3 +18,5 @@ export RUNFLAGS=
 export UCX_IB_SL=1
 
 export SWING_DIR=$HOME/Swing_Test/
+
+module load python

@@ -3,9 +3,9 @@
 bin/*
 .cache
 compile_commands.json
-*.csv
 *.err
 *.o
 *.out
 out
 results/local/*
+results/local_metadata.csv

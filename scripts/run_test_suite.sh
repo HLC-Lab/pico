@@ -26,10 +26,9 @@ ENABLE_OMPI_TEST=${7:-yes}                      # Enable OpenMPI tests (yes/no)
 # ALLGATHER_K_BRUCK (2) does not work.
 # ALLGATHER_K_BRUCK_OVER (7) logic not implemented: requires an additional parameter.
 # ALLGATHER_TWO_PROC (6) not included since it is only for 2 processes.
-# ALLGATHER_SWING (10) does not work, debbugging now.
 declare -A COLLECTIVE_ALGOS
 COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 14 15 16"
-COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 8 9"
+COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 8 9 10"
 COLLECTIVE_ALGOS[REDUCE_SCATTER]="0 1 2 3 4 5 6 7"
 
 # Modify algorithms if OMPI_TEST (open mpi with swing allreduce) is not used
@@ -52,14 +51,14 @@ SIZES[REDUCE_SCATTER]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
 ALGOS=${COLLECTIVE_ALGOS[$COLLECTIVE_TYPE]}
 SKIP=${COLLECTIVE_SKIPS[$COLLECTIVE_TYPE]}
 ARR_SIZES=${SIZES[$COLLECTIVE_TYPE]}
-TYPES="int64"               # Supported types are "int32 int64 float double"
+# Supported types are "int8 int16 int32 int64 int float double char unsigned_char"
+TYPES="int64 int32"
 
 # Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
-    export COLLECTIVE_TYPE="ALLGATHER"
     ALGOS="10"
     ARR_SIZES="8"
-    TYPES="int64" # For now only int64 is supported in debug mode
+    TYPES="int" # For now only int,int32,int64 are supported in debug mode 
 fi
 
 # Load configuration for the specified environment
@@ -98,17 +97,18 @@ fi
 run_all_tests "$N_NODES" "$ALGOS" "$ARR_SIZES" "$TYPES" "$OUTPUT_DIR" "$DEBUG_MODE"
 
 
-# # TODO: this is only a proof of concept,
-# # to be modified later
-#
-# # FIX: Ensure python venv and modules are correctly set up
-#
-# MPI_TYPE=OpenMPI
-# MPI_VERSION=0
-# LIBSWING_VERSION=0
-# OPERATOR=MPI_Sum
-# OTHER=None
-#
-# python $RES_DIR/update_metadata.py "$LOCATION" "$TIMESTAMP" \
-#       "$N_NODES" "$COLLECTIVE_TYPE" "$ALGOS" "$MPI_TYPE" "$MPI_VERSION" \
-#       "$LIBSWING_VERSION" "$ENABLE_CUDA" "$TYPES" "$OPERATOR" "$OTHER"
+# TODO: this is only a proof of concept,
+# to be modified later
+# FIX: Ensure python venv and modules are correctly set up
+if [ "$DEBUG_MODE" == no ]; then
+MPI_TYPE=OMPI_TEST
+MPI_VERSION=5.0.1a1
+LIBSWING_VERSION=0.0.1
+OPERATOR=MPI_SUM
+OTHER=none
+
+python $RES_DIR/generate_metadata.py "$LOCATION" "$TIMESTAMP" \
+      "$N_NODES" "$COLLECTIVE_TYPE" "$ALGOS" "$MPI_TYPE" "$MPI_VERSION" \
+      "$LIBSWING_VERSION" "$ENABLE_CUDA" "$TYPES" "$OPERATOR" "$OTHER"
+
+fi

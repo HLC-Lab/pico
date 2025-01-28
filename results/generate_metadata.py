@@ -3,13 +3,13 @@ import csv
 import sys
 from typing import List, Optional
 
-RESULTS_DIR = "."
+RESULTS_DIR = "results/"
 
 # Update or create metadata CSV
 def update_metadata(system_name: str, timestamp: str, number_of_nodes: int,
                      collective_type: str, algorithms_tested: List[int],
-                     mpi_lib_type: str, mpi_lib_version : int,
-                     libswing_version: int, cuda_aware: bool, datatype: List[str],
+                     mpi_lib_type: str, mpi_lib_version : str,
+                     libswing_version: str, cuda_aware: bool, datatype: List[str],
                      operator: Optional[str] = None, other: Optional[str] = None):
     """
     Updates or creates a CSV file to store metadata for test results.
@@ -21,8 +21,8 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int,
     collective_type (str): Type of collective operation used.
     algorithms_tested (List[int]): Algorithms tested during the run.
     mpi_lib_type (str): The MPI library type (Open MPI, MPICH, Cray MPI...).
-    mpi_lib_version (int): Version of the MPI library used.
-    libswing_version (int): Version of the libswing library used.
+    mpi_lib_version (str): Version of the MPI library used.
+    libswing_version (str): Version of the libswing library used.
     cuda_aware (bool): Whether CUDA-aware support is enabled.
     datatype (List[str]): Data type(s) involved in the test.
     operator (Optional[str]): Operator used, if applicable.
@@ -73,10 +73,10 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int,
 
 if __name__ == "__main__":
     if len(sys.argv) != 13:
-        print("Usage: python update_metadata.py <system_name> \
-                <timestamp> <number_of_nodes> <collective_type> \
-                <algorithms_tested> <mpi_lib_type> <mpi_lib_version> \
-                <libswing_version> <cuda_aware> <datatype> <operator> <other>")
+        print("Usage: python update_metadata.py <system_name> <timestamp> \
+                <number_of_nodes> <collective_type> <algorithms_tested> \
+                <mpi_lib_type> <mpi_lib_version> <libswing_version> \
+                <cuda_aware> <datatype> <operator> <other>")
         sys.exit(1)
 
     # Collect arguments from command line
@@ -84,12 +84,12 @@ if __name__ == "__main__":
     timestamp = sys.argv[2]
     number_of_nodes = int(sys.argv[3])
     collective_type = sys.argv[4]
-    algorithms_tested = list(map(int, sys.argv[5].split(",")))
+    algorithms_tested = list(map(int, sys.argv[5].split(" ")))
     mpi_lib_type = sys.argv[6]
-    mpi_lib_version = int(sys.argv[7])
-    libswing_version = int(sys.argv[8])
+    mpi_lib_version = sys.argv[7]
+    libswing_version = sys.argv[8]
     cuda_aware = sys.argv[9].lower() == "yes"
-    datatype = sys.argv[10].split(",")
+    datatype = sys.argv[10].split(" ")
     operator = sys.argv[11] if sys.argv[11].lower() != "none" else None
     other = sys.argv[12] if sys.argv[12].lower() != "none" else None
 

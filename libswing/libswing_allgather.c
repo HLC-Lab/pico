@@ -261,6 +261,7 @@ int allgather_swing_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
 {
   int line = -1, rank, size, pow2size, steps, err, remote;
   const int *s_bitmap = NULL, *r_bitmap = NULL;
+  int *permutation = NULL;
   ptrdiff_t rlb, rext;
   char *tmpsend = NULL, *tmprecv = NULL;
 
@@ -285,21 +286,26 @@ int allgather_swing_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   err = MPI_Type_get_extent (rdtype, &rlb, &rext);
   if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
 
-  if(get_static_bitmap(&r_bitmap, &s_bitmap, steps, size, rank) == -1){
+  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+  if(get_perm_bitmap(&permutation, steps, size) == -1){
     line = __LINE__;
     goto err_hndl;
   }
 
   /* Initialization step:
-     - if send buffer is not MPI_IN_PLACE, copy send buffer to block 0 of
+     - if send buffer is not MPI_IN_PLACE, copy send buffer to block  of
      receive buffer
   */
   if (MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
-    tmprecv = (char*) rbuf + (ptrdiff_t)r_bitmap[0] * (ptrdiff_t)rcount * rext;
+    tmprecv = (char*) rbuf + (ptrdiff_t)r_bitmap[steps - 1] * (ptrdiff_t)rcount * rext;
+
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
-
   }
 
 
@@ -309,19 +315,24 @@ int allgather_swing_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
 
   */
   size_t step_scount = rcount;
-  for (int step = 0; step < steps; step++) {
+  for(int step = steps - 1; step >= 0; step--) {
     remote = pi(rank, step, size);
-    
-    tmpsend = (char*)rbuf + (ptrdiff_t)s_bitmap[step] * (ptrdiff_t) rcount * rext;
-    tmprecv = (char*)rbuf + (ptrdiff_t)r_bitmap[step] * (ptrdiff_t) rcount * rext;
+
+    tmpsend = (char*)rbuf + (ptrdiff_t)r_bitmap[step] * (ptrdiff_t) rcount * rext;
+    tmprecv = (char*)rbuf + (ptrdiff_t)s_bitmap[step] * (ptrdiff_t) rcount * rext;
 
     /* Sendreceive */
-    err = MPI_Sendrecv(tmpsend, (ptrdiff_t)step_scount, rdtype, remote, 0, 
-                       tmprecv, (ptrdiff_t)step_scount, rdtype,
-                       remote, 0, comm, MPI_STATUS_IGNORE);
+    err = MPI_Sendrecv(tmpsend, step_scount, rdtype, remote, 0, 
+                       tmprecv, step_scount, rdtype, remote, 0,
+                       comm, MPI_STATUS_IGNORE);
     if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     step_scount *= 2;
 
+  }
+  
+  if(reorder_blocks(rbuf, rcount * rext, permutation, size) != MPI_SUCCESS){
+    line = __LINE__;
+    goto err_hndl;
   }
 
   return MPI_SUCCESS;

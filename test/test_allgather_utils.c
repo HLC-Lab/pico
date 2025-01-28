@@ -14,8 +14,8 @@ int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
   // sbuf must contain only the data specific to the current rank,
   // while rbuf (and rbuf_gt) must contain the data from all ranks.
   *sbuf = (char *)malloc((count / (size_t) comm_sz) * type_size );
-  *rbuf = (char *)malloc(count * type_size);
-  *rbuf_gt = (char *)malloc(count * type_size);
+  *rbuf = (char *)calloc(count, type_size);
+  *rbuf_gt = (char *)calloc(count, type_size);
   if (*sbuf == NULL || *rbuf == NULL || *rbuf_gt == NULL) {
     fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
     return -1;

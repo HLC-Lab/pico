@@ -310,5 +310,59 @@ static inline unsigned int mirror_perm(unsigned int x, int nbits)
     x = ((x >> 16) | (x << 16));
     return x >> (sizeof(x) * CHAR_BIT - nbits);
 }
+
+/**
+ * @brief Reorders blocks in a buffer according to a given permutation.
+ *
+ * @param buffer The buffer containing the blocks to reorder.
+ * @param block_size The size of each block in bytes.
+ * @param block_permutation The permutation of the blocks.
+ * @param num_blocks The number of blocks in the buffer.
+ *
+ * @return MPI_SUCCESS on success, or an error code.
+ */
+static inline int reorder_blocks(void *buffer, size_t block_size,
+                                  int *block_permutation, int num_blocks) {
+  if (buffer == NULL || block_permutation == NULL || num_blocks <= 0) {
+    return MPI_ERR_ARG;
+  }
+
+  char *buf = (char *)buffer;
+  void *temp = malloc(block_size);
+  char *visited = (char *)calloc(num_blocks, sizeof(int));
+  if (temp == NULL || visited == NULL) {
+    return MPI_ERR_NO_MEM;
+  }
+
+  for (int i = 0; i < num_blocks; ++i) {
+    // Skip if the block is already in its correct position or visited
+    if(visited[i] == 1 || block_permutation[i] == i) {
+      continue;
+    }
+
+    int current = i;
+    // Save the current block to temp (start of the cycle)
+    memcpy(temp, buf + current * block_size, block_size);
+
+
+    // Follow the cycle and place each block in its final position
+    while (visited[block_permutation[current]] != 1) {
+    int next = block_permutation[current];
+      memcpy(buf + current * block_size, buf + next * block_size, block_size);
+      visited[current] = 1;
+      current = next;
+    }
+
+    // Place the saved block in its final position
+    memcpy(buf + current * block_size, temp, block_size);
+    visited[current] = 1; // Mark the last block as visited
+  }
+
+  free(temp);
+  free(visited);
+
+  return MPI_SUCCESS;
+}
+
 #endif
 

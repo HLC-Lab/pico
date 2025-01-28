@@ -25,3 +25,4 @@ mkdir -p $HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/data
 #SBATCH --error=$HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/slurm-%j.err
 
 $HOME/Swing_Test/scripts/run_test_suite.sh $SLURM_NNODES $COLLECTIVE_TYPE $DEBUG_MODE $TIMESTAMP $LOCATION $ENABLE_CUDA $ENABLE_OMPI_TEST
+

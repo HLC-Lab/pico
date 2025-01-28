@@ -2,6 +2,13 @@
 
 #include <stddef.h>
 
+const int perm_2[2] = {0,1};
+const int perm_4[4] = {0,2,3,1};
+const int perm_8[8] = {0,4,6,1,2,7,5,3};
+const int perm_16[16] = {0,8,12,2,4,14,9,6,3,10,15,1,7,13,11,5};
+const int perm_32[32] = {0,16,24,4,10,28,18,12,6,20,30,1,14,25,22,11,2,19,26,7,8,31,17,15,5,23,29,3,13,27,21,9};
+const void* perm_bitmaps[] = { NULL, perm_2, perm_4, perm_8, perm_16, perm_32};
+
 const int send_2[2][1] = {{1},{0}};
 const int recv_2[2][1] = {{0},{1}};
 

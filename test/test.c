@@ -33,6 +33,8 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
   
+  // Get the routine based on the `COLLECTIVE_TYPE` environment variable
+  // and the `algorithm` command line argument
   routine_decision_t test_routine;
   if (get_routine(&test_routine, algorithm) == -1){
     line = __LINE__;
@@ -47,6 +49,8 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
   
+  // Get the allocator function pointer based on the collective type:
+  // different collectives require different buffer size allocations
   allocator_func_ptr allocator = get_allocator(test_routine);
   if (NULL == allocator){
     fprintf(stderr, "Error: allocator is NULL. Aborting...\n");
@@ -61,7 +65,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Allocate memory for buffers independent of collective type
-  times = (double *)malloc(iter * sizeof(double));
+  times = (double *)calloc(iter, sizeof(double));
   if (times == NULL){
     fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
     line = __LINE__;
@@ -79,24 +83,16 @@ int main(int argc, char *argv[]) {
   
   #ifndef DEBUG
   // Randomly generate the sbuf
-  if (rand_sbuf_generator(sbuf, type_string, count, comm, test_routine) == -1){
+  if (rand_sbuf_generator(sbuf, dtype, count, comm, test_routine) != 0){
     line = __LINE__;
     goto err_hndl;
   }
   #else
   // Initialize the sbuf with a sequence of powers of 10
-  switch(test_routine.collective){
-    case ALLREDUCE:
-    case REDUCE_SCATTER:    // Same init as ALLREDUCE
-      debug_sbuf_init(sbuf, count, comm);
-      break;
-    case ALLGATHER:
-      debug_sbuf_init(sbuf, count / (size_t) comm_sz, comm);
-      break;
-    default:
-      fprintf(stderr, "still not implemented, aborting...\n");
-      line = __LINE__;
-      goto err_hndl;
+  // WARNING: Only int32, int64 and int supported
+  if (debug_sbuf_generator(sbuf, dtype, count, comm, test_routine) != 0){
+    line = __LINE__;
+    goto err_hndl;
   }
   #endif
 
@@ -160,8 +156,8 @@ int main(int argc, char *argv[]) {
   // is responsible to create the `/data/` subdir.
   if (rank == 0){
     char data_filename[128], data_fullpath[TEST_MAX_PATH_LENGTH];
-    snprintf(data_filename, sizeof(data_filename), "data/%d_%ld_%s_%d.csv",
-             comm_sz, count, type_string, (int) algorithm);
+    snprintf(data_filename, sizeof(data_filename), "data/%d_%ld_%s.csv",
+             (int) algorithm, count, type_string);
     if (concatenate_path(outputdir, data_filename, data_fullpath) == -1) {
       fprintf(stderr, "Error: Failed to create fullpath.\n");
       line = __LINE__;
@@ -190,8 +186,12 @@ int main(int argc, char *argv[]) {
     should_write_alloc = file_not_exists(alloc_fullpath);
   }
   PMPI_Bcast(&should_write_alloc, 1, MPI_INT, 0, comm);
-  if (should_write_alloc == 1 && write_allocations_to_file(alloc_fullpath, comm) != MPI_SUCCESS){
-    // TODO: delete the alloc file if it was created
+  if ((should_write_alloc == 1) &&
+      (write_allocations_to_file(alloc_fullpath, comm) != MPI_SUCCESS)){
+    // Remove the file if the write operation failed
+    if (rank == 0){
+      remove(alloc_fullpath);
+    }
     line = __LINE__;
     goto err_hndl;
   }

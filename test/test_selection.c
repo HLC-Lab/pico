@@ -9,6 +9,7 @@
  * the routine to test and check for invalid input combinations.
  */
 
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -305,14 +306,15 @@ typedef struct {
  *        used to map command-line input argument to datatype and its size.
  */
 const static TypeMap type_map[] = {
-  {"int8",    MPI_INT8_T,   sizeof(int8_t)},
-  {"int16",   MPI_INT16_T,  sizeof(int16_t)},
-  {"int32",   MPI_INT32_T,  sizeof(int32_t)},
-  {"int64",   MPI_INT64_T,  sizeof(int64_t)},
-  {"int",     MPI_INT,      sizeof(int)},
-  {"float",   MPI_FLOAT,    sizeof(float)},
-  {"double",  MPI_DOUBLE,   sizeof(double)},
-  {"char",    MPI_CHAR,     sizeof(char)}
+  {"int8",          MPI_INT8_T,         sizeof(int8_t)},
+  {"int16",         MPI_INT16_T,        sizeof(int16_t)},
+  {"int32",         MPI_INT32_T,        sizeof(int32_t)},
+  {"int64",         MPI_INT64_T,        sizeof(int64_t)},
+  {"int",           MPI_INT,            sizeof(int)},
+  {"float",         MPI_FLOAT,          sizeof(float)},
+  {"double",        MPI_DOUBLE,         sizeof(double)},
+  {"char",          MPI_CHAR,           sizeof(char)},
+  {"unsigned_char", MPI_UNSIGNED_CHAR,  sizeof(unsigned char)}
 };
 
 

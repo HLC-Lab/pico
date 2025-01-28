@@ -31,7 +31,6 @@ The `libswing/` directory contains the source code for the `libswing/` static li
 It contains Swing implementations built **OVER** MPI (beware that the tests are thought to work also on internal algorithms of Open MPI).
 
 #### Modify `libswing`
-To add new collectives, declare them on `include/libswing.h` where they should be thoroughly documented with a Doxygen style.
 
 Actual implementation must be written in `libswing/libswing_<coll_type>.c` with helper functions declared as `static inline` in `libswing/libswing_utils.h`.
 
@@ -150,10 +149,11 @@ $ scripts/run_test_suite.sh <N_NODES> [COLLECTIVE_TYPE] [DEBUG_MODE] [TIMESTAMP]
 
 Test results are saved in the directory structure `$SWING_DIR/results/<location>/<timestamp>/data/`, alongside with the given node allocation in `$SWING_DIR/results/<location>/<timestamp>/alloc.csv`.
 
-Moreover, the script also invokes an updater of the `$SWING_DIR/results/<location>/<location>_metadata.csv` file, adding a row with the metadata of the last test.
-THIS FEATURE IS STILL IN DEVELOPMENT, IT HAS BEEN ADDED TO STREAMLINE LIBRARY TESTING.
+Moreover, the script also invokes an updater of the `$SWING_DIR/results/<location>_metadata.csv` file, adding a row with the metadata of the last test.
 
-**NOTE:** The script cleans and rebuilds the codebase since if `ENABLE_OMPI_TEST` or `DEBUG` are set to `yes`, the `test` and `change_dynamic_rules` binaries must be injected with `-DOMPI_TEST` or `-DDEBUG` (debug is specific only to test).
+**NOTE:** Metadata needs to be selected manually and are at the end of `run_test_suite.sh` for now. This feature will be updated later.
+
+**NOTE 2:** The script cleans and rebuilds the codebase since if `ENABLE_OMPI_TEST` or `DEBUG` are set to `yes`, the `test` and `change_dynamic_rules` binaries must be injected with `-DOMPI_TEST` or `-DDEBUG` (debug is specific only to test).
 
 ##### Key Variables:
 - **COLLECTIVE_ALGOS**: Lists supported algorithms for each collective type.
@@ -184,10 +184,9 @@ When running on debug mode, manually select array sizes, algorithms and datatype
 
 ## Data Analysis and Visualization
 
-Still in development. For now only two small scripts are added since I'm preparing everything to be used by more people.
+Still in development.
 
 Take a look, but it's still WIP.
-
 
 ## Building
 
@@ -230,7 +229,7 @@ There is no need to run the compression or the metadata script manually as every
 - [ ] make the current static `libswing.a` a dynamic `libswing.so` to be added with `LD_PRELOAD`
 #### Libswing modifications
 - [x] prepare for the possibility of implementing different collectives by refactoring code
-- [ ] debug allgather swing static
+- [x] debug allgather swing static
 - [ ] write reduce scatter swing
 - [ ] document functions and comment code
 #### Test program
@@ -264,7 +263,6 @@ There is no need to run the compression or the metadata script manually as every
 - [x] add a script to compress the data
 - [x] add pre-commit hook that triggers the compression of the new data, adds the uncompressed data to the gitignore
 - [x] add the script to build and update the .csv description
-- [ ] add tests present on my systems (or maybe not)
 #### Plot python scripts
 - [x] add the possibility of selecting specific tests
 - [x] document and comment code

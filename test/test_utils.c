@@ -1,3 +1,4 @@
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -85,7 +86,7 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm) {
 }
 
 
-int rand_sbuf_generator(void *sbuf, const char *type_string, size_t count,
+int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
                          MPI_Comm comm, routine_decision_t test_routine) {
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
@@ -98,41 +99,29 @@ int rand_sbuf_generator(void *sbuf, const char *type_string, size_t count,
     (test_routine.collective == ALLGATHER) ?
                                         count / (size_t) comm_sz : count;
 
-  if (strcmp(type_string, "int8") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
-      ((int8_t *)sbuf)[i] = (int8_t)(rand_r(&seed) % 256) - 128;
-    }
-  } else if (strcmp(type_string, "int16") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
-      ((int16_t *)sbuf)[i] = (int16_t)(rand_r(&seed) % 65536) - 32768;
-    }
-  } else if (strcmp(type_string, "int32") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
+  for (size_t i = 0; i < real_sbuf_count; i++) {
+    if (dtype == MPI_INT8_T) {
+      ((int8_t *)sbuf)[i] = (int8_t)((rand_r(&seed) % 256) - 128);
+    } else if(dtype == MPI_INT16_T) {
+      ((int16_t *)sbuf)[i] = (int16_t)((rand_r(&seed) % 65536) - 32768);
+    } else if (dtype == MPI_INT32_T) {
       ((int32_t *)sbuf)[i] = (int32_t)(rand_r(&seed));
-    }
-  } else if (strcmp(type_string, "int64") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
+    } else if (dtype == MPI_INT64_T) {
       ((int64_t *)sbuf)[i] = ((int64_t)rand_r(&seed) << 32) | rand_r(&seed);
-    }
-  } else if (strcmp(type_string, "int") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
+    } else if (dtype == MPI_INT) {
       ((int *)sbuf)[i] = (int)rand_r(&seed);
-    }
-  } else if (strcmp(type_string, "float") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
+    } else if (dtype == MPI_FLOAT) {
       ((float *)sbuf)[i] = (float)rand_r(&seed) / RAND_MAX * 100.0f;
-    }
-  } else if (strcmp(type_string, "double") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
+    } else if (dtype == MPI_DOUBLE) {
       ((double *)sbuf)[i] = (double)rand_r(&seed) / RAND_MAX * 100.0;
+    } else if (dtype == MPI_CHAR) {
+      ((char *)sbuf)[i] = (char)((rand_r(&seed) % 256) - 128);
+    } else if (dtype == MPI_UNSIGNED_CHAR) {
+      ((unsigned char *)sbuf)[i] = (unsigned char)(rand_r(&seed) % 256);
+    } else {
+      fprintf(stderr, "Error: sbuf not generated correctly. Aborting...\n");
+      return -1;
     }
-  } else if (strcmp(type_string, "char") == 0) {
-    for (size_t i = 0; i < real_sbuf_count; i++) {
-      ((char *)sbuf)[i] = (char)(rand_r(&seed) % 256);
-    }
-  } else {
-    fprintf(stderr, "Error: sbuf not generated correctly. Aborting...\n");
-    return -1;
   }
 
   return 0;
@@ -205,33 +194,82 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
 /**
  * @brief Little helper function to calculate integer powers for debugging purposes.
  *
- * @param base The base of the power.
- * @param exp The exponent of the power.
- *
- * @return The result of the power operation.
+ * @return base^power as an int64_t.
  */
-static inline int64_t int_pow(int base, int exp) {
+static inline int64_t int_pow_64(int base, int exp) {
+  int64_t result = 1, base_ = base;
+  if (exp == 0) return 1;
+
+  while (exp > 0) {
+    if (exp % 2 == 1) result *= base_;
+    base_ *= base_;
+    exp /= 2;
+  }
+  return result;
+}
+
+/**
+ * @brief Little helper function to calculate integer powers for debugging purposes.
+ *
+ * @return base^power as an int32_t.
+ */
+static inline int32_t int_pow_32(int base, int exp) {
+  int32_t result = 1, base_ = base;
+  if (exp == 0) return 1;
+
+  while (exp > 0) {
+    if (exp % 2 == 1) result *= base_;
+    base_ *= base_;
+    exp /= 2;
+  }
+  return result;
+}
+
+/**
+ * @brief Little helper function to calculate integer powers for debugging purposes.
+ *
+ * @return base^power as an int.
+ */
+static inline int int_pow(int base, int exp) {
   int result = 1;
+  if (exp == 0) return 1;
+
   while (exp > 0) {
     if (exp % 2 == 1) result *= base;
     base *= base;
     exp /= 2;
   }
-  return (int64_t) result;
+  return result;
 }
 
-void debug_sbuf_init(void *sbuf, size_t scount, MPI_Comm comm) {
+int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
+                         MPI_Comm comm, routine_decision_t test_routine) {
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
-  for(int i=0; i<scount; i++){
-    ((int64_t*)sbuf)[i] = int_pow(10, rank);
+  size_t real_sbuf_count =
+    (test_routine.collective == ALLGATHER) ?
+                                        count / (size_t) comm_sz : count;
+
+  for(int i=0; i< real_sbuf_count; i++){
+    if (dtype == MPI_INT64_T) {
+      ((int64_t*)sbuf)[i] = int_pow_64(10, rank);
+    } else if (dtype == MPI_INT32_T) {
+      ((int32_t*)sbuf)[i] = int_pow_32(10, rank);
+    } else if (dtype == MPI_INT){
+      ((int*)sbuf)[i] = int_pow(10, rank);
+    } else {
+      fprintf(stderr, "Error: Datatype not implemented for `debug_sbuf_init`...\n");
+      return -1;
+    }
   }
+  return 0;
 }
 
 
-void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm){
+void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count,
+                         MPI_Datatype dtype, MPI_Comm comm){
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
@@ -240,7 +278,26 @@ void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype d
     if (rank == i) {
       printf("Rank %d:\n rbuf_gt \t rbuf\n", rank);
       for (size_t j = 0; j < count; j++) {
-        printf("%" PRId64 "\t\t %" PRId64"\n", ((int64_t *)rbuf_gt)[j], ((int64_t *)rbuf)[j]);
+        // I tried with a switch statement, but in OMPI datatypes are pointer
+        // to structures, so I can't use them in a switch statement.
+        if (dtype == MPI_INT64_T){
+          printf("%" PRId64 "\t\t %" PRId64"\n", ((int64_t *)rbuf_gt)[j], ((int64_t *)rbuf)[j]);
+        } else if (dtype == MPI_INT32_T){
+          printf("%" PRId32 "\t\t %" PRId32"\n", ((int32_t *)rbuf_gt)[j], ((int32_t *)rbuf)[j]);
+        } else if (dtype == MPI_INT16_T){
+          printf("%" PRId16 "\t\t %" PRId16"\n", ((int16_t *)rbuf_gt)[j], ((int16_t *)rbuf)[j]);
+        } else if (dtype == MPI_INT8_T){
+          printf("%" PRId8 "\t\t %" PRId8"\n", ((int8_t *)rbuf_gt)[j], ((int8_t *)rbuf)[j]);
+        } else if (dtype == MPI_INT){
+          printf("%d\t\t %d\n", ((int *)rbuf_gt)[j], ((int *)rbuf)[j]);
+        } else if (dtype == MPI_FLOAT){
+          printf("%f\t\t %f\n", ((float *)rbuf_gt)[j], ((float *)rbuf)[j]);
+        } else if (dtype == MPI_DOUBLE){
+          printf("%f\t\t %f\n", ((double *)rbuf_gt)[j], ((double *)rbuf)[j]);
+        } else {
+          fprintf(stderr, "Error: Datatype print not supported.\n");
+          break;
+        }
       }
       printf("\n");
       fflush(stdout);

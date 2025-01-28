@@ -390,14 +390,14 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm);
  * @brief Generates a random sbuf based on the specified type, size and collective.
  *
  * @param sbuf Pointer to the sbuf to fill with random values.
- * @param type_string Data type as a string.
+ * @param dtype Datatype of the sendbuffer (MPI Datatype).
  * @param array_size Number of elements in the array.
  * @param comm MPI communicator.
  * @param test_routine Routine decision structure.
  *
  * @return 0 on success, -1 if the data type is unsupported.
  */
-int rand_sbuf_generator(void *sbuf, const char *type_string, size_t array_size,
+int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t array_size,
                          MPI_Comm comm, routine_decision_t test_routine);
 
 
@@ -430,13 +430,18 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
 //-----------------------------------------------------------------------------------------------
 #ifdef DEBUG
 /**
- * @brief Initializes the send buffer with a sequence of powers of 10^rank.
+ * @brief Generates the send buffer with a sequence of powers of 10^rank.
  *
- * @param sbuf The send buffer to initialize.
- * @param scount The number of elements in the send buffer.
- * @param comm The MPI communicator.
+ * @param sbuf Pointer to the sbuf to fill with random values.
+ * @param dtype Datatype of the sendbuffer (MPI Datatype).
+ * @param count Number of elements in the array.
+ * @param comm MPI communicator.
+ * @param test_routine Routine decision structure.
+ *
+ * @return 0 on success, -1 if the data type is unsupported.
  */
-void debug_sbuf_init(void *sbuf, size_t scount, MPI_Comm comm);
+int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
+                    MPI_Comm comm, routine_decision_t test_routine);
 
 /**
  * @brief Prints the contents of two buffers for debugging purposes.
@@ -451,3 +456,4 @@ void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype d
 #endif
 
 #endif
+
