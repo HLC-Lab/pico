@@ -130,6 +130,189 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
 }
 
 
+int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtype,
+                   MPI_Op op, MPI_Comm comm)
+{
+  int ret, line, rank, size, k, recv_from, send_to, block_count, inbi;
+  int early_segcount, late_segcount, split_rank, max_segcount;
+  char *tmpsend = NULL, *tmprecv = NULL, *inbuf[2] = {NULL, NULL};
+  ptrdiff_t true_lb, true_extent, lb, extent;
+  ptrdiff_t block_offset, max_real_segsize;
+  MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+
+  ret = MPI_Comm_size(comm, &size);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  ret = MPI_Comm_rank(comm, &rank);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+
+  // if (rank == 0) {
+  //   printf("4: RING\n");
+  //   fflush(stdout);
+  // }
+
+  /* Special case for size == 1 */
+  if (1 == size) {
+    if (MPI_IN_PLACE != sbuf) {
+      ret = copy_buffer((char *) sbuf, (char *) rbuf, count, dtype);
+      if (ret < 0) { line = __LINE__; goto error_hndl; }
+    }
+    return MPI_SUCCESS;
+  }
+
+  /* Special case for count less than size - use recursive doubling */
+  if (count < (size_t) size) {
+    return (allreduce_recursivedoubling(sbuf, rbuf, count, dtype, op, comm));
+  }
+
+  /* Allocate and initialize temporary buffers */
+  ret = MPI_Type_get_extent(dtype, &lb, &extent);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  ret = MPI_Type_get_true_extent(dtype, &true_lb, &true_extent);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+
+  /* Determine the number of elements per block and corresponding
+     block sizes.
+     The blocks are divided into "early" and "late" ones:
+     blocks 0 .. (split_rank - 1) are "early" and
+     blocks (split_rank) .. (size - 1) are "late".
+     Early blocks are at most 1 element larger than the late ones.
+  */
+  COLL_BASE_COMPUTE_BLOCKCOUNT( count, size, split_rank,
+                   early_segcount, late_segcount );
+  max_segcount = early_segcount;
+  max_real_segsize = true_extent + (max_segcount - 1) * extent;
+
+
+  inbuf[0] = (char*)malloc(max_real_segsize);
+  if (NULL == inbuf[0]) { ret = -1; line = __LINE__; goto error_hndl; }
+  if (size > 2) {
+    inbuf[1] = (char*)malloc(max_real_segsize);
+    if (NULL == inbuf[1]) { ret = -1; line = __LINE__; goto error_hndl; }
+  }
+
+  /* Handle MPI_IN_PLACE */
+  if (MPI_IN_PLACE != sbuf) {
+    ret = copy_buffer((char *)sbuf, (char *) rbuf, count, dtype);
+    if (ret < 0) { line = __LINE__; goto error_hndl; }
+  }
+
+  /* Computation loop */
+
+  /*
+     For each of the remote nodes:
+     - post irecv for block (r-1)
+     - send block (r)
+     - in loop for every step k = 2 .. n
+     - post irecv for block (r + n - k) % n
+     - wait on block (r + n - k + 1) % n to arrive
+     - compute on block (r + n - k + 1) % n
+     - send block (r + n - k + 1) % n
+     - wait on block (r + 1)
+     - compute on block (r + 1)
+     - send block (r + 1) to rank (r + 1)
+     Note that we must be careful when computing the beginning of buffers and
+     for send operations and computation we must compute the exact block size.
+  */
+  send_to = (rank + 1) % size;
+  recv_from = (rank + size - 1) % size;
+
+  inbi = 0;
+  /* Initialize first receive from the neighbor on the left */
+  ret = MPI_Irecv(inbuf[inbi], max_segcount, dtype, recv_from, 0, comm, &reqs[inbi]);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  /* Send first block (my block) to the neighbor on the right */
+  block_offset = ((rank < split_rank)?
+          ((ptrdiff_t)rank * (ptrdiff_t)early_segcount) :
+          ((ptrdiff_t)rank * (ptrdiff_t)late_segcount + split_rank));
+  block_count = ((rank < split_rank)? early_segcount : late_segcount);
+  tmpsend = ((char*)rbuf) + block_offset * extent;
+  ret = MPI_Send(tmpsend, block_count, dtype, send_to, 0, comm);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+
+  for (k = 2; k < size; k++) {
+    const int prevblock = (rank + size - k + 1) % size;
+
+    inbi = inbi ^ 0x1;
+
+    /* Post irecv for the current block */
+    ret = MPI_Irecv(inbuf[inbi], max_segcount, dtype, recv_from, 0, comm, &reqs[inbi]);
+    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+
+    /* Wait on previous block to arrive */
+    ret = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+
+    /* Apply operation on previous block: result goes to rbuf
+       rbuf[prevblock] = inbuf[inbi ^ 0x1] (op) rbuf[prevblock]
+    */
+    block_offset = ((prevblock < split_rank)?
+            ((ptrdiff_t)prevblock * early_segcount) :
+            ((ptrdiff_t)prevblock * late_segcount + split_rank));
+    block_count = ((prevblock < split_rank)? early_segcount : late_segcount);
+    tmprecv = ((char*)rbuf) + (ptrdiff_t)block_offset * extent;
+    MPI_Reduce_local(inbuf[inbi ^ 0x1], tmprecv, block_count, dtype, op);
+
+    /* send previous block to send_to */
+    ret = MPI_Send(tmprecv, block_count, dtype, send_to, 0, comm);
+    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  }
+
+  /* Wait on the last block to arrive */
+  ret = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+
+  /* Apply operation on the last block (from neighbor (rank + 1)
+     rbuf[rank+1] = inbuf[inbi] (op) rbuf[rank + 1] */
+  recv_from = (rank + 1) % size;
+  block_offset = ((recv_from < split_rank)?
+          ((ptrdiff_t)recv_from * early_segcount) :
+          ((ptrdiff_t)recv_from * late_segcount + split_rank));
+  block_count = ((recv_from < split_rank)? early_segcount : late_segcount);
+  tmprecv = ((char*)rbuf) + (ptrdiff_t)block_offset * extent;
+  MPI_Reduce_local(inbuf[inbi], tmprecv, block_count, dtype, op);
+
+  /* Distribution loop - variation of ring allgather */
+  send_to = (rank + 1) % size;
+  recv_from = (rank + size - 1) % size;
+  for (k = 0; k < size - 1; k++) {
+    const int recv_data_from = (rank + size - k) % size;
+    const int send_data_from = (rank + 1 + size - k) % size;
+    const int send_block_offset =
+      ((send_data_from < split_rank)?
+       ((ptrdiff_t)send_data_from * early_segcount) :
+       ((ptrdiff_t)send_data_from * late_segcount + split_rank));
+    const int recv_block_offset =
+      ((recv_data_from < split_rank)?
+       ((ptrdiff_t)recv_data_from * early_segcount) :
+       ((ptrdiff_t)recv_data_from * late_segcount + split_rank));
+    block_count = ((send_data_from < split_rank)?
+             early_segcount : late_segcount);
+
+    tmprecv = (char*)rbuf + (ptrdiff_t)recv_block_offset * extent;
+    tmpsend = (char*)rbuf + (ptrdiff_t)send_block_offset * extent;
+
+    ret = MPI_Sendrecv(tmpsend, block_count, dtype, send_to, 0,
+                       tmprecv, max_segcount, dtype, recv_from,
+                       0, comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl;}
+
+  }
+
+  if (NULL != inbuf[0]) free(inbuf[0]);
+  if (NULL != inbuf[1]) free(inbuf[1]);
+
+  return MPI_SUCCESS;
+
+ error_hndl:
+  fprintf(stderr, "%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
+  MPI_Request_free(&reqs[0]);
+  MPI_Request_free(&reqs[1]);
+  (void)line;  // silence compiler warning
+  if (NULL != inbuf[0]) free(inbuf[0]);
+  if (NULL != inbuf[1]) free(inbuf[1]);
+  return ret;
+}
+
 int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtype, MPI_Op op, MPI_Comm comm) {
   int rank, size;
   int ret, line; // for error handling

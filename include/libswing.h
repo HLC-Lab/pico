@@ -11,13 +11,14 @@
 #define REDUCE_SCATTER_ARGS   const void *sbuf, void *rbuf, const int rcounts[], \
                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm
 
+int allreduce_recursivedoubling(ALLREDUCE_ARGS);
+int allreduce_ring(ALLREDUCE_ARGS);
+int allreduce_rabenseifner(ALLREDUCE_ARGS);
 int allreduce_swing_lat(ALLREDUCE_ARGS);
 int allreduce_swing_bdw_static(ALLREDUCE_ARGS);
-int allreduce_recursivedoubling(ALLREDUCE_ARGS);
-int allreduce_rabenseifner(ALLREDUCE_ARGS);
 
-int allgather_recursivedoubling(ALLGATHER_ARGS);
 int allgather_k_bruck(ALLGATHER_ARGS, int radix);
+int allgather_recursivedoubling(ALLGATHER_ARGS);
 int allgather_ring(ALLGATHER_ARGS);
 int allgather_swing_static(ALLGATHER_ARGS);
 

@@ -45,56 +45,62 @@ static inline coll_t get_collective_from_string(const char *coll_str) {
 static inline int set_allreduce_algorithm(allreduce_algo_t * algorithm, int algo_number){
   switch (algo_number){
     case 0:
-      *algorithm = ALLREDUCE_DEFAULT;
+      *algorithm = ALLREDUCE_DEFAULT_OMPI;
       break;
     case 1:
-      *algorithm = ALLREDUCE_LINEAR;
+      *algorithm = ALLREDUCE_LINEAR_OMPI;
       break;
     case 2:
-      *algorithm = ALLREDUCE_NON_OVERLAPPING;
+      *algorithm = ALLREDUCE_NON_OVERLAPPING_OMPI;
       break;
     case 3:
-      *algorithm = ALLREDUCE_RECURSIVE_DOUBLING;
+      *algorithm = ALLREDUCE_RECURSIVE_DOUBLING_OMPI;
       break;
     case 4:
-      *algorithm = ALLREDUCE_RING;
+      *algorithm = ALLREDUCE_RING_OMPI;
       break;
     case 5:
-      *algorithm = ALLREDUCE_RING_SEGMENTED;
+      *algorithm = ALLREDUCE_RING_SEGMENTED_OMPI;
       break;
     case 6:
-      *algorithm = ALLREDUCE_RABENSEIFNER;
+      *algorithm = ALLREDUCE_RABENSEIFNER_OMPI;
       break;
     case 7:
-      *algorithm = ALLREDUCE_ALLGATHER_REDUCE;
+      *algorithm = ALLREDUCE_ALLGATHER_REDUCE_OMPI;
       break;
 #ifdef OMPI_TEST
     case 8:
-      *algorithm = ALLREDUCE_SWING_LAT;
+      *algorithm = ALLREDUCE_SWING_LAT_OMPI;
       break;
     case 9:
-      *algorithm = ALLREDUCE_SWING_BDW_MEMCPY;
+      *algorithm = ALLREDUCE_SWING_BDW_MEMCPY_OMPI;
       break;
     case 10:
-      *algorithm = ALLREDUCE_SWING_BDW_DT_1;
+      *algorithm = ALLREDUCE_SWING_BDW_DT_1_OMPI;
       break;
     case 11:
-      *algorithm = ALLREDUCE_SWING_BDW_DT_2;
+      *algorithm = ALLREDUCE_SWING_BDW_DT_2_OMPI;
       break;
     case 12:
-      *algorithm = ALLREDUCE_SWING_BDW_SEG;
+      *algorithm = ALLREDUCE_SWING_BDW_SEG_OMPI;
       break;
     case 13:
-      *algorithm = ALLREDUCE_SWING_BDW_STATIC;
+      *algorithm = ALLREDUCE_SWING_BDW_STATIC_OMPI;
       break;
 #endif
-    case 14:
+    case 101:
       *algorithm = ALLREDUCE_RECURSIVE_DOUBLING_OVER;
       break;
-    case 15:
+    case 102:
+      *algorithm = ALLREDUCE_RING_OVER;
+      break;
+    case 103:
+      *algorithm = ALLREDUCE_RABENSEIFNER_OVER;
+      break;
+    case 201:
       *algorithm = ALLREDUCE_SWING_LAT_OVER;
       break;
-    case 16:
+    case 202:
       *algorithm = ALLREDUCE_SWING_BDW_STATIC_OVER;
       break;
     default:
@@ -118,36 +124,36 @@ static inline int set_allgather_algorithm(allgather_algo_t * algorithm,
                                           int algo_number){
   switch (algo_number){
     case 0:
-      *algorithm = ALLGATHER_DEFAULT;
+      *algorithm = ALLGATHER_DEFAULT_OMPI;
       break;
     case 1:
-      *algorithm = ALLGATHER_LINEAR;
+      *algorithm = ALLGATHER_LINEAR_OMPI;
       break;
     case 2:
-      *algorithm = ALLGATHER_K_BRUCK;
+      *algorithm = ALLGATHER_K_BRUCK_OMPI;
       break;
     case 3:
-      *algorithm = ALLGATHER_RECURSIVE_DOUBLING;
+      *algorithm = ALLGATHER_RECURSIVE_DOUBLING_OMPI;
       break;
     case 4:
-      *algorithm = ALLGATHER_RING;
+      *algorithm = ALLGATHER_RING_OMPI;
       break;
     case 5:
-      *algorithm = ALLGATHER_NEIGHBOR;
+      *algorithm = ALLGATHER_NEIGHBOR_OMPI;
       break;
     case 6:
-      *algorithm = ALLGATHER_TWO_PROC;
+      *algorithm = ALLGATHER_TWO_PROC_OMPI;
       break;
-    case 7:
+    case 101:
       *algorithm = ALLGATHER_K_BRUCK_OVER;
       break;
-    case 8:
+    case 102:
       *algorithm = ALLGATHER_RECURSIVE_DOUBLING_OVER;
       break;
-    case 9:
+    case 103:
       *algorithm = ALLGATHER_RING_OVER;
       break;
-    case 10:
+    case 201:
       *algorithm = ALLGATHER_SWING_STATIC_OVER;
       break;
     default:
@@ -170,27 +176,27 @@ static inline int set_reduce_scatter_algorithm(reduce_scatter_algo_t * algorithm
                                                int algo_number){
   switch (algo_number){
     case 0:
-      *algorithm = REDUCE_SCATTER_DEFAULT;
+      *algorithm = REDUCE_SCATTER_DEFAULT_OMPI;
       break;
     case 1:
-      *algorithm = REDUCE_SCATTER_NON_OVERLAPPING;
+      *algorithm = REDUCE_SCATTER_NON_OVERLAPPING_OMPI;
       break;
     case 2:
-      *algorithm = REDUCE_SCATTER_RECURSIVE_HALVING;
+      *algorithm = REDUCE_SCATTER_RECURSIVE_HALVING_OMPI;
       break;
     case 3:
-      *algorithm = REDUCE_SCATTER_RING;
+      *algorithm = REDUCE_SCATTER_RING_OMPI;
       break;
     case 4:
-      *algorithm = REDUCE_SCATTER_BUTTERFLY;
+      *algorithm = REDUCE_SCATTER_BUTTERFLY_OMPI;
       break;
-    case 5:
+    case 101:
       *algorithm = REDUCE_SCATTER_RECURSIVE_HALVING_OVER;
       break;
-    case 6:
+    case 102:
         *algorithm = REDUCE_SCATTER_RING_OVER;
       break;
-    case 7:
+    case 103:
       *algorithm = REDUCE_SCATTER_BUTTERFLY_OVER;
       break;
     default:
@@ -224,8 +230,8 @@ int get_routine(routine_decision_t *test_routine, int algorithm) {
     case ALLREDUCE:
       if (set_allreduce_algorithm(&(test_routine->algorithm.allreduce_algorithm),
                                   algorithm) == -1) {
-        fprintf(stderr, "Error! Invalid `ALGORITHM` value for \
-                        `ALLREDUCE` collective. Aborting...\n");
+        fprintf(stderr, "Error! Invalid `ALGORITHM` %d value for \
+                        `ALLREDUCE` collective. Aborting...\n", algorithm);
         return -1;
       }
       break;
@@ -233,8 +239,8 @@ int get_routine(routine_decision_t *test_routine, int algorithm) {
     case ALLGATHER:
       if (set_allgather_algorithm(&(test_routine->algorithm.allgather_algorithm),
                                   algorithm) == -1) {
-        fprintf(stderr, "Error! Invalid `ALGORITHM` value for \
-                        `ALLGATHER` collective. Aborting...\n");
+        fprintf(stderr, "Error! Invalid `ALGORITHM` %d value for \
+                        `ALLGATHER` collective. Aborting...\n", algorithm);
         return -1;
       }
       break;
@@ -242,8 +248,8 @@ int get_routine(routine_decision_t *test_routine, int algorithm) {
     case REDUCE_SCATTER:
       if (set_reduce_scatter_algorithm(&(test_routine->algorithm.reduce_scatter_algorithm),
                                        algorithm) == -1) {
-        fprintf(stderr, "Error! Invalid `ALGORITHM` value for \
-                        `REDUCE_SCATTER` collective. Aborting...\n");
+        fprintf(stderr, "Error! Invalid `ALGORITHM` %d value for \
+                        `REDUCE_SCATTER` collective. Aborting...\n", algorithm);
         return -1;
       }
       break;
@@ -329,7 +335,7 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
     }
   }
 
-  fprintf(stderr, "Error: datatype not in type_map. Aborting...\n");
+  fprintf(stderr, "Error: datatype %s not in `type_map`. Aborting...\n", type_string);
   return -1;
 }
 

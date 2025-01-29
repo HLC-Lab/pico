@@ -36,13 +36,18 @@ int update_file(const char *filename, int new_value, rules_coll_t coll) {
   switch (coll) {
     case ALLREDUCE:
       #ifdef OMPI_TEST
-      if (new_value < 0 || new_value > 16) {
-        fprintf(stderr, "ERROR: For allreduce, the number must be between 0 and 16.\n");
+      if (!((new_value >= 0 && new_value <= 7) ||       // [0-7] (default ompi)
+            (new_value >= 8 && new_value <= 13) ||      // [8-13] (ompi test)
+            (new_value >= 101 && new_value <= 103) ||   // [101-103] (default over)
+            (new_value >= 201 && new_value <= 202))) {  // [201-202] (swing over)
+        fprintf(stderr, "ERROR: Algorithm not in [0-7](default ompi) [8-13](ompi test) [101-103](default over) [201-202](swing over).\n");
         return -1;
       }
       #else
-      if (new_value < 0 || new_value > 16 || (new_value > 7 && new_value < 14)) {
-        fprintf(stderr, "ERROR: For allreduce, the number must be between 0 and 7 or between 14 and 16.\n");
+      if (!((new_value >= 0 && new_value <= 7) ||       // [0-7] (default ompi)
+            (new_value >= 101 && new_value <= 103) ||   // [101-103] (default over)
+            (new_value >= 201 && new_value <= 202))) {  // [201-202] (swing over)
+        fprintf(stderr, "ERROR: ALLREDUCE algorithm not in [0-7](default ompi) [101-103](default over) [201-202](swing over).\n");
         return -1;
       }
       #endif
@@ -50,16 +55,19 @@ int update_file(const char *filename, int new_value, rules_coll_t coll) {
       target_line = 12;
       break;
     case ALLGATHER:
-      if (new_value < 0 || new_value > 10) {
-        fprintf(stderr, "ERROR: For allgather, the number must be between 0 and 10.\n");
+      if (!((new_value >= 0 && new_value <= 6) ||       // [0-6] (default ompi)
+            (new_value >= 101 && new_value <= 103) ||   // [101-103] (default over)
+            (new_value == 201))) {                      // [201] (swing over)
+        fprintf(stderr, "ERROR: ALLGATHER algorithm not in [0-6](default ompi) [101-103](default over) [201](swing over).\n");
         return -1;
       }
-      if (new_value > 7) new_value = 0;
+      if (new_value > 6) new_value = 0;
       target_line = 6;
       break;
     case REDUCE_SCATTER:
-      if (new_value < 0 || new_value > 7) {
-        fprintf(stderr, "ERROR: For reduce_scatter, the number must be between 0 and 7.\n");
+      if (!((new_value >= 0 && new_value <= 4) ||       // [0-4] (default ompi)
+            (new_value >= 101 && new_value <= 103))) {  // [101-103] (default over)
+        fprintf(stderr, "ERROR: REDUCE_SCATTER algorithm not in [0-4](default ompi) [101-103](default over).\n");
         return -1;
       }
       if (new_value > 4) new_value = 0;

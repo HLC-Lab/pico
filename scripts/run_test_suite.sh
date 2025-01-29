@@ -22,23 +22,23 @@ ENABLE_OMPI_TEST=${7:-yes}                      # Enable OpenMPI tests (yes/no)
 
 # Define supported algorithms for each collective type
 # WARNING:
-# ALLREDUCE_ALLGATHER_REDUCE (7) not included since can crash, wasting compute hours. 
-# ALLGATHER_K_BRUCK (2) does not work.
-# ALLGATHER_K_BRUCK_OVER (7) logic not implemented: requires an additional parameter.
+# ALLREDUCE_ALLGATHER_REDUCE (7) not included since it can crash, wasting compute hours. 
+# ALLGATHER_K_BRUCK (2) does not work, probably forcing it does not set radix value.
 # ALLGATHER_TWO_PROC (6) not included since it is only for 2 processes.
+# ALLGATHER_K_BRUCK_OVER (101) logic not implemented: requires an additional parameter.
 declare -A COLLECTIVE_ALGOS
-COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 14 15 16"
-COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 8 9 10"
-COLLECTIVE_ALGOS[REDUCE_SCATTER]="0 1 2 3 4 5 6 7"
+COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 101 102 103 201"
+COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 102 103 201"
+COLLECTIVE_ALGOS[REDUCE_SCATTER]="0 1 2 3 4 101 102 103"
 
 # Modify algorithms if OMPI_TEST (open mpi with swing allreduce) is not used
 if [ "$ENABLE_OMPI_TEST" == "no" ]; then
-    COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 14 15 16"
+    COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 101 102 103 201"
 fi
 
 # Algorithms to skip if $N_NODES > $ARR_SIZE
 declare -A COLLECTIVE_SKIPS
-COLLECTIVE_SKIPS[ALLREDUCE]="4 5 6 9 10 11 12 13 16"
+COLLECTIVE_SKIPS[ALLREDUCE]="4 5 6 9 10 11 12 13 102 103 202" # rab,swingBdw,ring (+variants)
 COLLECTIVE_SKIPS[ALLGATHER]=""
 COLLECTIVE_SKIPS[REDUCE_SCATTER]=""
 
@@ -56,7 +56,7 @@ TYPES="int64 int32"
 
 # Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
-    ALGOS="10"
+    ALGOS="102"
     ARR_SIZES="8"
     TYPES="int" # For now only int,int32,int64 are supported in debug mode 
 fi
