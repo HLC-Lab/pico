@@ -33,6 +33,7 @@ source_environment() {
     fi
 }
 
+
 # Compile the codebase
 compile_code() {
     make clean
@@ -67,6 +68,26 @@ get_iterations() {
     fi
 }
 
+# Function to get all algorithm names for a given test
+get_all_algorithm_names() {
+    local algo_numbers=($1)
+    local algo_names=""
+
+    for algo in "${algo_numbers[@]}"; do
+        algo_name=$(awk -F, -v type="$COLLECTIVE_TYPE" -v algo="$algo" \
+            '$1 == type && $2 == algo {print $3}' "$ALGO_NAMES_FILE")
+        algo_names+="$algo_name "
+    done
+
+    echo "$algo_names"
+}
+
+# Function to get the algorithm name for a given number
+get_algorithm_name() {
+    local algo_number=$1
+    awk -F, -v type="$COLLECTIVE_TYPE" -v algo="$algo_number" \
+        '$1 == type && $2 == algo {print $3}' "$ALGO_NAMES_FILE"
+}
 
 # Function to run a single test case
 # Arguments: array size, iterations, data type, algorithm index
@@ -77,10 +98,12 @@ run_test() {
     local algo=$4
     local debug_mode=$5
 
+    local algo_name=$(get_algorithm_name "$algo")
+
     if [ "$debug_mode" == "yes" ]; then
-      echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
+      echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo: $algo_name)"
     else
-      echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype (Algo: $algo)"
+      echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo: $algo_name Iter: $iter)"
     fi
 
     $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $type $algo $OUTPUT_DIR

@@ -27,13 +27,13 @@ ENABLE_OMPI_TEST=${7:-yes}                      # Enable OpenMPI tests (yes/no)
 # ALLGATHER_TWO_PROC (6) not included since it is only for 2 processes.
 # ALLGATHER_K_BRUCK_OVER (101) logic not implemented: requires an additional parameter.
 declare -A COLLECTIVE_ALGOS
-COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 101 102 103 201"
+COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 101 102 103 201 202"
 COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 102 103 201"
 COLLECTIVE_ALGOS[REDUCE_SCATTER]="0 1 2 3 4 101 102 103"
 
 # Modify algorithms if OMPI_TEST (open mpi with swing allreduce) is not used
 if [ "$ENABLE_OMPI_TEST" == "no" ]; then
-    COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 101 102 103 201"
+    COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 101 102 103 201 202"
 fi
 
 # Algorithms to skip if $N_NODES > $ARR_SIZE
@@ -52,7 +52,7 @@ ALGOS=${COLLECTIVE_ALGOS[$COLLECTIVE_TYPE]}
 SKIP=${COLLECTIVE_SKIPS[$COLLECTIVE_TYPE]}
 ARR_SIZES=${SIZES[$COLLECTIVE_TYPE]}
 # Supported types are "int8 int16 int32 int64 int float double char unsigned_char"
-TYPES="int64 int32"
+TYPES="int64"
 
 # Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
@@ -75,6 +75,7 @@ else
     RULE_FILE_PATH=$SWING_DIR/ompi_rules/dynamic_rules.txt
     OUTPUT_DIR="$RES_DIR/$LOCATION/$TIMESTAMP/"
     DATA_DIR="$OUTPUT_DIR/data/"
+    ALGO_NAMES_FILE=$SWING_DIR/scripts/algo_names.csv
 
     # Set OpenMPI environment variables
     export OMPI_MCA_coll_hcoll_enable=0
@@ -97,18 +98,19 @@ fi
 run_all_tests "$N_NODES" "$ALGOS" "$ARR_SIZES" "$TYPES" "$OUTPUT_DIR" "$DEBUG_MODE"
 
 
-# TODO: this is only a proof of concept,
-# to be modified later
-# FIX: Ensure python venv and modules are correctly set up
 if [ "$DEBUG_MODE" == no ]; then
-MPI_TYPE=OMPI_TEST
-MPI_VERSION=5.0.1a1
-LIBSWING_VERSION=0.0.1
-OPERATOR=MPI_SUM
-OTHER=none
+    # TODO: this is only a proof of concept, to be modified later
+    # FIX: Ensure python venv and modules are correctly set up
+    MPI_TYPE=OMPI_TEST
+    MPI_VERSION=5.0.1a1
+    LIBSWING_VERSION=0.0.1
+    OPERATOR=MPI_SUM
+    OTHER=none
+    ALGO_NAMES=$(get_all_algorithm_names "$ALGOS")
 
-python $RES_DIR/generate_metadata.py "$LOCATION" "$TIMESTAMP" \
-      "$N_NODES" "$COLLECTIVE_TYPE" "$ALGOS" "$MPI_TYPE" "$MPI_VERSION" \
-      "$LIBSWING_VERSION" "$ENABLE_CUDA" "$TYPES" "$OPERATOR" "$OTHER"
+    python $RES_DIR/generate_metadata.py "$LOCATION" "$TIMESTAMP" \
+          "$N_NODES" "$COLLECTIVE_TYPE" "$ALGOS" "$ALGO_NAMES" \
+          "$MPI_TYPE" "$MPI_VERSION" "$LIBSWING_VERSION" "$ENABLE_CUDA" \
+          "$TYPES" "$OPERATOR" "$OTHER"
 
 fi
