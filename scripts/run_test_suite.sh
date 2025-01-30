@@ -13,44 +13,30 @@ if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]
 fi
 
 # Default parameters
-export COLLECTIVE_TYPE=${2:-ALLREDUCE}          # Type of collective operation
-DEBUG_MODE=${3:-no}                             # Enable debug mode (yes/no)
-TIMESTAMP=${4:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
-LOCATION=${5:-local}                            # Environment location
-ENABLE_CUDA=${6:-no}                            # Enable CUDA support (yes/no)
-ENABLE_OMPI_TEST=${7:-yes}                      # Enable OpenMPI tests (yes/no)
+DEBUG_MODE=${2:-no}                             # Enable debug mode (yes/no)
+TIMESTAMP=${3:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
+LOCATION=${4:-local}                            # Environment location
+ENABLE_CUDA=${5:-no}                            # Enable CUDA support (yes/no)
+ENABLE_OMPI_TEST=${6:-yes}                      # Enable OpenMPI tests (yes/no)
 
-# Define supported algorithms for each collective type
-# WARNING:
-# ALLREDUCE_ALLGATHER_REDUCE (7) not included since it can crash, wasting compute hours. 
-# ALLGATHER_K_BRUCK (2) does not work, probably forcing it does not set radix value.
-# ALLGATHER_TWO_PROC (6) not included since it is only for 2 processes.
-# ALLGATHER_K_BRUCK_OVER (101) logic not implemented: requires an additional parameter.
-declare -A COLLECTIVE_ALGOS
-COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 8 9 10 11 12 13 101 102 103 201 202"
-COLLECTIVE_ALGOS[ALLGATHER]="0 1 3 4 5 102 103 201"
-COLLECTIVE_ALGOS[REDUCE_SCATTER]="0 1 2 3 4 101 102 103"
-
-# Modify algorithms if OMPI_TEST (open mpi with swing allreduce) is not used
-if [ "$ENABLE_OMPI_TEST" == "no" ]; then
-    COLLECTIVE_ALGOS[ALLREDUCE]="0 1 2 3 4 5 6 101 102 103 201 202"
-fi
-
-# Algorithms to skip if $N_NODES > $ARR_SIZE
-declare -A COLLECTIVE_SKIPS
-COLLECTIVE_SKIPS[ALLREDUCE]="4 5 6 9 10 11 12 13 102 103 202" # rab,swingBdw,ring (+variants)
-COLLECTIVE_SKIPS[ALLGATHER]=""
-COLLECTIVE_SKIPS[REDUCE_SCATTER]=""
 
 declare -A SIZES
-SIZES[ALLREDUCE]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
+SIZES[ALLREDUCE]="8 64 512" # 2048 16384 131072 1048576 8388608 67108864"
 SIZES[ALLGATHER]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
 SIZES[REDUCE_SCATTER]="8 64 512 2048 16384 131072 1048576 8388608 67108864"
 
 
-ALGOS=${COLLECTIVE_ALGOS[$COLLECTIVE_TYPE]}
-SKIP=${COLLECTIVE_SKIPS[$COLLECTIVE_TYPE]}
+# Define JSON file paths
+ALGO_JSON="scripts/algorithm_config.json"
+TEST_JSON="scripts/test_selection.json"
+
+# Call the function and store the result
+select_algorithms "$ALGO_JSON" "$TEST_JSON" || exit 1
+get_algorithm_names "$ALGO_JSON" || exit 1
+get_algorithm_by_tag "$ALGO_JSON" "SKIP" "skip" || exit 1
+
 ARR_SIZES=${SIZES[$COLLECTIVE_TYPE]}
+
 # Supported types are "int8 int16 int32 int64 int float double char unsigned_char"
 TYPES="int64"
 
@@ -106,10 +92,9 @@ if [ "$DEBUG_MODE" == no ]; then
     LIBSWING_VERSION=0.0.1
     OPERATOR=MPI_SUM
     OTHER=none
-    ALGO_NAMES=$(get_all_algorithm_names "$ALGOS")
 
     python $RES_DIR/generate_metadata.py "$LOCATION" "$TIMESTAMP" \
-          "$N_NODES" "$COLLECTIVE_TYPE" "$ALGOS" "$ALGO_NAMES" \
+          "$N_NODES" "$COLLECTIVE_TYPE" "$ALGOS" "$NAMES" \
           "$MPI_TYPE" "$MPI_VERSION" "$LIBSWING_VERSION" "$ENABLE_CUDA" \
           "$TYPES" "$OPERATOR" "$OTHER"
 

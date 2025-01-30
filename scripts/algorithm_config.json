@@ -1,0 +1,283 @@
+{
+  "ALLREDUCE": {
+    "0": {
+      "name": "DEFAULT_OMPI",
+      "desc": "Open MPI default algorithm selection",
+      "tags": [
+        "default",
+        "internal",
+        "ompi"
+      ]
+    },
+    "1": {
+      "name": "LINEAR_OMPI",
+      "desc": "Open MPI linear algorithm from `basic` module, consists in a Reduce to rank 0 followed by a Bcast. Both Reduce and Bcast are the one from the `basic` module. This algorithm is used for small messages. It can crash for big tests",
+      "tags": [
+        "linear",
+        "internal",
+        "small_sizes",
+        "ompi",
+        "can_crash"
+      ]
+    },
+    "2": {
+      "name": "NON_OVERLAPPING_OMPI",
+      "desc": "Open MPI non-overlapping algorithm, consists in a Reduce to rank 0 followed by a Bcast. Utilizes default Reduce and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
+      "tags": [
+        "non_overlapping",
+        "internal",
+        "small_sizes",
+        "ompi",
+        "can_crash"
+      ]
+    },
+    "3": {
+      "name": "RECURSIVE_DOUBLING_OMPI",
+      "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages",
+      "tags": [
+        "recursive_doubling",
+        "internal",
+        "small_sizes",
+        "medium_sizes",
+        "ompi"
+      ]
+    },
+    "4": {
+      "name": "RING_OMPI",
+      "desc": "Open MPI ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
+      "tags": [
+        "ring",
+        "internal",
+        "large_sizes",
+        "ompi",
+        "skip"
+      ]
+    },
+    "5": {
+      "name": "RING_SEGMENTED_OMPI",
+      "desc": "Open MPI ring segmented algorithm. Not to be used if `count`<`comm_sz`. It requires to set an additional parameter `segsize`. This algorithm is used for large messages",
+      "tags": [
+        "ring_segmented",
+        "ring",
+        "internal",
+        "large_sizes",
+        "ompi",
+        "segsize",
+        "additional_parameter",
+        "skip"
+      ]
+    },
+    "6": {
+      "name": "RABENSEIFNER_OMPI",
+      "desc": "Open MPI Rabenseifner algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for medium to large messages",
+      "tags": [
+        "rabenseifner",
+        "internal",
+        "medium_sizes",
+        "large_sizes",
+        "ompi",
+        "skip"
+      ]
+    },
+    "7": {
+      "name": "ALLGATHER_REDUCE_OMPI",
+      "desc": "Open MPI allgather reduce algorithm. This algorithm is used for small messages. It can crash for big tests",
+      "tags": [
+        "allgather_reduce",
+        "internal",
+        "small_sizes",
+        "ompi",
+        "can_crash"
+      ]
+    },
+    "8": {
+      "name": "SWING_LAT_OMPI",
+      "desc": "Open MPI internal swing latency optimal algorithm of `OMPI_TEST`. This algorithm is used for small to medium messages",
+      "tags": [
+        "swing_lat",
+        "internal",
+        "swing",
+        "latency_optimal",
+        "small_sizes",
+        "medium_sizes",
+        "ompi_test"
+      ]
+    },
+    "9": {
+      "name": "SWING_BDW_MEMCPY_OMPI",
+      "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_TEST`. Not to be used if `count`<`comm_sz`. This version leverages a memcpy operation to send a contiguous buffer. This algorithm is used for medium to large messages",
+      "tags": [
+        "swing_bdw_memcpy",
+        "internal",
+        "swing",
+        "bandwidth_optimal",
+        "memcpy",
+        "medium_sizes",
+        "large_sizes",
+        "ompi_test",
+        "skip"
+      ]
+    },
+    "10": {
+      "name": "SWING_BDW_DT_1_OMPI",
+      "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_TEST`. Not to be used if `count`<`comm_sz`. This version creates derived datatype to use a single send operation but requires the heap allocation, creation and destruction of 2*`comm_sz` derived datatypes. This algorithm is used for medium to large messages",
+      "tags": [
+        "swing_bdw_dt_1",
+        "internal",
+        "swing",
+        "bandwidth_optimal",
+        "derived_datatypes",
+        "medium_sizes",
+        "large_sizes",
+        "ompi_test",
+        "skip"
+      ]
+    },
+    "11": {
+      "name": "SWING_BDW_DT_2_OMPI",
+      "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_TEST`. Not to be used if `count`<`comm_sz`. This version creates derived datatype to use a single send operation and receive the message to a continuous buffer. Does not require the heap allocation of datatype array since it utilizes a single stack allocated one, overwriting it each time. This algorithm is used for medium to large messages",
+      "tags": [
+        "swing_bdw_dt_2",
+        "internal",
+        "swing",
+        "bandwidth_optimal",
+        "derived_datatypes",
+        "medium_sizes",
+        "large_sizes",
+        "ompi_test",
+        "skip"
+      ]
+    },
+    "12": {
+      "name": "SWING_BDW_SEGMENTED_OMPI",
+      "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_TEST`. Not to be used if `count`<`comm_sz`. This version utilizes many pipelined asyncrhonous send/recv operation to overlap communication and reduction. It requires an additional parameter `segsize`. This algorithm is used for medium to large messages",
+      "tags": [
+        "swing_bdw_segmented",
+        "internal",
+        "swing",
+        "bandwidth_optimal",
+        "segmented",
+        "additional_parameter",
+        "medium_sizes",
+        "large_sizes",
+        "ompi_test",
+        "skip"
+      ]
+    },
+    "13": {
+      "name": "SWING_BDW_STATIC_OMPI",
+      "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_TEST`. Not to be used if `count`<`comm_sz`. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+      "tags": [
+        "swing_bdw_static",
+        "internal",
+        "swing",
+        "bandwidth_optimal",
+        "static",
+        "medium_sizes",
+        "large_sizes",
+        "ompi_test",
+        "skip"
+      ]
+    },
+    "101": {
+      "name": "RECURSIVE_DOUBLING_OVER",
+      "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages",
+      "tags": [
+        "recursive_doubling",
+        "external",
+        "small_sizes",
+        "medium_sizes",
+        "over",
+        "libswing"
+      ]
+    },
+    "102": {
+      "name": "RING_OVER",
+      "desc": "Libswing external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
+      "tags": [
+        "ring",
+        "external",
+        "large_sizes",
+        "over",
+        "libswing",
+        "skip"
+      ]
+    },
+    "103": {
+      "name": "RABENSEIFNER_OVER",
+      "desc": "Libswing external Rabenseifner algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for medium to large messages",
+      "tags": [
+        "rabenseifner",
+        "external",
+        "medium_sizes",
+        "large_sizes",
+        "over",
+        "libswing",
+        "skip"
+      ]
+    },
+    "201": {
+      "name": "SWING_LAT_OVER",
+      "desc": "Libswing external swing latency optimal algorithm. This algorithm is used for small to medium messages",
+      "tags": [
+        "swing_lat",
+        "external",
+        "swing",
+        "latency_optimal",
+        "small_sizes",
+        "medium_sizes",
+        "over",
+        "libswing"
+      ]
+    },
+    "202": {
+      "name": "SWING_BDW_STATIC_OVER",
+      "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+      "tags": [
+        "swing_bdw_static",
+        "external",
+        "swing",
+        "bandwidth_optimal",
+        "static",
+        "medium_sizes",
+        "large_sizes",
+        "over",
+        "libswing",
+        "skip"
+      ]
+    }
+  },
+  "ALLGATHER": {
+    "0": {
+      "name": "DEFAULT_OMPI",
+      "desc": "Open MPI default algorithm selection",
+      "tags": [
+        "default",
+        "internal",
+        "ompi"
+      ]
+    },
+    "1": {
+      "name": "LINEAR_OMPI"
+    },
+    "2": "K_BRUCK_OMPI",
+    "3": "RECURSIVE_DOUBLING_OMPI",
+    "4": "RING_OMPI",
+    "5": "NEIGHBOR_OMPI",
+    "6": "TWO_PROC_OMPI",
+    "101": "K_BRUCK_OVER",
+    "102": "RECURSIVE_DOUBLING_OVER",
+    "103": "RING_OVER",
+    "201": "SWING_STATIC_OVER"
+  },
+  "REDUCE_SCATTER": {
+    "0": "DEFAULT_OMPI",
+    "1": "NON_OVERLAPPING_OMPI",
+    "2": "RECURSIVE_HALVING_OMPI",
+    "3": "RING_OMPI",
+    "4": "BUTTERFLY_OMPI",
+    "101": "RECURSIVE_HALVING_OVER",
+    "102": "RING_OVER",
+    "103": "BUTTERFLY_OVER"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "collective_type": "ALLREDUCE",
+  "include_by_tags": [
+    "libswing"
+  ],
+  "exclude_by_tags": [],
+  "include_specific_algorithms": [],
+  "exclude_specific_algorithms": []
+}

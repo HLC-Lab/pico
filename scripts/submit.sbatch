@@ -8,7 +8,6 @@
 #SBATCH --account=<account_name>     # Account name
 
 LOCATION=leonardo # possible locations are leonardo, snellius and local
-COLLECTIVE_TYPE=ALLREDUCE # possible collective types are ALLGATHER, ALLREDUCE, REDUCE_SCATTER
 DEBUG_MODE=no
 TIMESTAMP=$(date +"%Y_%m_%d___%H:%M:%S")
 ENABLE_CUDA=no
@@ -24,5 +23,5 @@ mkdir -p $HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/data
 #SBATCH --output=$HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/slurm-%j.out
 #SBATCH --error=$HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/slurm-%j.err
 
-$HOME/Swing_Test/scripts/run_test_suite.sh $SLURM_NNODES $COLLECTIVE_TYPE $DEBUG_MODE $TIMESTAMP $LOCATION $ENABLE_CUDA $ENABLE_OMPI_TEST
+$HOME/Swing_Test/scripts/run_test_suite.sh $SLURM_NNODES $DEBUG_MODE $TIMESTAMP $LOCATION $ENABLE_CUDA $ENABLE_OMPI_TEST
 
