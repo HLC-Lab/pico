@@ -131,7 +131,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, test_conf
     # Write the environment variables to a shell script that will be sourced
     with open("scripts/select_test/env_vars.sh", "w") as f:
         f.write(f"export COLLECTIVE_TYPE='{collective}'\n")
-        f.write(f"export ALGO='{algo_ids}'\n")
+        f.write(f"export ALGOS='{algo_ids}'\n")
         f.write(f"export NAMES='{algo_names}'\n")
         f.write(f"export SKIP='{skip_ids}'\n")
         f.write(f"export MPI_LIB='{mpi_type}'\n")

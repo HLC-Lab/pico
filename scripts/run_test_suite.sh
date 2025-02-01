@@ -16,7 +16,6 @@ fi
 DEBUG_MODE=${2:-no}                             # Enable debug mode (yes/no)
 TIMESTAMP=${3:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
 LOCATION=${4:-local}                            # Environment location
-ENABLE_CUDA=${5:-no}                            # Enable CUDA support (yes/no)
 
 
 # Run the Python script to set environment variables
@@ -25,11 +24,24 @@ source scripts/select_test/env_vars.sh
 
 # Use the environment variables
 echo "Running benchmarks for collective: $COLLECTIVE_TYPE"
-echo "Algorithms to run: $ALGO"
+echo "Algorithms to run: $ALGOS"
 echo "Algorithm names: $NAMES"
 echo "Algorithms to skip: $SKIP"
 echo "MPI Library: $MPI_LIB, Version: $MPI_LIB_VERSION"
 echo "Libswing Version: $LIBSWING_VERSION"
+
+TYPES="int64 int32"
+
+if [ "$DEBUG_MODE" == no ]; then
+    # TODO: this is only a proof of concept, to be modified later
+    # FIX: Ensure python venv and modules are correctly set up
+
+    python3 results/generate_metadata.py "$LOCATION" "$TIMESTAMP" \
+          "$N_NODES" "$COLLECTIVE_TYPE" "${ALGOS[@]}" "${NAMES[@]}" \
+          "$MPI_LIB" "$MPI_LIB_VERSION" "$LIBSWING_VERSION" "$CUDA" \
+          "${TYPES[@]}" "$MPI_OP" "$NOTES"
+
+fi
 
 # declare -A SIZES
 # SIZES[ALLREDUCE]="8 64 512" # 2048 16384 131072 1048576 8388608 67108864"
@@ -94,7 +106,7 @@ echo "Libswing Version: $LIBSWING_VERSION"
 #
 #     python $RES_DIR/generate_metadata.py "$LOCATION" "$TIMESTAMP" \
 #           "$N_NODES" "$COLLECTIVE_TYPE" "$ALGOS" "$NAMES" \
-#           "$MPI_LIB" "$MPI_LIB_VERSION" "$LIBSWING_VERSION" "$ENABLE_CUDA" \
-#           "$TYPES" "$OPERATOR" "$OTHER"
+#           "$MPI_LIB" "$MPI_LIB_VERSION" "$LIBSWING_VERSION" "$CUDA" \
+#           "$TYPES" "$MPI_OP" "$NOTES"
 #
 # fi
