@@ -33,15 +33,15 @@ all: $(OUTPUT)
 $(OUTPUT): $(OBJS)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking $@...$(NC)"
-	$(MPICC) $(CFLAGS) -o $@ $^ -L../lib -lswing -lm
+	@$(MPICC) $(CFLAGS) -o $@ $^ -L../lib -lswing -lm
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
 	@echo -e "$(YELLOW)[MPICC] Compiling $< -> $@...$(NC)"
-	$(MPICC) $(CFLAGS) -c $< -o $@
+	@$(MPICC) $(CFLAGS) -c $< -o $@
 
 # Clean target
 clean:
-	@echo -e "$(RED)[CLEAN] Removing test object files and binary...$(NC)"
-	rm -rf $(OBJ_DIR) $(OUTPUT)
+	@echo -e "[CLEAN] Removing test object files and binary..."
+	@rm -rf $(OBJ_DIR) $(OUTPUT)

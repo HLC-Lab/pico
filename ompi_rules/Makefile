@@ -3,7 +3,6 @@ CC = gcc
 CFLAGS = -g -Wall
 
 # Colors for output styling
-RED := \033[1;31m
 YELLOW := \033[1;33m
 NC := \033[0m
 
@@ -25,9 +24,9 @@ all: $(OUTPUT)
 $(OUTPUT): $(SRC_FILE)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
-	$(CC) $(CFLAGS) $< -o $@
+	@$(CC) $(CFLAGS) $< -o $@
 
 # Clean target
 clean:
-	@echo -e "$(RED)[CLEAN] Removing ompi_rules binary...$(NC)"
-	rm -rf $(OUTPUT)
+	@echo -e "[CLEAN] Removing ompi_rules binary..."
+	@rm -rf $(OUTPUT)
