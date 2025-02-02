@@ -1,6 +1,48 @@
 import json
+import jsonschema
 import sys
 import os
+
+# JON schema for the test configuration file
+test_config_schema = {
+    "type": "object",
+    "properties": {
+        "mpi": {
+            "type": "object",
+            "properties": {
+                "type": {"type": "string", "enum": ["ompi", "ompi_swing"]},
+                "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"}
+            },
+            "required": ["type", "version"],
+            "additionalProperties": False
+        },
+        "libswing_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "collective": {"type": "string", "enum": ["ALLREDUCE", "REDUCE_SCATTER", "ALLGATHER"]},
+        "MPI_Op": {"type": "string"},
+        "tags": {
+            "type": "object",
+            "properties": {
+                "include": {"type": "array", "items": {"type": "string"}},
+                "exclude": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": ["include", "exclude"],
+            "additionalProperties": False
+        },
+        "specific": {
+            "type": "object",
+            "properties": {
+                "include": {"type": "array", "items": {"type": "string"}},
+                "exclude": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": ["include", "exclude"],
+            "additionalProperties": False
+        },
+        "cuda": {"type": "boolean"},
+        "notes": {"type": "string"}
+    },
+    "required": ["mpi", "libswing_version", "collective", "tags", "specific", "cuda", "notes"],
+    "additionalProperties": False
+}
 
 def load_json(file_path):
     """Load the JSON test file and the algorithm
@@ -112,7 +154,6 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
         if any(tag in algo_data["tags"] for tag in exclude_tags):
             continue
 
-
         # Add to matching (and skip if skip-constraints are not met)
         if "constraints" in algo_data and check_skip(algo_data["constraints"]):
             skip_algorithms.append(algo_id)
@@ -160,13 +201,20 @@ def main():
     if len(sys.argv) != 2:
         print("Usage: python parse_test.py <number_of_nodes>")
         sys.exit(1)
-    if not ( os.path.isfile("scripts/algorithm_config.json") and os.path.isfile("scripts/select_test/test.json") ):
-        print("Error: algorithm_config.json or test.json not found.")
+    if not ( os.path.isfile("scripts/algorithm_config.json") and os.path.isfile("scripts/select_test/test_config.json") ):
+        print("Error: algorithm_config.json or test_config.json not found.")
         sys.exit(1)
 
     number_of_nodes = int(sys.argv[1])
     algorithm_config = load_json("scripts/algorithm_config.json")
-    test_config = load_json("scripts/select_test/test.json")
+    test_config = load_json("scripts/select_test/test_config.json")
+
+    # Validate the test_config.json
+    try:
+        jsonschema.validate(instance=test_config, schema=test_config_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        print(f"Validation error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Get matching algorithms
     matching_algorithms, skip_algorithms = get_matching_algorithms(algorithm_config, test_config, number_of_nodes)

@@ -1,3 +1,4 @@
+.SILENT:
 .PHONY: all clean libswing test ompi_rules
 
 # Variables for colors

@@ -1,6 +1,6 @@
 {
   "mpi": {
-    "type": "ompi_swing",
+    "type": "ompi",
     "version": "5.0.0"
   },
   "libswing_version": "1.0.0",
@@ -16,13 +16,8 @@
     ]
   },
   "specific": {
-    "include": [
-      "1",
-      "7"
-    ],
-    "exclude": [
-      "6"
-    ]
+    "include": [],
+    "exclude": []
   },
   "cuda": false,
   "notes": "nothing to declare agent"

@@ -17,11 +17,12 @@ DEBUG_MODE=${2:-no}                             # Enable debug mode (yes/no)
 TIMESTAMP=${3:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
 LOCATION=${4:-local}                            # Environment location
 
+# TODO: Ensure venv is activated with jsonschema installed
 if [ "$LOCATION" != "local" ]; then
     module load python
 fi
 
-# Run the Python script to set all test environment variables
+# Run the Python script to validate and parse the test configuration
 python3 scripts/select_test/parse_test.py $N_NODES || exit 1
 source scripts/select_test/test_env_vars.sh
 
@@ -51,7 +52,6 @@ else
     RULE_FILE_PATH=$SWING_DIR/ompi_rules/dynamic_rules.txt
     OUTPUT_DIR="$RES_DIR/$LOCATION/$TIMESTAMP/"
     DATA_DIR="$OUTPUT_DIR/data/"
-
 fi
 
 # Clean and compile the codebase
@@ -68,12 +68,6 @@ fi
 # Use the environment variables
 echo "Running benchmarks for collective: $COLLECTIVE_TYPE"
 echo "Algorithms to run: $ALGOS"
-if [ "$DEBUG_MODE" == no ]; then
-    echo "Algorithms to skip: $SKIP"
-    echo "Algorithm names: $NAMES"
-    echo "Output directory: $OUTPUT_DIR"
-    echo "Notes for this test: $NOTES"
-fi
 echo "MPI Library: $MPI_LIB, Version: $MPI_LIB_VERSION"
 echo "Libswing Version: $LIBSWING_VERSION"
 echo "CUDA Enabled: $CUDA"

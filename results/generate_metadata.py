@@ -1,7 +1,7 @@
 import os
 import csv
 import sys
-from typing import List, Optional
+from typing import List
 
 RESULTS_DIR = "results/"
 
@@ -21,7 +21,7 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int,
     collective_type (str): Type of collective operation used.
     algo_numbers (List[int]): Algorithms tested during the run.
     algo_names (List[str]): Names of the algorithms tested.
-    mpi_lib_type (str): The MPI library type (Open MPI, MPICH, Cray MPI...).
+    mpi_lib_type (str): The MPI library type.
     mpi_lib_version (str): Version of the MPI library used.
     libswing_version (str): Version of the libswing library used.
     cuda (bool): Whether CUDA-aware support is enabled.

@@ -34,8 +34,8 @@ source_environment() {
 
 # Compile the codebase
 compile_code() {
-    make clean
-    make_command="make all"
+    make clean -s
+    make_command="make all -s"
     [ "$MPI_LIB" == "OMPI_SWING" ] && make_command="$make_command OMPI_SWING=1"
     [ "$DEBUG_MODE" == "yes" ] && make_command="$make_command DEBUG=1"
 
