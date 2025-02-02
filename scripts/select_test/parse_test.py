@@ -1,4 +1,5 @@
 import json
+import jsonschema
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 import sys
@@ -41,7 +42,7 @@ test_config_schema = {
         "cuda": {"type": "boolean"},
         "notes": {"type": "string"}
     },
-    "required": ["mpi", "libswing_version", "collective", "tags", "specific", "cuda", "notes"],
+    "required": ["mpi", "libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda", "notes"],
     "additionalProperties": False
 }
 
