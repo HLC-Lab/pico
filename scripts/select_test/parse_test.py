@@ -3,69 +3,80 @@ import sys
 import os
 
 def load_json(file_path):
-    """Load a JSON file."""
+    """Load the JSON test file and the algorithm
+    config file"""
     with open(file_path, 'r') as file:
         return json.load(file)
 
-def check_constraints(algo_constraints, test_constraints, comm_sz: int):
-    """Check if the algorithm constraints match the test constraints."""
+def check_comm_sz(algo_constraints, comm_sz: int):
+    """Check if the given algorithm satisfies the
+    comm_sz related constraints"""
     for constraint in algo_constraints:
-        key = constraint["key"]
-        conditions = constraint["conditions"]
+        if constraint["key"] != "comm_sz":
+            continue
 
-        if key == "comm_sz":
-            test_value = comm_sz
-        else:
-            if key not in test_constraints:
-                return False
-            test_value = test_constraints[key]
-
-        for condition in conditions:
+        test_value = comm_sz
+        for condition in constraint["conditions"]:
             operator = condition["operator"]
             value = condition["value"]
 
-            if operator == ">=":
-                if not (test_value >= value):
-                    return False
-            elif operator == "<=":
-                if not (test_value <= value):
-                    return False
-            elif operator == "==":
-                if not (test_value == value):
-                    return False
-            elif operator == "is_power_of_two":
-                if not (test_value & (test_value - 1) == 0):
-                    return False
-            elif operator == "is_even":
-                if not (test_value % 2 == 0):
-                    return False
+            if operator == ">=" and not (test_value >= value):
+                return False
+            elif operator == "<=" and not (test_value <= value):
+                return False
+            elif operator == "==" and not (test_value == value):
+                return False
+            elif operator == "is_power_of_two" and not (test_value > 0 and (test_value & (test_value - 1)) == 0):
+                return False
+            elif operator == "is_even" and not (test_value % 2 == 0):
+                return False
 
     return True
 
-def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version):
-    """Check if the algorithm satisfies the required library dependencies."""
-    if "library" in algo_data:
-        if mpi_type.lower() == "openmpi":
-            if "ompi" not in algo_data["library"]:
-                return False
-            if not algo_data["library"]["ompi"].startswith(f">={mpi_version}"):
-                return False
-        elif mpi_type.lower() == "mpich":
-            if "mpich" not in algo_data["library"]:
-                return False
-            if not algo_data["library"]["mpich"].startswith(f">={mpi_version}"):
-                return False
-        if "libswing" in algo_data["library"]:
-            if not libswing_version or not algo_data["library"]["libswing"].startswith(f">={libswing_version}"):
-                return False
-    return True
+
+def check_skip(algo_constraints) -> bool:
+    """Check if the algorithm should be added to the SKIP list."""
+    for constraint in algo_constraints:
+        if constraint["key"] != "count":
+            continue
+
+        for condition in constraint["conditions"]:
+            operator = condition["operator"]
+            value = condition["value"]
+            if operator == ">=" and value == "comm_sz":
+                return True
+
+    return False
+
+
+def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version) -> bool:
+    """
+    Check if the algorithm's library dependencies are met.
+
+    Returns:
+        True if the dependencies are satisfied; False otherwise.
+    """
+    if "library" not in algo_data:
+        print(f"Warning: No library data found for algorithm {algo_data.get('name', 'UNKNOWN')}.", file=sys.stderr)
+        sys.exit(1)
+
+    library_dependencies = algo_data["library"]
+
+    if "libswing" in library_dependencies and library_dependencies["libswing"] <= libswing_version:
+        return True
+
+    if str(mpi_type) in library_dependencies and library_dependencies[str(mpi_type)] <= mpi_version:
+        return True
+
+    return False
+
 
 def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
     """Get algorithms that match the test configuration."""
     collective = test_config["collective"]
     mpi_type = test_config["mpi"]["type"]
     mpi_version = test_config["mpi"]["version"]
-    libswing_version = test_config.get("libswing_version", None)
+    libswing_version = test_config["libswing_version"]
     include_tags = test_config["tags"]["include"]
     exclude_tags = test_config["tags"]["exclude"]
     include_specific = test_config["specific"]["include"]
@@ -74,41 +85,43 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
     matching_algorithms = []
     skip_algorithms = []
     
-    if collective in algorithm_config["collective"]:
-        for algo_id, algo_data in algorithm_config["collective"][collective].items():
-            if not check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version):
-                continue
+    if collective not in algorithm_config["collective"]:
+        return matching_algorithms, skip_algorithms
 
-            # If in include_specific, add the algorithm anyway (library still checked)
-            if include_specific and algo_id in include_specific:
-                if "constraints" in algo_data:
-                    if not check_constraints(algo_data["constraints"], {}, comm_sz):
-                        skip_algorithms.append(algo_id)
+    for algo_id, algo_data in algorithm_config["collective"][collective].items():
+        # Check if the algorithm satisfies the library dependencies and comm_sz constraints.
+        if not check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version):
+            continue
+        if "constraints" in algo_data and not check_comm_sz(algo_data["constraints"], comm_sz):
+            continue
 
-                matching_algorithms.append({
-                    "id": algo_id,
-                    "name": algo_data["name"]
-                })
-                continue
+        # Handle specific inclusions: add these algorithms regardless of tags.
+        if algo_id in include_specific:
+            if "constraints" in algo_data and check_skip(algo_data["constraints"]):
+                skip_algorithms.append(algo_id)
+            matching_algorithms.append({ "id": algo_id, "name": algo_data["name"] })
+            continue
 
-            if exclude_specific and algo_id in exclude_specific:
-                continue
-            if not any(tag in algo_data["tags"] for tag in include_tags):
-                continue
-            if any(tag in algo_data["tags"] for tag in exclude_tags):
-                continue
+        # Exclude if algorithm is in the specific exclusion list regardless of tags.
+        if exclude_specific and algo_id in exclude_specific:
+            continue
 
-            # Check constraints
-            if "constraints" in algo_data:
-                if not check_constraints(algo_data["constraints"], {}, comm_sz):
-                    skip_algorithms.append(algo_id)
+        # Tag based filtering
+        if not any(tag in algo_data["tags"] for tag in include_tags):
+            continue
+        if any(tag in algo_data["tags"] for tag in exclude_tags):
+            continue
 
-            # If all checks pass, add the algorithm to the matching list
-            matching_algorithms.append({
-                "id": algo_id,
-                "name": algo_data["name"]
-            })
-    
+
+        # Add to matching (and skip if skip-constraints are not met)
+        if "constraints" in algo_data and check_skip(algo_data["constraints"]):
+            skip_algorithms.append(algo_id)
+        matching_algorithms.append({ "id": algo_id, "name": algo_data["name"] })
+
+    if not matching_algorithms:
+        print("No matching algorithms found for the given test configuration.", file=sys.stderr)
+        sys.exit(1)
+
     return matching_algorithms, skip_algorithms
 
 
@@ -119,7 +132,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, test_conf
         mpi_op = test_config["MPI_Op"]
     else:
         mpi_op = "null"
-    mpi_type = test_config["mpi"]["type"]
+    mpi_type = test_config["mpi"]["type"].upper()
     mpi_version = test_config["mpi"]["version"]
     libswing_version = test_config.get("libswing_version", "")
     cuda = test_config["cuda"]
@@ -129,7 +142,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, test_conf
     notes = test_config["notes"]
 
     # Write the environment variables to a shell script that will be sourced
-    with open("scripts/select_test/env_vars.sh", "w") as f:
+    with open("scripts/select_test/test_env_vars.sh", "w") as f:
         f.write(f"export COLLECTIVE_TYPE='{collective}'\n")
         f.write(f"export ALGOS='{algo_ids}'\n")
         f.write(f"export NAMES='{algo_names}'\n")

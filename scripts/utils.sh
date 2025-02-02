@@ -36,7 +36,7 @@ source_environment() {
 compile_code() {
     make clean
     make_command="make all"
-    [ "$ENABLE_OMPI_TEST" == "yes" ] && make_command="$make_command OMPI_TEST=1"
+    [ "$MPI_LIB" == "OMPI_SWING" ] && make_command="$make_command OMPI_SWING=1"
     [ "$DEBUG_MODE" == "yes" ] && make_command="$make_command DEBUG=1"
 
     if ! $make_command; then

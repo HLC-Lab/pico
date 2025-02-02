@@ -16,12 +16,12 @@ libswing:
 # Build the test executable
 test: libswing
 	@echo -e "$(BLUE)[BUILD] Compiling test executable...$(NC)"
-	$(MAKE) -C test $(if $(OMPI_TEST),OMPI_TEST=$(OMPI_TEST)) $(if $(DEBUG),DEBUG=$(DEBUG))
+	$(MAKE) -C test $(if $(OMPI_SWING),OMPI_SWING=$(OMPI_SWING)) $(if $(DEBUG),DEBUG=$(DEBUG))
 
 # Build the change_collective_rules program
 ompi_rules:
 	@echo -e "$(BLUE)[BUILD] Compiling ompi_rules executable...$(NC)"
-	$(MAKE) -C ompi_rules $(if $(OMPI_TEST),OMPI_TEST=$(OMPI_TEST))
+	$(MAKE) -C ompi_rules $(if $(OMPI_SWING),OMPI_SWING=$(OMPI_SWING))
 
 # Clean all builds
 clean:

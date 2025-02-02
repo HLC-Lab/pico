@@ -35,7 +35,7 @@ int update_file(const char *filename, int new_value, rules_coll_t coll) {
 
   switch (coll) {
     case ALLREDUCE:
-      #ifdef OMPI_TEST
+      #ifdef OMPI_SWING
       if (!((new_value >= 0 && new_value <= 7) ||       // [0-7] (default ompi)
             (new_value >= 8 && new_value <= 13) ||      // [8-13] (ompi test)
             (new_value >= 101 && new_value <= 103) ||   // [101-103] (default over)

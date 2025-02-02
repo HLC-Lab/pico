@@ -1,6 +1,6 @@
 {
   "mpi": {
-    "type": "OpenMPI",
+    "type": "ompi_swing",
     "version": "5.0.0"
   },
   "libswing_version": "1.0.0",

@@ -68,7 +68,7 @@ static inline int set_allreduce_algorithm(allreduce_algo_t * algorithm, int algo
     case 7:
       *algorithm = ALLREDUCE_ALLGATHER_REDUCE_OMPI;
       break;
-#ifdef OMPI_TEST
+#ifdef OMPI_SWING
     case 8:
       *algorithm = ALLREDUCE_SWING_LAT_OMPI;
       break;
