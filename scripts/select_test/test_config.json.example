@@ -1,0 +1,24 @@
+{
+  "mpi": {
+    "type": "ompi",
+    "version": "5.0.0"
+  },
+  "libswing_version": "1.0.0",
+  "collective": "ALLREDUCE",
+  "MPI_Op": "MPI_SUM",
+  "tags": {
+    "include": [
+      "internal",
+      "external"
+    ],
+    "exclude": [
+      "can_crash"
+    ]
+  },
+  "specific": {
+    "include": [],
+    "exclude": []
+  },
+  "cuda": false,
+  "notes": "nothing to declare agent"
+}
