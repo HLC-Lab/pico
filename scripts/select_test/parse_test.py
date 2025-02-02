@@ -1,5 +1,6 @@
 import json
-import jsonschema
+from jsonschema import validate
+from jsonschema.exceptions import ValidationError
 import sys
 import os
 
