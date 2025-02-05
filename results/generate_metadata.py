@@ -5,33 +5,11 @@ from typing import List
 
 RESULTS_DIR = "results/"
 
+
 # Update or create metadata CSV
-def update_metadata(system_name: str, timestamp: str, number_of_nodes: int,
-                     collective_type: str, algo_numbers: List[int], algo_names: List[str],
-                     mpi_lib_type: str, mpi_lib_version : str,
-                     libswing_version: str, cuda: bool, datatype: List[str],
-                     operator: str, other: str):
-    """
-    Updates or creates a CSV file to store metadata for test results.
-
-    Parameters:
-    system_name (str): The name of the system under test.
-    timestamp (str): The timestamp of when the test was run.
-    number_of_nodes (int): Number of nodes used in the test.
-    collective_type (str): Type of collective operation used.
-    algo_numbers (List[int]): Algorithms tested during the run.
-    algo_names (List[str]): Names of the algorithms tested.
-    mpi_lib_type (str): The MPI library type.
-    mpi_lib_version (str): Version of the MPI library used.
-    libswing_version (str): Version of the libswing library used.
-    cuda (bool): Whether CUDA-aware support is enabled.
-    datatype (List[str]): Data type(s) involved in the test.
-    operator (str): Operator used, if applicable.
-    other (str): Additional information about the test.
-
-    Returns:
-    None
-    """
+def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, datatypes : List[str],
+                    collective_type: str, algos: List[str], mpi_lib: str, mpi_lib_version : str,
+                     libswing_version: str, cuda: bool, mpi_op: str | None, notes: str | None):
     output_file = os.path.join(RESULTS_DIR, f"{system_name}_metadata.csv")
 
     # Check if file exists to determine whether to write the header
@@ -42,16 +20,14 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int,
             "timestamp",
             "number_of_nodes",
             "collective_type",
-            "algo_numbers",
-            "algo_names",
-            "mpi_lib_type",
+            "algos",
+            "datatypes",
+            "mpi_lib",
             "mpi_lib_version",
             "libswing_version",
-            "cuda",
-            "datatype",
-            "operator",
-            "other"
-        ]
+            "CUDA",
+            "MPI_Op",
+            "notes"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         # Write header only if the file is new
@@ -63,42 +39,45 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int,
             "timestamp": timestamp,
             "number_of_nodes": number_of_nodes,
             "collective_type": collective_type,
-            "algo_numbers": ",".join(map(str, algo_numbers)),
-            "algo_names": ",".join(algo_names),
-            "mpi_lib_type": mpi_lib_type,
+            "algos": " ".join(algos),
+            "datatypes": " ".join(datatypes),
+            "mpi_lib": mpi_lib,
             "mpi_lib_version": mpi_lib_version,
             "libswing_version": libswing_version,
-            "cuda": str(cuda),
-            "datatype": ",".join(datatype),
-            "operator": operator,
-            "other": other
+            "CUDA": cuda,
+            "MPI_Op": mpi_op,
+            "notes": notes
         })
 
 if __name__ == "__main__":
-    if len(sys.argv) != 14:
+    if len(sys.argv) != 5:
         print("Usage: python update_metadata.py <system_name> <timestamp> \
-                <number_of_nodes> <collective_type> <algo_numbers> <algo_names> \
-                <mpi_lib_type> <mpi_lib_version> <libswing_version> \
-                <cuda> <datatype> <mpi_op> <notes>")
+                <number_of_nodes>", file=sys.stderr)
         sys.exit(1)
 
     # Collect arguments from command line
     system_name = sys.argv[1]
     timestamp = sys.argv[2]
     number_of_nodes = int(sys.argv[3])
-    collective_type = sys.argv[4]
-    algo_numbers = list(map(int, sys.argv[5].split(" ")))
-    algo_names = sys.argv[6].split(" ")
-    mpi_lib_type = sys.argv[7]
-    mpi_lib_version = sys.argv[8]
-    libswing_version = sys.argv[9]
-    cuda = sys.argv[10].lower == "true"
-    datatype = sys.argv[11].split(" ")
-    operator = sys.argv[12]
-    other = sys.argv[13]
 
-    update_metadata(system_name, timestamp, number_of_nodes, \
-                    collective_type, algo_numbers, algo_names, mpi_lib_type, \
-                    mpi_lib_version, libswing_version, cuda, \
-                    datatype, operator, other)
+    collective_type = os.getenv('COLLECTIVE_TYPE')
+    algos = os.getenv('ALGOS')
+    datatypes = os.getenv('TYPES')
+    mpi_lib = os.getenv('MPI_LIB')
+    mpi_lib_version = os.getenv('MPI_LIB_VERSION')
+    libswing_version = os.getenv('LIBSWING_VERSION')
+    cuda = os.getenv('CUDA')
+    mpi_op = os.getenv('MPI_OP')
+    notes = os.getenv('NOTES')
+    if not (collective_type and algos and datatypes and mpi_lib and mpi_lib_version and libswing_version and cuda):
+        print ("Environment variables not set.", file=sys.stderr)
+        sys.exit(1)
+
+    algos = algos.split(" ")
+    datatypes = datatypes.split(" ")
+    cuda = cuda.lower() == "true"
+
+    update_metadata(system_name, timestamp, number_of_nodes, datatypes, \
+                    collective_type, algos, mpi_lib, mpi_lib_version, \
+                    libswing_version, cuda, mpi_op = mpi_op, notes = notes)
     print(f"Metadata updated for {system_name} at {timestamp}.")

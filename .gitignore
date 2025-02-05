@@ -9,4 +9,4 @@ compile_commands.json
 out
 results/local/*
 results/local_metadata.csv
-scripts/select_test/test_env_vars.sh
+scripts/select_test/*_env.sh

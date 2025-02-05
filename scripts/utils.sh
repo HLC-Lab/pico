@@ -36,7 +36,6 @@ source_environment() {
 compile_code() {
     make clean -s
     make_command="make all -s"
-    [ "$MPI_LIB" == "OMPI_SWING" ] && make_command="$make_command OMPI_SWING=1"
     [ "$DEBUG_MODE" == "yes" ] && make_command="$make_command DEBUG=1"
 
     if ! $make_command; then
@@ -77,12 +76,12 @@ run_test() {
     local debug_mode=$5
 
     if [ "$debug_mode" == "yes" ]; then
-      echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
+        echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
     else
-      echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo: Iter: $iter)"
+        echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
     fi
 
-    $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $type $algo $OUTPUT_DIR
+    $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type $OUTPUT_DIR
 }
 
 # Test algorithms here, loop through:
@@ -103,8 +102,9 @@ run_all_tests() {
 
     for algo in ${algos[@]}; do
         # Update dynamic rule file for the algorithm
-        $RULE_UPDATER_EXEC $RULE_FILE_PATH $algo
-        export OMPI_MCA_coll_tuned_dynamic_rules_filename=${RULE_FILE_PATH}
+        echo "Updating dynamic rule file for algorithm $algo..."
+        python3 $RULE_UPDATER $ALGORITHM_CONFIG $DYNAMIC_RULE_FILE $algo || exit 1
+        export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
 
         for size in ${sizes[@]}; do
             # Skip specific algorithms if conditions are met
@@ -121,4 +121,5 @@ run_all_tests() {
             done
         done
     done
+
 }

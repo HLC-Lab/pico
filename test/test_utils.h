@@ -26,125 +26,9 @@ typedef enum{
   COLL_UNKNOWN
 }coll_t;
 
-
-/**
- * @enum allreduce_algo_t
- *
- * @brief Defines the standard Allreduce algorithms implemented in Open MPI coll module,
- * swing algorithms in Ompi Test repo and algorithms in `libswing.a`. It only provides
- * symbolic names for algorithm selection.
- *
- * TODO: implement conditional checks for OMPI vs MPICH
- * */
-typedef enum {
-  // Default Open MPI Allreduce algorithms defined in coll module
-  ALLREDUCE_DEFAULT_OMPI = 0,
-  ALLREDUCE_LINEAR_OMPI,
-  ALLREDUCE_NON_OVERLAPPING_OMPI,
-  ALLREDUCE_RECURSIVE_DOUBLING_OMPI,
-  ALLREDUCE_RING_OMPI,
-  ALLREDUCE_RING_SEGMENTED_OMPI,
-  ALLREDUCE_RABENSEIFNER_OMPI,
-  ALLREDUCE_ALLGATHER_REDUCE_OMPI,
-
-  // Swing algorithms in Open MPI Test repo
-#ifdef OMPI_SWING
-  ALLREDUCE_SWING_LAT_OMPI,
-  ALLREDUCE_SWING_BDW_MEMCPY_OMPI,
-  ALLREDUCE_SWING_BDW_DT_1_OMPI,
-  ALLREDUCE_SWING_BDW_DT_2_OMPI,
-  ALLREDUCE_SWING_BDW_SEG_OMPI,
-  ALLREDUCE_SWING_BDW_STATIC_OMPI,
-#endif
-
-  // Classic allreduce algorithms defined in libswing.a (reserved range starting from 101)
-  ALLREDUCE_RECURSIVE_DOUBLING_OVER = 101,
-  ALLREDUCE_RING_OVER,
-  ALLREDUCE_RABENSEIFNER_OVER,
-
-  // Swing algorithms defined in libswing.a (reserved range starting from 201)
-  ALLREDUCE_SWING_LAT_OVER = 201,
-  ALLREDUCE_SWING_BDW_STATIC_OVER,
-
-} allreduce_algo_t;
-
-/**
- * @enum allgather_algo_t
- *
- * @brief Defines the standard Allgather algorithms implemented in Open MPI coll module,
- * and algorithms in `libswing.a`. It only provides symbolic names for algorithm selection.
- * */
-typedef enum{
-  // Default Open MPI Allgather algorithms defined in coll module
-  ALLGATHER_DEFAULT_OMPI = 0,
-  ALLGATHER_LINEAR_OMPI,
-  ALLGATHER_K_BRUCK_OMPI,
-  ALLGATHER_RECURSIVE_DOUBLING_OMPI,
-  ALLGATHER_RING_OMPI,
-  ALLGATHER_NEIGHBOR_OMPI,
-  ALLGATHER_TWO_PROC_OMPI,
-
-  // Classic Allgather algorithms defined in libswing.a (reserved range starting from 101)
-  ALLGATHER_K_BRUCK_OVER = 101,
-  ALLGATHER_RECURSIVE_DOUBLING_OVER,
-  ALLGATHER_RING_OVER,
-
-  // Swing algorithms defined in libswing.a (reserved range starting from 201)
-  ALLGATHER_SWING_STATIC_OVER = 201,
-
-}allgather_algo_t;
-
-/**
- * @enum reduce_scatter_algo_t
- *
- * @brief Defines the standard Reduce Scatter algorithms implemented in Open MPI coll module,
- * and algorithms in `libswing.a`. It only provides symbolic names for algorithm selection.
- * */
-typedef enum{
-  // Default Open MPI Reduce Scatter algorithms defined in coll module
-  REDUCE_SCATTER_DEFAULT_OMPI = 0,
-  REDUCE_SCATTER_NON_OVERLAPPING_OMPI,
-  REDUCE_SCATTER_RECURSIVE_HALVING_OMPI,
-  REDUCE_SCATTER_RING_OMPI,
-  REDUCE_SCATTER_BUTTERFLY_OMPI,
-
-  // Classic Reduce Scatter algorithms defined in libswing.a (reserved range starting from 101)
-  REDUCE_SCATTER_RECURSIVE_HALVING_OVER = 101,
-  REDUCE_SCATTER_RING_OVER,
-  REDUCE_SCATTER_BUTTERFLY_OVER,
-
-}reduce_scatter_algo_t;
-
-
-/**
- * @struct routine_decision_t
- * @brief Represents a decision about a collective operation and its corresponding algorithm.
- *
- * This structure allows the user to specify:
- * - The collective operation to be performed (`coll_t`).
- * - The specific algorithm to use for that operation, based on the collective type.
- */
-typedef struct {
-  coll_t collective; /**< Specifies the type of collective operation. */
-
-  /**
-    * @union algorithm
-    * @brief Holds the specific algorithm for the selected collective operation.
-    */
-  union {
-    allreduce_algo_t allreduce_algorithm;
-    allgather_algo_t allgather_algorithm;
-    reduce_scatter_algo_t reduce_scatter_algorithm;
-  } algorithm;
-
-} routine_decision_t;
-
-//-----------------------------------------------------------------------------------------------
-//                    COLLECTIVE SPECIFIC MEMORY ALLOCATORS
-//-----------------------------------------------------------------------------------------------
-
 #define ALLOCATOR_ARGS    void **sbuf, void **rbuf, void **rbuf_gt, size_t count,\
                           size_t type_size, MPI_Comm comm
+
 /**
 * @typedef allocator_func_ptr
 *
@@ -152,58 +36,50 @@ typedef struct {
 */
 typedef int (*allocator_func_ptr)(ALLOCATOR_ARGS);
 
-
-/**
-* @brief Allocates memory for the send buffer, receive buffer,
-* and ground-truth buffer for an Allreduce operation.
-*
-* @return 0 on success, -1 on error.
-*/
 int allreduce_allocator(ALLOCATOR_ARGS);
-
-/**
-* @brief Allocates memory for the send buffer, receive buffer,
-* and ground-truth buffer for an Allgather operation.
-*
-* @return 0 on success, -1 on error.
-*/
 int allgather_allocator(ALLOCATOR_ARGS);
-
-/**
-* @brief Allocates memory for the send buffer, receive buffer,
-* and ground-truth buffer for a Reduce Scatter operation.
-*
-* @return 0 on success, -1 on error.
-*/
 int reduce_scatter_allocator(ALLOCATOR_ARGS);
 
+typedef int (*allreduce_func_ptr)(ALLREDUCE_ARGS);
+typedef int (*allgather_func_ptr)(ALLGATHER_ARGS);
+typedef int (*reduce_scatter_func_ptr)(REDUCE_SCATTER_ARGS);
+
+typedef int (*reduce_scatter_gt_func_ptr)(REDUCE_SCATTER_ARGS, void *rbuf_gt);
+typedef int (*allreduce_gt_func_ptr)(ALLREDUCE_ARGS, void *rbuf_gt);
+typedef int (*allgather_gt_func_ptr)(ALLGATHER_ARGS, void *rbuf_gt);
+
+
 /**
-* @brief Select and returns the appropriate allocator function based
-* on the collective type. It returns NULL if the collective type is 
-* not supported.
-*
-* @param test_routine `routine_decision_t` structure containing the
-*                      collective type informations.
-*
-* @return Pointer to the selected allocator function, or NULL if the
-*         collective type is not supported.
-*
-* WARNING: While `count` always represents the number of elements in the
-* biggest buffer (be it send or receive), the actual memory allocation
-* for each buffer is determined by the collective type.
-*/
-static inline allocator_func_ptr get_allocator(routine_decision_t test_routine) {
-  switch (test_routine.collective) {
-    case ALLREDUCE:
-      return allreduce_allocator;
-    case ALLGATHER:
-      return allgather_allocator;
-    case REDUCE_SCATTER:
-      return reduce_scatter_allocator;
-    default:
-      return NULL;
-  }
-}
+ * @struct test_routine_t
+ * @brief Structure to hold collective type and function pointers
+ * for collective specific allocator, custom collective and 
+ * ground truth functions pointers.
+ *
+ * @var collective Specifies the type of collective operation.
+ * @var allocator Pointer to the memory allocator function.
+ * @var function Union of function pointers for allreduce, allgather and reduce scatter.
+ * @var gt_check Union of function pointers for ground truth checking functions.
+ */
+typedef struct {
+  coll_t collective; /**< Specifies the type of collective operation. */
+
+  allocator_func_ptr allocator; /**< Pointer to the memory allocator function. */
+
+  /** Union of function pointers for custom collective functions. */
+  union {
+    allreduce_func_ptr allreduce;
+    allgather_func_ptr allgather;
+    reduce_scatter_func_ptr reduce_scatter;
+  } function;
+
+  /** Union of function pointers for ground truth checking functions. */
+  union {
+    allreduce_gt_func_ptr allreduce;
+    allgather_gt_func_ptr allgather;
+    reduce_scatter_gt_func_ptr reduce_scatter;
+  } gt_check;
+} test_routine_t;
+
 //-----------------------------------------------------------------------------------------------
 //                FUNCTION POINTER TYPES AND WRAPPER FOR CUSTOM COLLECTIVE FUNCTIONS
 // ----------------------------------------------------------------------------------------------
@@ -255,37 +131,43 @@ static inline int allgather_wrapper(ALLGATHER_ARGS){
 //                                MAIN BENCHMARK LOOP FUNCTIONS
 //-----------------------------------------------------------------------------------------------
 
+
+int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
+              MPI_Datatype dtype, MPI_Comm comm, int iter, double *times);
 /**
  * @brief This fucntion benchmarks the allreduce operation using the selected algorithm.
  */
-void allreduce_test_loop(ALLREDUCE_ARGS, int iter, double *times, allreduce_algo_t algorithm);
+void allreduce_test_loop(ALLREDUCE_ARGS, int iter, double *times, test_routine_t test_routine);
 
 /**
  * @brief This fucntion benchmarks the allgather operation using the selected algorithm.
  */
-void allgather_test_loop(ALLGATHER_ARGS, int iter, double *times, allgather_algo_t algorithm);
+void allgather_test_loop(ALLGATHER_ARGS, int iter, double *times, test_routine_t test_routine);
 
 /**
  * @brief This fucntion benchmarks the reduce scatter operation using the selected algorithm.
  */
-void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double *times, reduce_scatter_algo_t algorithm);
-//
+void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double *times, test_routine_t test_routine);
+
 
 //-----------------------------------------------------------------------------------------------
 //                     SELECT ALGORITHM AND COMMAND LINE PARSING FUNCTIONS
 //-----------------------------------------------------------------------------------------------
 
 /**
- * @brief Populates a `routine_decision_t` structure based on environment variables.
+ * @brief Populates a `test_routine_t` structure based on environment variables
+ * and command-line arguments.
  *
- * This function reads the `COLLECTIVE_TYPE` environment variable to determine
- * the collective type. Then, it reads the corresponding `ALGORITHM` environment
- * variable to determine the algorithm for the selected collective.
+ * This function reads the `COLLECTIVE_TYPE` environment variable and reads the 
+ * `algorithm` command-line argument to popuplate the `test_routine_t` structure
+ * with the appropriate collective type and function pointers.
  *
- * @param test_routine Pointer to a `routine_decision_t` structure to populate.
+ * @param test_routine Pointer to a `test_routine_t` structure to populate.
+ * @param algorithm The algorithm name as a string.
+ *
  * @return `0` on success, `-1` on error.
  */
-int get_routine(routine_decision_t *test_routine, int algorithm);
+int get_routine(test_routine_t *test_routine, const char *algorithm);
 
 
 /**
@@ -293,16 +175,16 @@ int get_routine(routine_decision_t *test_routine, int algorithm);
  *
  * @param argc Number of arguments.
  * @param argv Argument vector.
- * @param[out] array_size Size of the array.
+ * @param[out] array_count Size of the array.
  * @param[out] iter Number of iterations.
+ * @param[out] algprithm Algorithm name.
  * @param[out] type_string Data type as a string.
- * @param[out] alg_number Algorithm number.
  * @param[out] outputdir Output directory path.
  * @return 0 on success, -1 on error.
  */
-int get_command_line_arguments(int argc, char** argv, size_t *array_size, int* iter,
-                               const char **type_string, int *alg_number,
-                               const char ** outputdir);
+int get_command_line_arguments(int argc, char** argv, size_t *array_count,
+                               int* iter, const char **algorithm, const
+                               char **type_string, const char **outputdir);
 
 
 /**
@@ -319,6 +201,8 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
 //                                   GROUND TRUTH CHECK FUNCTIONS
 //-----------------------------------------------------------------------------------------------
 
+int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt,
+                       size_t count, MPI_Datatype dtype, MPI_Comm comm);
 /**
  * @brief Performs a ground-truth check for the result of an MPI Allreduce operation.
  *
@@ -415,7 +299,7 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm);
  * @return 0 on success, -1 if the data type is unsupported.
  */
 int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t array_size,
-                         MPI_Comm comm, routine_decision_t test_routine);
+                         MPI_Comm comm, test_routine_t test_routine);
 
 
 /**
@@ -458,7 +342,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
  * @return 0 on success, -1 if the data type is unsupported.
  */
 int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
-                    MPI_Comm comm, routine_decision_t test_routine);
+                    MPI_Comm comm, test_routine_t test_routine);
 
 /**
  * @brief Prints the contents of two buffers for debugging purposes.

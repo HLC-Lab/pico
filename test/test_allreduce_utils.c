@@ -20,46 +20,19 @@ int allreduce_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
   return 0; // Success
 }
 
-/**
- * @brief Selects the appropriate allreduce algorithm based on an algorithm number.
- * 
- * This function returns a pointer to the appropriate allreduce function based on the provided
- * algorithm enum. If the algorithm number does not match any custom implementation, it returns
- * a pointer to the allreduce_wrapper function by default.
- * 
- * @param algorithm The algorithm enum specifying which allreduce function to use.
- * 
- * @return Pointer to the selected allreduce function.
- *
- * WARNING: This function does not check if the algorithm number is valid. It is the caller's
- * responsibility
- */
-static inline allreduce_func_ptr get_allreduce_function(allreduce_algo_t algorithm) {
-  switch (algorithm) {
-    case ALLREDUCE_RECURSIVE_DOUBLING_OVER:
-      return allreduce_recursivedoubling;
-    case ALLREDUCE_SWING_LAT_OVER:
-      return allreduce_swing_lat;
-    case ALLREDUCE_SWING_BDW_STATIC_OVER:
-      return allreduce_swing_bdw_static;
-    default:
-      return allreduce_wrapper;
-  }
-}
 
-void allreduce_test_loop(ALLREDUCE_ARGS, int iter, double *times, allreduce_algo_t algorithm) {
-  allreduce_func_ptr allreduce_func = get_allreduce_function(algorithm);
-
+void allreduce_test_loop(ALLREDUCE_ARGS, int iter, double *times, test_routine_t test_routine) {
   double start_time, end_time;
 
   for (int i = 0; i < iter; i++) {
     MPI_Barrier(comm);
     start_time = MPI_Wtime();
-    allreduce_func(sbuf, rbuf, count, dtype, MPI_SUM, comm);
+    test_routine.function.allreduce(sbuf, rbuf, count, dtype, MPI_SUM, comm);
     end_time = MPI_Wtime();
     times[i] = end_time - start_time;
   }
 }
+
 
 int allreduce_gt_check(ALLREDUCE_ARGS, void *rbuf_gt) {
   // Compute the ground-truth result using PMPI_Allreduce.

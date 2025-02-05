@@ -57,43 +57,14 @@ int reduce_scatter_gt_check(REDUCE_SCATTER_ARGS, void *rbuf_gt) {
   return 0; // Success.
 }
 
-/**
- * @brief Selects the appropriate reduce scatter algorithm based on an algorithm number.
- * 
- * This function returns a pointer to the appropriate reduce scatter function based on the
- * provided algorithm enum. If the algorithm number does not match any custom implementation,
- * it returns a pointer to the MPI_Reduce_scatter function by default.
- * 
- * @param algorithm The algorithm enum specifying which allreduce function to use.
- * 
- * @return Pointer to the selected allreduce function.
- *
- * WARNING: This function does not check if the algorithm number is valid. It is the caller's
- * responsibility
- */
-static inline reduce_scatter_func_ptr get_reduce_scatter_function(reduce_scatter_algo_t algorithm) {
-  switch (algorithm) {
-    case REDUCE_SCATTER_RECURSIVE_HALVING_OVER:
-      return reduce_scatter_recursivehalving;
-    case REDUCE_SCATTER_RING_OVER:
-      return reduce_scatter_ring;
-    case REDUCE_SCATTER_BUTTERFLY_OVER:
-      return reduce_scatter_butterfly;
-    default:
-      return MPI_Reduce_scatter;
-  }
-}
 
-
-void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double *times, reduce_scatter_algo_t algorithm){
-  reduce_scatter_func_ptr reduce_scatter_func = get_reduce_scatter_function(algorithm);
-
+void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double *times, test_routine_t test_routine) {
   double start_time, end_time;
 
   for (int i = 0; i < iter; i++) {
     MPI_Barrier(comm);
     start_time = MPI_Wtime();
-    reduce_scatter_func(sbuf, rbuf, rcounts, dtype, op, comm);
+    test_routine.function.reduce_scatter(sbuf, rbuf, rcounts, dtype, op, comm);
     end_time = MPI_Wtime();
     times[i] = end_time - start_time;
   }

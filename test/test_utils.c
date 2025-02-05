@@ -10,6 +10,273 @@
 #include "test_utils.h"
 
 
+/**
+ * @brief Converts a string to a `coll_t` enum value.
+ *
+ * @param coll_str String representing the collective type (e.g., "ALLREDUCE").
+ * @return A `coll_t` enum value corresponding to the input string.
+ *         Returns `COLL_UNKNOWN` for invalid strings.
+ */
+static inline coll_t get_collective_from_string(const char *coll_str) {
+  if (strcmp(coll_str, "ALLREDUCE") == 0)       return ALLREDUCE;
+  if (strcmp(coll_str, "ALLGATHER") == 0)       return ALLGATHER;
+  if (strcmp(coll_str, "REDUCE_SCATTER") == 0)  return REDUCE_SCATTER;
+  return COLL_UNKNOWN;
+}
+
+/**
+* @brief Select and returns the appropriate allocator function based
+* on the collective type. It returns NULL if the collective type is 
+* not supported.
+*
+* @param collectove `coll_t` enum value representing the collective type.
+*
+* @return Pointer to the selected allocator function, or NULL if the
+*         collective type is not supported.
+*/
+static inline allocator_func_ptr get_allocator(coll_t collective) {
+  switch (collective) {
+    case ALLREDUCE:
+      return allreduce_allocator;
+    case ALLGATHER:
+      return allgather_allocator;
+    case REDUCE_SCATTER:
+      return reduce_scatter_allocator;
+    default:
+      return NULL;
+  }
+}
+
+/**
+* @brief Select and returns the appropriate allreduce function based
+* on the algorithm. It returns the default allreduce function if the
+* algorithm is internal.
+*
+* WARNING: It does not check if the algorithm is supported and always
+* defauls to the internal allreduce function.
+*/
+static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
+  if (strcmp(algorithm, "RECURSIVE_DOUBLING_OVER") == 0 ) return allreduce_recursivedoubling;
+  if (strcmp(algorithm, "RING_OVER") == 0 ) return allreduce_ring;
+  if (strcmp(algorithm, "RABENSEIFNER_OVER") == 0 ) return allreduce_rabenseifner;
+  if (strcmp(algorithm, "SWING_LAT_OVER") == 0 ) return allreduce_swing_lat;
+  if (strcmp(algorithm, "SWING_BDW_STATIC_OVER") == 0 ) return allreduce_swing_bdw_static;
+  return allreduce_wrapper;
+}
+
+/**
+* @brief Select and returns the appropriate allgather function based
+* on the algorithm. It returns the default allgather function if the
+* algorithm is internal.
+*
+* WARNING: It does not check if the algorithm is supported and always
+* defauls to the internal allgather function.
+*/
+static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
+  // if (strcmp(algorithm, "K_BRUCK_OVER") == 0 ) return allgather_k_bruck;
+  if (strcmp(algorithm, "RECURSIVE_DOUBLING_OVER") == 0 ) return allgather_recursivedoubling;
+  if (strcmp(algorithm, "RING_OVER") == 0 ) return allgather_ring;
+  if (strcmp(algorithm, "SWING_STATIC_OVER") == 0 ) return allgather_swing_static;
+  return allgather_wrapper;
+}
+
+/**
+* @breif Select and returns the appropriate reduce scatter function based
+* on the algorithm. It returns the default reduce scatter function if the
+* algorithm is internal.
+*
+* WARNING: It does not check if the algorithm is supported and always
+* defauls to the internal reduce scatter function.
+*/
+static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *algorithm){
+  if (strcmp(algorithm, "RECURSIVE_HALVING_OVER") == 0 ) return reduce_scatter_recursivehalving;
+  if (strcmp(algorithm, "RING_OVER") == 0 ) return reduce_scatter_ring;
+  if (strcmp(algorithm, "BUTTERFLY_OVER") == 0 ) return reduce_scatter_butterfly;
+  return MPI_Reduce_scatter;
+}
+
+
+int get_routine(test_routine_t *test_routine, const char *algorithm) {
+  const char *coll_str = NULL;
+
+  // Get the collective type from the environment variable
+  coll_str = getenv("COLLECTIVE_TYPE");
+  if (NULL == coll_str) {
+    fprintf(stderr, "Error! `COLLECTIVE_TYPE` environment \
+                    variable not set. Aborting...\n");
+    return -1;
+  }
+
+  // Convert the collective string to a `coll_t` enum value
+  test_routine->collective = get_collective_from_string(coll_str);
+  if (test_routine->collective == COLL_UNKNOWN) {
+    fprintf(stderr, "Error! Invalid `COLLECTIVE_TYPE` value: \
+                     %s. Aborting...\n", coll_str);
+    return -1;
+  }
+
+  // Set the right allocator based on the collective type
+  test_routine->allocator = get_allocator(test_routine->collective);
+  if (NULL == test_routine->allocator) {
+    fprintf(stderr, "Error! Allocator is NULL. Aborting...\n");
+    return -1;
+  }
+
+  // Set the right function pointer based on the collective type and algorithm
+  switch (test_routine->collective){
+    case ALLREDUCE:
+      test_routine->function.allreduce = get_allreduce_function(algorithm);
+      break;
+    case ALLGATHER:
+      test_routine->function.allgather = get_allgather_function(algorithm);
+      break;
+    case REDUCE_SCATTER:
+      test_routine->function.reduce_scatter = get_reduce_scatter_function(algorithm);
+      break;
+    default :
+      fprintf(stderr, "Error! Invalid collective type. Aborting...\n");
+      return -1;
+    }
+
+  return 0;
+}
+
+
+int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
+              MPI_Datatype dtype, MPI_Comm comm, int iter, double *times){
+  int rank, comm_sz, *red_scat_counts = NULL;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &comm_sz);
+
+  switch (test_routine.collective){
+    case ALLREDUCE:
+      allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
+                          times, test_routine);
+      break;
+    case ALLGATHER:
+      allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
+                          rbuf, count / (size_t) comm_sz, dtype,
+                          comm, iter, times, test_routine);
+      break;
+    case REDUCE_SCATTER:
+      // Reduce scatter requires an array of counts for each rank
+      red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
+      for (int i = 0; i < comm_sz; i++){
+        red_scat_counts[i] = count / comm_sz;
+      }
+      reduce_scatter_test_loop(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, iter,
+                               times, test_routine);
+      free(red_scat_counts);
+      break;
+    default:
+      fprintf(stderr, "still not implemented, aborting...\n");
+      return -1;
+  }
+  return 0;
+}
+
+
+int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm){
+  int rank, comm_sz, *red_scat_counts = NULL, ret;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &comm_sz);
+
+  switch (test_routine.collective){
+    case ALLREDUCE:
+      return allreduce_gt_check(sbuf, rbuf, count, dtype, MPI_SUM, comm, rbuf_gt);
+    case ALLGATHER:
+      return allgather_gt_check(sbuf, count / (size_t) comm_sz, dtype,
+                                rbuf, count / (size_t) comm_sz, dtype,
+                                comm, rbuf_gt);
+    case REDUCE_SCATTER:
+      // Reduce scatter requires an array of counts for each rank
+      red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
+      for (int i = 0; i < comm_sz; i++){
+        red_scat_counts[i] = count / comm_sz;
+      }
+      ret = reduce_scatter_gt_check(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, rbuf_gt);
+      free(red_scat_counts);
+      return ret;
+    default:
+      fprintf(stderr, "still not implemented, aborting...\n");
+      return -1;
+  }
+
+}
+
+int get_command_line_arguments(int argc, char** argv, size_t *array_count, int* iter,
+                               const char **algorithm, const char **type_string, const char **outputdir) {
+  if (argc != 6) {
+    fprintf(stderr, "Usage: %s <array_count> <iterations> <algorithm> <dtype> <outputdir>\n", argv[0]);
+    return -1;
+  }
+
+  char *endptr;
+  *array_count = (size_t) strtoll(argv[1], &endptr, 10);
+  if (*endptr != '\0' || *array_count <= 0) {
+    fprintf(stderr, "Error: Invalid array count. It must be a positive integer. Aborting...\n");
+    return -1;
+  }
+
+  *iter = (int) strtol(argv[2], &endptr, 10);
+  if (*endptr != '\0' || *iter <= 0) {
+    fprintf(stderr, "Error: Invalid number of iterations. It must be a positive integer. Aborting...\n");
+    return -1;
+  }
+
+  *algorithm = argv[3];
+
+  *type_string = argv[4];
+
+  *outputdir = argv[5];
+
+  return 0;
+}
+
+
+/**
+ * @struct TypeMap
+ * @brief Maps type names to corresponding MPI data types and sizes.
+ */
+typedef struct {
+  const char* t_string;   /**< Type name as a string. */
+  MPI_Datatype mpi_type;  /**< Corresponding MPI datatype. */
+  size_t t_size;          /**< Size of the datatype in bytes. */
+} TypeMap;
+
+/**
+ * @brief Static array mapping string representations to MPI datatypes. Will be
+ *        used to map command-line input argument to datatype and its size.
+ */
+const static TypeMap type_map[] = {
+  {"int8",          MPI_INT8_T,         sizeof(int8_t)},
+  {"int16",         MPI_INT16_T,        sizeof(int16_t)},
+  {"int32",         MPI_INT32_T,        sizeof(int32_t)},
+  {"int64",         MPI_INT64_T,        sizeof(int64_t)},
+  {"int",           MPI_INT,            sizeof(int)},
+  {"float",         MPI_FLOAT,          sizeof(float)},
+  {"double",        MPI_DOUBLE,         sizeof(double)},
+  {"char",          MPI_CHAR,           sizeof(char)},
+  {"unsigned_char", MPI_UNSIGNED_CHAR,  sizeof(unsigned char)}
+};
+
+
+int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_size) {
+  int num_types = sizeof(type_map) / sizeof(type_map[0]);
+
+  for (int i = 0; i < num_types; i++) {
+    if (strcmp(type_string, type_map[i].t_string) == 0) {
+      *dtype = type_map[i].mpi_type;
+      *type_size = type_map[i].t_size;
+      return 0;
+    }
+  }
+
+  fprintf(stderr, "Error: datatype %s not in `type_map`. Aborting...\n", type_string);
+  return -1;
+}
+
+
 int write_output_to_file(const char *fullpath, double *highest, double *all_times, int iter) {
   int comm_sz;
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
@@ -87,7 +354,7 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm) {
 
 
 int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
-                         MPI_Comm comm, routine_decision_t test_routine) {
+                         MPI_Comm comm, test_routine_t test_routine) {
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
@@ -243,7 +510,7 @@ static inline int int_pow(int base, int exp) {
 }
 
 int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
-                         MPI_Comm comm, routine_decision_t test_routine) {
+                         MPI_Comm comm, test_routine_t test_routine) {
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);

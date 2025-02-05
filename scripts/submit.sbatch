@@ -7,9 +7,11 @@
 #SBATCH --exclusive                  # Exclusive access to nodes
 #SBATCH --account=<account_name>     # Account name
 
-LOCATION=leonardo # possible locations are leonardo, snellius and local
 DEBUG_MODE=no
+TEST_CONFIG_FILE=$HOME/Swing_Test/config/test.json
 TIMESTAMP=$(date +"%Y_%m_%d___%H:%M:%S")
+LOCATION=leonardo # possible locations are leonardo, snellius and local
+NOTES=""
 
 # Create the results directory if it doesn't exist
 # (for redundacy will be done also in run_test_suite)
@@ -21,5 +23,5 @@ mkdir -p $HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/data
 #SBATCH --output=$HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/slurm-%j.out
 #SBATCH --error=$HOME/Swing_Test/results/$LOCATION/$TIMESTAMP/slurm-%j.err
 
-$HOME/Swing_Test/scripts/run_test_suite.sh $SLURM_NNODES $DEBUG_MODE $TIMESTAMP $LOCATION
+$HOME/Swing_Test/scripts/run_test_suite.sh $SLURM_NNODES $TEST_CONFIG_FILE $DEBUG_MODE $TIMESTAMP $LOCATION $NOTES
 

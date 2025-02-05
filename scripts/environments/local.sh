@@ -13,7 +13,6 @@ if [[ "$MPI_LIB" == "OMPI_SWING" ]] || [[ "$MPI_LIB" == "OMPI" ]]; then
         export OMPI_MCA_mpi_cuda_support=0
     fi
 fi
-source ~/.venv1/bin/activate
 
 export RUN=mpiexec
 export RUNFLAGS=

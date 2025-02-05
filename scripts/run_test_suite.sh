@@ -14,26 +14,27 @@ fi
 
 # Default parameters
 DEBUG_MODE=${2:-no}                             # Enable debug mode (yes/no)
-TIMESTAMP=${3:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
-LOCATION=${4:-local}                            # Environment location
+TEST_CONFIG=${3:-"scripts/config/test.json"}
+TEST_ENV=${TEST_CONFIG}_env.sh
+TIMESTAMP=${4:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
+LOCATION=${5:-local}                            # Environment location
+NOTES=${6:-""}                                  # Additional notes
 
 # TODO: Ensure venv is activated with jsonschema installed
+# To be improved but works for now
 if [ "$LOCATION" != "local" ]; then
     module load python
+else
+    source ~/.venv1/bin/activate
 fi
 
 # Run the Python script to validate and parse the test configuration
-python3 scripts/select_test/parse_test.py $N_NODES || exit 1
-source scripts/select_test/test_env_vars.sh
-
-# Set array sizes to test
-ARR_SIZES="8 64 512 2048 16384 131072 1048576 8388608 67108864"
-# Supported types are "int8 int16 int32 int64 int float double char unsigned_char"
-TYPES="int64"
+python3 scripts/parse_test.py $TEST_CONFIG $TEST_ENV $N_NODES || exit 1
+source $TEST_ENV
 
 # Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
-    ALGOS="102"
+    ALGOS="default_ompi"
     ARR_SIZES="8"
     TYPES="int" # For now only int,int32,int64 are supported in debug mode 
 fi
@@ -48,8 +49,11 @@ else
     # Define paths and output directories
     RES_DIR=$SWING_DIR/results/
     TEST_EXEC=$SWING_DIR/bin/test
-    RULE_UPDATER_EXEC=$SWING_DIR/bin/change_dynamic_rules
-    RULE_FILE_PATH=$SWING_DIR/ompi_rules/dynamic_rules.txt
+
+    RULE_UPDATER=$SWING_DIR/ompi_rules/change_dynamic_rules.py
+    DYNAMIC_RULE_FILE=$SWING_DIR/ompi_rules/dynamic_rules.txt
+    ALGORITHM_CONFIG="$SWING_DIR/scripts/algorithm_config.json"
+
     OUTPUT_DIR="$RES_DIR/$LOCATION/$TIMESTAMP/"
     DATA_DIR="$OUTPUT_DIR/data/"
 fi
@@ -63,22 +67,23 @@ if [ $DEBUG_MODE == no ]; then
     mkdir -p "$RES_DIR"
     mkdir -p "$OUTPUT_DIR"
     mkdir -p "$DATA_DIR"
+    
+    # Generate test metadata
+    python3 results/generate_metadata.py "$LOCATION" "$TIMESTAMP" "$N_NODES"
 fi
 
-# Use the environment variables
+# Sanity checks
+success "==========================================================\n\t\t SANITY CHECKS"
+echo "Saving results in: $OUTPUT_DIR"
 echo "Running benchmarks for collective: $COLLECTIVE_TYPE"
-echo "Algorithms to run: $ALGOS"
-echo "MPI Library: $MPI_LIB, Version: $MPI_LIB_VERSION"
+echo -e "For algorithms: \n $ALGOS"
+echo -e "With sizes: \n $ARR_SIZES"
+echo -e "And data types: \n $TYPES"
+echo "MPI Library: $MPI_LIB, $MPI_LIB_VERSION"
 echo "Libswing Version: $LIBSWING_VERSION"
 echo "CUDA Enabled: $CUDA"
+echo "NOTES: $NOTES"
+success "=========================================================="
 
 # Run tests for all configurations
-run_all_tests "$N_NODES" "$ALGOS" "$SKIP" "$ARR_SIZES" "$TYPES" "$OUTPUT_DIR" "$DEBUG_MODE"
-
-# Generate test metadata
-if [ "$DEBUG_MODE" == no ]; then
-    python3 results/generate_metadata.py "$LOCATION" "$TIMESTAMP" \
-          "$N_NODES" "$COLLECTIVE_TYPE" "${ALGOS[@]}" "${NAMES[@]}" \
-          "$MPI_LIB" "$MPI_LIB_VERSION" "$LIBSWING_VERSION" "$CUDA" \
-          "${TYPES[@]}" "$MPI_OP" "$NOTES"
-fi
+run_all_tests "$N_NODES" "$ALGOS" "$SKIP" "$ARR_SIZES" "$TYPES" "$OUTPUT_DIR" "$DEBUG_MODE" || exit 1

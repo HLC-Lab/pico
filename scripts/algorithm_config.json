@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "1.1.2",
+    "schema_version": "2.0.0",
     "created": "2024-01-30",
-    "last_modified": "2024-02-01",
+    "last_modified": "2024-02-04",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -10,25 +10,25 @@
   },
   "collective": {
     "ALLREDUCE": {
-      "0": {
-        "name": "DEFAULT_OMPI",
+      "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "default",
           "internal"
         ]
       },
-      "1": {
-        "name": "LINEAR_OMPI",
+      "linear_ompi": {
         "desc": "Open MPI linear algorithm from `basic` module, consists in a Reduce to rank 0 followed by a Bcast. Both Reduce and Bcast are the one from the `basic` module. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 1,
         "tags": [
           "linear",
           "small_sizes",
@@ -36,13 +36,13 @@
           "internal"
         ]
       },
-      "2": {
-        "name": "NON_OVERLAPPING_OMPI",
+      "non_overlapping_ompi": {
         "desc": "Open MPI non-overlapping algorithm, consists in a Reduce to rank 0 followed by a Bcast. Utilizes default Reduce and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 2,
         "tags": [
           "non_overlapping",
           "small_sizes",
@@ -50,13 +50,13 @@
           "internal"
         ]
       },
-      "3": {
-        "name": "RECURSIVE_DOUBLING_OMPI",
+      "recursive_doubling_ompi": {
         "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 3,
         "tags": [
           "recursive_doubling",
           "small_sizes",
@@ -64,13 +64,13 @@
           "internal"
         ]
       },
-      "4": {
-        "name": "RING_OMPI",
+      "ring_ompi": {
         "desc": "Open MPI ring algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 4,
         "constraints": [
           {
             "key": "count",
@@ -88,13 +88,13 @@
           "internal"
         ]
       },
-      "5": {
-        "name": "RING_SEGMENTED_OMPI",
+      "ring_segmented_ompi": {
         "desc": "Open MPI ring segmented algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 5,
         "additional_parameters": {
           "segsize": {
             "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
@@ -123,13 +123,13 @@
           "internal"
         ]
       },
-      "6": {
-        "name": "RABENSEIFNER_OMPI",
+      "rabenseifner_ompi": {
         "desc": "Open MPI Rabenseifner algorithm. Not to be used if `count`<`comm_sz`. Not to be used if `op` is not commutative. If used on not commutative `op` defaults to `OMPI_LINEAR`. This algorithm is used for medium to large messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 6,
         "constraints": [
           {
             "key": "count",
@@ -148,13 +148,13 @@
           "internal"
         ]
       },
-      "7": {
-        "name": "ALLGATHER_REDUCE_OMPI",
+      "allgather_reduce_ompi": {
         "desc": "Open MPI allgather reduce algorithm. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 7,
         "tags": [
           "allgather_reduce",
           "small_sizes",
@@ -162,12 +162,12 @@
           "internal"
         ]
       },
-      "8": {
-        "name": "SWING_LAT_OMPI",
+      "swing_lat_ompi": {
         "desc": "Open MPI internal swing latency optimal algorithm of `OMPI_SWING`. This algorithm is used for small to medium messages",
         "library": {
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 8,
         "tags": [
           "swing_lat",
           "swing",
@@ -177,12 +177,12 @@
           "internal"
         ]
       },
-      "9": {
-        "name": "SWING_BDW_MEMCPY_OMPI",
+      "swing_bdw_memcpy_ompi": {
         "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version leverages a memcpy operation to send a contiguous buffer. This algorithm is used for medium to large messages",
         "library": {
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 9,
         "constraints": [
           {
             "key": "count",
@@ -213,12 +213,12 @@
           "internal"
         ]
       },
-      "10": {
-        "name": "SWING_BDW_DT_1_OMPI",
+      "swing_bdw_dt_1_ompi": {
         "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation but requires the heap allocation, creation and destruction of 2*`comm_sz` derived datatypes. This algorithm is used for medium to large messages",
         "library": {
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 10,
         "constraints": [
           {
             "key": "count",
@@ -249,12 +249,12 @@
           "internal"
         ]
       },
-      "11": {
-        "name": "SWING_BDW_DT_2_OMPI",
+      "swing_bdw_dt_2_ompi": {
         "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation and receive the message to a continuous buffer. Does not require the heap allocation of datatype array since it utilizes a single stack allocated one, overwriting it each time. This algorithm is used for medium to large messages",
         "library": {
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 11,
         "constraints": [
           {
             "key": "count",
@@ -285,12 +285,12 @@
           "internal"
         ]
       },
-      "12": {
-        "name": "SWING_BDW_SEGMENTED_OMPI",
+      "swing_bdw_segmented_ompi": {
         "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version utilizes many pipelined asyncrhonous send/recv operation to overlap communication and reduction. It requires an additional parameter `segsize`. This algorithm is used for medium to large messages",
         "library": {
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 12,
         "additional_parameters": {
           "segsize": {
             "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
@@ -330,12 +330,12 @@
           "internal"
         ]
       },
-      "13": {
-        "name": "SWING_BDW_STATIC_OMPI",
+      "swing_bdw_static_ompi": {
         "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
         "library": {
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 13,
         "constraints": [
           {
             "key": "count",
@@ -370,12 +370,12 @@
           "internal"
         ]
       },
-      "101": {
-        "name": "RECURSIVE_DOUBLING_OVER",
+      "recursive_doubling_over": {
         "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "recursive_doubling",
           "small_sizes",
@@ -383,12 +383,12 @@
           "external"
         ]
       },
-      "102": {
-        "name": "RING_OVER",
+      "ring_over": {
         "desc": "Libswing external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "constraints": [
           {
             "key": "count",
@@ -406,12 +406,12 @@
           "external"
         ]
       },
-      "103": {
-        "name": "RABENSEIFNER_OVER",
+      "rabenseifner_over": {
         "desc": "Libswing external Rabenseifner algorithm. Not to be used if `count`<`comm_sz` and for non commutative `op`. This algorithm is used for medium to large messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "constraints": [
           {
             "key": "count",
@@ -430,12 +430,12 @@
           "external"
         ]
       },
-      "201": {
-        "name": "SWING_LAT_OVER",
+      "swing_lat_over": {
         "desc": "Libswing external swing latency optimal algorithm. This algorithm is used for small to medium messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "swing_lat",
           "swing",
@@ -445,12 +445,12 @@
           "external"
         ]
       },
-      "202": {
-        "name": "SWING_BDW_STATIC_OVER",
+      "swing_bdw_static_over": {
         "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "constraints": [
           {
             "key": "count",
@@ -487,25 +487,25 @@
       }
     },
     "ALLGATHER": {
-      "0": {
-        "name": "DEFAULT_OMPI",
+      "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "default",
           "internal"
         ]
       },
-      "1": {
-        "name": "LINEAR_OMPI",
+      "linear_ompi": {
         "desc": " Open MPI linear algorithm, consists in a Gather to rank 0 of the whole message followed by a Bcast. Utilizes default Gather and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 1,
         "tags": [
           "linear",
           "small_sizes",
@@ -513,13 +513,13 @@
           "internal"
         ]
       },
-      "2": {
-        "name": "K_BRUCK_OMPI",
+      "k_bruck_ompi": {
         "desc": "Open MPI K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 2,
         "additional_parameters": {
           "radix": {
             "desc": "Radix of the K-nomial tree. When not explicitly set it defaults to 2. Still don't know how to change it.",
@@ -536,13 +536,13 @@
           "internal"
         ]
       },
-      "3": {
-        "name": "RECURSIVE_DOUBLING_OMPI",
+      "recursive_doubling_ompi": {
         "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. When invoked on non power of 2 processes, it will fallback to k_bruck with `radix=2`",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 3,
         "constraints": [
           {
             "key": "comm_sz",
@@ -561,26 +561,26 @@
           "internal"
         ]
       },
-      "4": {
-        "name": "RING_OMPI",
+      "ring_ompi": {
         "desc": "Open MPI ring algorithm. This algorithm is used for large messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 4,
         "tags": [
           "ring",
           "large_sizes",
           "internal"
         ]
       },
-      "5": {
-        "name": "NEIGHBOR_OMPI",
+      "neighbor_ompi": {
         "desc": "Open MPI neighbor exchange algorithm. This algorithm is used for large messages. Works only for even number of processes. When invoked on odd number of processes, it will fallback to ring",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 5,
         "constraints": [
           {
             "key": "comm_sz",
@@ -598,13 +598,13 @@
           "internal"
         ]
       },
-      "6": {
-        "name": "TWO_PROC_OMPI",
+      "two_proc_ompi": {
         "desc": "Open MPI two processes algorithm. Works only for 2 processes",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 6,
         "constraints": [
           {
             "key": "comm_sz",
@@ -621,12 +621,12 @@
           "internal"
         ]
       },
-      "101": {
-        "name": "K_BRUCK_OVER",
+      "k_bruck_over": {
         "desc": "Libswing external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "additional_parameters": {
           "radix": {
             "desc": "Radix of the K-nomial tree",
@@ -642,12 +642,12 @@
           "external"
         ]
       },
-      "102": {
-        "name": "RECURSIVE_DOUBLING_OVER",
+      "recursive_doubling_over": {
         "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "constraints": [
           {
             "key": "comm_sz",
@@ -666,24 +666,24 @@
           "external"
         ]
       },
-      "103": {
-        "name": "RING_OVER",
+      "ring_over": {
         "desc": "Libswing external ring algorithm. This algorithm is used for large messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "ring",
           "large_sizes",
           "external"
         ]
       },
-      "201": {
-        "name": "SWING_STATIC_OVER",
+      "swing_static_over": {
         "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 32. This algorithm is used for medium to large messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "constraints": [
           {
             "key": "comm_sz",
@@ -709,25 +709,25 @@
       }
     },
     "REDUCE_SCATTER": {
-      "0": {
-        "name": "DEFAULT_OMPI",
+      "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "default",
           "internal"
         ]
       },
-      "1": {
-        "name": "NON_OVERLAPPING_OMPI",
+      "non_overlapping_ompi": {
         "desc": "Open MPI non-overlapping algorithm. Consists in a Reduce to rank 0 followed by a Scatterv. Utilizes default Reduce and Scatterv algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 1,
         "tags": [
           "non_overlapping",
           "small_sizes",
@@ -735,13 +735,13 @@
           "internal"
         ]
       },
-      "2": {
-        "name": "RECURSIVE_HALVING_OMPI",
+      "recursive_halving_ompi": {
         "desc": "Open MPI recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 2,
         "tags": [
           "recursive_halving",
           "small_sizes",
@@ -749,26 +749,26 @@
           "internal"
         ]
       },
-      "3": {
-        "name": "RING_OMPI",
+      "ring_ompi": {
         "desc": "Open MPI ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 3,
         "tags": [
           "ring",
           "large_sizes",
           "internal"
         ]
       },
-      "4": {
-        "name": "BUTTERFLY_OMPI",
+      "butterfly_ompi": {
         "desc": "Open MPI butterfly algorithm. This algorithm is used for small messages",
         "library": {
           "ompi": "5.0.0",
           "ompi_swing": "5.0.0"
         },
+        "dynamic_rule": 4,
         "tags": [
           "butterfly",
           "small_sizes",
@@ -776,12 +776,12 @@
           "internal"
         ]
       },
-      "101": {
-        "name": "RECURSIVE_HALVING_OVER",
+      "recursive_halving_over": {
         "desc": "Libswing external recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "recursive_halving",
           "small_sizes",
@@ -789,24 +789,24 @@
           "external"
         ]
       },
-      "102": {
-        "name": "RING_OVER",
+      "ring_over": {
         "desc": "Libswing external ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "ring",
           "large_sizes",
           "external"
         ]
       },
-      "103": {
-        "name": "BUTTERFLY_OVER",
+      "butterfly_over": {
         "desc": "Libswing external butterfly algorithm. This algorithm is used for small messages",
         "library": {
           "libswing": "1.0.0"
         },
+        "dynamic_rule": 0,
         "tags": [
           "butterfly",
           "small_sizes",

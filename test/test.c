@@ -19,23 +19,23 @@ int main(int argc, char *argv[]) {
   // error handling with goto
   void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
-  // Count array for reduce_scatter, always initialized to NULL
-  // Allocated only if the collective is REDUCE_SCATTER
-  int *red_scat_counts = NULL;
+  // // Count array for reduce_scatter, always initialized to NULL
+  // // Allocated only if the collective is REDUCE_SCATTER
+  // int *red_scat_counts = NULL;
 
   size_t count;
-  int iter, algorithm;
-  const char* type_string, *outputdir;
+  int iter;
+  const char *algorithm, *type_string, *outputdir;
   // Get command line arguments
   if (get_command_line_arguments(argc, argv, &count, &iter,
-                       &type_string, &algorithm, &outputdir) == -1){
+                                 &algorithm, &type_string, &outputdir) == -1){
     line = __LINE__;
     goto err_hndl;
   }
   
   // Get the routine based on the `COLLECTIVE_TYPE` environment variable
   // and the `algorithm` command line argument
-  routine_decision_t test_routine;
+  test_routine_t test_routine;
   if (get_routine(&test_routine, algorithm) == -1){
     line = __LINE__;
     goto err_hndl;
@@ -48,18 +48,9 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-  
-  // Get the allocator function pointer based on the collective type:
-  // different collectives require different buffer size allocations
-  allocator_func_ptr allocator = get_allocator(test_routine);
-  if (NULL == allocator){
-    fprintf(stderr, "Error: allocator is NULL. Aborting...\n");
-    line = __LINE__;
-    goto err_hndl;
-  }
-  
+
   // Allocate memory for the buffers based on the collective type
-  if (allocator(&sbuf, &rbuf, &rbuf_gt, count, type_size, comm) != 0){
+  if (test_routine.allocator(&sbuf, &rbuf, &rbuf_gt, count, type_size, comm) != 0){
     line = __LINE__;
     goto err_hndl;
   }
@@ -95,56 +86,18 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
   #endif
+  
+  // Perform the test based on the collective type and algorithm
+  // The test is performed iter times
+  if (test_loop(test_routine, sbuf, rbuf, count, dtype, comm, iter, times) != 0){
+    line = __LINE__;
+    goto err_hndl;
+  }
 
-  switch (test_routine.collective){
-    case ALLREDUCE:
-      // Perform the test benchmark for `iter` iterations
-      allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
-                          times, test_routine.algorithm.allreduce_algorithm);
-
-      // Do a ground-truth check on the correctness of last iteration result
-      if (allreduce_gt_check(sbuf, rbuf, count, dtype, MPI_SUM, comm, rbuf_gt) != 0){
-        line = __LINE__;
-        goto err_hndl;
-      }
-      break;
-    case ALLGATHER:
-      // Perform the test benchmark for `iter` iterations
-      allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
-                          rbuf, count / (size_t) comm_sz, dtype,
-                          comm, iter, times,
-                          test_routine.algorithm.allgather_algorithm);
-
-      // Do a ground-truth check on the correctness of last iteration result
-      if (allgather_gt_check(sbuf, count / (size_t) comm_sz, dtype,
-                             rbuf, count / (size_t) comm_sz, dtype,
-                             comm, rbuf_gt) != 0){
-        line = __LINE__;
-        goto err_hndl;
-      }
-      break;
-    case REDUCE_SCATTER:
-      // Reduce scatter requires an array of counts for each rank,
-      // looking for a more elegant way to implement this part
-      red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
-      for (int i = 0; i < comm_sz; i++){
-        red_scat_counts[i] = count / comm_sz;
-      }
-      // Perform the test benchmark for `iter` iterations
-      reduce_scatter_test_loop(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, iter,
-                           times, test_routine.algorithm.reduce_scatter_algorithm);
-      // Do a ground-truth check on the correctness of last iteration result
-      if (reduce_scatter_gt_check(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, rbuf_gt) != 0){
-        free(red_scat_counts);
-        line = __LINE__;
-        goto err_hndl;
-      }
-      free(red_scat_counts);
-      break;
-    default:
-      fprintf(stderr, "still not implemented, aborting...\n");
-      line = __LINE__;
-      goto err_hndl;
+  // Check the results against the ground truth
+  if (ground_truth_check(test_routine, sbuf, rbuf, rbuf_gt, count, dtype, comm) != 0){
+    line = __LINE__;
+    goto err_hndl;
   }
 
   #ifndef DEBUG
@@ -156,8 +109,8 @@ int main(int argc, char *argv[]) {
   // is responsible to create the `/data/` subdir.
   if (rank == 0){
     char data_filename[128], data_fullpath[TEST_MAX_PATH_LENGTH];
-    snprintf(data_filename, sizeof(data_filename), "data/%d_%ld_%s.csv",
-             (int) algorithm, count, type_string);
+    snprintf(data_filename, sizeof(data_filename), "data/%ld_%s_%s.csv",
+             count, algorithm, type_string);
     if (concatenate_path(outputdir, data_filename, data_fullpath) == -1) {
       fprintf(stderr, "Error: Failed to create fullpath.\n");
       line = __LINE__;

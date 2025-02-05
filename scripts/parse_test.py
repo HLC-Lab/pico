@@ -40,13 +40,18 @@ test_config_schema = {
             "additionalProperties": False
         },
         "cuda": {"type": "boolean"},
-        "notes": {"type": "string"}
+        "arr_counts" : {"type": "array", "items": {"type": "string"}},
+        "datatypes" : 
+            {"type": "array",
+             "items": {"type": "string",
+                       "enum": ["int8", "int16", "int32", "int64", "int", "float", "double", "char", "unsigned_char"]}},
     },
-    "required": ["mpi", "libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda", "notes"],
+    "required": ["mpi", "libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda", "arr_counts", "datatypes"],
     "additionalProperties": False
 }
 
-def load_json(file_path):
+# Supported types are "int8 int16 int32 int64 int float double char unsigned_char"
+def load_json(file_path: str | os.PathLike):
     """Load the JSON test file and the algorithm
     config file"""
     with open(file_path, 'r') as file:
@@ -130,9 +135,10 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
     skip_algorithms = []
     
     if collective not in algorithm_config["collective"]:
-        return matching_algorithms, skip_algorithms
+        print(f"Error: Collective {collective} not found in algorithm_config.json.", file=sys.stderr)
+        sys.exit(1)
 
-    for algo_id, algo_data in algorithm_config["collective"][collective].items():
+    for algo_name, algo_data in algorithm_config["collective"][collective].items():
         # Check if the algorithm satisfies the library dependencies and comm_sz constraints.
         if not check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version):
             continue
@@ -140,14 +146,14 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
             continue
 
         # Handle specific inclusions: add these algorithms regardless of tags.
-        if algo_id in include_specific:
+        if algo_name in include_specific:
             if "constraints" in algo_data and check_skip(algo_data["constraints"]):
-                skip_algorithms.append(algo_id)
-            matching_algorithms.append({ "id": algo_id, "name": algo_data["name"] })
+                skip_algorithms.append(algo_name)
+            matching_algorithms.append(algo_name)
             continue
 
         # Exclude if algorithm is in the specific exclusion list regardless of tags.
-        if exclude_specific and algo_id in exclude_specific:
+        if exclude_specific and algo_name in exclude_specific:
             continue
 
         # Tag based filtering
@@ -158,8 +164,8 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
 
         # Add to matching (and skip if skip-constraints are not met)
         if "constraints" in algo_data and check_skip(algo_data["constraints"]):
-            skip_algorithms.append(algo_id)
-        matching_algorithms.append({ "id": algo_id, "name": algo_data["name"] })
+            skip_algorithms.append(algo_name)
+        matching_algorithms.append(algo_name)
 
     if not matching_algorithms:
         print("No matching algorithms found for the given test configuration.", file=sys.stderr)
@@ -168,7 +174,8 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
     return matching_algorithms, skip_algorithms
 
 
-def export_environment_variables(matching_algorithms, skip_algorithms, test_config):
+def export_environment_variables(matching_algorithms, skip_algorithms,
+                                 test_config, output_file: str | os.PathLike) -> None:
     """Export environment variables for the shell script."""
     collective = test_config["collective"]
     if "REDUCE" in collective:
@@ -179,37 +186,42 @@ def export_environment_variables(matching_algorithms, skip_algorithms, test_conf
     mpi_version = test_config["mpi"]["version"]
     libswing_version = test_config.get("libswing_version", "")
     cuda = test_config["cuda"]
-    algo_ids = " ".join([algo["id"] for algo in matching_algorithms])
-    algo_names = " ".join([algo["name"] for algo in matching_algorithms])
-    skip_ids = " ".join(skip_algorithms)
-    notes = test_config["notes"]
+    algo_names = " ".join(matching_algorithms)
+    skip_names = " ".join(skip_algorithms)
+    types = " ".join(str(x) for x in test_config["datatypes"])
+    arr_counts = " ".join(str(x) for x in test_config["arr_counts"])
 
     # Write the environment variables to a shell script that will be sourced
-    with open("scripts/select_test/test_env_vars.sh", "w") as f:
+    with open(output_file, "w") as f:
         f.write(f"export COLLECTIVE_TYPE='{collective}'\n")
-        f.write(f"export ALGOS='{algo_ids}'\n")
-        f.write(f"export NAMES='{algo_names}'\n")
-        f.write(f"export SKIP='{skip_ids}'\n")
+        f.write(f"export ALGOS='{algo_names}'\n")
+        f.write(f"export SKIP='{skip_names}'\n")
         f.write(f"export MPI_LIB='{mpi_type}'\n")
         f.write(f"export MPI_LIB_VERSION='{mpi_version}'\n")
         f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
         f.write(f"export CUDA='{cuda}'\n")
         f.write(f"export MPI_OP='{mpi_op}'\n")
-        f.write(f"export NOTES='{notes}'\n")
+        f.write(f"export TYPES='{types}'\n")
+        f.write(f"export ARR_SIZES='{arr_counts}'\n")
 
 
 def main():
     # Check if arguments are correctly provided
-    if len(sys.argv) != 2:
-        print("Usage: python parse_test.py <number_of_nodes>")
-        sys.exit(1)
-    if not ( os.path.isfile("scripts/algorithm_config.json") and os.path.isfile("scripts/select_test/test_config.json") ):
-        print("Error: algorithm_config.json or test_config.json not found.")
+    if len(sys.argv) != 4:
+        print("Usage: python parse_test.py <test_config> <output_file> <number_of_nodes>", file=sys.stderr)
         sys.exit(1)
 
-    number_of_nodes = int(sys.argv[1])
+    test_file = sys.argv[1]
+    output_file = sys.argv[2]
+    number_of_nodes = int(sys.argv[3])
+
+    # Check if the algorithm_config.json and test_config.json files exist
+    if not ( os.path.isfile("scripts/algorithm_config.json") and os.path.isfile(test_file) ):
+        print("Error: algorithm_config.json or test_config.json not found.", file=sys.stderr)
+        sys.exit(1)
+
     algorithm_config = load_json("scripts/algorithm_config.json")
-    test_config = load_json("scripts/select_test/test_config.json")
+    test_config = load_json(test_file)
 
     # Validate the test_config.json
     try:
@@ -222,7 +234,7 @@ def main():
     matching_algorithms, skip_algorithms = get_matching_algorithms(algorithm_config, test_config, number_of_nodes)
     
     # Write environment variables to a shell script to be sourced
-    export_environment_variables(matching_algorithms, skip_algorithms, test_config)
+    export_environment_variables(matching_algorithms, skip_algorithms, test_config, output_file)
     
 
 if __name__ == "__main__":
