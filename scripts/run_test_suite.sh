@@ -66,7 +66,7 @@ if [ $DEBUG_MODE == no ]; then
     mkdir -p "$DATA_DIR"
     
     # Generate test metadata
-    python3 results/generate_metadata.py "$LOCATION" "$TIMESTAMP" "$N_NODES" "$NOTES" || exit 1
+    python3 results/generate_metadata.py "$LOCATION" "$TIMESTAMP" "$N_NODES" "${NOTES[@]}" || exit 1
 fi
 
 # Sanity checks
@@ -79,7 +79,7 @@ echo -e "And data types: \n $TYPES"
 echo "MPI Library: $MPI_LIB, $MPI_LIB_VERSION"
 echo "Libswing Version: $LIBSWING_VERSION"
 echo "CUDA Enabled: $CUDA"
-echo "NOTES: $NOTES"
+echo "NOTES: ${NOTES[@]}"
 success "=========================================================="
 
 # Run tests for all configurations

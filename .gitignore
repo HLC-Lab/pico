@@ -9,6 +9,7 @@ compile_commands.json
 out
 ./results/leonardo/2025_02_07___17:49:20/
 ./results/leonardo/2025_02_07___18:09:10/
+./results/leonardo/2025_02_07___19:49:27/
 results/local/*
 results/local_metadata.csv
 scripts/config/*_env.sh
