@@ -50,7 +50,7 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, data
         })
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 4:
         print("Usage: python update_metadata.py <system_name> <timestamp> \
                 <number_of_nodes>", file=sys.stderr)
         sys.exit(1)

@@ -29,10 +29,10 @@ else
 fi
 
 # Run the Python script to validate and parse the test configuration
-load_python()
+load_python
 python3 scripts/parse_test.py $TEST_CONFIG $TEST_ENV $N_NODES || exit 1
 source $TEST_ENV
-load_other_env_var()
+load_other_env_var
 
 # Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
@@ -63,7 +63,7 @@ if [ $DEBUG_MODE == no ]; then
     mkdir -p "$DATA_DIR"
     
     # Generate test metadata
-    python3 results/generate_metadata.py "$LOCATION" "$TIMESTAMP" "$N_NODES"
+    python3 results/generate_metadata.py "$LOCATION" "$TIMESTAMP" "$N_NODES" || exit 1
 fi
 
 # Sanity checks

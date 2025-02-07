@@ -1,17 +1,17 @@
 #!/bin/bash
-#SBATCH -p <p_name>                  # Partition name
+#SBATCH -p boost_usr_prod                  # Partition name
 # #SBATCH -q <qos_name>              # Required Quality of Service (optional)
-#SBATCH -N <n_nodes>                 # Number of nodes
+#SBATCH -N 4                 # Number of nodes
 #SBATCH --ntasks-per-node=1          # Number of taasks per node
-#SBATCH --time=<requested_time>      # Time limit
+#SBATCH --time=02:00:00      # Time limit
 #SBATCH --exclusive                  # Exclusive access to nodes
-#SBATCH --account=<account_name>     # Account name
+#SBATCH --account=IscrC_ASCEND     # Account name
 
 DEBUG_MODE=no
 TEST_CONFIG_FILE=$HOME/Swing_Test/scripts/config/test.json
 TIMESTAMP=$(date +"%Y_%m_%d___%H:%M:%S")
 LOCATION=leonardo # possible locations are leonardo, snellius and local
-NOTES=""
+NOTES="Test run for allreduce"
 
 # Create the results directory if it doesn't exist
 # (for redundacy will be done also in run_test_suite)

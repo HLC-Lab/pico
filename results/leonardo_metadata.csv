@@ -1,0 +1,2 @@
+timestamp,number_of_nodes,collective_type,algos,datatypes,mpi_lib,mpi_lib_version,libswing_version,CUDA,MPI_Op,notes
+2025_02_07___18:09:10,4,ALLREDUCE,default_ompi linear_ompi non_overlapping_ompi recursive_doubling_ompi ring_ompi ring_segmented_ompi rabenseifner_ompi allgather_reduce_ompi swing_lat_ompi swing_bdw_memcpy_ompi swing_bdw_dt_1_ompi swing_bdw_dt_2_ompi swing_bdw_segmented_ompi swing_bdw_static_ompi recursive_doubling_over ring_over rabenseifner_over swing_lat_over swing_bdw_static_over,int64 int32 int16 int8,OMPI_SWING,5.0.0,1.0.0,False,MPI_SUM,
