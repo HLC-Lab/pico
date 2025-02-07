@@ -22,8 +22,19 @@ NOTES=${6:-""}                                  # Additional notes
 
 # TODO: Ensure venv is activated with jsonschema installed
 # To be improved but works for now
-if [ "$LOCATION" != "local" ]; then
-    module load python
+if [ "$LOCATION" == "leonardo" ]; then
+    module load python/3.11.6--gcc--8.5.0
+    if [ -f "$HOME/.swing_venv/bin/activate" ]; then
+        echo "Virtual environment 'swing_venv' exists."
+        source $HOME/.swing_venv/bin/activate
+    else
+        echo "Virtual environment 'swing_venv' does not exist."
+        python3 -m venv $HOME/.swing_venv
+        echo "Virtual environment 'swing_venv' created."
+        source $HOME/.swing_venv/bin/activate
+        pip install --upgrade pip
+        pip install jsonschema
+    fi
 else
     source ~/.venv1/bin/activate
 fi
