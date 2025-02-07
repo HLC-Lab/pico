@@ -20,28 +20,19 @@ TIMESTAMP=${4:-$(date +"%Y_%m_%d___%H:%M:%S")}  # Timestamp for result directory
 LOCATION=${5:-local}                            # Environment location
 NOTES=${6:-""}                                  # Additional notes
 
-# TODO: Ensure venv is activated with jsonschema installed
-# To be improved but works for now
-if [ "$LOCATION" == "leonardo" ]; then
-    module load python/3.11.6--gcc--8.5.0
-    if [ -f "$HOME/.swing_venv/bin/activate" ]; then
-        echo "Virtual environment 'swing_venv' exists."
-        source $HOME/.swing_venv/bin/activate
-    else
-        echo "Virtual environment 'swing_venv' does not exist."
-        python3 -m venv $HOME/.swing_venv
-        echo "Virtual environment 'swing_venv' created."
-        source $HOME/.swing_venv/bin/activate
-        pip install --upgrade pip
-        pip install jsonschema
-    fi
-else
-    source ~/.venv1/bin/activate
+
+if ! source_environment "$LOCATION"; then
+    error "Environment script for '${LOCATION}' not found!"
+    exit 1
+else 
+    success "Environment script for '${LOCATION}' loaded successfully."
 fi
 
 # Run the Python script to validate and parse the test configuration
+load_python()
 python3 scripts/parse_test.py $TEST_CONFIG $TEST_ENV $N_NODES || exit 1
 source $TEST_ENV
+load_other_env_var()
 
 # Select here what to do in debug mode
 if [ "$DEBUG_MODE" == yes ]; then
@@ -50,24 +41,16 @@ if [ "$DEBUG_MODE" == yes ]; then
     TYPES="int" # For now only int,int32,int64 are supported in debug mode 
 fi
 
-# Load configuration for the specified environment
-if ! source_environment "$LOCATION"; then
-    error "Environment script for '${LOCATION}' not found!"
-    exit 1
-else 
-    success "Environment script for '${LOCATION}' loaded successfully."
+# Define paths and output directories
+RES_DIR=$SWING_DIR/results/
+TEST_EXEC=$SWING_DIR/bin/test
 
-    # Define paths and output directories
-    RES_DIR=$SWING_DIR/results/
-    TEST_EXEC=$SWING_DIR/bin/test
+RULE_UPDATER=$SWING_DIR/ompi_rules/change_dynamic_rules.py
+DYNAMIC_RULE_FILE=$SWING_DIR/ompi_rules/dynamic_rules.txt
+ALGORITHM_CONFIG="$SWING_DIR/scripts/algorithm_config.json"
 
-    RULE_UPDATER=$SWING_DIR/ompi_rules/change_dynamic_rules.py
-    DYNAMIC_RULE_FILE=$SWING_DIR/ompi_rules/dynamic_rules.txt
-    ALGORITHM_CONFIG="$SWING_DIR/scripts/algorithm_config.json"
-
-    OUTPUT_DIR="$RES_DIR/$LOCATION/$TIMESTAMP/"
-    DATA_DIR="$OUTPUT_DIR/data/"
-fi
+OUTPUT_DIR="$RES_DIR/$LOCATION/$TIMESTAMP/"
+DATA_DIR="$OUTPUT_DIR/data/"
 
 # Clean and compile the codebase
 compile_code || exit 1
