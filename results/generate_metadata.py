@@ -50,15 +50,16 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, data
         })
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) < 4:
         print("Usage: python update_metadata.py <system_name> <timestamp> \
-                <number_of_nodes>", file=sys.stderr)
+                <number_of_nodes> [notes].", file=sys.stderr)
         sys.exit(1)
 
     # Collect arguments from command line
     system_name = sys.argv[1]
     timestamp = sys.argv[2]
     number_of_nodes = int(sys.argv[3])
+    notes = sys.argv[4] if len(sys.argv) == 5 else None
 
     collective_type = os.getenv('COLLECTIVE_TYPE')
     algos = os.getenv('ALGOS')
@@ -68,7 +69,6 @@ if __name__ == "__main__":
     libswing_version = os.getenv('LIBSWING_VERSION')
     cuda = os.getenv('CUDA')
     mpi_op = os.getenv('MPI_OP')
-    notes = os.getenv('NOTES')
     if not (collective_type and algos and datatypes and mpi_lib and mpi_lib_version and libswing_version and cuda):
         print ("Environment variables not set.", file=sys.stderr)
         sys.exit(1)

@@ -22,7 +22,7 @@ load_python() {
 }
 
 # Load environment variables dependant on the MPI library
-load_other_env_var(){
+load_other_env_var() {
     if [ "$MPI_LIB" == "OMPI_SWING" ]; then
         export PATH=$HOME/bin:$PATH
         export LD_LIBRARY_PATH=$HOME/lib:$LD_LIBRARY_PATH
