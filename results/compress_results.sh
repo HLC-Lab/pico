@@ -31,7 +31,9 @@ compress_directory() {
 process_results_subdirectories() {
     EXCLUDE_PATTERN="local"
     for subdir in "$BASE_DIR"/*/*; do
-        if [ -d "$subdir" ] && [[ "$subdir" != *"/$EXCLUDE_PATTERN/"* ]]; then
+        if [ -d "$subdir" ] && \
+           [[ "$subdir" != *"/$EXCLUDE_PATTERN/"* ]] && \
+           [ ! -f "${subdir}.tar.gz" ]; then
             compress_directory "$subdir"
         fi
     done
