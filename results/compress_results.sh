@@ -14,6 +14,7 @@ compress_directory() {
     tar -czf "$archive_name" -C "$parent_dir" "$(basename "$dir")"
     if [ $? -eq 0 ]; then
         echo "Successfully compressed '$dir'."
+	git add $archive_name
 
         # Add the directory to .gitignore if not already present
         if ! grep -qx "$dir/" .gitignore; then
@@ -49,7 +50,3 @@ echo ".gitignore cleaned and sorted."
 # Stage .gitignore
 git add .gitignore
 echo ".gitignore staged for commit."
-
-# Stage compressed results
-git add results
-echo "compressed results staged for commit."
