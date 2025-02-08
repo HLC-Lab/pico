@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base directory containing the results
-BASE_DIR="./results"
+BASE_DIR="results"
 
 # Function to compress a subdirectory
 compress_directory() {
@@ -14,7 +14,8 @@ compress_directory() {
     tar -czf "$archive_name" -C "$parent_dir" "$(basename "$dir")"
     if [ $? -eq 0 ]; then
         echo "Successfully compressed '$dir'."
-	git add $archive_name
+
+    git add $archive_name
 
         # Add the directory to .gitignore if not already present
         if ! grep -qx "$dir/" .gitignore; then
