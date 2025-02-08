@@ -5,13 +5,13 @@ source scripts/utils.sh
 ##################################################################################
 #               MODIFY THESE VARIABLES TO SUIT YOUR TEST ENVIRONMENT             #
 ##################################################################################
-export N_NODES=2
+export N_NODES=4
 export TASK_PER_NODE=1
 export TEST_TIME=01:00:00
-export LOCATION="local"
+export LOCATION="leonardo"
 export DEBUG_MODE="no"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
-export NOTES="This is a test run"
+export NOTES="Testing on 4 nodes new refactoring"
 
 if ! source_environment "$LOCATION"; then
     error "Environment script for '${LOCATION}' not found!"
@@ -24,13 +24,6 @@ export ALGORITHM_CONFIG_FILE="$SWING_DIR/scripts/config/algorithm_config.json"
 export TEST_CONFIG_FILE="$SWING_DIR/scripts/config/test.json"
 export TEST_ENV="${TEST_CONFIG_FILE}_env.sh"
 
-# Select here what to do in debug mode
-if [ "$DEBUG_MODE" == yes ]; then
-    export COLLECTIVE_TYPE="ALLREDUCE"
-    export ALGOS="default_ompi"
-    export ARR_SIZES="8"
-    export TYPES="int" # For now only int,int32,int64 are supported in debug mode 
-fi
 ###################################################################################
 #               PARSE THE TEST CONFIGURATION FILE TO GET THE TEST VARIABLES       #
 ###################################################################################
@@ -43,6 +36,14 @@ activate_virtualenv || exit 1
 python3 $SWING_DIR/scripts/config/parse_test.py || exit 1
 # Source the test specific environment variables
 source $TEST_ENV
+
+# Select here what to do in debug mode
+if [ "$DEBUG_MODE" == yes ]; then
+    export COLLECTIVE_TYPE="ALLREDUCE"
+    export ALGOS="default_ompi"
+    export ARR_SIZES="8"
+    export TYPES="int" # For now only int,int32,int64 are supported in debug mode 
+fi
 
 # Load library-location specific environment variables
 load_other_env_var
@@ -78,5 +79,5 @@ export DYNAMIC_RULE_FILE=$SWING_DIR/ompi_rules/dynamic_rules.txt
 if [ $LOCATION == "local" ]; then
     scripts/run_test_suite.sh $N_NODES
 else
-    sbatch scripts/submit.sh
+    sbatch --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" scripts/submit.sbatch
 fi
