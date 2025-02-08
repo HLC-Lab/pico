@@ -5,67 +5,103 @@ It is a modular project featuring a static library (`libswing.a`), test and benc
 
 The suggested workflow is to use and modify the .sh files in `scripts/` directory to set up environments, run debug tests and benchmarking tests.
 
-## Directory Structure
+<!-- ## Supported MPI version -->
+<!-- - OpenMPI: >5.0.0 -->
+<!-- - Custom OpenMPI with swing implementation [`OMPI_SWING`](https://github.com/DaXor-0/ompi_test) implementations, environmental variables and a rule file must be update accordingly before running the tests. -->
+
+## Project Structure and Components
 
 ```
 .
-├── bin                   # Binaries (executables)
 ├── include               # Header file for libswing library containing the functions' signatures
-├── lib                   # Compiled static library
 ├── libswing              # Libswing library source code
-├── makefile              # Top-level Makefile
-├── obj                   # Object files
+├── ompi_rules            # Open MPI dynamic rule file and script to modify it
 ├── plot                  # Python scripts for data analysis and visualization (in development)
-├── results               # Results folder
+├── results               # Results folder divided by system
+├── scripts               # Main scripts to run benchmarks and debug
+│   ├── config                # .json config file, test file and test parser script
+│   ├── environments          # Environment specific scripts
+│   └── submit_wrapper.sh     # Wrapper to launch tests with `SBATCH` or run locally
 ├── test                  # Test program source code, includes benchmarking and debugging
-├── ompi_rules            # Open MPI dynamic rule file generator
-└── scripts               # Debug and benchmarking scripts
+├── Makefile              # Top-level Makefile
+└── README.md             # This documentation
 ```
 
-## Components
 
 ### `libswing` - Static Library
 
-The `libswing/` directory contains the source code for the `libswing/` static library. This library is compiled into a static archive (`lib/libswing.a`) and is used by the other components in the project. It provides essential utilities and functions that are benchmarked and debugged in the subsequent components.
+The `libswing/` directory contains the source code for the `libswing/` static library. This library is compiled into a static archive (`lib/libswing.a`) and is used by the other components in the project.
 
-It contains Swing implementations built **OVER** MPI (beware that the tests are thought to work also on internal algorithms of Open MPI).
+It provides various Swing implementations as well as other collective algorithms (copied from `coll` module of `OpenMPI`), in order to benchmark and compare `Swing` algorithms.
+
+All algorithms written in this library are defined as **OVER** in `algorithms_config.json` since they are not internal MPI implementation but instead rely on MPI API.
 
 #### Modify `libswing`
+Actual implementation must be declared in `include/libswing.h` and written in `libswing/libswing_<coll_type>.c`. Any helper function must be declared in `libswing/libswing_utils.h`.
 
-Actual implementation must be written in `libswing/libswing_<coll_type>.c` with helper functions declared as `static inline` in `libswing/libswing_utils.h`.
+To implement a new collective, arguments must be defined as a pre-compiler directive in `include/libswing.h` and called `<COLLECTIVE_TYPE>_ARGS`. Adhere to naming scheme of what is already written.
 
 ### `test/` - Benchmark program
 
-The `test/` directory contains a set of benchmark tests that are used to measure the performance of the `libswing` library. It compiles the executable `bin/test` that benchmarks the algorithm provided by `libswing` and the ones written inside the `Open MPI` library.
+The `test/` directory contains a set of benchmark tests that are used to measure the performance of the `libswing` library functions as well as any other internal `MPI` algorithm. It compiles into the executable `bin/test`.
 
-It will be modified to be independent of MPI implementation (i.e. to work also with standard Open MPI and MPICH).
+Algorithm selection is done via a command line parameters.
 
-Algorithm selection is done via a command line parameter and, in case of `OMPI_TEST` implementations, environmental variables and a rule file must be update accordingly before running the tests.
+In case of internal MPI algorithm, library specific variables must be set beforehands. For this benchmarking suite, this is done automatically with the scripts.
 
 The executable itself must be run with `srun` or `mpirun`/`mpiexec` and output is saved in `csv` format by rank 0.
 
 ##### Parameters:
-- `<array_size>`: Size of the array to run the collective on.
-- `<iter>`: Number of total iterations to run of the specific test.
-- `<type_string>`: The string codifying the datatype of the test. Currently some of them don't work and documentation will be added.
-- `<algorithm>`: Algorithm ID to run tests on.
-- `<dirpath>`: Directory where results will be saved.
+- `<count>`: Number of data elements per process
+- `<iterations>`: Total number of test iterations (including warm-up iterations)
+- `<algorithm>`: Collective algorithm to test
+- `<type_string>`: Data type (e.g., int32, float64)
+- `<output_dir>`: Directory to save benchmark results
 
 Collective type instead is chosen via environmental variable `COLLECTIVE_TYPE` (for now `ALLREDUCE`, `ALLGATHER` and `REDUCESCATTER` are implemented, other collectives coming soon).
 
 ##### Saving benchmarking results
 Before saving the results, a ground truth check on the last iteration is performed to check for possible errors.
 
-For now results are saved as a matrix in which each row is one iteration of the test, the first column contain the highest time between the ranks and each other row is the time of a specific rank.
+Results of each test run are saved in files called `<count>_<algorithm>_<datatype>.csv`, stored in `results/<LOCATION>/test/data/` in the format:
+| highest | rank0 | ... | rankN |
+|---------|-------|-----|-------|
+| ---     | ---   | ... | ---   |
 
-Naming of this file is temporary and will be changed.
-
-The first time this main is called (i.e. if used with a script test/debug suite, only on the first call), also a .csv file with MPI rank allocations will be saved.
+Since, in a single benchmarking test, the file will be called multiple times varying the inputs, only the first time it's called it will also create a file to store the node allocations of that ran and their relative MPI rank.
 
 ##### Debugging
 When compiled with -DDEBUG it will not save benchmark results and, if ground truth check returns an error, it will print `rbuf` and `rbuf_gt` before invoking `MPI_Abort`.
 
 Also in this mode, `sbuf` will be initialized with a predefined sequence of power of 10, in order to help for debugging purpose.
+
+#### Implementing a new algorithm
+When implementing a new algorithm, after correctly creating its metadata in `scripts/config/algorithm_config.json` (more on that later), there are steps to do in this file. 
+
+##### For an already implemented collective
+If the collective is already implemented, if the algorithm is an `external` algorithm (implemented in `libswing.h`), the switch statement of `get_<COLLECTIVE_TYPE>_function` in `test/test_utils.c` must be populated with the right function.
+
+If it is an `internal` algorithm, as long as algorithm metadata and script to change dynamic rules are working correctly, no other work is needed.
+
+Beware that some algorithms may require additional parameters, this specific is still work in progress.
+
+##### For a new collective
+If the collective is not yet implemented:
+- in `test_utils.h`
+  - add the collective to `coll_t` enum;
+  - declare an allocator (for now all allocators have the same signature but it can change in the future);
+  - `typedef` a function pointer for the specified collective and for its ground truth check;
+  - define a wrapper if the function pointer typing does not correspond precisely to the one of the collective itself (for example if you use `size_t count` instead of `int count`)
+  - populate `test_routine_t` struct accordingly;
+  - declare a test loop function and a ground truth check function;
+- create a file `test_<COLLECTIVE_TYPE>_utils.c`
+  - include at minimum `libswing.h` `test_utils.h` and `mpi.h`
+  - define the `allocator`, `ground_truth_check` and `test_loop` functions declared in `test_utils.h`
+- in `test_utils.c`
+  - modify `get_collective_from_string` and `get_allocator`,
+  - define a static inline `get_<COLLECTIVE_TYPE>_function` to return the normal collective function (or its wrapper) if the collective is internal and the collective defined in `libswing.h` if it's external.
+  - modify the switch in `get_routine`, `test_loop` and `ground_truth_check` with custom behaviour for the new collective
+  - modify `rand_sbuf_generator` and `debug_sbuf_generator` to correctly populate the sbuf of said collective (different collectives may have different sbuf dimension for a given `count` parameter)
 
 ### `ompi_rules/` - Open MPI Rule File Generator
 

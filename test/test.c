@@ -19,9 +19,6 @@ int main(int argc, char *argv[]) {
   // error handling with goto
   void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
-  // // Count array for reduce_scatter, always initialized to NULL
-  // // Allocated only if the collective is REDUCE_SCATTER
-  // int *red_scat_counts = NULL;
 
   size_t count;
   int iter;

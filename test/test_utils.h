@@ -10,7 +10,7 @@
 #define TEST_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
 
 //-----------------------------------------------------------------------------------------------
-//                    TYPEDEFs AND ENUMs FOR COLLECTIVE SELECTION
+//                        ENUM FOR COLLECTIVE SELECTION
 // ----------------------------------------------------------------------------------------------
 
 /**
@@ -26,9 +26,13 @@ typedef enum{
   COLL_UNKNOWN
 }coll_t;
 
+
+//-----------------------------------------------------------------------------------------------
+//                         ALLOCATOR FUNCTIONS
+//-----------------------------------------------------------------------------------------------
+
 #define ALLOCATOR_ARGS    void **sbuf, void **rbuf, void **rbuf_gt, size_t count,\
                           size_t type_size, MPI_Comm comm
-
 /**
 * @typedef allocator_func_ptr
 *
@@ -40,14 +44,28 @@ int allreduce_allocator(ALLOCATOR_ARGS);
 int allgather_allocator(ALLOCATOR_ARGS);
 int reduce_scatter_allocator(ALLOCATOR_ARGS);
 
+//-----------------------------------------------------------------------------------------------
+//                               FUNCTION POINTER AND WRAPPER
+//                       (for specific collective function and gt_check)
+//-----------------------------------------------------------------------------------------------
 typedef int (*allreduce_func_ptr)(ALLREDUCE_ARGS);
 typedef int (*allgather_func_ptr)(ALLGATHER_ARGS);
 typedef int (*reduce_scatter_func_ptr)(REDUCE_SCATTER_ARGS);
+
+static inline int allreduce_wrapper(ALLREDUCE_ARGS){
+    return MPI_Allreduce(sbuf, rbuf, (int)count, dtype, op, comm);
+}
+static inline int allgather_wrapper(ALLGATHER_ARGS){
+    return MPI_Allgather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
+}
 
 typedef int (*reduce_scatter_gt_func_ptr)(REDUCE_SCATTER_ARGS, void *rbuf_gt);
 typedef int (*allreduce_gt_func_ptr)(ALLREDUCE_ARGS, void *rbuf_gt);
 typedef int (*allgather_gt_func_ptr)(ALLGATHER_ARGS, void *rbuf_gt);
 
+//-----------------------------------------------------------------------------------------------
+//                                TEST ROUTINE STRUCTURE
+//-----------------------------------------------------------------------------------------------
 
 /**
  * @struct test_routine_t
@@ -80,52 +98,6 @@ typedef struct {
   } gt_check;
 } test_routine_t;
 
-//-----------------------------------------------------------------------------------------------
-//                FUNCTION POINTER TYPES AND WRAPPER FOR CUSTOM COLLECTIVE FUNCTIONS
-// ----------------------------------------------------------------------------------------------
-
-/**
- * @typedef allreduce_func_ptr
- * 
- * A function pointer type for custom allreduce functions. It has the same signature
- * of MPI_Allreduce but with `count` being `size_t`.
- */
-typedef int (*allreduce_func_ptr)(ALLREDUCE_ARGS);
-
-/**
- * @typedef allgather_func_ptr
- * 
- * A function pointer type for custom allgather functions. It has the same signature
- * of MPI_Allgather but with `scount` and `rcount` being `size_t`.
- */
-typedef int (*allgather_func_ptr)(ALLGATHER_ARGS);
-
-/**
- * @typedef reduce_scatter_func_ptr
- * 
- * A function pointer type for custom reduce scatter functions. It has the same signature
- * of MPI_Reduce_scatter.
- */
-typedef int (*reduce_scatter_func_ptr)(REDUCE_SCATTER_ARGS);
-
-/**
- * @brief Wrapper function to adapt MPI_Allreduce to match a function signature using size_t.
- * 
- * This function calls MPI_Allreduce, casting the count parameter to int to match MPI's API.
- */
-static inline int allreduce_wrapper(ALLREDUCE_ARGS){
-    return MPI_Allreduce(sbuf, rbuf, (int)count, dtype, op, comm);
-}
-
-/**
-* @brief Wrapper function to adapt MPI_Allgather to match a function signature using size_t.
-* 
-* This function calls MPI_Allgather, casting the scount and rcount parameters to int to match MPI's API.
-*/
-static inline int allgather_wrapper(ALLGATHER_ARGS){
-    return MPI_Allgather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
-}
-
 
 //-----------------------------------------------------------------------------------------------
 //                                MAIN BENCHMARK LOOP FUNCTIONS
@@ -149,6 +121,33 @@ void allgather_test_loop(ALLGATHER_ARGS, int iter, double *times, test_routine_t
  */
 void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double *times, test_routine_t test_routine);
 
+//-----------------------------------------------------------------------------------------------
+//                                   GROUND TRUTH CHECK FUNCTIONS
+//-----------------------------------------------------------------------------------------------
+
+int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt,
+                       size_t count, MPI_Datatype dtype, MPI_Comm comm);
+/**
+ * @brief Performs a ground-truth check for the result of an MPI Allreduce operation.
+ *
+ * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
+ */
+int allreduce_gt_check(ALLREDUCE_ARGS, void *recvbuf_gt);
+
+/**
+ * @brief Performs a ground-truth check for the result of an MPI Allgather operation.
+ *
+ * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
+ */
+int allgather_gt_check(ALLGATHER_ARGS, void *recvbuf_gt);
+
+
+/**
+ * @brief Performs a ground-truth check for the result of a Reduce Scatter operation.
+ *
+ * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
+ */
+int reduce_scatter_gt_check(REDUCE_SCATTER_ARGS, void *recvbuf_gt);
 
 //-----------------------------------------------------------------------------------------------
 //                     SELECT ALGORITHM AND COMMAND LINE PARSING FUNCTIONS
@@ -197,33 +196,6 @@ int get_command_line_arguments(int argc, char** argv, size_t *array_count,
  */
 int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_size);
 
-//-----------------------------------------------------------------------------------------------
-//                                   GROUND TRUTH CHECK FUNCTIONS
-//-----------------------------------------------------------------------------------------------
-
-int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt,
-                       size_t count, MPI_Datatype dtype, MPI_Comm comm);
-/**
- * @brief Performs a ground-truth check for the result of an MPI Allreduce operation.
- *
- * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
- */
-int allreduce_gt_check(ALLREDUCE_ARGS, void *recvbuf_gt);
-
-/**
- * @brief Performs a ground-truth check for the result of an MPI Allgather operation.
- *
- * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
- */
-int allgather_gt_check(ALLGATHER_ARGS, void *recvbuf_gt);
-
-
-/**
- * @brief Performs a ground-truth check for the result of a Reduce Scatter operation.
- *
- * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
- */
-int reduce_scatter_gt_check(REDUCE_SCATTER_ARGS, void *recvbuf_gt);
 
 //-----------------------------------------------------------------------------------------------
 //                                  I/O FUNCTIONS
@@ -356,5 +328,5 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm);
 #endif
 
-#endif
+#endif // TEST_TOOLS_H
 
