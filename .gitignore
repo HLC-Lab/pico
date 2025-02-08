@@ -7,10 +7,10 @@ compile_commands.json
 *.o
 *.out
 out
-results/leonardo/2025_02_07___17:49:20/
-results/leonardo/2025_02_07___18:09:10/
-results/leonardo/2025_02_07___19:49:27/
-results/leonardo/2025_02_07___20:12:37/
+results/leonardo/2025_02_07___17_49_20/
+results/leonardo/2025_02_07___18_09_10/
+results/leonardo/2025_02_07___19_49_27/
+results/leonardo/2025_02_07___20_12_37/
 results/leonardo/2025_02_08___20_42_15/
 results/local/*
 results/local_metadata.csv
