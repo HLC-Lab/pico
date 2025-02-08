@@ -58,35 +58,33 @@ The executable itself must be run with `srun` or `mpirun`/`mpiexec` and output i
 - `<type_string>`: Data type (e.g., int32, float64)
 - `<output_dir>`: Directory to save benchmark results
 
-Collective type instead is chosen via environmental variable `COLLECTIVE_TYPE` (for now `ALLREDUCE`, `ALLGATHER` and `REDUCESCATTER` are implemented, other collectives coming soon).
+The collective type is selected via the environment variable `COLLECTIVE_TYPE`. Currently supported collectives include:
+- `ALLREDUCE`
+- `ALLGATHER`
+- `REDUCE_SCATTER`
+Additional collectives will be implemented in the future.
 
 ##### Saving benchmarking results
-Before saving the results, a ground truth check on the last iteration is performed to check for possible errors.
-
-Results of each test run are saved in files called `<count>_<algorithm>_<datatype>.csv`, stored in `results/<LOCATION>/test/data/` in the format:
+Before saving the results, a ground truth check on the last iteration is performed to ensure correctness.
+Results are saved in files called `<count>_<algorithm>_<datatype>.csv`, stored in `results/<LOCATION>/test/data/` in the format:
 | highest | rank0 | ... | rankN |
 |---------|-------|-----|-------|
 | ---     | ---   | ... | ---   |
 
-Since, in a single benchmarking test, the file will be called multiple times varying the inputs, only the first time it's called it will also create a file to store the node allocations of that ran and their relative MPI rank.
-
-##### Debugging
-When compiled with -DDEBUG it will not save benchmark results and, if ground truth check returns an error, it will print `rbuf` and `rbuf_gt` before invoking `MPI_Abort`.
-
-Also in this mode, `sbuf` will be initialized with a predefined sequence of power of 10, in order to help for debugging purpose.
+Additionally, during the first run of a benchmarking test, a file is created to store node allocations and their corresponding MPI ranks.
 
 #### Implementing a new algorithm
-When implementing a new algorithm, after correctly creating its metadata in `scripts/config/algorithm_config.json` (more on that later), there are steps to do in this file. 
+For an Already Implemented Collective
+1. External Algorithm (implemented in `libswing.h`):
+  - Ensure the algorithm metadata in `scripts/config/algorithm_config.json` is correctly configured.
+  - Update the switch statement in `get_<COLLECTIVE_TYPE>_function` in `test/test_utils.c` to include the new function.
+2. Internal Algorithm (implemented inside the given MPI library):
+  - Ensure the algorithm metadata in `scripts/config/algorithm_config.json` is correctly configured.
+  - Ensure `ompi_rules/change_dynamic_rules.py` correctly modifies the dynamic rule file.
 
-##### For an already implemented collective
-If the collective is already implemented, if the algorithm is an `external` algorithm (implemented in `libswing.h`), the switch statement of `get_<COLLECTIVE_TYPE>_function` in `test/test_utils.c` must be populated with the right function.
+Note: Some algorithms may require additional parameters. This functionality is still under development.
 
-If it is an `internal` algorithm, as long as algorithm metadata and script to change dynamic rules are working correctly, no other work is needed.
-
-Beware that some algorithms may require additional parameters, this specific is still work in progress.
-
-##### For a new collective
-If the collective is not yet implemented:
+For a new collective additional steps are required.
 - in `test_utils.h`
   - add the collective to `coll_t` enum;
   - declare an allocator (for now all allocators have the same signature but it can change in the future);
@@ -102,6 +100,12 @@ If the collective is not yet implemented:
   - define a static inline `get_<COLLECTIVE_TYPE>_function` to return the normal collective function (or its wrapper) if the collective is internal and the collective defined in `libswing.h` if it's external.
   - modify the switch in `get_routine`, `test_loop` and `ground_truth_check` with custom behaviour for the new collective
   - modify `rand_sbuf_generator` and `debug_sbuf_generator` to correctly populate the sbuf of said collective (different collectives may have different sbuf dimension for a given `count` parameter)
+
+##### Debugging
+When compiled with `-DDEBUG`, the program:
+- will not save benchmark results
+- initializes `sbuf` in a predefined way
+- prints `rbuf` and `rbuf_gt` if ground truth check fails before invoking `MPI_Abort`
 
 ### `ompi_rules/` - Open MPI Rule File Generator
 
