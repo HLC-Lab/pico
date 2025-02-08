@@ -3,22 +3,14 @@
 # Variables always needed
 export RUN=srun
 export RUNFLAGS=
-
+export SWING_DIR=$HOME/Swing_Test
 export UCX_IB_SL=1
 
-export SWING_DIR=$HOME/Swing_Test/
 
 # Used to load python and virtual environment
 load_python() {
-    module load python/3.11.6--gcc--8.5.0
-    if [ -f "$HOME/.swing_venv/bin/activate" ]; then
-        success "Virtual environment 'swing_venv' exists. Activating it..."
-        source $HOME/.swing_venv/bin/activate
-    else
-        error "Virtual environment 'swing_venv' does not exist."
-        error "Please create a virtual environment and install the required packages from login node."
-        error "Required packages: jsonschema, pandas, matplotlib, seaborn"
-    fi
+    module load python/3.11.6--gcc--8.5.0 || { error "Failed to load Python module." ; return 1; }
+    return 0
 }
 
 # Load environment variables dependant on the MPI library
@@ -39,5 +31,3 @@ load_other_env_var() {
         fi
     fi
 }
-
-

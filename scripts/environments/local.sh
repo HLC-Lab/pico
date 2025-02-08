@@ -3,21 +3,7 @@
 # Variables always needed
 export RUN=mpiexec
 export RUNFLAGS=
-
-export SWING_DIR=$HOME/University/Tesi/test/
-
-
-# Used to load python and virtual environment
-load_python() {
-    if [ -f "~/.swing_venv" ]; then
-        success "Virtual environment 'swing_venv' exists. Activating it..."
-        source ~/.swing_venv/bin/activate
-    else
-        error "Virtual environment 'swing_venv' does not exist."
-        error "Please create a virtual environment and install the required packages."
-        error "Required packages: jsonschema, pandas, matplotlib, seaborn"
-    fi
-}
+export SWING_DIR=$HOME/University/Tesi/test
 
 # Load environment variables dependant on the MPI library
 load_other_env_var() {
@@ -35,5 +21,3 @@ load_other_env_var() {
         fi
     fi
 }
-
-

@@ -1,6 +1,7 @@
 # Colors for styling output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
 
 # Print error messages in red
@@ -11,6 +12,11 @@ error() {
 # Print success messages in green
 success() {
     echo -e "\n${GREEN}$1${NC}\n"
+}
+
+# Print warning messages in yellow
+warning() {
+    echo -e "\n${YELLOW}WARNING: $1 ${NC}\n"
 }
 
 # Cleanup function for SIGINT
@@ -31,6 +37,29 @@ source_environment() {
     fi
 }
 
+# Activate the virtual environment, if it exists
+# If not create it and install the required Python packages
+activate_virtualenv() {
+    if [ -f "$HOME/.swing_venv/bin/activate" ]; then
+        success "Virtual environment 'swing_venv' exists. Activating it..."
+        source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment." ; return 1; }
+    else
+        warning "Virtual environment 'swing_venv' does not exist. Creating it..."
+        
+        # Create the virtual environment
+        python3 -m venv "$HOME/.swing_venv" || { error "Failed to create virtual environment." ; return 1; }
+        source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment after creation." ; return 1; }
+
+        success "Virtual environment 'swing_venv' created and activated."
+
+        pip install --upgrade pip || { error "Failed to upgrade pip." ; return 1; }
+        pip install jsonschema || { error "Failed to install Python packages." ; return 1; }
+
+        success "Python packages installed."
+    fi
+
+    return 0
+}
 
 # Compile the codebase
 compile_code() {
@@ -70,12 +99,11 @@ get_iterations() {
 # Arguments: array size, iterations, data type, algorithm index
 run_test() {
     local size=$1
-    local iter=$2
-    local type=$3
-    local algo=$4
-    local debug_mode=$5
+    local type=$2
+    local algo=$3
+    local iter=$(get_iterations $size)
 
-    if [ "$debug_mode" == "yes" ]; then
+    if [ "$DEBUG_MODE" == "yes" ]; then
         echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
     else
         echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
@@ -92,34 +120,24 @@ run_test() {
 # note that, if an algorithm is not internal to Open MPI, the dynamic
 # rule file will be set to 0 (i.e. automatic default algorithm selection)
 run_all_tests() {
-    local nodes=$1
-    local algos=($2)
-    local skips=($3)
-    local sizes=($4)
-    local types=($5)
-    local output_dir=$6
-    local debug_mode=$7
-
-    for algo in ${algos[@]}; do
+    for algo in ${ALGOS[@]}; do
         # Update dynamic rule file for the algorithm
         echo "Updating dynamic rule file for algorithm $algo..."
-        python3 $RULE_UPDATER $ALGORITHM_CONFIG $DYNAMIC_RULE_FILE $algo || exit 1
+        python3 $RULE_UPDATER_EXEC $algo || exit 1
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
 
-        for size in ${sizes[@]}; do
+        for size in ${ARR_SIZES[@]}; do
             # Skip specific algorithms if conditions are met
-            if [[ size -lt $nodes && " ${skips} " =~ " ${algo} " ]]; then
-                echo "Skipping algorithm $algo for size=$size < N_NODES=$nodes"
+            if [[ size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then
+                echo "Skipping algorithm $algo for size=$size < N_NODES=$N_NODES"
                 continue
             fi
 
             # Get the number of iterations for the size
-            local iter=$(get_iterations $size)
-            for type in ${types[@]}; do
+            for type in ${TYPES[@]}; do
                 # Run the test for the given configuration
-                run_test $size $iter $type $algo $debug_mode
+                run_test $size $type $algo
             done
         done
     done
-
 }

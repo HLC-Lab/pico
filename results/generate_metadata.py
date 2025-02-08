@@ -5,7 +5,6 @@ from typing import List
 
 RESULTS_DIR = "results/"
 
-
 # Update or create metadata CSV
 def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, datatypes : List[str],
                     collective_type: str, algos: List[str], mpi_lib: str, mpi_lib_version : str,
@@ -50,17 +49,9 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, data
         })
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: python update_metadata.py <system_name> <timestamp> \
-                <number_of_nodes> [notes].", file=sys.stderr)
-        sys.exit(1)
-
-    # Collect arguments from command line
-    system_name = sys.argv[1]
-    timestamp = sys.argv[2]
-    number_of_nodes = int(sys.argv[3])
-    notes = sys.argv[4] if len(sys.argv) == 5 else None
-
+    system_name = os.getenv('LOCATION')
+    number_of_nodes = os.getenv('N_NODES')
+    timestamp = os.getenv('TIMESTAMP')
     collective_type = os.getenv('COLLECTIVE_TYPE')
     algos = os.getenv('ALGOS')
     datatypes = os.getenv('TYPES')
@@ -69,10 +60,13 @@ if __name__ == "__main__":
     libswing_version = os.getenv('LIBSWING_VERSION')
     cuda = os.getenv('CUDA')
     mpi_op = os.getenv('MPI_OP')
-    if not (collective_type and algos and datatypes and mpi_lib and mpi_lib_version and libswing_version and cuda):
-        print ("Environment variables not set.", file=sys.stderr)
+    notes = os.getenv('NOTES')
+    if not (system_name and timestamp and number_of_nodes and number_of_nodes.isdigit() and collective_type and algos and datatypes and mpi_lib and mpi_lib_version and libswing_version and cuda):
+        print (f"{__file__}: Environment variables not set.", file=sys.stderr)
+        print (f"LOCATION={system_name}\nTIMESTAMP={timestamp}\nN_NODES={number_of_nodes}\nCOLLECTIVE_TYPE={collective_type}\nALGOS={algos}\nTYPES={datatypes}\nMPI_LIB={mpi_lib}\nMPI_LIB_VERSION={mpi_lib_version}\nLIBSWING_VERSION={libswing_version}\nCUDA={cuda}", file=sys.stderr)
         sys.exit(1)
 
+    number_of_nodes = int(number_of_nodes)
     algos = algos.split(" ")
     datatypes = datatypes.split(" ")
     cuda = cuda.lower() == "true"

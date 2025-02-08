@@ -50,16 +50,16 @@ test_config_schema = {
     "additionalProperties": False
 }
 
-# Supported types are "int8 int16 int32 int64 int float double char unsigned_char"
+
+
 def load_json(file_path: str | os.PathLike):
-    """Load the JSON test file and the algorithm
-    config file"""
+    """Load the JSON test file and the algorithm config file"""
     with open(file_path, 'r') as file:
         return json.load(file)
 
+
 def check_comm_sz(algo_constraints, comm_sz: int):
-    """Check if the given algorithm satisfies the
-    comm_sz related constraints"""
+    """Check if the given algorithm satisfies the comm_sz related constraints"""
     for constraint in algo_constraints:
         if constraint["key"] != "comm_sz":
             continue
@@ -83,6 +83,7 @@ def check_comm_sz(algo_constraints, comm_sz: int):
     return True
 
 
+
 def check_skip(algo_constraints) -> bool:
     """Check if the algorithm should be added to the SKIP list."""
     for constraint in algo_constraints:
@@ -96,6 +97,7 @@ def check_skip(algo_constraints) -> bool:
                 return True
 
     return False
+
 
 
 def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version) -> bool:
@@ -120,6 +122,7 @@ def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_versio
     return False
 
 
+
 def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
     """Get algorithms that match the test configuration."""
     collective = test_config["collective"]
@@ -135,7 +138,7 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
     skip_algorithms = []
     
     if collective not in algorithm_config["collective"]:
-        print(f"Error: Collective {collective} not found in algorithm_config.json.", file=sys.stderr)
+        print(f"{__file__}: collective {collective} not found in ALGORITHM_CONFIG_FILE.", file=sys.stderr)
         sys.exit(1)
 
     for algo_name, algo_data in algorithm_config["collective"][collective].items():
@@ -168,10 +171,11 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
         matching_algorithms.append(algo_name)
 
     if not matching_algorithms:
-        print("No matching algorithms found for the given test configuration.", file=sys.stderr)
+        print(f"{__file__}: no allowed algorithms found for TEST_CONFIG_FILE.", file=sys.stderr)
         sys.exit(1)
 
     return matching_algorithms, skip_algorithms
+
 
 
 def export_environment_variables(matching_algorithms, skip_algorithms,
@@ -205,29 +209,30 @@ def export_environment_variables(matching_algorithms, skip_algorithms,
         f.write(f"export ARR_SIZES='{arr_counts}'\n")
 
 
+
 def main():
-    # Check if arguments are correctly provided
-    if len(sys.argv) != 4:
-        print("Usage: python parse_test.py <test_config> <output_file> <number_of_nodes>", file=sys.stderr)
+    algorithm_file = os.getenv("ALGORITHM_CONFIG_FILE")
+    test_file = os.getenv("TEST_CONFIG_FILE")
+    output_file = os.getenv("TEST_ENV")
+    number_of_nodes = os.getenv("N_NODES")
+    if not (algorithm_file and test_file and output_file and number_of_nodes and number_of_nodes.isdigit()):
+        print(f"{__file__}: Environment variables not set.", file=sys.stderr)
+        print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG_FILE={test_file}\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}", file=sys.stderr)
+        sys.exit(1)
+    number_of_nodes = int(number_of_nodes)
+
+    if not (os.path.isfile(algorithm_file) and os.path.isfile(test_file)):
+        print(f"{__file__}: {algorithm_file} or {test_file} not found.", file=sys.stderr)
         sys.exit(1)
 
-    test_file = sys.argv[1]
-    output_file = sys.argv[2]
-    number_of_nodes = int(sys.argv[3])
-
-    # Check if the algorithm_config.json and test_config.json files exist
-    if not ( os.path.isfile("scripts/algorithm_config.json") and os.path.isfile(test_file) ):
-        print("Error: algorithm_config.json or test_config.json not found.", file=sys.stderr)
-        sys.exit(1)
-
-    algorithm_config = load_json("scripts/algorithm_config.json")
+    algorithm_config = load_json(algorithm_file)
     test_config = load_json(test_file)
 
     # Validate the test_config.json
     try:
         jsonschema.validate(instance=test_config, schema=test_config_schema)
     except jsonschema.exceptions.ValidationError as e:
-        print(f"Validation error: {e}", file=sys.stderr)
+        print(f"{__file__}Validation error: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Get matching algorithms

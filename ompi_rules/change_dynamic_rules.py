@@ -17,7 +17,7 @@ def find_dynamic_rule(algorithm_config_file: str | os.PathLike, collective_type:
         algorithm_config = json.load(json_file)
 
     if collective_type not in algorithm_config["collective"]:
-        print (f"Collective type {collective_type} not found in the JSON file.", file=sys.stderr)
+        print (f"{__file__}: collective type {collective_type} not found in the JSON file.", file=sys.stderr)
         sys.exit(1)
 
     dynamic_rule = -1
@@ -27,7 +27,7 @@ def find_dynamic_rule(algorithm_config_file: str | os.PathLike, collective_type:
             break
 
     if dynamic_rule == -1:
-        print (f"Algorithm {algorithm} not found for collective type {collective_type}.", file=sys.stderr)
+        print (f"{__file__}: algorithm {algorithm} not found for collective type {collective_type}.", file=sys.stderr)
         sys.exit(1)
     
     return dynamic_rule
@@ -52,27 +52,28 @@ def modify_dynamic_rule(rule_file: str | os.PathLike, collective_type: str, new_
                     txt_file.writelines(lines)
                 return
             else:
-                print(f"Error: Insufficient lines in the file after '{collective_type}'.", file=sys.stderr)
+                print(f"{__file__}: Insufficient lines in the file after '{collective_type}'.", file=sys.stderr)
                 sys.exit(1)
 
-    print (f"Collective type {collective_type} not found in the .txt file.", file=sys.stderr)
+    print (f"{__file__}: Collective type {collective_type} not found in the .txt file.", file=sys.stderr)
     sys.exit(1)
 
 
 def main():
-    if len(sys.argv) != 4:
-        print ("Usage: python change_dynamic_rules.py <algorithm_config_file> <rule_file> <algorithm>", file=sys.stderr)
+    if len(sys.argv) != 2:
+        print(f"{__file__} Usage: python change_dynamic_rules.py <algorithm>", file=sys.stderr)
         sys.exit(1)
-    algorithm_config_file = sys.argv[1]
-    rule_file = sys.argv[2]
-    algorithm = sys.argv[3]
+    algorithm = sys.argv[1]
+    algorithm_config_file = os.getenv('ALGORITHM_CONFIG_FILE')
+    dynamic_rule_file = os.getenv('DYNAMIC_RULE_FILE')
     collective_type = os.getenv('COLLECTIVE_TYPE')
-    if not collective_type:
-        print ("Environment variable COLLECTIVE_TYPE is not set.", file=sys.stderr)
+    if not (algorithm_config_file and dynamic_rule_file and collective_type):
+        print(f"{__file__}: Environment variables not set.", file=sys.stderr)
+        print(f"ALGORITHM_CONFIG_FILE={algorithm_config_file}\nDYNAMIC_RULE_FILE={dynamic_rule_file}\nCOLLECTIVE_TYPE={collective_type}", file=sys.stderr)
         sys.exit(1)
 
     new_rule = find_dynamic_rule(algorithm_config_file, collective_type, algorithm)
-    modify_dynamic_rule(rule_file, collective_type, new_rule)
+    modify_dynamic_rule(dynamic_rule_file, collective_type, new_rule)
 
 if __name__ == "__main__":
     main()
