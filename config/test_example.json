@@ -1,8 +1,4 @@
 {
-  "mpi": {
-    "type": "ompi_swing",
-    "version": "5.0.0"
-  },
   "libswing_version": "1.0.0",
   "collective": "ALLREDUCE",
   "MPI_Op": "MPI_SUM",

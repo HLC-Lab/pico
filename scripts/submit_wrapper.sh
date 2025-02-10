@@ -11,12 +11,9 @@ export LOCATION="leonardo"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
 export NOTES="Testing again without submit.sbatch"
-# SLURM variables
+# SLURM specific variables, other variables are set in the environment script
 export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
 export TEST_TIME=01:00:00
-export PARTITION=boost_usr_prod
-export QOS=''
-export ACCOUNT=IscrC_ASCEND
 
 if ! source_environment "$LOCATION"; then
     error "Environment script for '${LOCATION}' not found!"
@@ -43,7 +40,12 @@ python3 $SWING_DIR/config/parse_test.py || exit 1
 # Source the test specific environment variables
 source $TEST_ENV
 
-# Select here what to do in debug mode
+# Load test specific environment variables (like OMPI cuda related flags)
+load_other_env_var
+
+###################################################################################
+#                 MODIFY THIS IF RUNNING ON DEBUG MODE (experimental)             #
+###################################################################################
 if [ "$DEBUG_MODE" == yes ]; then
     export COLLECTIVE_TYPE="ALLREDUCE"
     export ALGOS="default_ompi"
@@ -51,8 +53,6 @@ if [ "$DEBUG_MODE" == yes ]; then
     export TYPES="int" # For now only int,int32,int64 are supported in debug mode 
 fi
 
-# Load library-location specific environment variables
-load_other_env_var
 
 ###################################################################################
 #           COMPILE CODE, CREATE OUTPUT DIRECTORIES AND GENERATE METADATA         #

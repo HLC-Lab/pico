@@ -70,7 +70,6 @@ This file ensures that only compatible algorithms are considered when selecting 
 
 The `test.json` file defines the conditions and parameters for running a test, acting as a filtering mechanism for selecting appropriate algorithms. Its key fields include:
 
-- **`mpi`**: Defines the MPI implementation type (`ompi`, `ompi_swing`) and version.
 - **`libswing_version`**: Specifies the version of the `libswing` library.
 - **`collective`**: Indicates which collective operation is being tested (e.g., `REDUCE_SCATTER`, `ALLGATHER`).
 - **`MPI_Op`**: Defines the MPI operation (e.g., `MPI_SUM` for reduction).
@@ -234,9 +233,8 @@ Key environment variables set in this script:
 Slurm specific environment variables:
 - `TEST_TIME`: Equivalent to --time variable to define the allocation request time.
 - `TASK_PER_NODE`: Equivalent to --ntasks-per-node to define how many tasks run per single node. For now this is here only to allow for particular `qos` selections and does not modify `srun` behaviour. May change in future updates.
-- `PARTITION`: Equivalent to -p to select cluster's partition.
-- `ACCOUNT`: Equivalent to --account to select cluster's project's account.
-- `QOS_NAME` (optional): Equivalent to -p to select cluster's quality of service. 
+
+Beware that other location specific SLUM variable are declared inside `environment/<location>.sh`.
 
 ### `environment/<location>.sh` – Machine-Specific Environment Configuration  
 
@@ -250,10 +248,15 @@ It must contain:
 - `export <ENV>` to export all strictly necessary environment variables for the machine.
   - `RUN` to define the command to run tests (`srun`, `mpiexec`...)
   - `SWING_DIR` full path to Swing_Test directory.
+  - `MPI_LIB` mpi library type.
+  - `MPI_LIB_VERSION` version of said library.
+  - `ACCOUNT` set slurm account.
+  - `PARTITION` set slurm partition.
+  - (optional) `QOS` set quality of service.
   - (optional) `RUNFLAGS` flags to invoke with the `RUN` command (for example Snellius cluster requires `RUNFLAGS=--mpi=pmix`).
   - (optional) any other flag to set to modify test behaviour (for example on Leonardo `UCX_IB_SL=1`).
 - `load_python()` function to load correct python module.
-- `load_other_env_var()` function to load environment variables dependant on test selection (for example the one to activate or deactivate MPI-Cuda support).
+- (optional) `load_other_env_var()` function to load environment variables dependant on test selection (for example the one to activate or deactivate MPI-Cuda support).
 
 
 ### `run_test_suite.sh` – The Core Test Execution Script  

@@ -9,15 +9,6 @@ import os
 test_config_schema = {
     "type": "object",
     "properties": {
-        "mpi": {
-            "type": "object",
-            "properties": {
-                "type": {"type": "string", "enum": ["ompi", "ompi_swing"]},
-                "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"}
-            },
-            "required": ["type", "version"],
-            "additionalProperties": False
-        },
         "libswing_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
         "collective": {"type": "string", "enum": ["ALLREDUCE", "REDUCE_SCATTER", "ALLGATHER"]},
         "MPI_Op": {"type": "string"},
@@ -46,7 +37,7 @@ test_config_schema = {
              "items": {"type": "string",
                        "enum": ["int8", "int16", "int32", "int64", "int", "float", "double", "char", "unsigned_char"]}},
     },
-    "required": ["mpi", "libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda", "arr_counts", "datatypes"],
+    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda", "arr_counts", "datatypes"],
     "additionalProperties": False
 }
 
@@ -126,8 +117,13 @@ def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_versio
 def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
     """Get algorithms that match the test configuration."""
     collective = test_config["collective"]
-    mpi_type = test_config["mpi"]["type"]
-    mpi_version = test_config["mpi"]["version"]
+    
+    mpi_type = os.getenv("MPI_LIB")
+    mpi_version = os.getenv("MPI_LIB_VERSION")
+    if not (mpi_type and mpi_version):
+        print(f"{__file__}: MPI_LIB or MPI_LIB_VERSION not set in the environment.", file=sys.stderr)
+        sys.exit(1)
+
     libswing_version = test_config["libswing_version"]
     include_tags = test_config["tags"]["include"]
     exclude_tags = test_config["tags"]["exclude"]
@@ -186,8 +182,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms,
         mpi_op = test_config["MPI_Op"]
     else:
         mpi_op = "null"
-    mpi_type = test_config["mpi"]["type"].upper()
-    mpi_version = test_config["mpi"]["version"]
     libswing_version = test_config.get("libswing_version", "")
     cuda = test_config["cuda"]
     algo_names = " ".join(matching_algorithms)
@@ -200,8 +194,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms,
         f.write(f"export COLLECTIVE_TYPE='{collective}'\n")
         f.write(f"export ALGOS='{algo_names}'\n")
         f.write(f"export SKIP='{skip_names}'\n")
-        f.write(f"export MPI_LIB='{mpi_type}'\n")
-        f.write(f"export MPI_LIB_VERSION='{mpi_version}'\n")
         f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
         f.write(f"export CUDA='{cuda}'\n")
         f.write(f"export MPI_OP='{mpi_op}'\n")

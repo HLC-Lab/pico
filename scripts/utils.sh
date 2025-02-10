@@ -122,9 +122,11 @@ run_test() {
 run_all_tests() {
     for algo in ${ALGOS[@]}; do
         # Update dynamic rule file for the algorithm
-        echo "Updating dynamic rule file for algorithm $algo..."
-        python3 $RULE_UPDATER_EXEC $algo || exit 1
-        export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
+        if [[ "$MPI_LIB" == "OMPI_SWING" ]] || [[ "$MPI_LIB" == "OMPI" ]]; then
+            echo "Updating dynamic rule file for algorithm $algo..."
+            python3 $RULE_UPDATER_EXEC $algo || exit 1
+            export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
+        fi
 
         for size in ${ARR_SIZES[@]}; do
             # Skip specific algorithms if conditions are met
