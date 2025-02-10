@@ -11,7 +11,7 @@ export ACCOUNT=project_465000997
 
 # MPI library specific variables
 export MPI_LIB='CRAY_MPICH'
-export MPI_LIB_VERSION='8.0.0'
+export MPI_LIB_VERSION='8.1.29'
 
 
 # Used to load python and virtual environment

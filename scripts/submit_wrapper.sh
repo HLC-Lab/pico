@@ -10,7 +10,7 @@ export N_NODES=4
 export LOCATION="lumi"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
-export NOTES="Lumi second test, previous one did not include internal allreduce"
+export NOTES="Lumi second test"
 # SLURM specific variables, other variables are set in the environment script
 export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
 export TEST_TIME=01:00:00
@@ -53,7 +53,6 @@ if [ "$DEBUG_MODE" == yes ]; then
     export TYPES="int" # For now only int,int32,int64 are supported in debug mode 
 fi
 
-
 ###################################################################################
 #           COMPILE CODE, CREATE OUTPUT DIRECTORIES AND GENERATE METADATA         #
 ###################################################################################
@@ -71,6 +70,7 @@ if [ $DEBUG_MODE == "no" ]; then
     # Generate test metadata
     python3 $SWING_DIR/results/generate_metadata.py  || exit 1
 fi
+
 ###################################################################################
 
 

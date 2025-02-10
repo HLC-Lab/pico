@@ -107,23 +107,16 @@ def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_versio
     if "libswing" in library_dependencies and library_dependencies["libswing"] <= libswing_version:
         return True
 
-    if str(mpi_type) in library_dependencies and library_dependencies[str(mpi_type)] <= mpi_version:
+    if mpi_type.lower() in library_dependencies and library_dependencies[mpi_type.lower()] <= mpi_version:
         return True
 
     return False
 
 
 
-def get_matching_algorithms(algorithm_config, test_config, comm_sz: int):
+def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_type: str, mpi_version: str):
     """Get algorithms that match the test configuration."""
     collective = test_config["collective"]
-    
-    mpi_type = os.getenv("MPI_LIB")
-    mpi_version = os.getenv("MPI_LIB_VERSION")
-    if not (mpi_type and mpi_version):
-        print(f"{__file__}: MPI_LIB or MPI_LIB_VERSION not set in the environment.", file=sys.stderr)
-        sys.exit(1)
-
     libswing_version = test_config["libswing_version"]
     include_tags = test_config["tags"]["include"]
     exclude_tags = test_config["tags"]["exclude"]
@@ -207,9 +200,11 @@ def main():
     test_file = os.getenv("TEST_CONFIG_FILE")
     output_file = os.getenv("TEST_ENV")
     number_of_nodes = os.getenv("N_NODES")
-    if not (algorithm_file and test_file and output_file and number_of_nodes and number_of_nodes.isdigit()):
+    mpi_type = os.getenv("MPI_LIB")
+    mpi_version = os.getenv("MPI_LIB_VERSION")
+    if not (algorithm_file and test_file and output_file and number_of_nodes and number_of_nodes.isdigit() and mpi_type and mpi_version):
         print(f"{__file__}: Environment variables not set.", file=sys.stderr)
-        print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG_FILE={test_file}\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}", file=sys.stderr)
+        print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG_FILE={test_file}\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}\nMPI_LIB={mpi_type}, MPI_LIB_VERSION={mpi_version}", file=sys.stderr)
         sys.exit(1)
     number_of_nodes = int(number_of_nodes)
 
@@ -228,7 +223,7 @@ def main():
         sys.exit(1)
 
     # Get matching algorithms
-    matching_algorithms, skip_algorithms = get_matching_algorithms(algorithm_config, test_config, number_of_nodes)
+    matching_algorithms, skip_algorithms = get_matching_algorithms(algorithm_config, test_config, number_of_nodes, mpi_type, mpi_version)
     
     # Write environment variables to a shell script to be sourced
     export_environment_variables(matching_algorithms, skip_algorithms, test_config, output_file)
