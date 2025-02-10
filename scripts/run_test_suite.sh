@@ -15,6 +15,7 @@ fi
 # Sanity checks
 success "==========================================================\n\t\t SANITY CHECKS"
 echo "Running tests in: $LOCATION"
+echo "Debug mode: $DEBUG_MODE"
 echo "Number of nodes: $N_NODES"
 echo "Saving results in: $OUTPUT_DIR"
 echo "Running benchmarks for collective: $COLLECTIVE_TYPE"
@@ -27,5 +28,9 @@ echo "CUDA Enabled: $CUDA"
 echo "NOTES: $NOTES"
 success "=========================================================="
 
-# Run tests for all configurations
+#Run tests for all configurations
 run_all_tests || exit 1
+
+if [ $DEBUG_MODE == "no" ]; then
+    $SWING_DIR/results/compress_results.sh
+fi

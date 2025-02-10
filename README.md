@@ -3,23 +3,19 @@ Swing_Test is the implementation, debug and benchmarking project for the Swing a
 
 It is a modular project featuring a static library (`libswing.a`), test and benchmark executables (`bin/`), and SLURM-based scripts for benchmarking and debugging on clusters. Future updates will include data analysis and graphing tools.
 
-The suggested workflow is to use and modify the .sh files in `scripts/` directory to set up environments, run debug tests and benchmarking tests.
-
-<!-- ## Supported MPI version -->
-<!-- - OpenMPI: >5.0.0 -->
-<!-- - Custom OpenMPI with swing implementation [`OMPI_SWING`](https://github.com/DaXor-0/ompi_test) implementations, environmental variables and a rule file must be update accordingly before running the tests. -->
+--- 
 
 ## Project Structure and Components
 
 ```
 .
+├── config                # .json config file, test file and test parser script
 ├── include               # Header file for libswing library containing the functions' signatures
 ├── libswing              # Libswing library source code
 ├── ompi_rules            # Open MPI dynamic rule file and script to modify it
 ├── plot                  # Python scripts for data analysis and visualization (in development)
 ├── results               # Results folder divided by system
 ├── scripts               # Main scripts to run benchmarks and debug
-│   ├── config                # .json config file, test file and test parser script
 │   ├── environments          # Environment specific scripts
 │   └── submit_wrapper.sh     # Wrapper to launch tests with `SBATCH` or run locally
 ├── test                  # Test program source code, includes benchmarking and debugging
@@ -27,8 +23,9 @@ The suggested workflow is to use and modify the .sh files in `scripts/` director
 └── README.md             # This documentation
 ```
 
+---
 
-### `libswing` - Static Library
+## `libswing` - Static Library
 
 The `libswing/` directory contains the source code for the `libswing/` static library. This library is compiled into a static archive (`lib/libswing.a`) and is used by the other components in the project.
 
@@ -36,12 +33,68 @@ It provides various Swing implementations as well as other collective algorithms
 
 All algorithms written in this library are defined as **OVER** in `algorithms_config.json` since they are not internal MPI implementation but instead rely on MPI API.
 
-#### Modify `libswing`
+### Modify `libswing`
 Actual implementation must be declared in `include/libswing.h` and written in `libswing/libswing_<coll_type>.c`. Any helper function must be declared in `libswing/libswing_utils.h`.
 
 To implement a new collective, arguments must be defined as a pre-compiler directive in `include/libswing.h` and called `<COLLECTIVE_TYPE>_ARGS`. Adhere to naming scheme of what is already written.
 
-### `test/` - Benchmark program
+---
+
+## `config/` - Algorithms and test configurations
+
+The selection of algorithms for benchmarking is determined using three key files: `algorithm_config.json`, `test.json`, and `parse_test.py`. 
+
+- **`algorithm_config.json`** defines the available algorithms, specifying their constraints, dependencies, and applicable conditions. It contains metadata and categorizes algorithms based on collectives, such as `ALLREDUCE` and `REDUCE_SCATTER`, while also listing the required MPI versions and library dependencies.
+- **`test.json`** serves as the test selection file, specifying parameters such as MPI type, version, collective operation, and relevant constraints like datatype and message sizes. It determines which tests should be run by filtering based on the required conditions.
+- **`parse_test.py`** is responsible for validating `test.json` against a predefined schema and selecting appropriate algorithms. It ensures that the chosen algorithms meet the test's constraints, filtering them based on MPI version, message sizes, and other conditions. Additionally, it generates environment variables that define the selected test setup.
+
+**NOTE:** the test script wrapper contains other variables to select when launching a test such as `LOCATION`, `TEST_TIME`, `N_NODES`, `DEBUG_MODE` and `NOTES`.
+
+
+### `algorithm_config.json` – Defining Available Algorithms
+
+The `algorithm_config.json` file defines the set of algorithms available for benchmarking and their constraints. It is structured as a JSON object with the following key sections:
+
+- **`config_metadata`**: Contains metadata such as schema version, creation date, last modification date, and author information.
+- **`collective`**: The main section, grouping algorithms under collective operations like `ALLREDUCE`, `ALLGATHER`, and `REDUCE_SCATTER`. 
+  - Each algorithm has a **name** (e.g., `ring_ompi`, `recursive_doubling_ompi`) and a **description** explaining its function.
+  - **`library`**: Specifies required MPI versions or dependencies (e.g., `ompi: "5.0.0"`).
+  - **`dynamic_rule`**: Defines how the algorithm is selected dynamically (i.e. its number as defined in [Open MPI](https://docs.open-mpi.org/en/v5.0.6/tuning-apps/coll-tuned.html#tuning-collectives) or in [`OMPI_SWING`](https://github.com/DaXor-0/ompi_test) ). This field will be modified when `MPICH` algorithms are added.
+  - **`tags`**: Labels like `internal`, `external`, `small_sizes`, or `large_sizes` for filtering.
+  - **`constraints`**: Conditions that must be met, such as minimum `count` values or power-of-two restrictions.
+  - **`additional_parameters`** (optional): Specifies extra tunable parameters, such as `segsize` for segmented algorithms.
+
+This file ensures that only compatible algorithms are considered when selecting an execution plan for benchmarking.
+
+### `test.json` – Specifying the Test Configuration
+
+The `test.json` file defines the conditions and parameters for running a test, acting as a filtering mechanism for selecting appropriate algorithms. Its key fields include:
+
+- **`mpi`**: Defines the MPI implementation type (`ompi`, `ompi_swing`) and version.
+- **`libswing_version`**: Specifies the version of the `libswing` library.
+- **`collective`**: Indicates which collective operation is being tested (e.g., `REDUCE_SCATTER`, `ALLGATHER`).
+- **`MPI_Op`**: Defines the MPI operation (e.g., `MPI_SUM` for reduction).
+- **`tags`**: Contains two lists:
+  - `include`: Algorithms with these tags should be considered.
+  - `exclude`: Algorithms with these tags should be skipped.
+- **`specific`**: Similar to `tags`, but explicitly lists algorithms to include or exclude. It will override `tags` selection.
+- **`cuda`**: A boolean value (`true`/`false`) indicating whether CUDA-based tests should be included.
+- **`arr_counts`**: A list of message sizes (e.g., `8`, `64`, `512`, …) for which tests should be run.
+- **`datatypes`**: Specifies the data types involved (`int8`, `int16`, `int32`, `int64`, etc.).
+
+This file acts as an input to `parse_test.py`, which validates its structure and determines which algorithms meet the test's constraints.
+
+### `parse_test.py` – Validating and Selecting Tests
+
+The `parse_test.py` script plays a crucial role in processing the test configuration. It performs the following functions:
+
+- **Validation**: Ensures that `test.json` follows the expected schema using `jsonschema`, checking required fields and formats.
+- **Algorithm Filtering**: Matches algorithms from `algorithm_config.json` against the test conditions, verifying constraints like MPI version compatibility and message size requirements.
+- **Environment Variable Exporting**: Generates environment variables defining the selected test setup, which needs to be exported for the test (it will be done automatically by the test scripts).
+
+---
+
+## `test/` - Benchmark program
 
 The `test/` directory contains a set of benchmark tests that are used to measure the performance of the `libswing` library functions as well as any other internal `MPI` algorithm. It compiles into the executable `bin/test`.
 
@@ -51,7 +104,7 @@ In case of internal MPI algorithm, library specific variables must be set before
 
 The executable itself must be run with `srun` or `mpirun`/`mpiexec` and output is saved in `csv` format by rank 0.
 
-##### Parameters:
+#### Parameters:
 - `<count>`: Number of data elements per process
 - `<iterations>`: Total number of test iterations (including warm-up iterations)
 - `<algorithm>`: Collective algorithm to test
@@ -64,7 +117,7 @@ The collective type is selected via the environment variable `COLLECTIVE_TYPE`. 
 - `REDUCE_SCATTER`
 Additional collectives will be implemented in the future.
 
-##### Saving benchmarking results
+#### Saving benchmarking results
 Before saving the results, a ground truth check on the last iteration is performed to ensure correctness.
 Results are saved in files called `<count>_<algorithm>_<datatype>.csv`, stored in `results/<LOCATION>/test/data/` in the format:
 | highest | rank0 | ... | rankN |
@@ -73,8 +126,8 @@ Results are saved in files called `<count>_<algorithm>_<datatype>.csv`, stored i
 
 Additionally, during the first run of a benchmarking test, a file is created to store node allocations and their corresponding MPI ranks.
 
-#### Implementing a new algorithm
-For an Already Implemented Collective
+### Implementing a new algorithm
+For an already implemented collective:
 1. External Algorithm (implemented in `libswing.h`):
   - Ensure the algorithm metadata in `scripts/config/algorithm_config.json` is correctly configured.
   - Update the switch statement in `get_<COLLECTIVE_TYPE>_function` in `test/test_utils.c` to include the new function.
@@ -101,136 +154,137 @@ For a new collective additional steps are required.
   - modify the switch in `get_routine`, `test_loop` and `ground_truth_check` with custom behaviour for the new collective
   - modify `rand_sbuf_generator` and `debug_sbuf_generator` to correctly populate the sbuf of said collective (different collectives may have different sbuf dimension for a given `count` parameter)
 
-##### Debugging
+#### Debugging
 When compiled with `-DDEBUG`, the program:
 - will not save benchmark results
 - initializes `sbuf` in a predefined way
 - prints `rbuf` and `rbuf_gt` if ground truth check fails before invoking `MPI_Abort`
 
-### `ompi_rules/` - Open MPI Rule File Generator
+---
 
-The `ompi_rules/` directory contains the source for a program that generates dynamic rule file for `Open MPI`. These rule files define the collective communication rules that Open MPI uses. The program compiles into the executable `bin/change_dynamic_rules`, which is used to select specified algorithms.
+## `ompi_rules/` - Open MPI Rule File Generator
+The `ompi_rules/` directory contains a [dynamic rule file](https://docs.open-mpi.org/en/v5.0.6/tuning-apps/coll-tuned.html#tuning-collectives) for Open MPI to modify the algorithms to run for the benchmark.
 
-Beware that the following environmental variables must be set after the rule file is generated:
+### `change_dynamic_rules.py` - Python script
+It also contains a script `ompi_rules/change_dynamic_rules.py` that modifies aforementioned file accordingly to the algorithm to run.
+
+It looks for the current `<COLLECTIVE_TYPE>` environment variable, reads the dynamic rule file looking for a line containing the collective name and modify the corresponding algorithm line accordingly to `<algorithm>` given and the corresponding `dynamic_rule` field of `<ALGORITHM_CONFIG_FILE>`.
+
+#### Parameters
+As a command line argument it requires
+- `<algorithm>`: Collective algorithm to test
+
+It requires the following environmental variables:
+- `<ALGORITHM_CONFIG_FILE>` containing the path to the algorithm_config_file
+- `<DYNAMIC_RULE_FILE>` containing the path to the dynamic_rule_file
+- `<COLLECTIVE_TYPE>` containing the collective type of the test
+
+##### Note
+Beware that the following environmental variables must be set after the rule file is modified:
 ```bash
 export OMPI_MCA_coll_tuned_use_dynamic_rules=1
-export OMPI_MCA_coll_tuned_dynamic_rules_filename=${RULE_FILE_PATH}
+export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
 ```
 In the normal workflow, those variables are set up with the scripts to run tests and debug.
 
-It will be modified to work also for `MPICH` algorithm selection.
+##### TODO
+This part must be modified to allow `MPICH` algorithm selection.
 
-### `scripts` - Running benchmarks and debug tests
-The `scripts/` contains scripts to benchmark and debug the library. It also contains scripts to set up the environment based on where the library is being run.
+---
+## `scripts\` - Run the tests
 
-## Running Tests and Benchmark
+This test suite provides a structured framework for running benchmark tests efficiently across different environments. **Users should interact only with `submit_wrapper.sh`**, which handles environment setup, test execution, and submission to Slurm (if applicable). All other scripts are used internally.
 
-The project includes scripts to run the benchmark/debug suite inside the `scripts/` directory.
+#### Execution Flow  
 
-The suggested workflow is to `$ sbatch` the `scripts/submit.sbatch` script when benchmarking if on cluster, instead run the test\debug suite script on its own if running on local machine.
+1. **User runs `submit_wrapper.sh`**  
+   - Sets environment variables based on `LOCATION`.  
+   - Sources the appropriate `environment/<location>.sh` script.  
+   - Parses `test.json` to determine test parameters.  
+   - Prepares output directories and metadata.  
+   - Submits the job via Slurm or locally.  
 
-For now specific variables must be modified inside the run suites but it's planned to bring them on the submit script. Beware that everything for now it's extremely hand tailored on MY workflow and only now I'm polishing the program to let other people work with those scripts so a lot of modifications are still needed.
+2. **Test execution proceeds**  
+   - `run_test_suite.sh` runs the benchmarks using the selected algorithms.  
+   - Results are stored in a structured directory format under `results/<LOCATION>/<TIMESTAMP>`.
+   - Results are compressed and the directory is added to `.gitignore`.
 
+### `submit_wrapper.sh` – The Only Script Users Should Run  
 
-### `scripts/submit.sbatch` - Submit Tests via SLURM
+This is the **main entry point** for running tests. It handles:
+- **Setting up the test environment** (choosing the correct machine-specific settings).
+- **Parsing the test configuration** to determine which algorithms to run.
+- **Compiling the necessary code** and setting up result directories.
+- **Launching the test**, either locally or via a Slurm job (if `LOCATION` is not `local`).  
 
-For cluster-based environments that use SLURM for job scheduling, a template script `scripts/submit.sbatch` is provided. This script can be used to submit the test runs to the cluster via SLURM.
-
-To use it, you will need to customize the script as per your SLURM job submission requirements. The script includes placeholders and options for specifying the number of processes, job time, and output location.
-
-#### Example Usage for `submit.sbatch`
-
-```bash
-$ sbatch scripts/submit.sbatch
-```
-##### Parameters:
-- **`<p_name>`:** Name of the partition to run tests on on the target cluster.
-- **`<qos_name>`:** Name of the required quality of service. (OPTIONAL)
-- **`<n_nodes>`:** The number of nodes to request for the SLURM job. Note that, for benchmarking reasons this must be the number of processes (i.e. one single process for node, irrespective of node cores).
-- **`<requested_time>`:** The time requested for job allocation. Higher number of hours is suggested.
-- **`<account_name>`:** Account name on the target cluster.
-- **`<LOCATION>`:** Name of the machine, as defined in `scripts/environments/`.
-- **`<DEBUG_MODE>`:** If run on debug mode.
-- **`<TIMESTAMP>`:** Current time-stamp used to create the results folder. Can be changed to anything.
-- **`<COLLECTIVE_TO_TEST>`:** Collective type to test.
-- **`<ENABLE_CUDA>`:** If use CUDA-aware MPI. Beware that this option works only on Open MPI for now.
-- **`<ENABLE_OMPI_TEST>`:** If use custom Open MPI library with swing implementations.
-
-Also the standard output and error will be redirected into the results directory.
-
-It will be modified to allow for algorithm selection directly in this stage. 
-
-###### Warning
-Beware that, especially with big allocations, those scripts can fail and waste compute hours if left uncheck. It's suggested, if possible, for big allocations, to check if the script starts working. If it does it's unlikely that compute time will be wasted. Currently working on the reliability of this part.
-
-### `scripts/run_test_suite.sh` - Benchmarking Suite
-This script runs a benchmarking test suite itself.
-
-To run it without relying to the `submit.sbatch` script execute the following command:
+Users **must not** run any other scripts manually except of this. To start a test, simply execute:  
 
 ```bash
-$ scripts/run_test_suite.sh <N_NODES> [COLLECTIVE_TYPE] [DEBUG_MODE] [TIMESTAMP] [LOCATION] [ENABLE_CUDA] [ENABLE_OMPI_TEST]
+bash submit_wrapper.sh
 ```
 
-##### Parameters:
-- **`<N_NODES>`** (required): The number of processes to use for the test run. Must be a valid positive integer greater than or equal to 2.
-- **`[COLLECTIVE_TYPE]`** (optional): Which collective to test. Defaults to `ALLREDUCE`
-- **`[DEBUG_MODE]`** (optional): Flag to enable debug mode . Defaults to `no`.
-- **`[TIMESTAMP]`** (optional): Timestamp for the test run. Defaults to the current date and time. It works as the output (sub)directory of the test and can be set to anything.
-- **`[LOCATION]`** (optional): Specifies the environment configuration script. Defaults to `local`.
-- **`[ENABLE_CUDA]`** (optional): Enable CUDA aware MPI support. Defaults to `no`.
-- **`[ENABLE_OMPI_TEST]`** (optional): Enable the use of the modified Open MPI library with Swing Allreduce algorithms. Defaults to `yes`.
+Key environment variables set in this script:
+- `N_NODES`: Number of nodes to use for the test. Will also set --nodes if run on a Slurm based environment.
+- `LOCATION`: Defines the machine where tests will run (must be configured correctly). Use `local` if debugging on your machine.
+- `TIMESTAMP`: Defines the output directory in which the tests results will be saved. The resulting directory will always be `results/<LOCATION>/<TIMESTAMP>/`.
+- `DEBUG_MODE`: Enables a simplified test mode for debugging. Still in development.
+- `TEST_CONFIG_FILE`: Select the `test.json` file to use for test selection.
+- `NOTES`: Notes to be added when generating test metadata.
 
-##### Key Features:
-- Validates and initializes input parameters.
-- Dynamically sets up environment and configurations.
-- Compiles the codebase.
-- Runs benchmarks for specified collective algorithms.
+Slurm specific environment variables:
+- `TEST_TIME`: Equivalent to --time variable to define the allocation request time.
+- `TASK_PER_NODE`: Equivalent to --ntasks-per-node to define how many tasks run per single node. For now this is here only to allow for particular `qos` selections and does not modify `srun` behaviour. May change in future updates.
+- `PARTITION`: Equivalent to -p to select cluster's partition.
+- `ACCOUNT`: Equivalent to --account to select cluster's project's account.
+- `QOS_NAME` (optional): Equivalent to -p to select cluster's quality of service. 
 
-Test results are saved in the directory structure `$SWING_DIR/results/<location>/<timestamp>/data/`, alongside with the given node allocation in `$SWING_DIR/results/<location>/<timestamp>/alloc.csv`.
+### `environment/<location>.sh` – Machine-Specific Environment Configuration  
 
-Moreover, the script also invokes an updater of the `$SWING_DIR/results/<location>_metadata.csv` file, adding a row with the metadata of the last test.
+This folder contains machine-specific scripts to set environment variables for different clusters or systems.  
+- The correct script is **automatically sourced** based on the `LOCATION` variable in `submit_wrapper.sh`.  
+- If an appropriate environment script is missing, the test will not proceed.  
 
-**NOTE:** Metadata needs to be selected manually and are at the end of `run_test_suite.sh` for now. This feature will be updated later.
+Example: If `LOCATION="leonardo"`, then `environment/leonardo.sh` will be loaded.
 
-**NOTE 2:** The script cleans and rebuilds the codebase since if `ENABLE_OMPI_TEST` or `DEBUG` are set to `yes`, the `test` and `change_dynamic_rules` binaries must be injected with `-DOMPI_TEST` or `-DDEBUG` (debug is specific only to test).
+It must contain:
+- `export <ENV>` to export all strictly necessary environment variables for the machine.
+  - `RUN` to define the command to run tests (`srun`, `mpiexec`...)
+  - `SWING_DIR` full path to Swing_Test directory.
+  - (optional) `RUNFLAGS` flags to invoke with the `RUN` command (for example Snellius cluster requires `RUNFLAGS=--mpi=pmix`).
+  - (optional) any other flag to set to modify test behaviour (for example on Leonardo `UCX_IB_SL=1`).
+- `load_python()` function to load correct python module.
+- `load_other_env_var()` function to load environment variables dependant on test selection (for example the one to activate or deactivate MPI-Cuda support).
 
-##### Key Variables:
-- **COLLECTIVE_ALGOS**: Lists supported algorithms for each collective type.
-- **COLLECTIVE_SKIPS**: Specifies algorithms to skip for certain configurations.
-- **ARR_SIZES**: Array sizes used for benchmarking.
-- **TYPES**: Data types for testing (default: `int64`).
 
+### `run_test_suite.sh` – The Core Test Execution Script  
 
-#### Utils Script
-Provides utility functions to support the main script such as:
-1. **`error`**: Prints error messages in red.
-2. **`success`**: Prints success messages in green.
-3. **`cleanup`**: Handles SIGINT (Ctrl+C) signals and kills all child processes.
-4. **`source_environment`**: Sources the environment configuration based on the location.
-5. **`compile_code`**: Cleans and compiles the codebase with optional flags for OpenMPI tests and debug mode.
-6. **`get_iterations`**: Determines the number of iterations for benchmarking based on array size.
-7. **`run_test`**: Executes a single test case with specified parameters.
-8. **`run_all_tests`**: Iterates through configurations and runs tests for each combination.
+This script is responsible for **actually running the test**.  
+- It runs the selected benchmarks based on the parsed test configurations, changing dynamic rules whenever necessary.
+- After the tests are run it runs the script to compress results and add uncompressed results directory to `.gitignore` (staging it in the process).
 
-#### Add new environments
-The script automatically sets up required environment variables based on the `location` parameter. To define a new environment configuration:
-1. Create a new script in `scripts/environments/`.
-2. Export the necessary variables.
-3. Update the `location` parameter to point to the new script.
+### `utils.sh` – Utility Functions  
 
-#### Debug mode
-When running on debug mode, manually select array sizes, algorithms and datatypes to run tests on. Debug mode will not save benchmark test time or allocations.
+This script provides helper functions used throughout the test suite.  
+- Functions include error handling, logging, and loading additional environment variables.  
+- It is sourced by `submit_wrapper.sh` and should **not** be run independently.
 
-## Data Analysis and Visualization
+---
 
-Still in development.
+## Results Management
 
-Take a look, but it's still WIP.
+In this repository, the results are stored in a directory that is automatically compressed into a `.tar` file to save storage space and keep the repository clean. The process works as follows:
+
+1. **Results directory:** All raw results are saved in a dedicated directory, different for each system on which tests are run.
+2. **Test metadata:** For each new test, `scripts/run_test_suite.sh` will invoke `results/generate_metadata.py` script, to add the metadata of the new test into a `.csv` file containing metadata of tests ran on a given system.
+3. **Compression Script:** After the results are gathered, `results/compress_results.sh` compress the results directory into a `.tar` file. The script also add to `.gitignore` the uncompressed results subdirectory.
+
+##### WARNING:
+If test is not interrupted before completion, there is no need to run the compression or the metadata script manually as everything is done automatically by the test suite script. Otherwise, one must source the required environmental variables used in the test and then run the script.
+
+---
 
 ## Building
-
-To build the project, use the following steps:
+If you want to build the project without relying on `submit_wrapper.sh`, use the following steps:
 
 1. **Build all components**:
    ```bash
@@ -251,61 +305,27 @@ So, to build everything just run the `make` command in the main directory. You c
 
 If you want to compile and build individual parts of the project you can either run the `make` command inside the desired subdirectory, or run `make -C <directory>`. This works also with the `clean` command.
 
-## Results Management
+---
 
-In this repository, the results are stored in a directory that is automatically compressed into a `.tar` file to save storage space and keep the repository clean. The process works as follows:
+## Data Analysis and Visualization
 
-1. **Results directory:** All raw results are saved in a dedicated directory, different for each system on which tests are run.
-2. **Test metadata:** For each new test, `scripts/run_test_suite.sh` will invoke `results/metadata.py` script, to add the metadata of the new test into a `.csv` file containing metadata of tests ran on a given system.
-3. **Compression Script:** A script is included in the repository to compress the results directory into a `.tar` file. The script also add to `.gitignore` the uncompressed results subdirectory and remove possible duplicates from the `.gitignore` file.
-4. **Pre-Commit Hook:** A pre-commit hook is set up to run the compression script automatically before each commit. This ensures that any new results are compressed and added to the repository in a consistent manner.
+Still in development.
 
-There is no need to run the compression or the metadata script manually as everything is done automatically by the test suite script or the pre-commit hook.
+Take a look, but it's still WIP.
 
+---
 
 ## TODO
 #### Makefile
-- [x] add error handling when building\linking the library (done by the test script)
 - [ ] make the current static `libswing.a` a dynamic `libswing.so` to be added with `LD_PRELOAD`
 #### Libswing modifications
-- [x] prepare for the possibility of implementing different collectives by refactoring code
-- [x] debug allgather swing static
 - [ ] write reduce scatter swing
 - [ ] document functions and comment code
 #### Test program
-- [x] document functions and comment code
-- [x] create a function to write rank and allocation inside test without relying on normal `srun` in test suite
-- [x] use enum when possible for clarity
-- [x] standardize .csv format to what was decided with professor De Sensi
-- [x] create a general interface to select specific testing for specific collectives without duplicating code by adding a sea of if-else statements (in particular modify the test loop to use a function pointer for each specific allreduce function and a switch for other collectives)
-- [x] separate and modularize ground truth check for different kinds of collectives (WIP)
-- [x] finish logic for allgather
-- [x] finish logic for reducescatter
 - [ ] implement logic for allgather_k_bruck (radix selection) and debug both internal and external
 #### OMPI rules
-- [x] allow for multiple types of algorithm selection
-- [ ] change it so that it recognizes if the modified `Open MPI` is being run or not
 - [ ] modify to let it work also with `MPICH` algorithm selection
-#### Test suite
-- [x] add error handling and more explicit messages about what is being done
-- [x] separate results by system
-- [x] comment the code
-- [x] create a function to add metadata in the .csv asked by the professor
-- [x] build a better and clearer interface to select variables for testing
-- [x] integrate different collective testing
-- [ ] ensure python modules and environment is set up correctly
-- [ ] add an env var to select between `MPICH` and `Open MPI` binaries, independently of `ompi_test` (obviously `ompi_test` must be no when MPICH is selected)
-#### Submit Script
-- [x] automatically inject `$N_NODES` inside suite based on selected `-N` without further modifications
-- [x] insert an `<output_directory>` for stderr and stdout of slurm
-- [ ] bring variables to select inside test/debug suites to this layer in order to give a better interface. Modifications on those suite is needed when running test without the submit script
-#### Results folder
-- [x] add a script to compress the data
-- [x] add pre-commit hook that triggers the compression of the new data, adds the uncompressed data to the gitignore
-- [x] add the script to build and update the .csv description
 #### Plot python scripts
-- [x] add the possibility of selecting specific tests
-- [x] document and comment code
 - [ ] adjust everything to new structure
 - [ ] avoid working only with summaries, or at least give the possibility of not doing it
 - [ ] improve naming of output graphs so that they don't get overwritten by similar graphs

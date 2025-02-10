@@ -530,6 +530,7 @@
         },
         "tags": [
           "k_bruck",
+          "can_crash",
           "additional_parameter",
           "medium_sizes",
           "large_sizes",
@@ -636,6 +637,7 @@
         },
         "tags": [
           "k_bruck",
+          "can_crash",
           "additional_parameter",
           "medium_sizes",
           "large_sizes",
