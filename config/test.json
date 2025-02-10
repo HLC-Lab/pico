@@ -4,7 +4,7 @@
     "version": "5.0.0"
   },
   "libswing_version": "1.0.0",
-  "collective": "REDUCE_SCATTER",
+  "collective": "ALLREDUCE",
   "MPI_Op": "MPI_SUM",
   "tags": {
     "include": [
@@ -12,7 +12,8 @@
       "external"
     ],
     "exclude": [
-      "can_crash"
+      "can_crash",
+      "suboptimal"
     ]
   },
   "specific": {

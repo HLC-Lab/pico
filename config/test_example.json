@@ -12,7 +12,8 @@
       "external"
     ],
     "exclude": [
-      "can_crash"
+      "can_crash",
+      "suboptimal"
     ]
   },
   "specific": {

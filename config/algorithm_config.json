@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.0.1",
+    "schema_version": "2.1.0",
     "created": "2024-01-30",
-    "last_modified": "2024-02-04",
+    "last_modified": "2024-02-10",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -207,6 +207,7 @@
           "swing_bdw_memcpy",
           "swing",
           "bandwidth_optimal",
+          "suboptimal",
           "memcpy",
           "medium_sizes",
           "large_sizes",
@@ -243,6 +244,7 @@
           "swing_bdw_dt_1",
           "swing",
           "bandwidth_optimal",
+          "suboptimal",
           "derived_datatypes",
           "medium_sizes",
           "large_sizes",
@@ -279,6 +281,7 @@
           "swing_bdw_dt_2",
           "swing",
           "bandwidth_optimal",
+          "suboptimal",
           "derived_datatypes",
           "medium_sizes",
           "large_sizes",
@@ -323,6 +326,7 @@
           "swing_bdw_segmented",
           "swing",
           "bandwidth_optimal",
+          "suboptimal",
           "segmented",
           "additional_parameter",
           "medium_sizes",
