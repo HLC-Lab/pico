@@ -7,10 +7,10 @@ source scripts/utils.sh
 ##################################################################################
 # Global variables
 export N_NODES=4
-export LOCATION="leonardo"
+export LOCATION="lumi"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
-export NOTES="Testing again without submit.sbatch"
+export NOTES="Lumi second test, previous one did not include internal allreduce"
 # SLURM specific variables, other variables are set in the environment script
 export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
 export TEST_TIME=01:00:00
