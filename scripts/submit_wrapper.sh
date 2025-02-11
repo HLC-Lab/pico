@@ -6,11 +6,11 @@ source scripts/utils.sh
 #               MODIFY THESE VARIABLES TO SUIT YOUR TEST ENVIRONMENT             #
 ##################################################################################
 # Global variables
-export N_NODES=4
+export N_NODES=8
 export LOCATION="lumi"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
-export NOTES="Lumi second test"
+export NOTES="Lumi second test, first real one"
 # SLURM specific variables, other variables are set in the environment script
 export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
 export TEST_TIME=01:00:00

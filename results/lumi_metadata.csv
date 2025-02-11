@@ -1,2 +1,3 @@
 timestamp,number_of_nodes,collective_type,algos,datatypes,mpi_lib,mpi_lib_version,libswing_version,CUDA,MPI_Op,notes
 2025_02_10___19_09_38,4,ALLREDUCE,recursive_doubling_over ring_over rabenseifner_over swing_lat_over swing_bdw_static_over,int64 int32 int16 int8,CRAY_MPICH,8.1.29,1.0.0,False,MPI_SUM,Lumi first test
+2025_02_10___19_37_28,8,ALLREDUCE,default_cray_mpich recursive_doubling_over ring_over rabenseifner_over swing_lat_over swing_bdw_static_over,int64 int32 int16 int8,CRAY_MPICH,8.1.29,1.0.0,False,MPI_SUM,"Lumi second test, first real one"
