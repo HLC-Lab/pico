@@ -32,14 +32,19 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     
     ###################################################################################
     #               CREATE OUTPUT DIRECTORY AND GENERATE METADATA                     #
+    #               ALTERNATIVELY, USE DEBUG VARIABLES                                #
     ###################################################################################
     if [ $DEBUG_MODE == "no" ]; then
         export DATA_DIR="$OUTPUT_DIR/$i"
         mkdir -p "$DATA_DIR"
+        # Generate test metadata
+        python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
+    else
+        export COLLECTIVE_TYPE="REDUCE_SCATTER"
+        export ALGOS="swing_static_over"
+        export ARR_SIZES="8"
+        export TYPES="int" # For now only int,int32,int64 are supported in debug mode 
     fi
-    
-    # Generate test metadata
-    python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
 
     # Sanity checks
     success "==========================================================\n\t\t SANITY CHECKS"

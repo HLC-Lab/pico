@@ -25,5 +25,6 @@ int allgather_swing_static(ALLGATHER_ARGS);
 int reduce_scatter_recursivehalving(REDUCE_SCATTER_ARGS);
 int reduce_scatter_ring(REDUCE_SCATTER_ARGS);
 int reduce_scatter_butterfly(REDUCE_SCATTER_ARGS);
+int reduce_scatter_swing_static(REDUCE_SCATTER_ARGS);
 
 #endif

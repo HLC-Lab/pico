@@ -1,4 +1,0 @@
-timestamp,test_id,number_of_nodes,collective_type,mpi_lib,mpi_lib_version,libswing_version,CUDA,MPI_Op,notes
-2025_02_10___19_09_38,0,4,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,False,MPI_SUM,Lumi first test
-2025_02_10___19_37_28,0,8,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,False,MPI_SUM,"Lumi second test, first real one"
-2025_02_12___14_24_59,0,8,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,True,MPI_SUM,Testing lumi with new env

@@ -9,6 +9,7 @@
 #define TEST_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
 #define TEST_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
 
+
 //-----------------------------------------------------------------------------------------------
 //                        ENUM FOR COLLECTIVE SELECTION
 // ----------------------------------------------------------------------------------------------

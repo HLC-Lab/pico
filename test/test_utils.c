@@ -9,6 +9,17 @@
 
 #include "test_utils.h"
 
+#ifdef DEBUG
+  #define DEBUG_PRINT(name) printf("%s\n", name)
+#else
+  #define DEBUG_PRINT(name)
+#endif
+
+#define CHECK_STR(var, name, ret) \
+  if (strcmp(var, name) == 0) { \
+    DEBUG_PRINT(name); \
+    return ret; \
+  }
 
 /**
  * @brief Converts a string to a `coll_t` enum value.
@@ -18,9 +29,9 @@
  *         Returns `COLL_UNKNOWN` for invalid strings.
  */
 static inline coll_t get_collective_from_string(const char *coll_str) {
-  if (strcmp(coll_str, "ALLREDUCE") == 0)       return ALLREDUCE;
-  if (strcmp(coll_str, "ALLGATHER") == 0)       return ALLGATHER;
-  if (strcmp(coll_str, "REDUCE_SCATTER") == 0)  return REDUCE_SCATTER;
+  CHECK_STR(coll_str, "ALLREDUCE", ALLREDUCE);
+  CHECK_STR(coll_str, "ALLGATHER", ALLGATHER);
+  CHECK_STR(coll_str, "REDUCE_SCATTER", REDUCE_SCATTER);
   return COLL_UNKNOWN;
 }
 
@@ -56,11 +67,13 @@ static inline allocator_func_ptr get_allocator(coll_t collective) {
 * defauls to the internal allreduce function.
 */
 static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
-  if (strcmp(algorithm, "RECURSIVE_DOUBLING_OVER") == 0 ) return allreduce_recursivedoubling;
-  if (strcmp(algorithm, "RING_OVER") == 0 ) return allreduce_ring;
-  if (strcmp(algorithm, "RABENSEIFNER_OVER") == 0 ) return allreduce_rabenseifner;
-  if (strcmp(algorithm, "SWING_LAT_OVER") == 0 ) return allreduce_swing_lat;
-  if (strcmp(algorithm, "SWING_BDW_STATIC_OVER") == 0 ) return allreduce_swing_bdw_static;
+  CHECK_STR(algorithm, "recursive_doubling_over", allreduce_recursivedoubling);
+  CHECK_STR(algorithm, "ring_over", allreduce_ring);
+  CHECK_STR(algorithm, "rabenseifner_over", allreduce_rabenseifner);
+  CHECK_STR(algorithm, "swing_lat_over", allreduce_swing_lat);
+  CHECK_STR(algorithm, "swing_bdw_static_over", allreduce_swing_bdw_static);
+
+  DEBUG_PRINT("MPI_Allreduce\n");
   return allreduce_wrapper;
 }
 
@@ -74,9 +87,11 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
 */
 static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   // if (strcmp(algorithm, "K_BRUCK_OVER") == 0 ) return allgather_k_bruck;
-  if (strcmp(algorithm, "RECURSIVE_DOUBLING_OVER") == 0 ) return allgather_recursivedoubling;
-  if (strcmp(algorithm, "RING_OVER") == 0 ) return allgather_ring;
-  if (strcmp(algorithm, "SWING_STATIC_OVER") == 0 ) return allgather_swing_static;
+  CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
+  CHECK_STR(algorithm, "ring_over", allgather_ring);
+  CHECK_STR(algorithm, "swing_static_over", allgather_swing_static);
+
+  DEBUG_PRINT("MPI_Allgather\n");
   return allgather_wrapper;
 }
 
@@ -89,9 +104,12 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
 * defauls to the internal reduce scatter function.
 */
 static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *algorithm){
-  if (strcmp(algorithm, "RECURSIVE_HALVING_OVER") == 0 ) return reduce_scatter_recursivehalving;
-  if (strcmp(algorithm, "RING_OVER") == 0 ) return reduce_scatter_ring;
-  if (strcmp(algorithm, "BUTTERFLY_OVER") == 0 ) return reduce_scatter_butterfly;
+  CHECK_STR(algorithm, "recursive_halving_over", reduce_scatter_recursivehalving);
+  CHECK_STR(algorithm, "ring_over", reduce_scatter_ring);
+  CHECK_STR(algorithm, "butterfly_over", reduce_scatter_butterfly);
+  CHECK_STR(algorithm, "swing_static_over", reduce_scatter_swing_static);
+
+  DEBUG_PRINT("MPI_Reduce_scatter\n");
   return MPI_Reduce_scatter;
 }
 

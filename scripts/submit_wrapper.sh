@@ -9,7 +9,7 @@ source scripts/utils.sh
 export N_NODES=8
 export LOCATION="local"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
-export DEBUG_MODE="no"
+export DEBUG_MODE="yes"
 export NOTES="debugging..."
 # SLURM specific variables, other variables are set in the environment script
 export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
@@ -40,16 +40,6 @@ fi
 
 activate_virtualenv || exit 1
 
-
-###################################################################################
-#                 MODIFY THIS IF RUNNING ON DEBUG MODE (experimental)             #
-###################################################################################
-if [ "$DEBUG_MODE" == yes ]; then
-    export COLLECTIVE_TYPE="ALLREDUCE"
-    export ALGOS="default_ompi"
-    export ARR_SIZES="8"
-    export TYPES="int" # For now only int,int32,int64 are supported in debug mode 
-fi
 
 ###################################################################################
 #           COMPILE CODE, CREATE OUTPUT DIRECTORIES AND GENERATE METADATA         #

@@ -5,6 +5,7 @@
 
 #include "libswing.h"
 #include "libswing_utils.h"
+#include "libswing_utils_bitmaps.h"
 
 int reduce_scatter_recursivehalving(const void *sbuf, void *rbuf, const int rcounts[],
                                     MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
@@ -590,3 +591,140 @@ cleanup_and_return:
   return err;
 }
 
+int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[],
+                                    MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
+{
+  int i, rank, size, steps;
+  int err = MPI_SUCCESS, tmp_size;
+  const int *s_bitmap = NULL, *r_bitmap = NULL;
+  int *permutation = NULL;
+  size_t count, s_count, r_count;
+  ptrdiff_t *disps = NULL;
+  ptrdiff_t extent, lb, buf_size, gap = 0;
+  char *recv_buf = NULL, *recv_buf_free = NULL;
+  char *result_buf = NULL, *result_buf_free = NULL;
+
+  err = MPI_Comm_size(comm, &size);
+  err = MPI_Comm_rank(comm, &rank);
+
+
+  /* Find displacements and the like */
+  disps = (ptrdiff_t*) malloc(sizeof(ptrdiff_t) * size);
+  if (NULL == disps) return MPI_ERR_NO_MEM;
+
+  disps[0] = 0;
+  for (i = 0; i < (size - 1); ++i) {
+    disps[i + 1] = disps[i] + rcounts[i];
+  }
+  count = disps[size - 1] + rcounts[size - 1];
+
+  /* short cut the trivial case */
+  if (0 == count) {
+    free(disps);
+    return MPI_SUCCESS;
+  }
+
+  /* get datatype information */
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  buf_size = datatype_span(dtype, count, &gap);
+
+  /* Handle MPI_IN_PLACE */
+  if (MPI_IN_PLACE == sbuf) {
+    sbuf = rbuf;
+  }
+
+  /* Allocate temporary receive buffer. */
+  recv_buf_free = (char*) malloc(buf_size);
+  recv_buf = recv_buf_free - gap;
+  if (NULL == recv_buf_free) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup;
+  }
+
+  /* allocate temporary buffer for results */
+  result_buf_free = (char*) malloc(buf_size);
+  result_buf = result_buf_free - gap;
+
+  /* copy local buffer into the temporary results */
+  err = copy_buffer_different_dt(sbuf, count, dtype, result_buf, count, dtype);
+  if (MPI_SUCCESS != err) goto cleanup;
+
+  /* Current implementation only handles power-of-two number of processes.*/
+  steps = log_2(size);
+  tmp_size = 1 << steps;
+  if (tmp_size != size){
+    fprintf(stderr, "ERROR! Recoursive doubling allgather works only with po2 ranks!\n");
+    goto cleanup;
+  }
+
+  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1 ||
+     get_perm_bitmap(&permutation, steps, size) == -1){
+    err = MPI_ERR_UNKNOWN;
+    goto cleanup;
+  }
+
+  /* Main communication and reduction loop */
+  int w_size = size >> 1;
+  for (int step = 0; step < steps; ++step) {
+    int peer;
+    MPI_Request request;
+
+    peer = pi(rank, step, tmp_size);
+    
+    s_count = r_count = 0;
+    for (i = 0; i < w_size; ++i) {
+      s_count += rcounts[s_bitmap[step] + i];
+      r_count += rcounts[r_bitmap[step] + i];
+    }
+
+    /* actual data transfer.  Send from result_buf,
+        receive into recv_buf */
+    if (r_count > 0) {
+      err = MPI_Irecv(recv_buf + disps[r_bitmap[step]] * extent,
+                      r_count, dtype, peer, 0, comm, &request);
+      if (MPI_SUCCESS != err) {
+        goto cleanup;
+      }
+    }
+    if (s_count > 0) {
+      err = MPI_Send(result_buf + disps[s_bitmap[step]] * extent,
+                      s_count, dtype, peer, 0, comm);
+      if (MPI_SUCCESS != err) {
+        goto cleanup;
+      }
+    }
+
+    /* if we received something on this step, push it into
+        the results buffer */
+    if (r_count > 0) {
+      err = MPI_Wait(&request, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err) {
+        goto cleanup;
+      }
+
+      MPI_Reduce_local(recv_buf + disps[r_bitmap[step]] * extent,
+                        result_buf + disps[r_bitmap[step]] * extent,
+                        r_count, dtype, op);
+    }
+  }
+  
+  // Send the result to the correct rank's recv buffer if not already there
+  if (rank != permutation[rank]) {
+      err = MPI_Sendrecv(
+          result_buf + disps[r_bitmap[steps -1]] * extent, rcounts[r_bitmap[steps - 1]], dtype, r_bitmap[steps - 1], 0,
+          rbuf, rcounts[permutation[rank]], dtype, permutation[rank], 0,
+          comm, MPI_STATUS_IGNORE);
+
+      if (MPI_SUCCESS != err) {
+          goto cleanup;
+      }
+  }
+
+
+ cleanup:
+  if (NULL != disps) free(disps);
+  if (NULL != recv_buf_free) free(recv_buf_free);
+  if (NULL != result_buf_free) free(result_buf_free);
+
+  return err;
+}

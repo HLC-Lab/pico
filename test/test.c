@@ -24,8 +24,14 @@ int main(int argc, char *argv[]) {
   // Get test arguments
   outputdir = getenv("OUTPUT_DIR");
   data_dir = getenv("DATA_DIR");
-  if (outputdir == NULL || data_dir == NULL ||
-      get_command_line_arguments(argc, argv, &count, &iter, &algorithm, &type_string) == -1 ||
+#ifndef DEBUG
+  if (outputdir == NULL || data_dir == NULL){
+    fprintf(stderr, "Error: Environment variables OUTPUT_DIR or DATA_DIR not set. Aborting...\n");
+    line = __LINE__;
+    goto err_hndl;
+  }
+#endif
+  if(get_command_line_arguments(argc, argv, &count, &iter, &algorithm, &type_string) == -1 ||
       get_routine (&test_routine, algorithm) == -1 ||
       get_data_type(type_string, &dtype, &type_size) == -1 ){
     line = __LINE__;
