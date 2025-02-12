@@ -5,3 +5,5 @@ timestamp,test_id,number_of_nodes,collective_type,algos,datatypes,mpi_lib,mpi_li
 2025_02_07___20:12:37,0,2,ALLREDUCE,OMPI_SWING,5.0.0,1.0.0,False,MPI_SUM,Test
 2025_02_08___20_42_15,0,4,ALLREDUCE,OMPI_SWING,5.0.0,1.0.0,False,MPI_SUM,Testing on 4 nodes new refactoring
 2025_02_10___14_49_40,0,4,ALLREDUCE,OMPI_SWING,5.0.0,1.0.0,False,MPI_SUM,Testing again without submit.sbatch
+2025_02_12___12_42_44,0,8,ALLREDUCE,OMPI_SWING,5.0.0,1.0.0,False,MPI_SUM,First test after refactoring for more collectives under same allocation
+2025_02_12___12_42_44,1,8,ALLGATHER,OMPI_SWING,5.0.0,1.0.0,False,null,First test after refactoring for more collectives under same allocation
