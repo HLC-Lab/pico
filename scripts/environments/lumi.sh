@@ -14,6 +14,8 @@ export ACCOUNT=project_465000997
 export MPI_LIB='CRAY_MPICH'
 export MPI_LIB_VERSION='8.1.29'
 
+module load LUMI
+module load CrayEnv
 
 # Used to load python and virtual environment
 load_python() {
