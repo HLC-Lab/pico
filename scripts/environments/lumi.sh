@@ -29,3 +29,6 @@ load_python() {
     return 0
 }
 
+# Dummy function to load other environment variables to silence errors
+load_other_env_var() {
+}
