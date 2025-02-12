@@ -1,6 +1,13 @@
 # Compiler and flags
-MPICC = mpicc
-CFLAGS = -O3 -Wall -I../include
+CFLAGS = -Wall -I../include
+
+ifneq ($(filter clang gcc,$(CC)),)
+	CFLAGS += -O3 -MMD -MP
+endif
+
+ifneq ($(findstring craycc,$(CC)),)
+	CFLAGS += -Ofast -funroll-loops -em
+endif
 
 # Colors for output styling
 GREEN := \033[1;32m
@@ -18,8 +25,9 @@ OBJ_DIR = ../obj/test
 BIN_DIR = ../bin
 
 # Sources and output
-SRC = $(wildcard $(SRC_DIR)/*.c)
-OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC))
+SRC = $(wildcard *.c)
+OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(SRC))
+DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(SRC))
 OUTPUT = $(BIN_DIR)/test
 
 # Default target
@@ -29,13 +37,15 @@ all: $(OUTPUT)
 $(OUTPUT): $(OBJS)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking $@...$(NC)"
-	@$(MPICC) $(CFLAGS) -o $@ $^ -L../lib -lswing -lm
+	@$(CC) $(CFLAGS) -o $@ $^ -L../lib -lswing -lm
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
-	@echo -e "$(YELLOW)[MPICC] Compiling $< -> $@...$(NC)"
-	@$(MPICC) $(CFLAGS) -c $< -o $@
+	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+-include $(DEPS)
 
 # Clean target
 clean:

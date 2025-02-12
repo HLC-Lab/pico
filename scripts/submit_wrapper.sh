@@ -7,10 +7,10 @@ source scripts/utils.sh
 ##################################################################################
 # Global variables
 export N_NODES=8
-export LOCATION="lumi"
+export LOCATION="local"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
-export NOTES="Lumi second test, first real one"
+export NOTES="debugging..."
 # SLURM specific variables, other variables are set in the environment script
 export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
 export TEST_TIME=01:00:00
@@ -22,13 +22,17 @@ else
     success "Environment script for '${LOCATION}' loaded successfully."
 fi
 
-export TEST_CONFIG_FILE="$SWING_DIR/config/test.json"
+TEST_CONFIG_FILE_LIST=(
+    "$SWING_DIR/config/test.json"
+)
+
+# Convert array to a colon-separated string
+export TEST_CONFIG_FILES="${TEST_CONFIG_FILE_LIST[*]}"
 
 ###################################################################################
 #               PARSE THE TEST CONFIGURATION FILE TO GET THE TEST VARIABLES       #
 ###################################################################################
 export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
-export TEST_ENV="${TEST_CONFIG_FILE}_env.sh"
 
 if [ $LOCATION != "local" ]; then
     load_python || exit 1
@@ -36,12 +40,6 @@ fi
 
 activate_virtualenv || exit 1
 
-python3 $SWING_DIR/config/parse_test.py || exit 1
-# Source the test specific environment variables
-source $TEST_ENV
-
-# Load test specific environment variables (like OMPI cuda related flags)
-load_other_env_var
 
 ###################################################################################
 #                 MODIFY THIS IF RUNNING ON DEBUG MODE (experimental)             #
@@ -60,15 +58,10 @@ compile_code || exit 1
 
 export LOCATION_DIR="$SWING_DIR/results/$LOCATION"
 export OUTPUT_DIR="$SWING_DIR/results/$LOCATION/$TIMESTAMP"
-export DATA_DIR="$SWING_DIR/results/$LOCATION/$TIMESTAMP/data"
 if [ $DEBUG_MODE == "no" ]; then
     success "📂 Creating output directories..."
     mkdir -p "$LOCATION_DIR"
     mkdir -p "$OUTPUT_DIR"
-    mkdir -p "$DATA_DIR"
-    
-    # Generate test metadata
-    python3 $SWING_DIR/results/generate_metadata.py  || exit 1
 fi
 
 ###################################################################################

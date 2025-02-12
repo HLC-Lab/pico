@@ -7,6 +7,8 @@ compile_commands.json
 *.o
 *.out
 out
+obj/lib/*
+obj/test/*
 results/leonardo/2025_02_07___17_49_20/
 results/leonardo/2025_02_07___18_09_10/
 results/leonardo/2025_02_07___19_49_27/

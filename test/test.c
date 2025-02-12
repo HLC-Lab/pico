@@ -10,38 +10,24 @@
 int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
   MPI_Comm comm = MPI_COMM_WORLD;
+  MPI_Datatype dtype;
+  int rank, comm_sz, line, iter;
+  size_t count, type_size;
+  void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
+  double *times = NULL, *all_times = NULL, *highest = NULL;
+  const char *algorithm, *type_string, *outputdir, *data_dir;
+  test_routine_t test_routine;
 
-  int rank, comm_sz, line;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
-  // Declare beforehand the buffers to allow for correct
-  // error handling with goto
-  void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
-  double *times = NULL, *all_times = NULL, *highest = NULL;
-
-  size_t count;
-  int iter;
-  const char *algorithm, *type_string, *outputdir;
-  // Get command line arguments
-  if (get_command_line_arguments(argc, argv, &count, &iter,
-                                 &algorithm, &type_string, &outputdir) == -1){
-    line = __LINE__;
-    goto err_hndl;
-  }
-  
-  // Get the routine based on the `COLLECTIVE_TYPE` environment variable
-  // and the `algorithm` command line argument
-  test_routine_t test_routine;
-  if (get_routine(&test_routine, algorithm) == -1){
-    line = __LINE__;
-    goto err_hndl;
-  }
-  
-  // Get size and MPI_Datatype from input `type_string`
-  MPI_Datatype dtype;
-  size_t type_size;
-  if (get_data_type(type_string, &dtype, &type_size) == -1){
+  // Get test arguments
+  outputdir = getenv("OUTPUT_DIR");
+  data_dir = getenv("DATA_DIR");
+  if (outputdir == NULL || data_dir == NULL ||
+      get_command_line_arguments(argc, argv, &count, &iter, &algorithm, &type_string) == -1 ||
+      get_routine (&test_routine, algorithm) == -1 ||
+      get_data_type(type_string, &dtype, &type_size) == -1 ){
     line = __LINE__;
     goto err_hndl;
   }
@@ -106,9 +92,9 @@ int main(int argc, char *argv[]) {
   // is responsible to create the `/data/` subdir.
   if (rank == 0){
     char data_filename[128], data_fullpath[TEST_MAX_PATH_LENGTH];
-    snprintf(data_filename, sizeof(data_filename), "data/%ld_%s_%s.csv",
+    snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
              count, algorithm, type_string);
-    if (concatenate_path(outputdir, data_filename, data_fullpath) == -1) {
+    if (concatenate_path(data_dir, data_filename, data_fullpath) == -1) {
       fprintf(stderr, "Error: Failed to create fullpath.\n");
       line = __LINE__;
       goto err_hndl;

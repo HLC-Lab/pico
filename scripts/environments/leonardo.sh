@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Variables always needed
+export CC=mpicc
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 
@@ -28,6 +29,10 @@ load_other_env_var(){
         export CUDA_VISIBLE_DEVICES=""
         export OMPI_MCA_btl="^smcuda"
         export OMPI_MCA_mpi_cuda_support=0
+    else
+        export CUDA_VISIBLE_DEVICES=0,1,2,3
+        export OMPI_MCA_btl=""
+        export OMPI_MCA_mpi_cuda_support=1
     fi
 }
 

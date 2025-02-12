@@ -205,9 +205,9 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void
 }
 
 int get_command_line_arguments(int argc, char** argv, size_t *array_count, int* iter,
-                               const char **algorithm, const char **type_string, const char **outputdir) {
-  if (argc != 6) {
-    fprintf(stderr, "Usage: %s <array_count> <iterations> <algorithm> <dtype> <outputdir>\n", argv[0]);
+                               const char **algorithm, const char **type_string) {
+  if (argc != 5) {
+    fprintf(stderr, "Usage: %s <array_count> <iterations> <algorithm> <dtype>\n", argv[0]);
     return -1;
   }
 
@@ -227,8 +227,6 @@ int get_command_line_arguments(int argc, char** argv, size_t *array_count, int* 
   *algorithm = argv[3];
 
   *type_string = argv[4];
-
-  *outputdir = argv[5];
 
   return 0;
 }

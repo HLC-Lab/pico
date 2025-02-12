@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # General variables always needed
+export CC=cc
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 

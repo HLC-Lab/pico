@@ -1,6 +1,13 @@
 # Compiler and flags
-MPICC = mpicc
-CFLAGS = -O3 -Wall -I../include
+CFLAGS = -Wall -I../include
+
+ifneq ($(filter clang gcc,$(CC)),)
+	CFLAGS += -O3 -MMD -MP
+endif
+
+ifneq ($(findstring craycc,$(CC)),)
+	CFLAGS += -Ofast -funroll-loops -em
+endif
 
 # Colors for output styling
 GREEN := \033[1;32m
@@ -14,6 +21,7 @@ LIB_DIR = ../lib
 # Sources and objects
 LIB_SRC = $(wildcard *.c)
 LIB_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(LIB_SRC))
+LIB_DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(LIB_SRC))
 STATIC_LIB = $(LIB_DIR)/libswing.a
 
 # Default target
@@ -28,8 +36,10 @@ $(STATIC_LIB): $(LIB_OBJS)
 # Compile object files
 $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(OBJ_DIR)
-	@echo -e "$(YELLOW)[MPICC] Compiling $< -> $@...$(NC)"
-	@$(MPICC) $(CFLAGS) -c $< -o $@
+	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+-include $(LIB_DEPS)
 
 # Clean target
 clean:

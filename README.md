@@ -1,7 +1,19 @@
 # Project Overview
-Swing_Test is the implementation, debug and benchmarking project for the Swing algorithm.
+Swing_Test is the implementation, debug and benchmarking project for [Swing algorithm](https://arxiv.org/abs/2401.09356).
 
 It is a modular project featuring a static library (`libswing.a`), test and benchmark executables (`bin/`), and SLURM-based scripts for benchmarking and debugging on clusters. Future updates will include data analysis and graphing tools.
+
+## Table of Contents
+- [Project Structure and Components](#project-structure-and-components)
+- [libswing - Static Library](#libswing---static-library)
+- [Configuration Files](#config---algorithms-and-test-configurations)
+- [Test/Benchmark Program](#test---benchmark-program)
+- [OMPI Rules and Scripts](#ompi_rules---open-mpi-rule-file-generator)
+- [Running the Tests](#scripts---run-the-tests)
+- [Results Management](#results-management)
+- [Building](#building)
+- [Data Analysis and Visualization](#data-analysis-and-visualization)
+- [TODO](#todo)
 
 --- 
 
@@ -40,7 +52,7 @@ To implement a new collective, arguments must be defined as a pre-compiler direc
 
 ---
 
-## `config/` - Algorithms and test configurations
+## `config` - Algorithms and test configurations
 
 The selection of algorithms for benchmarking is determined using three key files: `algorithm_config.json`, `test.json`, and `parse_test.py`. 
 
@@ -93,7 +105,7 @@ The `parse_test.py` script plays a crucial role in processing the test configura
 
 ---
 
-## `test/` - Benchmark program
+## `test` - Benchmark program
 
 The `test/` directory contains a set of benchmark tests that are used to measure the performance of the `libswing` library functions as well as any other internal `MPI` algorithm. It compiles into the executable `bin/test`.
 
@@ -161,7 +173,7 @@ When compiled with `-DDEBUG`, the program:
 
 ---
 
-## `ompi_rules/` - Open MPI Rule File Generator
+## `ompi_rules` - Open MPI Rule File Generator
 The `ompi_rules/` directory contains a [dynamic rule file](https://docs.open-mpi.org/en/v5.0.6/tuning-apps/coll-tuned.html#tuning-collectives) for Open MPI to modify the algorithms to run for the benchmark.
 
 ### `change_dynamic_rules.py` - Python script
@@ -190,7 +202,7 @@ In the normal workflow, those variables are set up with the scripts to run tests
 This part must be modified to allow `MPICH` algorithm selection.
 
 ---
-## `scripts\` - Run the tests
+## `scripts` - Run the tests
 
 This test suite provides a structured framework for running benchmark tests efficiently across different environments. **Users should interact only with `submit_wrapper.sh`**, which handles environment setup, test execution, and submission to Slurm (if applicable). All other scripts are used internally.
 
@@ -205,14 +217,13 @@ This test suite provides a structured framework for running benchmark tests effi
 
 2. **Test execution proceeds**  
    - `run_test_suite.sh` runs the benchmarks using the selected algorithms.  
-   - Results are stored in a structured directory format under `results/<LOCATION>/<TIMESTAMP>`.
+   - Results are stored in a structured directory format under `results/<LOCATION>/<TIMESTAMP>/<TEST_ID>`.
    - Results are compressed and the directory is added to `.gitignore`.
 
 ### `submit_wrapper.sh` – The Only Script Users Should Run  
 
 This is the **main entry point** for running tests. It handles:
 - **Setting up the test environment** (choosing the correct machine-specific settings).
-- **Parsing the test configuration** to determine which algorithms to run.
 - **Compiling the necessary code** and setting up result directories.
 - **Launching the test**, either locally or via a Slurm job (if `LOCATION` is not `local`).  
 
@@ -246,6 +257,7 @@ Example: If `LOCATION="leonardo"`, then `environment/leonardo.sh` will be loaded
 
 It must contain:
 - `export <ENV>` to export all strictly necessary environment variables for the machine.
+  - `CC` to determine which compiler to use
   - `RUN` to define the command to run tests (`srun`, `mpiexec`...)
   - `SWING_DIR` full path to Swing_Test directory.
   - `MPI_LIB` mpi library type.
@@ -262,6 +274,8 @@ It must contain:
 ### `run_test_suite.sh` – The Core Test Execution Script  
 
 This script is responsible for **actually running the test**.  
+- It parses the given test configuration to determine which algorithms to run.
+- Updates metadata with a new row for given test
 - It runs the selected benchmarks based on the parsed test configurations, changing dynamic rules whenever necessary.
 - After the tests are run it runs the script to compress results and add uncompressed results directory to `.gitignore` (staging it in the process).
 
@@ -287,24 +301,18 @@ If test is not interrupted before completion, there is no need to run the compre
 ---
 
 ## Building
-If you want to build the project without relying on `submit_wrapper.sh`, use the following steps:
-
+The project is built with a recursive makefile approach in which a top-level `Makefile` will run the `make` commands for each subfolder.
+If you want to build the project without relying on `submit_wrapper.sh`:
 1. **Build all components**:
    ```bash
    $ make
    ```
-
 2. **Clean all builds**:
    ```bash
    $ make clean
    ```
 
 The `Makefile` automatically handles the compilation and linking for each component, creating the necessary binaries and libraries in the `bin` and `lib` directories.
-
-### Compiling Individual Parts of the Project
-The project is built with a recursive makefile approach in which a top-level `Makefile` will run the `make` commands for each subfolder.
-
-So, to build everything just run the `make` command in the main directory. You can also use the `make` command with the `clean` target to remove object files and binaries.
 
 If you want to compile and build individual parts of the project you can either run the `make` command inside the desired subdirectory, or run `make -C <directory>`. This works also with the `clean` command.
 
@@ -322,6 +330,7 @@ Take a look, but it's still WIP.
 #### Makefile
 - [ ] make the current static `libswing.a` a dynamic `libswing.so` to be added with `LD_PRELOAD`
 #### Libswing modifications
+- [ ] implement allreduce bdw without bitmaps
 - [ ] write reduce scatter swing
 - [ ] document functions and comment code
 #### Test program

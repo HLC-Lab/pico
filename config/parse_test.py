@@ -197,14 +197,14 @@ def export_environment_variables(matching_algorithms, skip_algorithms,
 
 def main():
     algorithm_file = os.getenv("ALGORITHM_CONFIG_FILE")
-    test_file = os.getenv("TEST_CONFIG_FILE")
+    test_file = os.getenv("TEST_CONFIG")
     output_file = os.getenv("TEST_ENV")
     number_of_nodes = os.getenv("N_NODES")
     mpi_type = os.getenv("MPI_LIB")
     mpi_version = os.getenv("MPI_LIB_VERSION")
     if not (algorithm_file and test_file and output_file and number_of_nodes and number_of_nodes.isdigit() and mpi_type and mpi_version):
         print(f"{__file__}: Environment variables not set.", file=sys.stderr)
-        print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG_FILE={test_file}\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}\nMPI_LIB={mpi_type}, MPI_LIB_VERSION={mpi_version}", file=sys.stderr)
+        print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG={test_file}\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}\nMPI_LIB={mpi_type}, MPI_LIB_VERSION={mpi_version}", file=sys.stderr)
         sys.exit(1)
     number_of_nodes = int(number_of_nodes)
 

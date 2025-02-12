@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Variables always needed
+export CC=mpicc
 export RUN=mpiexec
 export SWING_DIR=$HOME/University/Tesi/test
 

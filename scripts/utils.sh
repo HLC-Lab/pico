@@ -109,7 +109,7 @@ run_test() {
         echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
     fi
 
-    $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type $OUTPUT_DIR
+    $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type
 }
 
 # Test algorithms here, loop through:

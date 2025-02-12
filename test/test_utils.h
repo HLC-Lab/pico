@@ -178,12 +178,11 @@ int get_routine(test_routine_t *test_routine, const char *algorithm);
  * @param[out] iter Number of iterations.
  * @param[out] algprithm Algorithm name.
  * @param[out] type_string Data type as a string.
- * @param[out] outputdir Output directory path.
  * @return 0 on success, -1 on error.
  */
 int get_command_line_arguments(int argc, char** argv, size_t *array_count,
                                int* iter, const char **algorithm, const
-                               char **type_string, const char **outputdir);
+                               char **type_string);
 
 
 /**

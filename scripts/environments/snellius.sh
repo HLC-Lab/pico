@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Variables always needed
+export CC=mpicc
 export RUN=srun
 export RUNFLAGS=--mpi=pmix
 export SWING_DIR=$HOME/Swing_Test/
-
 
 # TODO: test and debug this
 load_python() {

@@ -1,13 +1,12 @@
 import os
 import csv
 import sys
-from typing import List
 
 RESULTS_DIR = "results/"
 
 # Update or create metadata CSV
-def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, datatypes : List[str],
-                    collective_type: str, algos: List[str], mpi_lib: str, mpi_lib_version : str,
+def update_metadata(system_name: str, timestamp: str, test_id: int, number_of_nodes: int,
+                    collective_type: str, mpi_lib: str, mpi_lib_version : str,
                      libswing_version: str, cuda: bool, mpi_op: str | None, notes: str | None):
     output_file = os.path.join(RESULTS_DIR, f"{system_name}_metadata.csv")
 
@@ -17,10 +16,9 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, data
     with open(output_file, "a", newline="") as csvfile:
         fieldnames = [
             "timestamp",
+            "test_id",
             "number_of_nodes",
             "collective_type",
-            "algos",
-            "datatypes",
             "mpi_lib",
             "mpi_lib_version",
             "libswing_version",
@@ -36,10 +34,9 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, data
         # Write the new metadata row
         writer.writerow({
             "timestamp": timestamp,
+            "test_id": test_id,
             "number_of_nodes": number_of_nodes,
             "collective_type": collective_type,
-            "algos": " ".join(algos),
-            "datatypes": " ".join(datatypes),
             "mpi_lib": mpi_lib,
             "mpi_lib_version": mpi_lib_version,
             "libswing_version": libswing_version,
@@ -49,29 +46,34 @@ def update_metadata(system_name: str, timestamp: str, number_of_nodes: int, data
         })
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print(f"Usage: {__file__} <test_id>", file=sys.stderr)
+        sys.exit(1)
+
+    test_id = sys.argv[1]
+    if not test_id.isdigit():
+        print(f"{__file__}: test_id must be an integer.", file=sys.stderr)
+    test_id = int(test_id)
+
     system_name = os.getenv('LOCATION')
     number_of_nodes = os.getenv('N_NODES')
     timestamp = os.getenv('TIMESTAMP')
     collective_type = os.getenv('COLLECTIVE_TYPE')
-    algos = os.getenv('ALGOS')
-    datatypes = os.getenv('TYPES')
     mpi_lib = os.getenv('MPI_LIB')
     mpi_lib_version = os.getenv('MPI_LIB_VERSION')
     libswing_version = os.getenv('LIBSWING_VERSION')
     cuda = os.getenv('CUDA')
     mpi_op = os.getenv('MPI_OP')
     notes = os.getenv('NOTES')
-    if not (system_name and timestamp and number_of_nodes and number_of_nodes.isdigit() and collective_type and algos and datatypes and mpi_lib and mpi_lib_version and libswing_version and cuda):
+    if not (system_name and timestamp and number_of_nodes and number_of_nodes.isdigit() and collective_type and mpi_lib and mpi_lib_version and libswing_version and cuda):
         print (f"{__file__}: Environment variables not set.", file=sys.stderr)
-        print (f"LOCATION={system_name}\nTIMESTAMP={timestamp}\nN_NODES={number_of_nodes}\nCOLLECTIVE_TYPE={collective_type}\nALGOS={algos}\nTYPES={datatypes}\nMPI_LIB={mpi_lib}\nMPI_LIB_VERSION={mpi_lib_version}\nLIBSWING_VERSION={libswing_version}\nCUDA={cuda}", file=sys.stderr)
+        print (f"LOCATION={system_name}\nTIMESTAMP={timestamp}\nN_NODES={number_of_nodes}\nCOLLECTIVE_TYPE={collective_type}\nMPI_LIB={mpi_lib}\nMPI_LIB_VERSION={mpi_lib_version}\nLIBSWING_VERSION={libswing_version}\nCUDA={cuda}", file=sys.stderr)
         sys.exit(1)
 
     number_of_nodes = int(number_of_nodes)
-    algos = algos.split(" ")
-    datatypes = datatypes.split(" ")
     cuda = cuda.lower() == "true"
 
-    update_metadata(system_name, timestamp, number_of_nodes, datatypes, \
-                    collective_type, algos, mpi_lib, mpi_lib_version, \
+    update_metadata(system_name, timestamp, test_id, number_of_nodes, \
+                    collective_type, mpi_lib, mpi_lib_version, \
                     libswing_version, cuda, mpi_op = mpi_op, notes = notes)
     print(f"Metadata updated for {system_name} at {timestamp}.")
