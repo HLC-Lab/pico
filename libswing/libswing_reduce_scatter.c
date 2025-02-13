@@ -594,21 +594,20 @@ cleanup_and_return:
 int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[],
                                     MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
-  int i, rank, size, steps;
-  int err = MPI_SUCCESS, tmp_size;
-  const int *s_bitmap = NULL, *r_bitmap = NULL;
-  int *permutation = NULL;
-  size_t count, s_count, r_count;
+  int i, rank, size, steps, w_size, err = MPI_SUCCESS;
+  size_t count;
   ptrdiff_t *disps = NULL;
   ptrdiff_t extent, lb, buf_size, gap = 0;
   char *recv_buf = NULL, *recv_buf_free = NULL;
   char *result_buf = NULL, *result_buf_free = NULL;
+  const int *s_bitmap = NULL, *r_bitmap = NULL;
+  int *permutation = NULL;
 
   err = MPI_Comm_size(comm, &size);
   err = MPI_Comm_rank(comm, &rank);
 
 
-  /* Find displacements and the like */
+  /* Find displacements and total count*/
   disps = (ptrdiff_t*) malloc(sizeof(ptrdiff_t) * size);
   if (NULL == disps) return MPI_ERR_NO_MEM;
 
@@ -651,75 +650,77 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
 
   /* Current implementation only handles power-of-two number of processes.*/
   steps = log_2(size);
-  tmp_size = 1 << steps;
-  if (tmp_size != size){
-    fprintf(stderr, "ERROR! Recoursive doubling allgather works only with po2 ranks!\n");
+  if (size != (1 << steps)) {
+    fprintf (stderr, "ERROR! Swing static reduce scatter works only with po2 ranks!\n");
+    err = MPI_ERR_SIZE;
     goto cleanup;
   }
-
-  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1 ||
-     get_perm_bitmap(&permutation, steps, size) == -1){
+  if (get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1 ||
+      get_perm_bitmap(&permutation, steps, size) == -1) {
     err = MPI_ERR_UNKNOWN;
     goto cleanup;
   }
 
   /* Main communication and reduction loop */
-  int w_size = size >> 1;
-  for (int step = 0; step < steps; ++step) {
-    int peer;
-    MPI_Request request;
+  w_size = size >> 1;
+  for (int step = 0; step < steps; step++){
+    int peer, send_index, recv_index;
+    size_t s_count, r_count;
 
-    peer = pi(rank, step, tmp_size);
-    
+    /* determine the peer we will communicate with */
+    peer = pi(rank, step, size);
+
+    /* use the bitmaps to figure out what we're sending and
+      receiving */
+    send_index = s_bitmap[step];
+    recv_index = r_bitmap[step];
     s_count = r_count = 0;
-    for (i = 0; i < w_size; ++i) {
+    for (int i = 0; i < w_size; ++i) {
       s_count += rcounts[s_bitmap[step] + i];
       r_count += rcounts[r_bitmap[step] + i];
     }
 
     /* actual data transfer.  Send from result_buf,
         receive into recv_buf */
-    if (r_count > 0) {
-      err = MPI_Irecv(recv_buf + disps[r_bitmap[step]] * extent,
-                      r_count, dtype, peer, 0, comm, &request);
-      if (MPI_SUCCESS != err) {
-        goto cleanup;
-      }
-    }
-    if (s_count > 0) {
-      err = MPI_Send(result_buf + disps[s_bitmap[step]] * extent,
-                      s_count, dtype, peer, 0, comm);
-      if (MPI_SUCCESS != err) {
-        goto cleanup;
-      }
+    err = MPI_Sendrecv(result_buf + disps[send_index] * extent, s_count, dtype, peer, 0,
+               recv_buf + disps[recv_index] * extent, r_count, dtype, peer, 0,
+               comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err) {
+      goto cleanup;
     }
 
     /* if we received something on this step, push it into
-        the results buffer */
+        the results buffer and perform the reduction*/
     if (r_count > 0) {
-      err = MPI_Wait(&request, MPI_STATUS_IGNORE);
+      err = MPI_Reduce_local(recv_buf + disps[recv_index] * extent,
+                        result_buf + disps[recv_index] * extent,
+                        r_count, dtype, op);
       if (MPI_SUCCESS != err) {
         goto cleanup;
       }
+    }
+    /* halve the window size for the next iteration */
+    w_size >>= 1;
+  }
 
-      MPI_Reduce_local(recv_buf + disps[r_bitmap[step]] * extent,
-                        result_buf + disps[r_bitmap[step]] * extent,
-                        r_count, dtype, op);
+
+  if (rank != permutation[rank]) {
+    /* send result to correct rank's recv buffer */
+    err = MPI_Sendrecv(result_buf + disps[r_bitmap[steps - 1]] * extent,
+            rcounts[permutation[rank]], dtype, permutation[rank], 0,
+            rbuf, rcounts[rank], dtype, get_sender(permutation, size, rank), 0,
+            comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err) {
+      goto cleanup;
+    }
+  } else {
+    /* copy local results from results buffer into real receive buffer */
+    err = copy_buffer_different_dt(result_buf + disps[rank] * extent, rcounts[rank],
+                                    dtype, rbuf, rcounts[rank], dtype);
+    if (MPI_SUCCESS != err) {
+      goto cleanup;
     }
   }
-  
-  // Send the result to the correct rank's recv buffer if not already there
-  if (rank != permutation[rank]) {
-      err = MPI_Sendrecv(
-          result_buf + disps[r_bitmap[steps -1]] * extent, rcounts[r_bitmap[steps - 1]], dtype, r_bitmap[steps - 1], 0,
-          rbuf, rcounts[permutation[rank]], dtype, permutation[rank], 0,
-          comm, MPI_STATUS_IGNORE);
-
-      if (MPI_SUCCESS != err) {
-          goto cleanup;
-      }
-  }
-
 
  cleanup:
   if (NULL != disps) free(disps);

@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.3.0",
+    "schema_version": "2.3.1",
     "created": "2024-01-30",
-    "last_modified": "2024-02-12",
+    "last_modified": "2024-02-13",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -832,20 +832,11 @@
         ]
       },
       "swing_static_over": {
-        "desc": "Libswing external swing algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+        "desc": "Libswing external swing static algorithm. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
         "library": {
           "libswing": "1.0.0"
         },
         "constraints": [
-          {
-            "key": "count",
-            "conditions": [
-              {
-                "operator": ">=",
-                "value": "comm_sz"
-              }
-            ]
-          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -864,6 +855,8 @@
         "tags": [
           "swing",
           "static",
+          "medium_sizes",
+          "large_sizes",
           "external"
         ]
       }

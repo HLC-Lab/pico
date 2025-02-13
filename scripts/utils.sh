@@ -41,7 +41,6 @@ source_environment() {
 # If not create it and install the required Python packages
 activate_virtualenv() {
     if [ -f "$HOME/.swing_venv/bin/activate" ]; then
-        success "Virtual environment 'swing_venv' exists. Activating it..."
         source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment." ; return 1; }
     else
         warning "Virtual environment 'swing_venv' does not exist. Creating it..."

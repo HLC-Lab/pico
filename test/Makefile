@@ -15,8 +15,9 @@ YELLOW := \033[1;33m
 RED := \033[1;31m
 NC := \033[0m
 
-ifeq ($(DEBUG), 1)
-	CFLAGS += -DDEBUG
+ifeq ($(DEBUG),1)
+    CFLAGS := $(filter-out -O%,$(CFLAGS))
+    CFLAGS += -DDEBUG -g
 endif
 
 # Directories

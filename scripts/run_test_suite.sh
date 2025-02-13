@@ -42,8 +42,8 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     else
         export COLLECTIVE_TYPE="REDUCE_SCATTER"
         export ALGOS="swing_static_over"
-        export ARR_SIZES="8"
-        export TYPES="int" # For now only int,int32,int64 are supported in debug mode 
+        export ARR_SIZES="113 1874 12441 1122111" 
+        export TYPES="int32 int64" # For now only int,int32,int64 are supported in debug mode 
     fi
 
     # Sanity checks

@@ -18,9 +18,7 @@ export TEST_TIME=01:00:00
 if ! source_environment "$LOCATION"; then
     error "Environment script for '${LOCATION}' not found!"
     exit 1
-else 
-    success "Environment script for '${LOCATION}' loaded successfully."
-fi
+fi 
 
 TEST_CONFIG_FILE_LIST=(
     "$SWING_DIR/config/test.json"

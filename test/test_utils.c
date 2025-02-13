@@ -10,7 +10,10 @@
 #include "test_utils.h"
 
 #ifdef DEBUG
-  #define DEBUG_PRINT(name) printf("%s\n", name)
+  #define DEBUG_PRINT(name) \
+    int my_r; \
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_r); \
+    if (my_r == 0){ printf("%s\n", name); }
 #else
   #define DEBUG_PRINT(name)
 #endif

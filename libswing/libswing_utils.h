@@ -364,5 +364,25 @@ static inline int reorder_blocks(void *buffer, size_t block_size,
   return MPI_SUCCESS;
 }
 
-#endif
+/**
+ * @brief Get the sender of a message based on the permutation.
+ *
+ * @param p The permutation array.
+ * @param n The size of the permutation array (comm_sz).
+ * @param i The receiver index.
+ *
+ * @return the sender on success, or -1 if error.
+ */
+static inline int get_sender(const int *p, int n, int i) {
+  // Iterate over the array to find the index j for which p[j] == i.
+  for (int j = 0; j < n; j++) {
+      if (p[j] == i) {
+          return j;  // Found the sender.
+      }
+  }
+  return -1;
+}
+
+
+#endif // LIBSWING_UTILS_H
 
