@@ -40,10 +40,10 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
         # Generate test metadata
         python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
     else
-        export COLLECTIVE_TYPE="REDUCE_SCATTER"
-        export ALGOS="swing_static_over"
-        export ARR_SIZES="113 1874 12441 1122111" 
-        export TYPES="int32 int64" # For now only int,int32,int64 are supported in debug mode 
+        # export COLLECTIVE_TYPE="BCAST"
+        # export ALGOS="scatter_allgather_over"
+        export ARR_SIZES="16384 1048576"
+        export TYPES="int32" # For now only int,int32,int64 are supported in debug mode 
     fi
 
     # Sanity checks

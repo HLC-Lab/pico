@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.3.1",
+    "schema_version": "2.4.0",
     "created": "2024-01-30",
-    "last_modified": "2024-02-13",
+    "last_modified": "2024-02-15",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -721,6 +721,265 @@
           "swing",
           "medium_sizes",
           "large_sizes",
+          "external"
+        ]
+      }
+    },
+    "BCAST": {
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm, consists in root performing comm_sz - 1 send operations, one to each other process. All other processes perform a single receive operation. It can crash for big tests",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "can_crash",
+          "internal"
+        ]
+      },
+      "chain_ompi": {
+        "desc": "Open MPI chain algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process of a chain topology. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_chain` is responsible for the segmentation and the check/creation of the chain topology.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          },
+          "chains": {
+            "desc": "I think this is the number of chains. Not sure how to change it. For sure is a Communicator related parameter. Look for `faninout` for more details, I'll leave as it is.",
+            "required": false,
+            "type": "int32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 2,
+        "tags": [
+          "chain",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "pipeline_ompi": {
+        "desc": "Open MPI pipeline algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process into a pipeline. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_pipeline` is responsible for the segmentation and the check/creation of the pipelined topology.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 3,
+        "tags": [
+          "pipeline",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "split_binary_ompi": {
+        "desc": "Open MPI split‐binary tree broadcast. It divides the overall message into two halves and then uses a binary‐tree–based dissemination within each half, followed by a final exchange to “stitch” the two halves together where every process finds its pair in the other branch of the tree. Uses the additional parameter `segsize` to further segment the communications. If message is to small it will fallback to `chain_ompi`.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 4,
+        "tags": [
+          "split_binary",
+          "additional_parameter",
+          "segmented",
+          "internal"
+        ]
+      },
+      "binary_ompi": {
+        "desc": "Open MPI binary tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binary tree topology and for the segmentation of the message.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 5,
+        "tags": [
+          "binary",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binomial tree topology and for the segmentation of the message.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 6,
+        "tags": [
+          "binomial",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "knomial_ompi": {
+        "desc": "Open MPI k-nomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the k-nomial tree topology and for the segmentation of the message. It requires an additional parameter `radix`.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "additional_parameters": {
+          "radix": {
+            "desc": "Radix of the K-nomial tree",
+            "required": true,
+            "type": "int"
+          },
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 7,
+        "tags": [
+          "knomial",
+          "additional_parameter",
+          "segmented",
+          "internal"
+        ]
+      },
+      "scatter_allgather_ompi": {
+        "desc": "Open MPI scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 8,
+        "tags": [
+          "scatter_allgather",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "scatter_allgather_ring_ompi": {
+        "desc": "Open MPI scatter allgather ring algorithm. It consists of a binomial tree scatter followed by a ring allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 9,
+        "tags": [
+          "scatter_allgather_ring",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "scatter_allgather_over": {
+        "desc": "Libswing external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "scatter_allgather",
+          "segmented",
           "external"
         ]
       }

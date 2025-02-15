@@ -21,7 +21,10 @@ if ! source_environment "$LOCATION"; then
 fi 
 
 TEST_CONFIG_FILE_LIST=(
-    "$SWING_DIR/config/test.json"
+    "$SWING_DIR/config/allreduce.json"
+    "$SWING_DIR/config/allgather.json"
+    "$SWING_DIR/config/bcast.json"
+    "$SWING_DIR/config/reduce_scatter.json"
 )
 
 # Convert array to a colon-separated string

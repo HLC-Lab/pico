@@ -2,6 +2,7 @@
 #define TEST_TOOLS_H
 
 #include <mpi.h>
+#include <stdio.h>
 
 #include "libswing.h"
 
@@ -23,6 +24,7 @@
 typedef enum{
   ALLREDUCE = 0,
   ALLGATHER,
+  BCAST,
   REDUCE_SCATTER,
   COLL_UNKNOWN
 }coll_t;
@@ -43,6 +45,7 @@ typedef int (*allocator_func_ptr)(ALLOCATOR_ARGS);
 
 int allreduce_allocator(ALLOCATOR_ARGS);
 int allgather_allocator(ALLOCATOR_ARGS);
+int bcast_allocator(ALLOCATOR_ARGS);
 int reduce_scatter_allocator(ALLOCATOR_ARGS);
 
 //-----------------------------------------------------------------------------------------------
@@ -51,6 +54,7 @@ int reduce_scatter_allocator(ALLOCATOR_ARGS);
 //-----------------------------------------------------------------------------------------------
 typedef int (*allreduce_func_ptr)(ALLREDUCE_ARGS);
 typedef int (*allgather_func_ptr)(ALLGATHER_ARGS);
+typedef int (*bcast_func_ptr)(BCAST_ARGS);
 typedef int (*reduce_scatter_func_ptr)(REDUCE_SCATTER_ARGS);
 
 static inline int allreduce_wrapper(ALLREDUCE_ARGS){
@@ -59,10 +63,14 @@ static inline int allreduce_wrapper(ALLREDUCE_ARGS){
 static inline int allgather_wrapper(ALLGATHER_ARGS){
     return MPI_Allgather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
 }
+static inline int bcast_wrapper(BCAST_ARGS){
+    return MPI_Bcast(buf, (int)count, dtype, root, comm);
+}
 
-typedef int (*reduce_scatter_gt_func_ptr)(REDUCE_SCATTER_ARGS, void *rbuf_gt);
 typedef int (*allreduce_gt_func_ptr)(ALLREDUCE_ARGS, void *rbuf_gt);
 typedef int (*allgather_gt_func_ptr)(ALLGATHER_ARGS, void *rbuf_gt);
+typedef int (*bcast_gt_func_ptr)(BCAST_ARGS, void *rbuf_gt);
+typedef int (*reduce_scatter_gt_func_ptr)(REDUCE_SCATTER_ARGS, void *rbuf_gt);
 
 //-----------------------------------------------------------------------------------------------
 //                                TEST ROUTINE STRUCTURE
@@ -88,6 +96,7 @@ typedef struct {
   union {
     allreduce_func_ptr allreduce;
     allgather_func_ptr allgather;
+    bcast_func_ptr bcast;
     reduce_scatter_func_ptr reduce_scatter;
   } function;
 
@@ -95,6 +104,7 @@ typedef struct {
   union {
     allreduce_gt_func_ptr allreduce;
     allgather_gt_func_ptr allgather;
+    bcast_gt_func_ptr bcast;
     reduce_scatter_gt_func_ptr reduce_scatter;
   } gt_check;
 } test_routine_t;
@@ -105,29 +115,107 @@ typedef struct {
 //-----------------------------------------------------------------------------------------------
 
 
+ /**
+ * @brief Test loop interface that select the appropriate collective operation
+ * test loop based on the collective type and algorithm specified in the test_routine.
+ *
+ * @return MPI_SUCCESS on success, an MPI_ERR code on error.
+ */
 int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
               MPI_Datatype dtype, MPI_Comm comm, int iter, double *times);
-/**
- * @brief This fucntion benchmarks the allreduce operation using the selected algorithm.
- */
-void allreduce_test_loop(ALLREDUCE_ARGS, int iter, double *times, test_routine_t test_routine);
 
 /**
- * @brief This fucntion benchmarks the allgather operation using the selected algorithm.
+ * @macro TEST_LOOP
+ * @brief Macro to generate a test loop for a given collective operation.
+ *
+ * @param OP_NAME Name of the operation.
+ * @param ARGS Arguments for the operation.
+ * @param COLLECTIVE Collective operation to perform.
  */
-void allgather_test_loop(ALLGATHER_ARGS, int iter, double *times, test_routine_t test_routine);
+#define DEFINE_TEST_LOOP(OP_NAME, ARGS, COLLECTIVE)                \
+static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, test_routine_t test_routine) { \
+    int ret = MPI_SUCCESS;                                         \
+    double start_time, end_time;                                   \
+    MPI_Barrier(comm);                                             \
+    for (int i = 0; i < iter; i++) {                               \
+        start_time = MPI_Wtime();                                  \
+        ret = test_routine.function.COLLECTIVE;                    \
+        end_time = MPI_Wtime();                                    \
+        times[i] = end_time - start_time;                          \
+        if (ret != MPI_SUCCESS) {                                  \
+            fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...\n"); \
+            return ret;                                            \
+        }                                                          \
+        MPI_Barrier(comm);                                             \
+    }                                                              \
+    return ret;                                                    \
+}
 
-/**
- * @brief This fucntion benchmarks the reduce scatter operation using the selected algorithm.
- */
-void reduce_scatter_test_loop(REDUCE_SCATTER_ARGS, int iter, double *times, test_routine_t test_routine);
+DEFINE_TEST_LOOP(allreduce, ALLREDUCE_ARGS, allreduce(sbuf, rbuf, count, dtype, MPI_SUM, comm))
+DEFINE_TEST_LOOP(allgather, ALLGATHER_ARGS, allgather(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
+DEFINE_TEST_LOOP(bcast, BCAST_ARGS, bcast(buf, count, dtype, 0, comm))
+DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_ARGS, reduce_scatter(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm))
 
 //-----------------------------------------------------------------------------------------------
 //                                   GROUND TRUTH CHECK FUNCTIONS
 //-----------------------------------------------------------------------------------------------
 
+/**
+ * @brief Compares two buffers with an epsilon tolerance for float or double datatypes.
+ *
+ * @param buf_1 First buffer.
+ * @param buf_2 Second buffer.
+ * @param count Size of the buffers in number of elements.
+ * @param dtype MPI_Datatype of the recvbuf.
+ * @param comm Communicator.
+ * @return 0 if buffers are equal within tolerance, -1 otherwise.
+ */
+int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
+                  MPI_Datatype dtype, MPI_Comm comm);
+
+#ifdef DEBUG
+#define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) \
+    debug_print_buffers((result), (expected), (count), (dtype), (comm))
+#else
+#define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) do {} while(0)
+#endif
+
+/**
+ * @macro GT_CHECK_BUFFER
+ * @brief Macro to check the result of an MPI operation against the ground truth.
+ *
+ * It is used inside the ground truth check functions to compare the result of an MPI operation
+ * against the ground truth. It checks if the result is equal to the expected value within an
+ * epsilon tolerance for float and double datatypes, and uses `memcmp` for other datatypes.
+ */
+#define GT_CHECK_BUFFER(result, expected, count, dtype, comm)                 \
+  do {                                                                        \
+    if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
+      if (memcmp((result), (expected), (count) * type_size) != 0) {           \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+        fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
+        return -1;                                                            \
+      }                                                                       \
+    } else {                                                                  \
+      if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+        fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
+        return -1;                                                            \
+      }                                                                       \
+    }                                                                         \
+  } while(0)
+
+
+/**
+ * @brief Interface for ground-truth check functions.
+ * This function selects the appropriate ground-truth check function based on the
+ * collective type specified in the test_routine.
+ *
+ * @return 0 on success, an -1 on error.
+ */
 int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt,
                        size_t count, MPI_Datatype dtype, MPI_Comm comm);
+
 /**
  * @brief Performs a ground-truth check for the result of an MPI Allreduce operation.
  *
@@ -142,6 +230,12 @@ int allreduce_gt_check(ALLREDUCE_ARGS, void *recvbuf_gt);
  */
 int allgather_gt_check(ALLGATHER_ARGS, void *recvbuf_gt);
 
+/**
+ * @brief Performs a ground-truth check for the result of an MPI Bcast operation.
+ *
+ * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
+ */
+int bcast_gt_check(BCAST_ARGS, void *recvbuf_gt);
 
 /**
  * @brief Performs a ground-truth check for the result of a Reduce Scatter operation.
@@ -284,19 +378,6 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t array_size,
  */
 int concatenate_path(const char *dirpath, const char *filename, char *fullpath);
 
-
-/**
- * @brief Compares two buffers with an epsilon tolerance for float or double datatypes.
- *
- * @param buf_1 First buffer.
- * @param buf_2 Second buffer.
- * @param count Size of the buffers in number of elements.
- * @param dtype MPI_Datatype of the recvbuf.
- * @param comm_sz Communication size to scale the epsilon.
- * @return 0 if buffers are equal within tolerance, -1 otherwise.
- */
-int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
-                  MPI_Datatype dtype, int comm_sz);
 
 //-----------------------------------------------------------------------------------------------
 //                          DEBUGGING FUNCTIONS

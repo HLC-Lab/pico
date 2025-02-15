@@ -10,17 +10,17 @@
 #include "test_utils.h"
 
 #ifdef DEBUG
-  #define DEBUG_PRINT(name) \
+  #define DEBUG_PRINT_STR(name) \
     int my_r; \
     MPI_Comm_rank(MPI_COMM_WORLD, &my_r); \
-    if (my_r == 0){ printf("%s\n", name); }
+    if (my_r == 0){ printf("%s\n\n", name); }
 #else
-  #define DEBUG_PRINT(name)
+  #define DEBUG_PRINT_STR(name)
 #endif
 
 #define CHECK_STR(var, name, ret) \
   if (strcmp(var, name) == 0) { \
-    DEBUG_PRINT(name); \
+    DEBUG_PRINT_STR(name); \
     return ret; \
   }
 
@@ -34,6 +34,7 @@
 static inline coll_t get_collective_from_string(const char *coll_str) {
   CHECK_STR(coll_str, "ALLREDUCE", ALLREDUCE);
   CHECK_STR(coll_str, "ALLGATHER", ALLGATHER);
+  CHECK_STR(coll_str, "BCAST", BCAST);
   CHECK_STR(coll_str, "REDUCE_SCATTER", REDUCE_SCATTER);
   return COLL_UNKNOWN;
 }
@@ -54,6 +55,8 @@ static inline allocator_func_ptr get_allocator(coll_t collective) {
       return allreduce_allocator;
     case ALLGATHER:
       return allgather_allocator;
+    case BCAST:
+      return bcast_allocator;
     case REDUCE_SCATTER:
       return reduce_scatter_allocator;
     default:
@@ -76,7 +79,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_lat_over", allreduce_swing_lat);
   CHECK_STR(algorithm, "swing_bdw_static_over", allreduce_swing_bdw_static);
 
-  DEBUG_PRINT("MPI_Allreduce\n");
+  DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;
 }
 
@@ -94,9 +97,25 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "swing_static_over", allgather_swing_static);
 
-  DEBUG_PRINT("MPI_Allgather\n");
+  DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
 }
+
+/**
+* @brief Select and returns the appropriate bcast function based
+* on the algorithm. It returns the default bcast function if the
+* algorithm is internal.
+*
+* WARNING: It does not check if the algorithm is supported and always
+* defauls to the internal bcast function.
+*/
+static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
+  CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
+
+  DEBUG_PRINT_STR("MPI_Bcast");
+  return bcast_wrapper;
+}
+
 
 /**
 * @breif Select and returns the appropriate reduce scatter function based
@@ -112,7 +131,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "butterfly_over", reduce_scatter_butterfly);
   CHECK_STR(algorithm, "swing_static_over", reduce_scatter_swing_static);
 
-  DEBUG_PRINT("MPI_Reduce_scatter\n");
+  DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;
 }
 
@@ -151,6 +170,9 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
     case ALLGATHER:
       test_routine->function.allgather = get_allgather_function(algorithm);
       break;
+    case BCAST:
+      test_routine->function.bcast = get_bcast_function(algorithm);
+      break;
     case REDUCE_SCATTER:
       test_routine->function.reduce_scatter = get_reduce_scatter_function(algorithm);
       break;
@@ -163,32 +185,35 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 }
 
 
+
 int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
               MPI_Datatype dtype, MPI_Comm comm, int iter, double *times){
-  int rank, comm_sz, *red_scat_counts = NULL;
+  int rank, comm_sz, ret, *red_scat_counts = NULL;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
-
+  
   switch (test_routine.collective){
     case ALLREDUCE:
-      allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
+      return allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
                           times, test_routine);
       break;
     case ALLGATHER:
-      allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
+      return allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
                           rbuf, count / (size_t) comm_sz, dtype,
                           comm, iter, times, test_routine);
-      break;
+    case BCAST:
+      return bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
+                      test_routine);
     case REDUCE_SCATTER:
       // Reduce scatter requires an array of counts for each rank
       red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
       for (int i = 0; i < comm_sz; i++){
         red_scat_counts[i] = count / comm_sz;
       }
-      reduce_scatter_test_loop(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, iter,
+      ret = reduce_scatter_test_loop(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, iter,
                                times, test_routine);
       free(red_scat_counts);
-      break;
+      return ret;
     default:
       fprintf(stderr, "still not implemented, aborting...\n");
       return -1;
@@ -209,8 +234,9 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void
       return allgather_gt_check(sbuf, count / (size_t) comm_sz, dtype,
                                 rbuf, count / (size_t) comm_sz, dtype,
                                 comm, rbuf_gt);
+    case BCAST:
+      return bcast_gt_check(sbuf, count, dtype, 0, comm, rbuf_gt);
     case REDUCE_SCATTER:
-      // Reduce scatter requires an array of counts for each rank
       red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
       for (int i = 0; i < comm_sz; i++){
         red_scat_counts[i] = count / comm_sz;
@@ -222,7 +248,6 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void
       fprintf(stderr, "still not implemented, aborting...\n");
       return -1;
   }
-
 }
 
 int get_command_line_arguments(int argc, char** argv, size_t *array_count, int* iter,
@@ -379,6 +404,10 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   MPI_Comm_size(comm, &comm_sz);
   unsigned int seed = time(NULL) + rank;
   
+  // For BCAST, only rank 0 generates the sendbuf
+  if (test_routine.collective == BCAST && rank != 0) {
+    return 0;
+  }
   // If generating sendbuf for an ALLGATHER, the number of element is
   // count / comm_sz
   size_t real_sbuf_count =
@@ -397,9 +426,9 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
     } else if (dtype == MPI_INT) {
       ((int *)sbuf)[i] = (int)rand_r(&seed);
     } else if (dtype == MPI_FLOAT) {
-      ((float *)sbuf)[i] = (float)rand_r(&seed) / RAND_MAX * 100.0f;
+      ((float *)sbuf)[i] = (float)rand_r(&seed) / (float) RAND_MAX * 100.0f;
     } else if (dtype == MPI_DOUBLE) {
-      ((double *)sbuf)[i] = (double)rand_r(&seed) / RAND_MAX * 100.0;
+      ((double *)sbuf)[i] = (double)rand_r(&seed) / (double) RAND_MAX * 100.0;
     } else if (dtype == MPI_CHAR) {
       ((char *)sbuf)[i] = (char)((rand_r(&seed) % 256) - 128);
     } else if (dtype == MPI_UNSIGNED_CHAR) {
@@ -444,7 +473,10 @@ int concatenate_path(const char *dir_path, const char *filename, char *fullpath)
 
 
 int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
-                  MPI_Datatype dtype, int comm_sz) {
+                  MPI_Datatype dtype, MPI_Comm comm) {
+  int comm_sz;
+  MPI_Comm_size(comm, &comm_sz);
+
   if (count == 0) return 0;
 
   size_t i;
@@ -533,6 +565,11 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
+
+  // For BCAST, only rank 0 has a valid sbuf
+  if (test_routine.collective == BCAST && rank != 0) {
+    return 0;
+  }
 
   size_t real_sbuf_count =
     (test_routine.collective == ALLGATHER) ?

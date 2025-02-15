@@ -1,0 +1,37 @@
+{
+  "libswing_version": "1.0.0",
+  "collective": "BCAST",
+  "MPI_Op": "MPI_SUM",
+  "tags": {
+    "include": [
+      "internal",
+      "external"
+    ],
+    "exclude": [
+      "can_crash",
+      "suboptimal"
+    ]
+  },
+  "specific": {
+    "include": [],
+    "exclude": []
+  },
+  "cuda": false,
+  "arr_counts": [
+    "8",
+    "64",
+    "512",
+    "2048",
+    "16384",
+    "131072",
+    "1048576",
+    "8388608",
+    "67108864"
+  ],
+  "datatypes": [
+    "int64",
+    "int32",
+    "int16",
+    "int8"
+  ]
+}

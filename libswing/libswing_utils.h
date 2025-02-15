@@ -383,6 +383,15 @@ static inline int get_sender(const int *p, int n, int i) {
   return -1;
 }
 
+/*
+ * rounddown: Rounds a number down to nearest multiple.
+ *     rounddown(10,4) = 8, rounddown(6,3) = 6, rounddown(14,3) = 12
+ */
+static inline int rounddown(int num, int factor)
+{
+    num /= factor;
+    return num * factor;    /* floor(num / factor) * factor */
+}
 
 #endif // LIBSWING_UTILS_H
 

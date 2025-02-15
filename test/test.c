@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
   size_t count, type_size;
   void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
-  const char *algorithm, *type_string, *outputdir, *data_dir;
+  const char *algorithm, *type_string, *outputdir = NULL, *data_dir = NULL;
   test_routine_t test_routine;
 
   MPI_Comm_rank(comm, &rank);

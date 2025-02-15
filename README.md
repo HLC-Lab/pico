@@ -155,10 +155,11 @@ For a new collective additional steps are required.
   - `typedef` a function pointer for the specified collective and for its ground truth check;
   - define a wrapper if the function pointer typing does not correspond precisely to the one of the collective itself (for example if you use `size_t count` instead of `int count`)
   - populate `test_routine_t` struct accordingly;
-  - declare a test loop function and a ground truth check function;
+  - define a test loop function using the macro;
+  - declare a ground truth check function;
 - create a file `test_<COLLECTIVE_TYPE>_utils.c`
   - include at minimum `libswing.h` `test_utils.h` and `mpi.h`
-  - define the `allocator`, `ground_truth_check` and `test_loop` functions declared in `test_utils.h`
+  - define the `allocator` and `ground_truth_check` functions declared in `test_utils.h`
 - in `test_utils.c`
   - modify `get_collective_from_string` and `get_allocator`,
   - define a static inline `get_<COLLECTIVE_TYPE>_function` to return the normal collective function (or its wrapper) if the collective is internal and the collective defined in `libswing.h` if it's external.
