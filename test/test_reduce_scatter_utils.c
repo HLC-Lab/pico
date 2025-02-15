@@ -22,15 +22,3 @@ int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t co
   return 0; // Success
 }
 
-int reduce_scatter_gt_check(REDUCE_SCATTER_ARGS, void *rbuf_gt) {
-  // Compute the ground-truth result using PMPI_Reduce_scatter.
-  PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, op, comm);
-
-  int rank, type_size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Type_size(dtype, &type_size);
-
-  GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
-
-  return 0; // Success.
-}

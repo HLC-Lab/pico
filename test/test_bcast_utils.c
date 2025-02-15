@@ -18,19 +18,3 @@ int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
   return 0; // Success
 }
 
-
-int bcast_gt_check(BCAST_ARGS, void *buf_gt) {
-  // Compute the ground-truth result using PMPI_Bcast.
-  int rank, type_size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Type_size(dtype, &type_size);
-
-  if (rank == root) {
-    memcpy(buf_gt, buf, count * type_size);
-  }
-  PMPI_Bcast(buf_gt, count, dtype, root, comm);
-
-  GT_CHECK_BUFFER(buf, buf_gt, count, dtype, comm);
-
-  return 0; // Success.
-}

@@ -152,24 +152,26 @@ For a new collective additional steps are required.
 - in `test_utils.h`
   - add the collective to `coll_t` enum;
   - declare an allocator (for now all allocators have the same signature but it can change in the future);
-  - `typedef` a function pointer for the specified collective and for its ground truth check;
+  - `typedef` a function pointer for the specified collective;
   - define a wrapper if the function pointer typing does not correspond precisely to the one of the collective itself (for example if you use `size_t count` instead of `int count`)
   - populate `test_routine_t` struct accordingly;
   - define a test loop function using the macro;
   - declare a ground truth check function;
 - create a file `test_<COLLECTIVE_TYPE>_utils.c`
   - include at minimum `libswing.h` `test_utils.h` and `mpi.h`
-  - define the `allocator` and `ground_truth_check` functions declared in `test_utils.h`
+  - define the `allocator` function declared in `test_utils.h`
 - in `test_utils.c`
   - modify `get_collective_from_string` and `get_allocator`,
   - define a static inline `get_<COLLECTIVE_TYPE>_function` to return the normal collective function (or its wrapper) if the collective is internal and the collective defined in `libswing.h` if it's external.
-  - modify the switch in `get_routine`, `test_loop` and `ground_truth_check` with custom behaviour for the new collective
+  - modify the switch in `get_routine`, `test_loop` with custom behaviour for the new collective;
+  - implement the `ground_truth_check` behaviour;
   - modify `rand_sbuf_generator` and `debug_sbuf_generator` to correctly populate the sbuf of said collective (different collectives may have different sbuf dimension for a given `count` parameter)
 
 #### Debugging
 When compiled with `-DDEBUG`, the program:
 - will not save benchmark results
 - initializes `sbuf` in a predefined way
+- print to screen which collective function pointer is using
 - prints `rbuf` and `rbuf_gt` if ground truth check fails before invoking `MPI_Abort`
 
 ---

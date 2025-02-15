@@ -19,16 +19,3 @@ int allreduce_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
   return 0; // Success
 }
 
-
-int allreduce_gt_check(ALLREDUCE_ARGS, void *rbuf_gt) {
-  // Compute the ground-truth result using PMPI_Allreduce.
-  PMPI_Allreduce(sbuf, rbuf_gt, count, dtype, op, comm);
-
-  int type_size;
-  MPI_Type_size(dtype, &type_size);
-
-  GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
-
-  return 0; // Success.
-}
-

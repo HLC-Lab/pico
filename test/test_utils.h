@@ -6,6 +6,12 @@
 
 #include "libswing.h"
 
+#if defined(__GNUC__) || defined(__clang__)
+#define TEST_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define UNLIKELY(x) (x)
+#endif
+
 #define TEST_MAX_PATH_LENGTH 512
 #define TEST_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
 #define TEST_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
@@ -67,10 +73,6 @@ static inline int bcast_wrapper(BCAST_ARGS){
     return MPI_Bcast(buf, (int)count, dtype, root, comm);
 }
 
-typedef int (*allreduce_gt_func_ptr)(ALLREDUCE_ARGS, void *rbuf_gt);
-typedef int (*allgather_gt_func_ptr)(ALLGATHER_ARGS, void *rbuf_gt);
-typedef int (*bcast_gt_func_ptr)(BCAST_ARGS, void *rbuf_gt);
-typedef int (*reduce_scatter_gt_func_ptr)(REDUCE_SCATTER_ARGS, void *rbuf_gt);
 
 //-----------------------------------------------------------------------------------------------
 //                                TEST ROUTINE STRUCTURE
@@ -85,7 +87,6 @@ typedef int (*reduce_scatter_gt_func_ptr)(REDUCE_SCATTER_ARGS, void *rbuf_gt);
  * @var collective Specifies the type of collective operation.
  * @var allocator Pointer to the memory allocator function.
  * @var function Union of function pointers for allreduce, allgather and reduce scatter.
- * @var gt_check Union of function pointers for ground truth checking functions.
  */
 typedef struct {
   coll_t collective; /**< Specifies the type of collective operation. */
@@ -99,14 +100,6 @@ typedef struct {
     bcast_func_ptr bcast;
     reduce_scatter_func_ptr reduce_scatter;
   } function;
-
-  /** Union of function pointers for ground truth checking functions. */
-  union {
-    allreduce_gt_func_ptr allreduce;
-    allgather_gt_func_ptr allgather;
-    bcast_gt_func_ptr bcast;
-    reduce_scatter_gt_func_ptr reduce_scatter;
-  } gt_check;
 } test_routine_t;
 
 
@@ -142,7 +135,7 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, test_routin
         ret = test_routine.function.COLLECTIVE;                    \
         end_time = MPI_Wtime();                                    \
         times[i] = end_time - start_time;                          \
-        if (ret != MPI_SUCCESS) {                                  \
+        if (TEST_UNLIKELY(ret != MPI_SUCCESS)) {                   \
             fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...\n"); \
             return ret;                                            \
         }                                                          \
@@ -194,13 +187,13 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
       if (memcmp((result), (expected), (count) * type_size) != 0) {           \
         DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
-        return -1;                                                            \
+        ret = -1;                                                            \
       }                                                                       \
     } else {                                                                  \
       if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
         DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
-        return -1;                                                            \
+        ret = -1;                                                            \
       }                                                                       \
     }                                                                         \
   } while(0)
@@ -216,33 +209,6 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
 int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt,
                        size_t count, MPI_Datatype dtype, MPI_Comm comm);
 
-/**
- * @brief Performs a ground-truth check for the result of an MPI Allreduce operation.
- *
- * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
- */
-int allreduce_gt_check(ALLREDUCE_ARGS, void *recvbuf_gt);
-
-/**
- * @brief Performs a ground-truth check for the result of an MPI Allgather operation.
- *
- * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
- */
-int allgather_gt_check(ALLGATHER_ARGS, void *recvbuf_gt);
-
-/**
- * @brief Performs a ground-truth check for the result of an MPI Bcast operation.
- *
- * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
- */
-int bcast_gt_check(BCAST_ARGS, void *recvbuf_gt);
-
-/**
- * @brief Performs a ground-truth check for the result of a Reduce Scatter operation.
- *
- * @return int Returns 0 on success, -1 if there is a mismatch or an error in type handling.
- */
-int reduce_scatter_gt_check(REDUCE_SCATTER_ARGS, void *recvbuf_gt);
 
 //-----------------------------------------------------------------------------------------------
 //                     SELECT ALGORITHM AND COMMAND LINE PARSING FUNCTIONS

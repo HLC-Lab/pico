@@ -10,18 +10,20 @@
 #include "test_utils.h"
 
 #ifdef DEBUG
-  #define DEBUG_PRINT_STR(name) \
-    int my_r; \
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_r); \
-    if (my_r == 0){ printf("%s\n\n", name); }
+  #define DEBUG_PRINT_STR(name)                 \
+    do{                                         \
+      int my_r;                                 \
+      MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
+      if (my_r == 0){ printf("%s\n\n", name); } \
+    } while(0)
 #else
   #define DEBUG_PRINT_STR(name)
 #endif
 
-#define CHECK_STR(var, name, ret) \
-  if (strcmp(var, name) == 0) { \
-    DEBUG_PRINT_STR(name); \
-    return ret; \
+#define CHECK_STR(var, name, ret)               \
+  if (strcmp(var, name) == 0) {                 \
+    DEBUG_PRINT_STR(name);                      \
+    return ret;                                 \
   }
 
 /**
@@ -188,7 +190,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
 int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
               MPI_Datatype dtype, MPI_Comm comm, int iter, double *times){
-  int rank, comm_sz, ret, *red_scat_counts = NULL;
+  int rank, comm_sz, ret, *rcounts = NULL;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
   
@@ -205,50 +207,59 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
       return bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
                       test_routine);
     case REDUCE_SCATTER:
-      // Reduce scatter requires an array of counts for each rank
-      red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
-      for (int i = 0; i < comm_sz; i++){
-        red_scat_counts[i] = count / comm_sz;
-      }
-      ret = reduce_scatter_test_loop(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, iter,
+      rcounts = (int *)malloc(comm_sz * sizeof(int));
+      for (int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
+      ret = reduce_scatter_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm, iter,
                                times, test_routine);
-      free(red_scat_counts);
+      free(rcounts);
       return ret;
     default:
       fprintf(stderr, "still not implemented, aborting...\n");
       return -1;
   }
-  return 0;
 }
 
 
-int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm){
-  int rank, comm_sz, *red_scat_counts = NULL, ret;
+int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
+                       void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm){
+  int rank, comm_sz, *rcounts = NULL, ret = 0, type_size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
+  MPI_Type_size(dtype, &type_size);
 
   switch (test_routine.collective){
     case ALLREDUCE:
-      return allreduce_gt_check(sbuf, rbuf, count, dtype, MPI_SUM, comm, rbuf_gt);
+      PMPI_Allreduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      break;
     case ALLGATHER:
-      return allgather_gt_check(sbuf, count / (size_t) comm_sz, dtype,
-                                rbuf, count / (size_t) comm_sz, dtype,
-                                comm, rbuf_gt);
+      PMPI_Allgather(sbuf, count / (size_t) comm_sz, dtype, \
+                 rbuf_gt, count / (size_t) comm_sz, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      break;
     case BCAST:
-      return bcast_gt_check(sbuf, count, dtype, 0, comm, rbuf_gt);
-    case REDUCE_SCATTER:
-      red_scat_counts = (int *)malloc(comm_sz * sizeof(int));
-      for (int i = 0; i < comm_sz; i++){
-        red_scat_counts[i] = count / comm_sz;
+      if (rank == 0) {
+        memcpy(rbuf_gt, sbuf, count * type_size);
       }
-      ret = reduce_scatter_gt_check(sbuf, rbuf, red_scat_counts, dtype, MPI_SUM, comm, rbuf_gt);
-      free(red_scat_counts);
-      return ret;
+      PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
+      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
+      break;
+    case REDUCE_SCATTER:
+      rcounts = (int *)malloc(comm_sz * sizeof(int));
+      for (int i = 0; i < comm_sz; i++){
+        rcounts[i] = count / comm_sz;
+      }
+      PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
+      free(rcounts);
+      break;
     default:
       fprintf(stderr, "still not implemented, aborting...\n");
       return -1;
   }
+  return ret;
 }
+
 
 int get_command_line_arguments(int argc, char** argv, size_t *array_count, int* iter,
                                const char **algorithm, const char **type_string) {
