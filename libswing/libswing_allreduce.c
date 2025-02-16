@@ -123,7 +123,7 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
   return MPI_SUCCESS;
 
   error_hndl:
-    fprintf(stderr, "%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
+    fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
     (void)line;  // silence compiler warning
     if (NULL != inplacebuf_free) free(inplacebuf_free);
     return ret;
@@ -304,7 +304,7 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   return MPI_SUCCESS;
 
  error_hndl:
-  fprintf(stderr, "%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
+  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
   MPI_Request_free(&reqs[0]);
   MPI_Request_free(&reqs[1]);
   (void)line;  // silence compiler warning
@@ -425,7 +425,7 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   return MPI_SUCCESS;
 
   error_hndl:
-    fprintf(stderr, "%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
+    fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
     (void)line;  // silence compiler warning
     if (NULL != inplacebuf_free) free(inplacebuf_free);
     return ret;

@@ -130,7 +130,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
   coll_str = getenv("COLLECTIVE_TYPE");
   if (NULL == coll_str) {
     fprintf(stderr, "Error! `COLLECTIVE_TYPE` environment \
-                    variable not set. Aborting...\n");
+                    variable not set. Aborting...");
     return -1;
   }
 
@@ -138,14 +138,14 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
   test_routine->collective = get_collective_from_string(coll_str);
   if (test_routine->collective == COLL_UNKNOWN) {
     fprintf(stderr, "Error! Invalid `COLLECTIVE_TYPE` value: \
-                     %s. Aborting...\n", coll_str);
+                     %s. Aborting...", coll_str);
     return -1;
   }
 
   // Set the right allocator based on the collective type
   test_routine->allocator = get_allocator(test_routine->collective);
   if (NULL == test_routine->allocator) {
-    fprintf(stderr, "Error! Allocator is NULL. Aborting...\n");
+    fprintf(stderr, "Error! Allocator is NULL. Aborting...");
     return -1;
   }
 
@@ -164,7 +164,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
       test_routine->function.reduce_scatter = get_reduce_scatter_function(algorithm);
       break;
     default :
-      fprintf(stderr, "Error! Invalid collective type. Aborting...\n");
+      fprintf(stderr, "Error! Invalid collective type. Aborting...");
       return -1;
     }
 
@@ -201,7 +201,7 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
       free(rcounts);
       break;
     default:
-      fprintf(stderr, "still not implemented, aborting...\n");
+      fprintf(stderr, "still not implemented, aborting...");
       return -1;
   }
   return ret;
@@ -242,7 +242,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       free(rcounts);
       break;
     default:
-      fprintf(stderr, "still not implemented, aborting...\n");
+      fprintf(stderr, "still not implemented, aborting...");
       return -1;
   }
   return ret;
@@ -252,20 +252,20 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
 int get_command_line_arguments(int argc, char** argv, size_t *array_count, int* iter,
                                const char **algorithm, const char **type_string) {
   if (argc != 5) {
-    fprintf(stderr, "Usage: %s <array_count> <iterations> <algorithm> <dtype>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <array_count> <iterations> <algorithm> <dtype>", argv[0]);
     return -1;
   }
 
   char *endptr;
   *array_count = (size_t) strtoll(argv[1], &endptr, 10);
   if (*endptr != '\0' || *array_count <= 0) {
-    fprintf(stderr, "Error: Invalid array count. It must be a positive integer. Aborting...\n");
+    fprintf(stderr, "Error: Invalid array count. It must be a positive integer. Aborting...");
     return -1;
   }
 
   *iter = (int) strtol(argv[2], &endptr, 10);
   if (*endptr != '\0' || *iter <= 0) {
-    fprintf(stderr, "Error: Invalid number of iterations. It must be a positive integer. Aborting...\n");
+    fprintf(stderr, "Error: Invalid number of iterations. It must be a positive integer. Aborting...");
     return -1;
   }
 
@@ -315,7 +315,7 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
     }
   }
 
-  fprintf(stderr, "Error: datatype %s not in `type_map`. Aborting...\n", type_string);
+  fprintf(stderr, "Error: datatype %s not in `type_map`. Aborting...", type_string);
   return -1;
 }
 
@@ -325,7 +325,7 @@ int write_output_to_file(const char *fullpath, double *highest, double *all_time
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
   FILE *output_file = fopen(fullpath, "w");
   if (output_file == NULL) {
-    fprintf(stderr, "Error: Opening file %s for writing\n", fullpath);
+    fprintf(stderr, "Error: Opening file %s for writing", fullpath);
     return -1;
   }
 
@@ -368,7 +368,7 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm) {
   MPI_File file;
   if (MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
     if (rank == 0) {
-      fprintf(stderr, "Error: Opening file %s for writing\n", filename);
+      fprintf(stderr, "Error: Opening file %s for writing", filename);
     }
     return MPI_ERR_FILE;
   }
@@ -433,7 +433,7 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
     } else if (dtype == MPI_UNSIGNED_CHAR) {
       ((unsigned char *)sbuf)[i] = (unsigned char)(rand_r(&seed) % 256);
     } else {
-      fprintf(stderr, "Error: sbuf not generated correctly. Aborting...\n");
+      fprintf(stderr, "Error: sbuf not generated correctly. Aborting...");
       return -1;
     }
   }
@@ -444,7 +444,7 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
 int concatenate_path(const char *dir_path, const char *filename, char *fullpath) {
   if (dir_path == NULL || filename == NULL) {
-    fprintf(stderr, "Directory path or filename is NULL.\n");
+    fprintf(stderr, "Directory path or filename is NULL.");
     return -1;
   }
 
@@ -452,12 +452,12 @@ int concatenate_path(const char *dir_path, const char *filename, char *fullpath)
   size_t filename_len = strlen(filename);
 
   if (dir_path_len == 0) {
-    fprintf(stderr, "Directory path is empty.\n");
+    fprintf(stderr, "Directory path is empty.");
     return -1;
   }
 
   if (dir_path_len + filename_len + 2 > TEST_MAX_PATH_LENGTH) {
-    fprintf(stderr, "Combined path length exceeds buffer size.\n");
+    fprintf(stderr, "Combined path length exceeds buffer size.");
     return -1;
   }
 
@@ -580,7 +580,7 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
     } else if (dtype == MPI_INT){
       ((int*)sbuf)[i] = int_pow(10, rank);
     } else {
-      fprintf(stderr, "Error: Datatype not implemented for `debug_sbuf_init`...\n");
+      fprintf(stderr, "Error: Datatype not implemented for `debug_sbuf_init`...");
       return -1;
     }
   }
@@ -607,7 +607,7 @@ static void print_buffer_helper(const void *buf, size_t count, MPI_Datatype dtyp
       printf("%d ", data[j]);
     }
   } else {
-    fprintf(stderr, "Error: Datatype print not supported.\n");
+    fprintf(stderr, "Error: Datatype print not supported.");
   }
 }
 
@@ -619,11 +619,11 @@ void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count,
   for (int i = 0; i < comm_sz; i++) {
     if (rank == i) {
       printf("Rank %d:\n", rank);
-      printf("rbuf: ");
+      printf("recvbuf: ");
       print_buffer_helper(rbuf, count, dtype);
-      printf("\nrbuf_gt: ");
+      printf("\ng_truth: ");
       print_buffer_helper(rbuf_gt, count, dtype);
-      printf("\n");
+      printf("\n\n");
       fflush(stdout);
     }
   }

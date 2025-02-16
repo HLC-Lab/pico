@@ -1,7 +1,7 @@
 # Compiler and flags
 CFLAGS = -Wall -I../include
 
-ifneq ($(filter clang gcc,$(CC)),)
+ifneq ($(filter clang gcc mpicc,$(CC)),)
 	CFLAGS += -O3 -MMD -MP
 endif
 

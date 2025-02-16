@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
   outputdir = getenv("OUTPUT_DIR");
   data_dir = getenv("DATA_DIR");
   if (outputdir == NULL || data_dir == NULL){
-    fprintf(stderr, "Error: Environment variables OUTPUT_DIR or DATA_DIR not set. Aborting...\n");
+    fprintf(stderr, "Error: Environment variables OUTPUT_DIR or DATA_DIR not set. Aborting...");
     line = __LINE__;
     goto err_hndl;
   }
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     highest = (double *)malloc(iter * sizeof(double));
   }
   if (times == NULL || (rank == 0 && (all_times == NULL || highest == NULL))){
-    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...");
     line = __LINE__;
     goto err_hndl;
   }

@@ -1,11 +1,11 @@
 # Compiler and flags
 CFLAGS = -Wall -I../include
 
-ifneq ($(filter clang gcc,$(CC)),)
+ifneq ($(filter clang gcc mpicc,$(CC)),)
 	CFLAGS += -O3 -MMD -MP
 endif
 
-ifneq ($(findstring craycc,$(CC)),)
+ifneq ($(findstring cc craycc,$(CC)),)
 	CFLAGS += -Ofast -funroll-loops -em
 endif
 

@@ -149,23 +149,24 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
  * @param ARGS Arguments for the operation.
  * @param COLLECTIVE Collective operation to perform.
  */
-#define DEFINE_TEST_LOOP(OP_NAME, ARGS, COLLECTIVE)                \
-static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, test_routine_t test_routine) { \
-    int ret = MPI_SUCCESS;                                         \
-    double start_time, end_time;                                   \
-    MPI_Barrier(comm);                                             \
-    for (int i = 0; i < iter; i++) {                               \
-        start_time = MPI_Wtime();                                  \
-        ret = test_routine.function.COLLECTIVE;                    \
-        end_time = MPI_Wtime();                                    \
-        times[i] = end_time - start_time;                          \
-        if (TEST_UNLIKELY(ret != MPI_SUCCESS)) {                   \
-            fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...\n"); \
-            return ret;                                            \
-        }                                                          \
-        MPI_Barrier(comm);                                             \
-    }                                                              \
-    return ret;                                                    \
+#define DEFINE_TEST_LOOP(OP_NAME, ARGS, COLLECTIVE)                  \
+static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, \
+                                   test_routine_t test_routine) {    \
+  int ret = MPI_SUCCESS;                                             \
+  double start_time, end_time;                                       \
+  MPI_Barrier(comm);                                                 \
+  for (int i = 0; i < iter; i++) {                                   \
+    start_time = MPI_Wtime();                                        \
+    ret = test_routine.function.COLLECTIVE;                          \
+    end_time = MPI_Wtime();                                          \
+    times[i] = end_time - start_time;                                \
+    if (TEST_UNLIKELY(ret != MPI_SUCCESS)) {                         \
+      fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...");    \
+      return ret;                                                    \
+    }                                                                \
+    MPI_Barrier(comm);                                               \
+  }                                                                  \
+  return ret;                                                        \
 }
 
 DEFINE_TEST_LOOP(allreduce, ALLREDUCE_ARGS, allreduce(sbuf, rbuf, count, dtype, MPI_SUM, comm))
@@ -204,13 +205,13 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
       if (memcmp((result), (expected), (count) * type_size) != 0) {           \
         DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
-        fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
+        fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
     } else {                                                                  \
       if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
         DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
-        fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
+        fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
     }                                                                         \

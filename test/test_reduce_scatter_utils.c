@@ -15,7 +15,7 @@ int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t co
   *rbuf = (char *)calloc((count / (size_t) comm_sz), type_size);
   *rbuf_gt = (char *)calloc((count / (size_t) comm_sz), type_size);
   if (*sbuf == NULL || *rbuf == NULL || *rbuf_gt == NULL) {
-    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...");
     return -1;
   }
   return 0; // Success

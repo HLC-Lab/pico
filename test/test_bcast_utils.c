@@ -10,7 +10,7 @@ int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
   *rbuf_gt = (char *)calloc(count, type_size);
 
   if (*sbuf == NULL || *rbuf_gt == NULL) {
-    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...");
     return -1;
   }
 

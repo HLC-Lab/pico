@@ -104,11 +104,11 @@ run_test() {
 
     if [ "$DEBUG_MODE" == "yes" ]; then
         echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
+        $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type
     else
         echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
+        $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type || { error "Failed to run test for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; exit 1; }
     fi
-
-    $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type
 }
 
 # Test algorithms here, loop through:

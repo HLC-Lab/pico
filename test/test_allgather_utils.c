@@ -15,7 +15,7 @@ int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
   *rbuf = (char *)calloc(count, type_size);
   *rbuf_gt = (char *)calloc(count, type_size);
   if (*sbuf == NULL || *rbuf == NULL || *rbuf_gt == NULL) {
-    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...");
     return -1;
   }
   return 0; // Success
