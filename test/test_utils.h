@@ -15,7 +15,7 @@
 // Used to print algorithm and collective when in debug mode
 #ifndef DEBUG
   #define DEBUG_PRINT_STR(name)
-  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, test_routine) do {} while(0)
+  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) do {} while(0)
 #else
   #define DEBUG_PRINT_STR(name)                 \
     do{                                         \
@@ -24,9 +24,9 @@
       if (my_r == 0){ printf("%s\n\n", name); } \
     } while(0)
 
-  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, test_routine)        \
-    do {                                                                                 \
-    debug_print_buffers((result), (expected), (count), (dtype), (comm), (test_routine)); \
+  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm)      \
+    do {                                                                 \
+    debug_print_buffers((result), (expected), (count), (dtype), (comm)); \
     } while(0)
 #endif // DEBUG
 
@@ -199,19 +199,17 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
  * against the ground truth. It checks if the result is equal to the expected value within an
  * epsilon tolerance for float and double datatypes, and uses `memcmp` for other datatypes.
  */
-#define GT_CHECK_BUFFER(result, expected, count, dtype, comm, test_routine)   \
+#define GT_CHECK_BUFFER(result, expected, count, dtype, comm)                 \
   do {                                                                        \
     if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
       if (memcmp((result), (expected), (count) * type_size) != 0) {           \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm),   \
-                            (test_routine));                                  \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
         ret = -1;                                                             \
       }                                                                       \
     } else {                                                                  \
       if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm),   \
-                            (test_routine));                                  \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
         ret = -1;                                                             \
       }                                                                       \
@@ -391,9 +389,8 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
  * @param count The number of elements in the buffer.
  * @param dtype The MPI datatype of the buffer.
  * @param comm The MPI communicator.
- * @param test_routine Routine decision structure.
  */
-void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm, test_routine_t test_routine);
+void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm);
 #endif // DEBUG
 
 #endif // TEST_TOOLS_H

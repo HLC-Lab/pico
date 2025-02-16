@@ -218,19 +218,19 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
   switch (test_routine.collective){
     case ALLREDUCE:
       PMPI_Allreduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm, test_routine);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
     case ALLGATHER:
       PMPI_Allgather(sbuf, count / (size_t) comm_sz, dtype, \
                  rbuf_gt, count / (size_t) comm_sz, dtype, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm, test_routine);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
     case BCAST:
       if (rank == 0) {
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
       PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
-      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm, test_routine);
+      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
@@ -238,7 +238,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
         rcounts[i] = count / comm_sz;
       }
       PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm, test_routine);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
       free(rcounts);
       break;
     default:
@@ -478,15 +478,13 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
 
   if (count == 0) return 0;
 
-  size_t i;
-
   if (MPI_FLOAT == dtype) {
     float *b1 = (float *) buf_1;
     float *b2 = (float *) buf_2;
 
     float epsilon = comm_sz * TEST_BASE_EPSILON_FLOAT * 100.0f;
 
-    for (i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       if (fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
@@ -497,7 +495,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
 
     double epsilon = comm_sz * TEST_BASE_EPSILON_DOUBLE * 100.0;
 
-    for (i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       if (fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
@@ -614,7 +612,7 @@ static void print_buffer_helper(const void *buf, size_t count, MPI_Datatype dtyp
 }
 
 void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count,
-                         MPI_Datatype dtype, MPI_Comm comm, test_routine_t test_routine){
+                         MPI_Datatype dtype, MPI_Comm comm){
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
@@ -628,7 +626,6 @@ void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count,
       printf("\n");
       fflush(stdout);
     }
-    if (test_routine.collective != BCAST) MPI_Barrier(comm);
   }
 }
 
