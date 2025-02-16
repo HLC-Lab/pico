@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.4.0",
+    "schema_version": "2.4.1",
     "created": "2024-01-30",
-    "last_modified": "2024-02-15",
+    "last_modified": "2024-02-16",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -980,6 +980,39 @@
         "tags": [
           "scatter_allgather",
           "segmented",
+          "external"
+        ]
+      },
+      "swing_lat_over": {
+        "desc": "Libswing external swing latency optimal algorithm. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_lat",
+          "swing",
+          "latency_optimal",
           "external"
         ]
       }

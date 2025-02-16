@@ -7,6 +7,9 @@
 #include "libswing_utils.h"
 
 /*
+ * NOTE: Taken from Open MPI base module and rewritten using MPI API for benchmarking
+ * reasons.
+ *
  * ompi_coll_base_bcast_intra_scatter_allgather
  *
  * Function:  Bcast using a binomial tree scatter followed by a recursive
@@ -165,3 +168,94 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
 cleanup_and_return:
   return err;
 }
+
+/*
+ * @brief bcast_swing_lat: broadcast buf from root to all processes using 
+ * a binomial tree communication pattern with swing `pi` peer selection.
+ *
+ * For now only works with comm_sz = 2^k and root = 0, but logic will be
+ * extended to work with any root.
+ */
+int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+{
+  int comm_sz, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
+  char *received = NULL;
+  MPI_Comm_size(comm, &comm_sz);
+  MPI_Comm_rank(comm, &rank);
+
+  // Check if the number of processes is a power of 2
+  steps = log_2(comm_sz);
+  if (comm_sz != (1 << steps)) {
+    line = __LINE__;
+    err = MPI_ERR_SIZE;
+    goto cleanup_and_return;
+  }
+  // Only root = 0 logic is done
+  if (root != 0){
+    line = __LINE__;
+    err = MPI_ERR_ROOT;
+    goto cleanup_and_return;
+  }
+
+  // Use an auxiliary array to record visited node in order
+  // to calculate at which step node is gonna receive the message.
+  received = calloc(comm_sz, sizeof(char));
+  if (received == NULL) {
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto cleanup_and_return;
+  }
+  received[root] = 1;
+
+  for (int step = 0; step < steps && !received[rank]; step++) {
+    for (int proc = 0; proc < comm_sz; proc++) {
+      if (received[proc]) {
+        int dest = pi(proc, step, comm_sz);
+        received[dest] = 1;
+        if (dest == rank) {
+          recv_step = step;
+          break;
+        }
+      }
+    }
+  }
+
+  /* Main loop.
+   *
+   * At each step s:
+   * - if rank r has the data it sends it to dest = pi(r, s)
+   * - if rank r does not have the data:
+   *   - if recv_step ==s, it receives the data from the parent
+   *   - otherwise it does nothing in this iteration
+   */
+  for (int s = 0; s < steps; s++) {
+    int dest;
+    // If I don't have the data and I am scheduled to receive it, wait for it.
+    if (rank != root && recv_step == s) {
+      dest = pi(rank, s, comm_sz);
+      err = MPI_Recv(buf, count, dtype, dest, s, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      continue;
+    }
+
+    // If I already have the message, send the data.
+    if (recv_step < s) {
+      dest = pi(rank, s, comm_sz);
+      err = MPI_Send(buf, count, dtype, dest, s, comm);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      continue;
+    }
+  }
+
+  free(received);
+
+  return MPI_SUCCESS;
+
+cleanup_and_return:
+  fprintf(stderr, "%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, err);
+  if (NULL!= received)     free(received);
+
+  return err;
+}
+
+

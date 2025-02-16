@@ -15,16 +15,18 @@ int main(int argc, char *argv[]) {
   size_t count, type_size;
   void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
-  const char *algorithm, *type_string, *outputdir = NULL, *data_dir = NULL;
+  const char *algorithm, *type_string;
   test_routine_t test_routine;
 
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
+
   // Get test arguments
+#ifndef DEBUG
+  const char *outputdir = NULL, *data_dir = NULL;
   outputdir = getenv("OUTPUT_DIR");
   data_dir = getenv("DATA_DIR");
-#ifndef DEBUG
   if (outputdir == NULL || data_dir == NULL){
     fprintf(stderr, "Error: Environment variables OUTPUT_DIR or DATA_DIR not set. Aborting...\n");
     line = __LINE__;
@@ -46,19 +48,14 @@ int main(int argc, char *argv[]) {
 
   // Allocate memory for buffers independent of collective type
   times = (double *)calloc(iter, sizeof(double));
-  if (times == NULL){
-    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
-    line = __LINE__;
-    goto err_hndl;
-  }
   if (rank == 0) {
     all_times = (double *)malloc(comm_sz * iter * sizeof(double));
     highest = (double *)malloc(iter * sizeof(double));
-    if (all_times == NULL || highest == NULL){
-      fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
-      line = __LINE__;
-      goto err_hndl;
-    }
+  }
+  if (times == NULL || (rank == 0 && (all_times == NULL || highest == NULL))){
+    fprintf(stderr, "Error: Memory allocation failed. Aborting...\n");
+    line = __LINE__;
+    goto err_hndl;
   }
   
   #ifndef DEBUG
@@ -101,7 +98,6 @@ int main(int argc, char *argv[]) {
     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
              count, algorithm, type_string);
     if (concatenate_path(data_dir, data_filename, data_fullpath) == -1) {
-      fprintf(stderr, "Error: Failed to create fullpath.\n");
       line = __LINE__;
       goto err_hndl;
     }
@@ -115,7 +111,6 @@ int main(int argc, char *argv[]) {
   char alloc_filename[128] = "alloc.csv";
   char alloc_fullpath[TEST_MAX_PATH_LENGTH];
   if (concatenate_path(outputdir, alloc_filename, alloc_fullpath) == -1){
-    fprintf(stderr, "Error: Failed to create alloc_fullpath.\n");
     line = __LINE__;
     goto err_hndl;
   }
@@ -141,7 +136,7 @@ int main(int argc, char *argv[]) {
 
   // Clean up
   free(sbuf);
-  free(rbuf);
+  if (NULL != rbuf) free(rbuf); // rbuf can be NULL if the test routine does not use it (e.g. Bcast)
   free(rbuf_gt);
   free(times);
 

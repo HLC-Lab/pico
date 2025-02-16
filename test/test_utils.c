@@ -113,6 +113,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
 */
 static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
+  CHECK_STR(algorithm, "swing_lat_over", bcast_swing_lat);
 
   DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
