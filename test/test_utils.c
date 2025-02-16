@@ -9,23 +9,6 @@
 
 #include "test_utils.h"
 
-#ifdef DEBUG
-  #define DEBUG_PRINT_STR(name)                 \
-    do{                                         \
-      int my_r;                                 \
-      MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
-      if (my_r == 0){ printf("%s\n\n", name); } \
-    } while(0)
-#else
-  #define DEBUG_PRINT_STR(name)
-#endif
-
-#define CHECK_STR(var, name, ret)               \
-  if (strcmp(var, name) == 0) {                 \
-    DEBUG_PRINT_STR(name);                      \
-    return ret;                                 \
-  }
-
 /**
  * @brief Converts a string to a `coll_t` enum value.
  *
@@ -114,6 +97,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
 static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
   CHECK_STR(algorithm, "swing_lat_over", bcast_swing_lat);
+  CHECK_STR(algorithm, "swing_bdw_static_over", bcast_swing_bdw_static);
 
   DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
@@ -197,27 +181,30 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
   
   switch (test_routine.collective){
     case ALLREDUCE:
-      return allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
+      ret = allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
                           times, test_routine);
       break;
     case ALLGATHER:
-      return allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
+      ret = allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
                           rbuf, count / (size_t) comm_sz, dtype,
                           comm, iter, times, test_routine);
+      break;
     case BCAST:
-      return bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
+      ret = bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
                       test_routine);
+      break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
       for (int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
       ret = reduce_scatter_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm, iter,
                                times, test_routine);
       free(rcounts);
-      return ret;
+      break;
     default:
       fprintf(stderr, "still not implemented, aborting...\n");
       return -1;
   }
+  return ret;
 }
 
 
@@ -231,19 +218,19 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
   switch (test_routine.collective){
     case ALLREDUCE:
       PMPI_Allreduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm, test_routine);
       break;
     case ALLGATHER:
       PMPI_Allgather(sbuf, count / (size_t) comm_sz, dtype, \
                  rbuf_gt, count / (size_t) comm_sz, dtype, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm, test_routine);
       break;
     case BCAST:
       if (rank == 0) {
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
       PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
-      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
+      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm, test_routine);
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
@@ -251,7 +238,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
         rcounts[i] = count / comm_sz;
       }
       PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm, test_routine);
       free(rcounts);
       break;
     default:
@@ -604,11 +591,10 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
 
 void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count,
-                         MPI_Datatype dtype, MPI_Comm comm){
+                         MPI_Datatype dtype, MPI_Comm comm, test_routine_t test_routine){
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
-
   for (int i = 0; i < comm_sz; i++) {
     if (rank == i) {
       printf("Rank %d:\n rbuf_gt \t rbuf\n", rank);
@@ -637,7 +623,7 @@ void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count,
       printf("\n");
       fflush(stdout);
     }
-    MPI_Barrier(comm);
+    if (test_routine.collective != BCAST) MPI_Barrier(comm);
   }
 }
 

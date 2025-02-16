@@ -12,6 +12,30 @@
 #define TEST_UNLIKELY(x) (x)
 #endif
 
+// Used to print algorithm and collective when in debug mode
+#ifndef DEBUG
+  #define DEBUG_PRINT_STR(name)
+  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, test_routine) do {} while(0)
+#else
+  #define DEBUG_PRINT_STR(name)                 \
+    do{                                         \
+      int my_r;                                 \
+      MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
+      if (my_r == 0){ printf("%s\n\n", name); } \
+    } while(0)
+
+  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, test_routine)        \
+    do {                                                                                 \
+    debug_print_buffers((result), (expected), (count), (dtype), (comm), (test_routine)); \
+    } while(0)
+#endif
+
+#define CHECK_STR(var, name, ret)               \
+  if (strcmp(var, name) == 0) {                 \
+    DEBUG_PRINT_STR(name);                      \
+    return ret;                                 \
+  }
+
 #define TEST_MAX_PATH_LENGTH 512
 #define TEST_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
 #define TEST_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
@@ -166,12 +190,6 @@ DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_ARGS, reduce_scatter(sbuf, rbuf,
 int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
                   MPI_Datatype dtype, MPI_Comm comm);
 
-#ifdef DEBUG
-#define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) \
-    debug_print_buffers((result), (expected), (count), (dtype), (comm))
-#else
-#define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) do {} while(0)
-#endif
 
 /**
  * @macro GT_CHECK_BUFFER
@@ -181,17 +199,17 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
  * against the ground truth. It checks if the result is equal to the expected value within an
  * epsilon tolerance for float and double datatypes, and uses `memcmp` for other datatypes.
  */
-#define GT_CHECK_BUFFER(result, expected, count, dtype, comm)                 \
+#define GT_CHECK_BUFFER(result, expected, count, dtype, comm, test_routine)   \
   do {                                                                        \
     if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
       if (memcmp((result), (expected), (count) * type_size) != 0) {           \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (test_routine));  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
         ret = -1;                                                            \
       }                                                                       \
     } else {                                                                  \
       if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (test_routine));  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
         ret = -1;                                                            \
       }                                                                       \
@@ -371,8 +389,9 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
  * @param count The number of elements in the buffer.
  * @param dtype The MPI datatype of the buffer.
  * @param comm The MPI communicator.
+ * @param test_routine Routine decision structure.
  */
-void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm);
+void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm, test_routine_t test_routine);
 #endif
 
 #endif // TEST_TOOLS_H
