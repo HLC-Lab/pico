@@ -156,7 +156,6 @@ For a new collective additional steps are required.
   - define a wrapper if the function pointer typing does not correspond precisely to the one of the collective itself (for example if you use `size_t count` instead of `int count`)
   - populate `test_routine_t` struct accordingly;
   - define a test loop function using the macro;
-  - declare a ground truth check function;
 - create a file `test_<COLLECTIVE_TYPE>_utils.c`
   - include at minimum `libswing.h` `test_utils.h` and `mpi.h`
   - define the `allocator` function declared in `test_utils.h`

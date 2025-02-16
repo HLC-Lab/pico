@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-#endif
+#endif // DEBUG
   if(get_command_line_arguments(argc, argv, &count, &iter, &algorithm, &type_string) == -1 ||
       get_routine (&test_routine, algorithm) == -1 ||
       get_data_type(type_string, &dtype, &type_size) == -1 ){
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-  #endif
+  #endif // DEBUG
   
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-  #endif
+  #endif // DEBUG
 
   // Clean up
   free(sbuf);
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
   return EXIT_SUCCESS;
 
 err_hndl:
-  fprintf(stderr, "%s:%4d\tRank %d\n", __FILE__, line, rank);
+  fprintf(stderr, "\n%s: line %d\tError invoked by rank %d\n\n", __FILE__, line, rank);
   (void)line;  // silence compiler warning
 
   if (NULL != sbuf)    free(sbuf);

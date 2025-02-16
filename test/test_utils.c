@@ -589,37 +589,42 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   return 0;
 }
 
+/**
+ * Helper function to print an array of elements based on MPI_Datatype.
+ */
+static void print_buffer_helper(const void *buf, size_t count, MPI_Datatype dtype) {
+  if (dtype == MPI_INT64_T) {
+    const int64_t *data = (const int64_t *)buf;
+    for (size_t j = 0; j < count; j++) {
+      printf("%" PRId64 " ", data[j]);
+    }
+  } else if (dtype == MPI_INT32_T) {
+    const int32_t *data = (const int32_t *)buf;
+    for (size_t j = 0; j < count; j++) {
+      printf("%" PRId32 " ", data[j]);
+    }
+  } else if (dtype == MPI_INT) {
+    const int *data = (const int *)buf;
+    for (size_t j = 0; j < count; j++) {
+      printf("%d ", data[j]);
+    }
+  } else {
+    fprintf(stderr, "Error: Datatype print not supported.\n");
+  }
+}
 
-void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count,
+void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count,
                          MPI_Datatype dtype, MPI_Comm comm, test_routine_t test_routine){
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
   for (int i = 0; i < comm_sz; i++) {
     if (rank == i) {
-      printf("Rank %d:\n rbuf_gt \t rbuf\n", rank);
-      for (size_t j = 0; j < count; j++) {
-        // I tried with a switch statement, but in OMPI datatypes are pointer
-        // to structures, so I can't use them in a switch statement.
-        if (dtype == MPI_INT64_T){
-          printf("%" PRId64 "\t\t %" PRId64"\n", ((int64_t *)rbuf_gt)[j], ((int64_t *)rbuf)[j]);
-        } else if (dtype == MPI_INT32_T){
-          printf("%" PRId32 "\t\t %" PRId32"\n", ((int32_t *)rbuf_gt)[j], ((int32_t *)rbuf)[j]);
-        } else if (dtype == MPI_INT16_T){
-          printf("%" PRId16 "\t\t %" PRId16"\n", ((int16_t *)rbuf_gt)[j], ((int16_t *)rbuf)[j]);
-        } else if (dtype == MPI_INT8_T){
-          printf("%" PRId8 "\t\t %" PRId8"\n", ((int8_t *)rbuf_gt)[j], ((int8_t *)rbuf)[j]);
-        } else if (dtype == MPI_INT){
-          printf("%d\t\t %d\n", ((int *)rbuf_gt)[j], ((int *)rbuf)[j]);
-        } else if (dtype == MPI_FLOAT){
-          printf("%f\t\t %f\n", ((float *)rbuf_gt)[j], ((float *)rbuf)[j]);
-        } else if (dtype == MPI_DOUBLE){
-          printf("%f\t\t %f\n", ((double *)rbuf_gt)[j], ((double *)rbuf)[j]);
-        } else {
-          fprintf(stderr, "Error: Datatype print not supported.\n");
-          break;
-        }
-      }
+      printf("Rank %d:\n", rank);
+      printf("rbuf: ");
+      print_buffer_helper(rbuf, count, dtype);
+      printf("\nrbuf_gt: ");
+      print_buffer_helper(rbuf_gt, count, dtype);
       printf("\n");
       fflush(stdout);
     }
@@ -627,4 +632,4 @@ void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count,
   }
 }
 
-#endif
+#endif // DEBUG

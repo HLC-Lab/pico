@@ -10,7 +10,7 @@
 #define TEST_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
 #define TEST_UNLIKELY(x) (x)
-#endif
+#endif // defined(__GNUC__) || defined(__clang__)
 
 // Used to print algorithm and collective when in debug mode
 #ifndef DEBUG
@@ -28,7 +28,7 @@
     do {                                                                                 \
     debug_print_buffers((result), (expected), (count), (dtype), (comm), (test_routine)); \
     } while(0)
-#endif
+#endif // DEBUG
 
 #define CHECK_STR(var, name, ret)               \
   if (strcmp(var, name) == 0) {                 \
@@ -203,15 +203,17 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
   do {                                                                        \
     if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
       if (memcmp((result), (expected), (count) * type_size) != 0) {           \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (test_routine));  \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm),   \
+                            (test_routine));                                  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
-        ret = -1;                                                            \
+        ret = -1;                                                             \
       }                                                                       \
     } else {                                                                  \
       if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (test_routine));  \
+        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm),   \
+                            (test_routine));                                  \
         fprintf(stderr, "Error: results are not valid. Aborting...\n");       \
-        ret = -1;                                                            \
+        ret = -1;                                                             \
       }                                                                       \
     }                                                                         \
   } while(0)
@@ -391,8 +393,8 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
  * @param comm The MPI communicator.
  * @param test_routine Routine decision structure.
  */
-void debug_print_buffers(void *rbuf, void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm, test_routine_t test_routine);
-#endif
+void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm, test_routine_t test_routine);
+#endif // DEBUG
 
 #endif // TEST_TOOLS_H
 
