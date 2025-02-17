@@ -1,5 +1,16 @@
-.SILENT:
 .PHONY: all clean libswing test
+
+# Common settings to be shared with sub-makefiles
+CFLAGS_COMMON = -Wall -I../include
+
+# Add conditional flags
+ifneq ($(filter clang gcc mpicc,$(CC)),)
+	CFLAGS_COMMON += -O3 -MMD -MP
+endif
+ifneq ($(findstring cc craycc,$(CC)),)
+	CFLAGS_COMMON += -Ofast -funroll-loops -em
+endif
+export CFLAGS_COMMON
 
 # Variables for colors
 BLUE := \033[1;34m

@@ -6,7 +6,7 @@ source scripts/utils.sh
 #               MODIFY THESE VARIABLES TO SUIT YOUR TEST ENVIRONMENT             #
 ##################################################################################
 # Global variables
-export N_NODES=4
+export N_NODES=32
 export LOCATION="local"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="yes"

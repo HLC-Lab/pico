@@ -42,8 +42,8 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     else
         export COLLECTIVE_TYPE="BCAST"
         export ALGOS="swing_bdw_static_over"
-        export ARR_SIZES="16"
-        export TYPES="int32" # For now only int,int32,int64 are supported in debug mode 
+        export ARR_SIZES="51225 32 124 1111 1048576"
+        export TYPES="int32 int64" # For now only int,int32,int64 are supported in debug mode 
     fi
 
     # Sanity checks

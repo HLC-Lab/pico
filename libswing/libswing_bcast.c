@@ -5,6 +5,7 @@
 
 #include "libswing.h"
 #include "libswing_utils.h"
+#include "libswing_utils_bitmaps.h"
 
 /*
  * NOTE: Taken from Open MPI base module and rewritten using MPI API for benchmarking
@@ -50,7 +51,7 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
 
   if (count < (size_t)comm_size) {
     if (rank == 0) {
-      fprintf(stderr, "Error: count < comm_size\n");
+      fprintf(stderr, "Error: count < comm_size");
     }
     return MPI_ERR_COUNT;
   }
@@ -178,14 +179,14 @@ cleanup_and_return:
  */
 int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
-  int comm_sz, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
+  int size, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
   char *received = NULL;
-  MPI_Comm_size(comm, &comm_sz);
+  MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
   // Check if the number of processes is a power of 2
-  steps = log_2(comm_sz);
-  if (comm_sz != (1 << steps)) {
+  steps = log_2(size);
+  if (size != (1 << steps)) {
     line = __LINE__;
     err = MPI_ERR_SIZE;
     goto cleanup_and_return;
@@ -199,7 +200,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
 
   // Use an auxiliary array to record visited node in order
   // to calculate at which step node is gonna receive the message.
-  received = calloc(comm_sz, sizeof(char));
+  received = calloc(size, sizeof(char));
   if (received == NULL) {
     line = __LINE__;
     err = MPI_ERR_NO_MEM;
@@ -208,14 +209,14 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
   received[root] = 1;
 
   for (int step = 0; step < steps && !received[rank]; step++) {
-    for (int proc = 0; proc < comm_sz; proc++) {
-      if (received[proc]) {
-        int dest = pi(proc, step, comm_sz);
-        received[dest] = 1;
-        if (dest == rank) {
-          recv_step = step;
-          break;
-        }
+    for (int proc = 0; proc < size; proc++) {
+      if (!received[proc]) continue;
+
+      int dest = pi(proc, step, size);
+      received[dest] = 1;
+      if (dest == rank) {
+        recv_step = step;
+        break;
       }
     }
   }
@@ -232,7 +233,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
     int dest;
     // If I don't have the data and I am scheduled to receive it, wait for it.
     if (rank != root && recv_step == s) {
-      dest = pi(rank, s, comm_sz);
+      dest = pi(rank, s, size);
       err = MPI_Recv(buf, count, dtype, dest, s, comm, MPI_STATUS_IGNORE);
       if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
@@ -240,7 +241,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
 
     // If I already have the message, send the data.
     if (recv_step < s) {
-      dest = pi(rank, s, comm_sz);
+      dest = pi(rank, s, size);
       err = MPI_Send(buf, count, dtype, dest, s, comm);
       if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
@@ -252,10 +253,193 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  fprintf(stderr, "%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, err);
+  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   if (NULL!= received)     free(received);
 
   return err;
 }
 
 
+ /*
+ * @brief bcast_swing_bdw_static: it's composed by a scatter and allgather phases.
+ * Both phases utilizes swing communication pattern. The scatter phase is done using
+ * a binomial tree scatter and the allgather phase is done using a recursive doubling.
+ *
+ * For now only works with size = 2^k,<=256, root = 0, and count <= comm_sz.
+ * Logic will be extended to work with any root.
+ */
+int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+{
+  int size, rank, step, steps, recv_step = -1;
+  int dtype_size, line, err = MPI_SUCCESS;
+  int dest, rdest, sdest, w_size, split_rank;
+  size_t small_blocks, big_blocks, r_count = 0, s_count = 0;
+  ptrdiff_t r_offset = 0, s_offset = 0, lb, extent;
+  const int *s_bitmap, *r_bitmap;
+  char *received = NULL;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  // Get datatype informations
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_size(dtype, &dtype_size);
+
+  // Trivial case
+  if (size < 2 || dtype_size == 0)
+    return MPI_SUCCESS;
+  
+  // Check if count is less than the number of processes
+  if (count < (size_t)size) {
+    line = __LINE__;
+    err = MPI_ERR_COUNT;
+    goto cleanup_and_return;
+  }
+
+  // Check if the number of processes is a power of 2
+  steps = log_2(size);
+  if (size != (1 << steps)) {
+    line = __LINE__;
+    err = MPI_ERR_SIZE;
+    goto cleanup_and_return;
+  }
+
+  // Only root = 0 logic is done
+  if (root != 0){
+    line = __LINE__;
+    err = MPI_ERR_ROOT;
+    goto cleanup_and_return;
+  }
+
+  // Use an auxiliary array to record visited node in order
+  // to calculate at which step node is gonna receive the message.
+  received = calloc(size, sizeof(char));
+  if (received == NULL) {
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto cleanup_and_return;
+  }
+  received[root] = 1;
+  for (step = 0; step < steps && !received[rank]; step++) {
+    for (int proc = 0; proc < size; proc++) {
+      if (!received[proc]) continue;
+
+      dest = pi(proc, step, size);
+      received[dest] = 1;
+      if (dest == rank) {
+        recv_step = step;
+        break;
+      }
+    }
+  }
+  
+  // Compute the size of each block, dividing in small and big blocks
+  // where:
+  // - small_blocks = count / size
+  // - big_blocks = count / size + count % size
+  // - split_rank = count % size
+  COLL_BASE_COMPUTE_BLOCKCOUNT(count, size, split_rank,
+                               big_blocks, small_blocks);
+
+  
+  // Gets rearranged contiguous bitmaps from "libswing_utils_bitmaps.c"
+  if (get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
+    line = __LINE__;
+    err = MPI_ERR_UNKNOWN;
+    goto cleanup_and_return;
+  }
+
+  /* Scatter phase.
+   *
+   * At each step s:
+   * - if rank r has the data it sends `w_size` blocks to dest = pi(r, s)
+   * - if rank r does not have the data:
+   *   - if recv_step ==s, it receives the data from the parent
+   *   - otherwise it does nothing in this iteration
+   */
+  w_size = size >> 1;
+  for (step = 0; step < steps; step++) {
+    // If I don't have the data and I am scheduled to receive it, wait for it.
+    if (rank != root && recv_step == step) {
+      dest = pi(rank, step, size);
+      r_count = (r_bitmap[step] + w_size <= split_rank) ?
+                  (size_t)w_size * big_blocks :
+                    (r_bitmap[step] >= split_rank) ?
+                      (size_t)w_size * small_blocks :
+                      (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
+      r_offset = (r_bitmap[step] <= split_rank) ?
+                  (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                  (ptrdiff_t)(r_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
+      err = MPI_Recv((char*)buf + r_offset, r_count, dtype, dest, 0, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+    }
+
+    // If I already have the message, send the data.
+    if (recv_step < step) {
+      dest = pi(rank, step, size);
+      s_count = (s_bitmap[step] + w_size <= split_rank) ?
+                  (size_t)w_size * big_blocks :
+                    (s_bitmap[step] >= split_rank) ?
+                      (size_t)w_size * small_blocks :
+                      (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
+      s_offset = (s_bitmap[step] <= split_rank) ?
+                  (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                  (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
+      err = MPI_Send((char *)buf + s_offset, s_count, dtype, dest, 0, comm);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+    }
+    w_size >>= 1;
+  }
+
+  /* Allgather phase.
+   *
+   * At each step s, each rank r:
+   * - if `dest=pi(r, s)` has not the blocks that r has, it sends `w_size` blocks to dest,
+   * - if r does not have the blocks that `dest=pi(r, s)` has, it recv `w_size` blocks from dest.
+   *
+   * To know if r has the data of dest and viceversa, recv_step is used:
+   * - if recv_step == s, r has the data of dest
+   * - if recv_step < s, r does not have the data of dest
+   * in all other cases r and dest do a complete sendrecv of `w_size` blocks.
+   */
+  w_size = 0x1;
+  for(step = steps - 1; step >= 0; step--) {
+    dest = pi(rank, step, size);
+    rdest = (recv_step < step) ? MPI_PROC_NULL : dest;
+    sdest = (recv_step == step) ? MPI_PROC_NULL : dest;
+
+    r_count = (s_bitmap[step] + w_size <= split_rank) ?
+                (size_t)w_size * big_blocks :
+                  (s_bitmap[step] >= split_rank) ?
+                    (size_t)w_size * small_blocks :
+                    (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
+    r_offset = (s_bitmap[step] <= split_rank) ?
+                (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
+
+    s_count = (r_bitmap[step] + w_size <= split_rank) ?
+                (size_t)w_size * big_blocks :
+                  (r_bitmap[step] >= split_rank) ?
+                    (size_t)w_size * small_blocks :
+                    (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
+    s_offset = (r_bitmap[step] <= split_rank) ?
+                (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                (ptrdiff_t)(r_bitmap[step] * (int)small_blocks + split_rank) * (ptrdiff_t) extent;
+    
+    err = MPI_Sendrecv((char *) buf + s_offset, s_count, dtype, sdest, 0,
+                 (char *) buf + r_offset, r_count, dtype, rdest, 0,
+                 comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+    
+    w_size <<= 1;
+  }
+
+  free(received);
+
+  return MPI_SUCCESS;
+
+cleanup_and_return:
+  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  if (NULL!= received)     free(received);
+
+  return err;
+}

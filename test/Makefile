@@ -1,13 +1,5 @@
 # Compiler and flags
-CFLAGS = -Wall -I../include
-
-ifneq ($(filter clang gcc mpicc,$(CC)),)
-	CFLAGS += -O3 -MMD -MP
-endif
-
-ifneq ($(findstring craycc,$(CC)),)
-	CFLAGS += -Ofast -funroll-loops -em
-endif
+CFLAGS = $(CFLAGS_COMMON)
 
 # Colors for output styling
 GREEN := \033[1;32m
@@ -38,13 +30,13 @@ all: $(OUTPUT)
 $(OUTPUT): $(OBJS)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking $@...$(NC)"
-	@$(CC) $(CFLAGS) -o $@ $^ -L../lib -lswing -lm
+	$(CC) $(CFLAGS) -o $@ $^ -L../lib -lswing -lm
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 -include $(DEPS)
 

@@ -3,6 +3,7 @@
 # Variables always needed
 export CC=mpicc
 export RUN=mpiexec
+export RUNFLAGS="--map-by :OVERSUBSCRIBE"
 export SWING_DIR=$HOME/University/Tesi/test
 
 # MPI library specific variables

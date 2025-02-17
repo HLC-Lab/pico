@@ -63,8 +63,11 @@ activate_virtualenv() {
 # Compile the codebase
 compile_code() {
     make clean -s
-    make_command="make all -s"
-    [ "$DEBUG_MODE" == "yes" ] && make_command="$make_command DEBUG=1"
+    if [ "$DEBUG_MODE" == "yes" ]; then
+      make_command="make all DEBUG=1"
+    else
+      make_command="make all -s"
+    fi
 
     if ! $make_command; then
         error "Compilation failed. Exiting."

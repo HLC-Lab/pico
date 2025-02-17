@@ -1,13 +1,5 @@
 # Compiler and flags
-CFLAGS = -Wall -I../include
-
-ifneq ($(filter clang gcc mpicc,$(CC)),)
-	CFLAGS += -O3 -MMD -MP
-endif
-
-ifneq ($(findstring cc craycc,$(CC)),)
-	CFLAGS += -Ofast -funroll-loops -em
-endif
+CFLAGS = ${CFLAGS_COMMON}
 
 # Colors for output styling
 GREEN := \033[1;32m
@@ -31,13 +23,13 @@ all: $(STATIC_LIB)
 $(STATIC_LIB): $(LIB_OBJS)
 	@mkdir -p $(LIB_DIR)
 	@echo -e "$(GREEN)[AR] Creating static library: $(STATIC_LIB)$(NC)"
-	@ar rcs $@ $^
+	ar rcs $@ $^
 
 # Compile object files
 $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(OBJ_DIR)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 -include $(LIB_DEPS)
 
