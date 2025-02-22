@@ -51,7 +51,7 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
 
   if (count < (size_t)comm_size) {
     if (rank == 0) {
-      fprintf(stderr, "Error: count < comm_size");
+      SWING_DEBUG_PRINT("Error: count < comm_size");
     }
     return MPI_ERR_COUNT;
   }
@@ -198,6 +198,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
     goto cleanup_and_return;
   }
 
+  // TODO: CHANGE THIS
   // Use an auxiliary array to record visited node in order
   // to calculate at which step node is gonna receive the message.
   received = calloc(size, sizeof(char));
@@ -253,7 +254,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   if (NULL!= received)     free(received);
 
   return err;
@@ -438,7 +439,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   if (NULL!= received)     free(received);
 
   return err;

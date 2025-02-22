@@ -5,7 +5,7 @@ CFLAGS_COMMON = -Wall -I../include
 
 # Add conditional flags
 ifneq ($(filter clang gcc mpicc,$(CC)),)
-	CFLAGS_COMMON += -O3 -MMD -MP
+	CFLAGS_COMMON += -O3 -MD -MP
 endif
 ifneq ($(findstring cc craycc,$(CC)),)
 	CFLAGS_COMMON += -Ofast -funroll-loops -em
@@ -23,7 +23,7 @@ all: libswing test
 # Build the libswing static library
 libswing:
 	@echo -e "$(BLUE)[BUILD] Compiling libswing static library...$(NC)"
-	$(MAKE) -C libswing
+	$(MAKE) -C libswing $(if $(DEBUG),DEBUG=$(DEBUG))
 
 # Build the test executable
 test: libswing

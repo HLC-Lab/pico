@@ -393,7 +393,7 @@ int reduce_scatter_ring( const void *sbuf, void *rbuf, const int rcounts[],
   return MPI_SUCCESS;
 
  error_hndl:
-  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
+  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
   (void)line;  // silence compiler warning
   if (NULL != displs) free(displs);
   if (NULL != accumbuf_free) free(accumbuf_free);
@@ -651,7 +651,7 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
   /* Current implementation only handles power-of-two number of processes.*/
   steps = log_2(size);
   if (size != (1 << steps)) {
-    fprintf (stderr, "ERROR! Swing static reduce scatter works only with po2 ranks!");
+    SWING_DEBUG_PRINT("ERROR! Swing static reduce scatter works only with po2 ranks!");
     err = MPI_ERR_SIZE;
     goto cleanup;
   }

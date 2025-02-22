@@ -8,6 +8,21 @@
 #include <stdlib.h>
 #include <limits.h>
 
+#ifdef DEBUG
+#define SWING_DEBUG_PRINT(fmt, ...) \
+  do { fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
+#else
+#define SWING_DEBUG_PRINT(fmt, ...) \
+  do {} while (0)
+#endif
+#if defined(__GNUC__) || defined(__clang__)
+
+#define SWING_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define SWING_UNLIKELY(x) (x)
+#endif // defined(__GNUC__) || defined(__clang__)
+
+
 static int rhos[SWING_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
 
@@ -72,7 +87,7 @@ static inline int pi(int rank, int step, int comm_sz) {
  */
 static inline int copy_buffer(const void *input_buffer, void *output_buffer,
                               size_t count, const MPI_Datatype datatype) {
-  if (input_buffer == NULL || output_buffer == NULL || count <= 0) {
+  if (SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || count <= 0)) {
     return MPI_ERR_UNKNOWN;
   }
 
@@ -104,7 +119,7 @@ static inline int copy_buffer(const void *input_buffer, void *output_buffer,
 static inline int copy_buffer_different_dt (const void *input_buffer, size_t scount,
                                             const MPI_Datatype sdtype, void *output_buffer,
                                             size_t rcount, const MPI_Datatype rdtype) {
-  if (input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0) {
+  if (SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
     return MPI_ERR_UNKNOWN;
   }
 
@@ -167,7 +182,7 @@ static inline ptrdiff_t datatype_span(MPI_Datatype dtype, size_t count, ptrdiff_
  * @returns The log_2 of value or -1 for negative value.
  */
 static inline int log_2(int value) {
-  if (1 > value) {
+  if (SWING_UNLIKELY(1 > value)) {
     return -1;
   }
   return sizeof(int)*8 - 1 - __builtin_clz(value);
@@ -183,7 +198,7 @@ static inline int log_2(int value) {
  */
 static inline int next_poweroftwo(int value)
 {
-  if (0 > value) {
+  if (SWING_UNLIKELY(0 > value)) {
     return -1;
   }
 
@@ -323,7 +338,7 @@ static inline unsigned int mirror_perm(unsigned int x, int nbits)
  */
 static inline int reorder_blocks(void *buffer, size_t block_size,
                                   int *block_permutation, int num_blocks) {
-  if (buffer == NULL || block_permutation == NULL || num_blocks <= 0) {
+  if (SWING_UNLIKELY(buffer == NULL || block_permutation == NULL || num_blocks <= 0)) {
     return MPI_ERR_ARG;
   }
 

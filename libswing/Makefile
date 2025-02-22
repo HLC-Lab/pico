@@ -16,6 +16,10 @@ LIB_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(LIB_SRC))
 LIB_DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(LIB_SRC))
 STATIC_LIB = $(LIB_DIR)/libswing.a
 
+ifeq ($(DEBUG),1)
+	CFLAGS += -DDEBUG -g
+endif
+
 # Default target
 all: $(STATIC_LIB)
 

@@ -8,8 +8,8 @@ RED := \033[1;31m
 NC := \033[0m
 
 ifeq ($(DEBUG),1)
-    CFLAGS := $(filter-out -O%,$(CFLAGS))
-    CFLAGS += -DDEBUG -g
+	CFLAGS := $(filter-out -O%,$(CFLAGS))
+	CFLAGS += -DDEBUG -g
 endif
 
 # Directories

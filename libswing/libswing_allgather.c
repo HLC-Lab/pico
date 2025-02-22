@@ -28,7 +28,7 @@ int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sd
      print warning and call bruck allgather algorithm with same parameters.
   */
   if (pow2size != size) {
-    fprintf(stderr, "ERROR! Recoursive doubling allgather works only with po2 ranks!");
+    SWING_DEBUG_PRINT("ERROR! Recoursive doubling allgather works only with po2 ranks!");
     goto err_hndl;
   }
 
@@ -76,7 +76,7 @@ int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sd
   return MPI_SUCCESS;
 
 err_hndl:
-  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
@@ -188,7 +188,7 @@ err_hndl:
   if( NULL != reqs ) {
     cleanup_reqs(&req_manager);
   }
-  fprintf(stderr,  "\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  SWING_DEBUG_PRINT( "\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
   if(tmp_buf != NULL) {
     free(tmp_buf);
     tmp_buf = NULL;
@@ -251,7 +251,7 @@ int allgather_ring(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   return MPI_SUCCESS;
 
 err_hndl:
-  fprintf(stderr, "\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  SWING_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
   (void)line;  // silence compiler warning
   return err;
 }
@@ -276,7 +276,7 @@ int allgather_swing_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
      print warning and call bruck allgather algorithm with same parameters.
   */
   if (pow2size != size) {
-    fprintf(stderr, "ERROR! Swing static allgather works only with po2 ranks!");
+    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
     goto err_hndl;
 
   }
@@ -338,7 +338,7 @@ int allgather_swing_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   return MPI_SUCCESS;
 
 err_hndl:
-  fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }

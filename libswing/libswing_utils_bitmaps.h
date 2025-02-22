@@ -2,6 +2,7 @@
 #define LIBSWING_UTILS_BITMAPS_H
 
 #include <stddef.h>
+#include "libswing_utils.h"
 
 extern const int perm_2[2];
 extern const int perm_4[4];
@@ -38,12 +39,7 @@ extern const void* static_send_bitmaps[];
 extern const void* static_recv_bitmaps[];
 
 static inline int get_static_bitmap(const int** send_bitmap, const int** recv_bitmap, int n_steps, int comm_sz, int rank) {
-  // verify that comm_sz is exactly 2^n_steps
-  if (comm_sz != (1 << n_steps)){
-    return -1;
-  }
-  // Static bitmaps are defined up to 256 ranks, so since n_steps = log2 comm_sz -> log2(256)=8
-  if (n_steps < 1 || n_steps > 8) {
+  if (SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 8)) {
     return -1;
   }
 
@@ -56,11 +52,7 @@ static inline int get_static_bitmap(const int** send_bitmap, const int** recv_bi
 
 static inline int get_perm_bitmap(int** permutation, int n_steps, int comm_sz) {
   // verify that comm_sz is exactly 2^n_steps
-  if (comm_sz != (1 << n_steps)){
-    return -1;
-  }
-  // Permutation are defined up to 32 ranks, so since n_steps = log2 comm_sz -> log2(32)=5
-  if (n_steps < 1 || n_steps > 5) {
+  if (SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 5)) {
     return -1;
   }
   
