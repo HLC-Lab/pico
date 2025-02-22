@@ -6,7 +6,7 @@ source scripts/utils.sh
 #               MODIFY THESE VARIABLES TO SUIT YOUR TEST ENVIRONMENT             #
 ##################################################################################
 # Global variables
-export N_NODES=32
+export N_NODES=4
 export LOCATION="local"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="yes"
@@ -21,10 +21,10 @@ if ! source_environment "$LOCATION"; then
 fi 
 
 TEST_CONFIG_FILE_LIST=(
-    # "$SWING_DIR/config/allreduce.json"
-    # "$SWING_DIR/config/allgather.json"
+    "$SWING_DIR/config/allreduce.json"
+    "$SWING_DIR/config/allgather.json"
     "$SWING_DIR/config/bcast.json"
-    # "$SWING_DIR/config/reduce_scatter.json"
+    "$SWING_DIR/config/reduce_scatter.json"
 )
 
 # Convert array to a colon-separated string
@@ -35,11 +35,11 @@ export TEST_CONFIG_FILES="${TEST_CONFIG_FILE_LIST[*]}"
 ###################################################################################
 export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
 
-if [ $LOCATION != "local" ]; then
-    load_python || exit 1
-fi
+load_modules || exit 1
+success "Modules successfully loaded."
 
 activate_virtualenv || exit 1
+success "Virtual environment activated."
 
 
 ###################################################################################

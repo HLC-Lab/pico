@@ -255,6 +255,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
 
 cleanup_and_return:
   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line;  // silence compiler warning
   if (NULL!= received)     free(received);
 
   return err;
@@ -440,6 +441,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
 
 cleanup_and_return:
   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void) line; // silence compiler warning
   if (NULL!= received)     free(received);
 
   return err;

@@ -1,24 +1,30 @@
-.PHONY: all clean libswing test
+.DEFAULT_GOAL := all
+
+.PHONY: all clean libswing test force_rebuild
 
 # Common settings to be shared with sub-makefiles
-CFLAGS_COMMON = -Wall -I../include
+CFLAGS_COMMON = -Wall -I../include $(CFLAGS_COMP_SPECIFIC)
 
-# Add conditional flags
-ifneq ($(filter clang gcc mpicc,$(CC)),)
-	CFLAGS_COMMON += -O3 -MD -MP
-endif
-ifneq ($(findstring cc craycc,$(CC)),)
-	CFLAGS_COMMON += -Ofast -funroll-loops -em
+ifeq ($(DEBUG),1)
+	CFLAGS_COMMON += -DDEBUG -g
 endif
 export CFLAGS_COMMON
 
-# Variables for colors
-BLUE := \033[1;34m
-RED := \033[1;31m
-NC := \033[0m
+# Read the previous DEBUG flag value, if available.
+PREV_DEBUG := $(shell [ -f obj/.debug_flag ] && cat obj/.debug_flag)
 
 # Build all components
-all: libswing test
+all: force_rebuild libswing test
+
+force_rebuild:
+	@if [ ! -f obj/.debug_flag ] || [ "$(PREV_DEBUG)" != "$(DEBUG)" ]; then \
+		echo -e "$(RED)[BUILD] DEBUG flag changed or .debug_flag missing. Cleaning subdirectories...$(NC)"; \
+		$(MAKE) -C libswing clean; \
+		$(MAKE) -C test clean; \
+		echo "$(DEBUG)" > obj/.debug_flag; \
+	else \
+		echo -e "$(BLUE)[BUILD] DEBUG flag unchanged...$(NC)"; \
+	fi
 
 # Build the libswing static library
 libswing:

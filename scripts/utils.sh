@@ -1,23 +1,20 @@
-# Colors for styling output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
 # Print error messages in red
 error() {
     echo -e "\n${RED}❌❌❌ ERROR: $1 ❌❌❌${NC}\n" >&2
 }
+export -f error
 
 # Print success messages in green
 success() {
     echo -e "\n${GREEN}$1${NC}\n"
 }
+export -f success
 
 # Print warning messages in yellow
 warning() {
     echo -e "\n${YELLOW}WARNING: $1 ${NC}\n"
 }
+export -f warning
 
 # Cleanup function for SIGINT
 cleanup() {
@@ -25,6 +22,7 @@ cleanup() {
     pkill -P $$
     exit 1
 }
+export -f cleanup
 
 # Source the environment configuration
 source_environment() {
@@ -36,6 +34,19 @@ source_environment() {
         return 1
     fi
 }
+export -f source_environment
+
+# Load the required modules
+load_modules(){
+    if [ -n "$MODULES" ]; then
+        for module in $MODULES; do
+            module load $module || { error "Failed to load module $module." ; return 1; }
+        done
+    fi
+
+    return 0
+}
+export -f load_modules
 
 # Activate the virtual environment, if it exists
 # If not create it and install the required Python packages
@@ -59,10 +70,10 @@ activate_virtualenv() {
 
     return 0
 }
+export -f activate_virtualenv
 
 # Compile the codebase
 compile_code() {
-    make clean -s
     if [ "$DEBUG_MODE" == "yes" ]; then
       make_command="make all DEBUG=1"
     else
@@ -77,6 +88,7 @@ compile_code() {
     success "Compilation succeeded."
     return 0
 }
+export -f compile_code
 
 # Determine the number of iterations based on array size
 get_iterations() {
@@ -95,6 +107,7 @@ get_iterations() {
         echo 5
     fi
 }
+export -f get_iterations
 
 
 # Function to run a single test case
@@ -113,6 +126,7 @@ run_test() {
         $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type || { error "Failed to run test for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; exit 1; }
     fi
 }
+export -f run_test
 
 # Test algorithms here, loop through:
 # - algorithms
@@ -145,3 +159,4 @@ run_all_tests() {
         done
     done
 }
+export -f run_all_tests

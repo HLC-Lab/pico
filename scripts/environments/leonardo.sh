@@ -1,7 +1,14 @@
 #!/bin/bash
+# Colors for styling output, otherwise utils needs to be sourced at every make
+export RED='\033[0;31m'
+export GREEN='\033[0;32m'
+export YELLOW='\033[0;33m'
+export BLUE='\033[1;34m'
+export NC='\033[0m'
 
 # Variables always needed
 export CC=mpicc
+export CFLAGS_COMP_SPECIFIC="-O3 -MD -MP"
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 
@@ -11,20 +18,24 @@ export QOS=''
 export ACCOUNT=IscrC_ASCEND
 
 export UCX_IB_SL=1
+export MODULES="python/3.11.6--gcc--8.5.0"
 
 # MPI library specific variables
 export MPI_LIB='OMPI_SWING'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)
-export MPI_LIB_VERSION='5.0.0'
 if [ "$MPI_LIB" == "OMPI_SWING" ]; then
     export PATH=$HOME/bin:$PATH
     export LD_LIBRARY_PATH=$HOME/lib:$LD_LIBRARY_PATH
     export MANPATH=$HOME/share/man:$MANPATH
+    export MPI_LIB_VERSION='5.0.0'
+else
+    export MPI_LIB_VERSION='4.1.6'
+    export MODULES="openmpi/4.1.6--gcc--12.2.0 $MODULES"
 fi
-export OMPI_MCA_coll_hcoll_enable=0
-export OMPI_MCA_coll_tuned_use_dynamic_rules=1
 
 # Load test dependnt environment variables
 load_other_env_var(){
+    export OMPI_MCA_coll_hcoll_enable=0
+    export OMPI_MCA_coll_tuned_use_dynamic_rules=1
     if [ "$CUDA" == "False" ]; then
         export CUDA_VISIBLE_DEVICES=""
         export OMPI_MCA_btl="^smcuda"
@@ -36,9 +47,4 @@ load_other_env_var(){
     fi
 }
 
-# Used to load python and virtual environment
-load_python() {
-    module load python/3.11.6--gcc--8.5.0 || { error "Failed to load Python module." ; return 1; }
-    return 0
-}
-
+export -f load_other_env_var

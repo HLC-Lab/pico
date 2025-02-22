@@ -266,10 +266,10 @@ It must contain:
   - `MPI_LIB_VERSION` version of said library.
   - `ACCOUNT` set slurm account.
   - `PARTITION` set slurm partition.
+  - `MODULES` list of modules to load for the test.
   - (optional) `QOS` set quality of service.
   - (optional) `RUNFLAGS` flags to invoke with the `RUN` command (for example Snellius cluster requires `RUNFLAGS=--mpi=pmix`).
   - (optional) any other flag to set to modify test behaviour (for example on Leonardo `UCX_IB_SL=1`).
-- `load_python()` function to load correct python module.
 - (optional) `load_other_env_var()` function to load environment variables dependant on test selection (for example the one to activate or deactivate MPI-Cuda support).
 
 

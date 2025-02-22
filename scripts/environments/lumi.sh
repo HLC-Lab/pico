@@ -1,7 +1,14 @@
 #!/bin/bash
+# Colors for styling output, otherwise utils needs to be sourced at every make
+export RED='\033[0;31m'
+export GREEN='\033[0;32m'
+export YELLOW='\033[0;33m'
+export BLUE='\033[1;34m'
+export NC='\033[0m'
 
 # General variables always needed
 export CC=cc
+export CFLAGS_COMP_SPECIFIC="-Ofast -funroll-loops -em"
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 
@@ -14,21 +21,10 @@ export ACCOUNT=project_465000997
 export MPI_LIB='CRAY_MPICH'
 export MPI_LIB_VERSION='8.1.29'
 
-module load LUMI
-module load CrayEnv
-
-# Used to load python and virtual environment
-load_python() {
-# It contains
-# - python-3.11.5
-# - numpy-1.24.4
-# - scipy-1.10.1
-# - mpi4py-3.1.4
-# - dask-2023.6.1
-    module load cray-python/3.11.5 || { error "Failed to load Python module." ; return 1; }
-    return 0
-}
+export MODULES="LUMI CrayEnv cray-python/3.11.5"
 
 # Dummy function to load other environment variables to silence errors
 load_other_env_var() {
 }
+
+export -f load_other_env_var

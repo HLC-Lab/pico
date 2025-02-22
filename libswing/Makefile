@@ -1,11 +1,6 @@
 # Compiler and flags
 CFLAGS = ${CFLAGS_COMMON}
 
-# Colors for output styling
-GREEN := \033[1;32m
-YELLOW := \033[1;33m
-NC := \033[0m
-
 # Directories
 OBJ_DIR = ../obj/lib
 LIB_DIR = ../lib
@@ -15,10 +10,6 @@ LIB_SRC = $(wildcard *.c)
 LIB_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(LIB_SRC))
 LIB_DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(LIB_SRC))
 STATIC_LIB = $(LIB_DIR)/libswing.a
-
-ifeq ($(DEBUG),1)
-	CFLAGS += -DDEBUG -g
-endif
 
 # Default target
 all: $(STATIC_LIB)

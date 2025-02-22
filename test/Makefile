@@ -1,17 +1,6 @@
 # Compiler and flags
 CFLAGS = $(CFLAGS_COMMON)
 
-# Colors for output styling
-GREEN := \033[1;32m
-YELLOW := \033[1;33m
-RED := \033[1;31m
-NC := \033[0m
-
-ifeq ($(DEBUG),1)
-	CFLAGS := $(filter-out -O%,$(CFLAGS))
-	CFLAGS += -DDEBUG -g
-endif
-
 # Directories
 SRC_DIR = .
 OBJ_DIR = ../obj/test
@@ -22,6 +11,10 @@ SRC = $(wildcard *.c)
 OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(SRC))
 DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(SRC))
 OUTPUT = $(BIN_DIR)/test
+
+ifeq ($(DEBUG),1)
+	CFLAGS := $(filter-out -O%,$(CFLAGS))
+endif
 
 # Default target
 all: $(OUTPUT)

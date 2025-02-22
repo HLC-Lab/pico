@@ -1,11 +1,4 @@
 #!/bin/bash
-
-source scripts/utils.sh
-
-if ! source_environment "$LOCATION"; then
-    exit 1
-fi
-
 # Trap SIGINT (Ctrl+C) and call cleanup function
 trap cleanup SIGINT
 
@@ -25,11 +18,9 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     export TEST_CONFIG=${TEST_CONFIG_FILES[$i]}
     export TEST_ENV="${TEST_CONFIG}_env.sh"
     python3 $SWING_DIR/config/parse_test.py || exit 1
-    # Source the test specific environment variables
     source $TEST_ENV
-    # Load test specific environment variables (like OMPI cuda related flags)
-    load_other_env_var
-    
+    load_other_env_var # Load env var dependant on test/environment combination
+    success "📄 Test configuration ${TEST_CONFIG} parsed"
     ###################################################################################
     #               CREATE OUTPUT DIRECTORY AND GENERATE METADATA                     #
     #               ALTERNATIVELY, USE DEBUG VARIABLES                                #
@@ -39,11 +30,12 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
         mkdir -p "$DATA_DIR"
         # Generate test metadata
         python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
+        success "📂 Metadata of $DATA_DIR created"
     else
-        export COLLECTIVE_TYPE="BCAST"
-        export ALGOS="swing_bdw_static_over"
-        export ARR_SIZES="51225 32 124 1111 1048576"
-        export TYPES="int32 int64" # For now only int,int32,int64 are supported in debug mode 
+        # export COLLECTIVE_TYPE="BCAST"
+        # export ALGOS="swing_bdw_static_over"
+        export ARR_SIZES="32 124"
+        export TYPES="int32" # For now only int,int32,int64 are supported in debug mode 
     fi
 
     # Sanity checks
