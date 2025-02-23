@@ -8,26 +8,40 @@ export NC='\033[0m'
 
 # Variables always needed
 export CC=mpicc
-export CFLAGS_COMP_SPECIFIC="-O3 -MD -MP"
+export CFLAGS_COMP_SPECIFIC="-O3 -MMD -MP"
 export RUN=mpiexec
 export RUNFLAGS="--map-by :OVERSUBSCRIBE"
 export SWING_DIR=$HOME/University/Tesi/test
 
 # MPI library specific variables
-export MPI_LIB='OMPI_SWING'    # Possible values: OMPI, OMPI_SWING
-export MPI_LIB_VERSION='5.0.0'
+export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING
 if [[ "$MPI_LIB" == "OMPI_SWING" ]]; then
-    source ~/use_ompi.sh
+    export PATH=/opt/ompi_test/bin:$PATH
+    export LD_LIBRARY_PATH=/opt/ompi_test/lib:$LD_LIBRARY_PATH
+    export MANPATH=/opt/ompi_test/share/man:$MANPATH
+    export MPI_LIB_VERSION='5.0.0'
+    export OMPI_MCA_coll_hcoll_enable=0
+    export OMPI_MCA_coll_tuned_use_dynamic_rules=1
+elif [[ "$MPI_LIB" == "OMPI" ]]; then
+    export MPI_LIB_VERSION='5.0.6'
+    export OMPI_MCA_coll_hcoll_enable=0
+    export OMPI_MCA_coll_tuned_use_dynamic_rules=1
+elif [[ "$MPI_LIB" == "MPICH" ]]; then
+    export PATH=/opt/mpich-test/bin:$PATH
+    export LD_LIBRARY_PATH=/opt/mpich-test/lib:$LD_LIBRARY_PATH
+    export MANPATH=/opt/mpich-test/share:$MANPATH
+    export MPI_LIB_VERSION='4.3.0'
 fi
-export OMPI_MCA_coll_hcoll_enable=0
-export OMPI_MCA_coll_tuned_use_dynamic_rules=1
+
 
 # Load test dependnt environment variables
 load_other_env_var(){
-    if [[ "$CUDA" == "False" ]]; then
-        export CUDA_VISIBLE_DEVICES=""
-        export OMPI_MCA_btl="^smcuda"
-        export OMPI_MCA_mpi_cuda_support=0
+    if [[ "$MPI_LIB" == "OMPI_SWING" ]] || [[ "$MPI_LIB" == "OMPI" ]]; then
+        if [[ "$CUDA" == "False" ]]; then
+            export CUDA_VISIBLE_DEVICES=""
+            export OMPI_MCA_btl="^smcuda"
+            export OMPI_MCA_mpi_cuda_support=0
+        fi
     fi
 }
 

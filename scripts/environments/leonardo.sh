@@ -8,7 +8,7 @@ export NC='\033[0m'
 
 # Variables always needed
 export CC=mpicc
-export CFLAGS_COMP_SPECIFIC="-O3 -MD -MP"
+export CFLAGS_COMP_SPECIFIC="-O3 -MMD -MP"
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 

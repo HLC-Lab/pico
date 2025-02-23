@@ -12,18 +12,20 @@ export CFLAGS_COMMON
 
 # Read the previous DEBUG flag value, if available.
 PREV_DEBUG := $(shell [ -f obj/.debug_flag ] && cat obj/.debug_flag)
+PREV_LIB := $(shell [ -f obj/.last_lib ] && cat obj/.last_lib)
 
 # Build all components
 all: force_rebuild libswing test
 
 force_rebuild:
-	@if [ ! -f obj/.debug_flag ] || [ "$(PREV_DEBUG)" != "$(DEBUG)" ]; then \
-		echo -e "$(RED)[BUILD] DEBUG flag changed or .debug_flag missing. Cleaning subdirectories...$(NC)"; \
+	@if [ ! -f obj/.debug_flag ] || [ ! -f obj/.last_lib ] [ "$(PREV_DEBUG)" != "$(DEBUG)" ] || [ "$(PREV_LIB)" != "$(MPI_LIB)" ]; then \
+		echo -e "$(RED)[BUILD] LIB or DEBUG flag changed. Cleaning subdirectories...$(NC)"; \
 		$(MAKE) -C libswing clean; \
 		$(MAKE) -C test clean; \
 		echo "$(DEBUG)" > obj/.debug_flag; \
+		echo "$(MPI_LIB)" > obj/.last_lib; \
 	else \
-		echo -e "$(BLUE)[BUILD] DEBUG flag unchanged...$(NC)"; \
+		echo -e "$(BLUE)[BUILD] LIB and DEBUG flag unchanged...$(NC)"; \
 	fi
 
 # Build the libswing static library

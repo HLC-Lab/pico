@@ -9,7 +9,7 @@ source scripts/utils.sh
 export N_NODES=4
 export LOCATION="local"
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
-export DEBUG_MODE="yes"
+export DEBUG_MODE="no"
 export NOTES="debugging..."
 # SLURM specific variables, other variables are set in the environment script
 export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
@@ -22,9 +22,9 @@ fi
 
 TEST_CONFIG_FILE_LIST=(
     "$SWING_DIR/config/allreduce.json"
-    "$SWING_DIR/config/allgather.json"
-    "$SWING_DIR/config/bcast.json"
-    "$SWING_DIR/config/reduce_scatter.json"
+    # "$SWING_DIR/config/allgather.json"
+    # "$SWING_DIR/config/bcast.json"
+    # "$SWING_DIR/config/reduce_scatter.json"
 )
 
 # Convert array to a colon-separated string
@@ -62,8 +62,8 @@ fi
 #               DO NOT MODIFY THE FOLLOWING VARIABLES                             #
 ###################################################################################
 export TEST_EXEC=$SWING_DIR/bin/test
-export RULE_UPDATER_EXEC=$SWING_DIR/ompi_rules/change_dynamic_rules.py
-export DYNAMIC_RULE_FILE=$SWING_DIR/ompi_rules/dynamic_rules.txt
+export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
+export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 
 # Submit the job.
 if [ $LOCATION == "local" ]; then

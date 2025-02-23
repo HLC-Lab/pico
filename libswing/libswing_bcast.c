@@ -60,6 +60,7 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
   size_t recv_count = 0, send_count = 0;
   size_t scatter_count = (count + comm_size - 1) / comm_size; /* ceil(count / comm_size) */
   size_t curr_count = (rank == root) ? count : 0;
+  int tmp_count; // to silence compiler warning for MPI_Get_count
 
   /* Scatter by binomial tree: receive data from parent */
   int mask = 0x1;
@@ -76,7 +77,8 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
                     recv_count, dtype, parent, 0, comm, &status);
         if (MPI_SUCCESS != err) { goto cleanup_and_return; }
         /* Get received count */
-        curr_count = (int)(status._ucount / dtype_size);
+        MPI_Get_count(&status, dtype, &tmp_count);
+        curr_count = (size_t) tmp_count;
       }
       break;
     }
@@ -126,7 +128,8 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
                          (char *)buf + recv_offset, recv_count, dtype, remote, 0,
                           comm, &status);
       if (MPI_SUCCESS != err) { goto cleanup_and_return; }
-      recv_count = (int)(status._ucount / dtype_size);
+      MPI_Get_count(&status, dtype, &tmp_count);
+      recv_count = (size_t) tmp_count;
       curr_count += recv_count;
     }
 
@@ -158,7 +161,8 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
           err = MPI_Recv((char *)buf + (ptrdiff_t)offset * extent,
                       count, dtype, remote, 0, comm, &status);
           if (MPI_SUCCESS != err) { goto cleanup_and_return; }
-          recv_count = (int)(status._ucount / dtype_size);
+          MPI_Get_count(&status, dtype, &tmp_count);
+          recv_count = (size_t) tmp_count;
           curr_count += recv_count;
         }
       }

@@ -1,0 +1,25 @@
+3        # Number of collectives
+0        # Collective ID = ALLGATHER
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+
+2        # Collective ID = ALLREDUCE
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+
+7        # Collective ID = BCAST
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+
+12       # Collective ID = REDUCE_SCATTER
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+

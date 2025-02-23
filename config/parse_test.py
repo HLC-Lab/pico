@@ -1,9 +1,11 @@
 import json
-import jsonschema
-from jsonschema import validate
+from packaging import version
+from jsonschema.validators import validate
 from jsonschema.exceptions import ValidationError
 import sys
 import os
+
+require_cvars = [ "mpich", "cray_mpich"]
 
 # JON schema for the test configuration file
 test_config_schema = {
@@ -104,10 +106,10 @@ def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_versio
 
     library_dependencies = algo_data["library"]
 
-    if "libswing" in library_dependencies and library_dependencies["libswing"] <= libswing_version:
+    if "libswing" in library_dependencies and version.parse(library_dependencies["libswing"]) <= version.parse(libswing_version):
         return True
 
-    if mpi_type.lower() in library_dependencies and library_dependencies[mpi_type.lower()] <= mpi_version:
+    if mpi_type.lower() in library_dependencies and version.parse(library_dependencies[mpi_type.lower()]) <= version.parse(mpi_version):
         return True
 
     return False
@@ -125,6 +127,7 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
     
     matching_algorithms = []
     skip_algorithms = []
+    cvars = []
     
     if collective not in algorithm_config["collective"]:
         print(f"{__file__}: collective {collective} not found in ALGORITHM_CONFIG_FILE.", file=sys.stderr)
@@ -158,16 +161,22 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
         if "constraints" in algo_data and check_skip(algo_data["constraints"]):
             skip_algorithms.append(algo_name)
         matching_algorithms.append(algo_name)
+        if mpi_type.lower() in require_cvars:
+            cvars.append(algo_data["cvar"])
 
     if not matching_algorithms:
         print(f"{__file__}: no allowed algorithms found for TEST_CONFIG_FILE.", file=sys.stderr)
         sys.exit(1)
 
-    return matching_algorithms, skip_algorithms
+    if mpi_type.lower() in require_cvars and not cvars:
+        print(f"{__file__}: no cvars found for MPI_LIB={mpi_type}.", file=sys.stderr)
+        sys.exit(1)
+
+    return matching_algorithms, skip_algorithms, cvars
 
 
 
-def export_environment_variables(matching_algorithms, skip_algorithms,
+def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
                                  test_config, output_file: str | os.PathLike) -> None:
     """Export environment variables for the shell script."""
     collective = test_config["collective"]
@@ -179,20 +188,26 @@ def export_environment_variables(matching_algorithms, skip_algorithms,
     cuda = test_config["cuda"]
     algo_names = " ".join(matching_algorithms)
     skip_names = " ".join(skip_algorithms)
+    cvars_str = " ".join(cvars) if cvars else ""
     types = " ".join(str(x) for x in test_config["datatypes"])
     arr_counts = " ".join(str(x) for x in test_config["arr_counts"])
 
     # Write the environment variables to a shell script that will be sourced
-    with open(output_file, "w") as f:
-        f.write(f"export COLLECTIVE_TYPE='{collective}'\n")
-        f.write(f"export ALGOS='{algo_names}'\n")
-        f.write(f"export SKIP='{skip_names}'\n")
-        f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
-        f.write(f"export CUDA='{cuda}'\n")
-        f.write(f"export MPI_OP='{mpi_op}'\n")
-        f.write(f"export TYPES='{types}'\n")
-        f.write(f"export ARR_SIZES='{arr_counts}'\n")
-
+    try:
+        with open(output_file, "w") as f:
+            f.write(f"export COLLECTIVE_TYPE='{collective}'\n")
+            f.write(f"export ALGOS='{algo_names}'\n")
+            f.write(f"export SKIP='{skip_names}'\n")
+            f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
+            f.write(f"export CUDA='{cuda}'\n")
+            f.write(f"export MPI_OP='{mpi_op}'\n")
+            f.write(f"export TYPES='{types}'\n")
+            f.write(f"export ARR_SIZES='{arr_counts}'\n")
+            if cvars_str:
+                f.write(f"export CVARS=({cvars_str})\n")
+    except IOError as e:
+        print(f"{__file__}: Error writing to {output_file}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
@@ -202,9 +217,12 @@ def main():
     number_of_nodes = os.getenv("N_NODES")
     mpi_type = os.getenv("MPI_LIB")
     mpi_version = os.getenv("MPI_LIB_VERSION")
-    if not (algorithm_file and test_file and output_file and number_of_nodes and number_of_nodes.isdigit() and mpi_type and mpi_version):
+    if not (algorithm_file and test_file and output_file and number_of_nodes and
+            number_of_nodes.isdigit() and mpi_type and mpi_version):
         print(f"{__file__}: Environment variables not set.", file=sys.stderr)
-        print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG={test_file}\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}\nMPI_LIB={mpi_type}, MPI_LIB_VERSION={mpi_version}", file=sys.stderr)
+        print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG={test_file}"
+              f"\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}\n"
+              f"MPI_LIB={mpi_type}, MPI_LIB_VERSION={mpi_version}", file=sys.stderr)
         sys.exit(1)
     number_of_nodes = int(number_of_nodes)
 
@@ -217,16 +235,18 @@ def main():
 
     # Validate the test_config.json
     try:
-        jsonschema.validate(instance=test_config, schema=test_config_schema)
-    except jsonschema.exceptions.ValidationError as e:
+        validate(instance=test_config, schema=test_config_schema)
+    except ValidationError as e:
         print(f"{__file__}Validation error: {e}", file=sys.stderr)
         sys.exit(1)
 
+
     # Get matching algorithms
-    matching_algorithms, skip_algorithms = get_matching_algorithms(algorithm_config, test_config, number_of_nodes, mpi_type, mpi_version)
-    
+    matching_algorithms, skip_algorithms, cvars = get_matching_algorithms(
+        algorithm_config, test_config, number_of_nodes, mpi_type, mpi_version)
+
     # Write environment variables to a shell script to be sourced
-    export_environment_variables(matching_algorithms, skip_algorithms, test_config, output_file)
+    export_environment_variables(matching_algorithms, skip_algorithms, cvars, test_config, output_file)
     
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ RESULTS_DIR = "results/"
 # Update or create metadata CSV
 def update_metadata(system_name: str, timestamp: str, test_id: int, number_of_nodes: int,
                     collective_type: str, mpi_lib: str, mpi_lib_version : str,
-                     libswing_version: str, cuda: bool, mpi_op: str | None, notes: str | None):
+                     libswing_version: str, cuda: str, mpi_op: str | None, notes: str | None):
     output_file = os.path.join(RESULTS_DIR, f"{system_name}_metadata.csv")
 
     # Check if file exists to determine whether to write the header
@@ -40,7 +40,7 @@ def update_metadata(system_name: str, timestamp: str, test_id: int, number_of_no
             "mpi_lib": mpi_lib,
             "mpi_lib_version": mpi_lib_version,
             "libswing_version": libswing_version,
-            "CUDA": cuda,
+            "CUDA": cuda.lower(),
             "MPI_Op": mpi_op,
             "notes": notes
         })
@@ -71,7 +71,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     number_of_nodes = int(number_of_nodes)
-    cuda = cuda.lower() == "true"
 
     update_metadata(system_name, timestamp, test_id, number_of_nodes, \
                     collective_type, mpi_lib, mpi_lib_version, \

@@ -48,8 +48,9 @@ load_modules(){
 }
 export -f load_modules
 
-# Activate the virtual environment, if it exists
-# If not create it and install the required Python packages
+# Activate the virtual environment, if it exists, if not create it
+# Also checks and install the required Python packages
+export required_python_packages="jsonschema packaging"
 activate_virtualenv() {
     if [ -f "$HOME/.swing_venv/bin/activate" ]; then
         source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment." ; return 1; }
@@ -61,12 +62,17 @@ activate_virtualenv() {
         source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment after creation." ; return 1; }
 
         success "Virtual environment 'swing_venv' created and activated."
-
-        pip install --upgrade pip || { error "Failed to upgrade pip." ; return 1; }
-        pip install jsonschema || { error "Failed to install Python packages." ; return 1; }
-
-        success "Python packages installed."
     fi
+
+    # Check and install missing packages
+    pip install --upgrade pip || { error "Failed to upgrade pip." ; return 1; }
+    for package in $required_python_packages; do
+        if ! pip show "$package" > /dev/null 2>&1; then
+            warning "Package '$package' not found. Installing..."
+            pip install "$package" || { error "Failed to install $package." ; return 1; }
+        fi
+        success "Packages already installed."
+    done
 
     return 0
 }
@@ -128,6 +134,22 @@ run_test() {
 }
 export -f run_test
 
+# Function to update the dynamic rule file for the given algorithm
+update_algorithm() {
+    local algo=$1
+    local cvar_indx=$2
+    if [[ "$MPI_LIB" == "OMPI_SWING" ]] || [[ "$MPI_LIB" == "OMPI" ]]; then
+        echo "Updating dynamic rule file for algorithm $algo..."
+        python3 $ALGO_CHANGE_SCRIPT $algo || exit 1
+        export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
+    elif [[ $MPI_LIB == "MPICH" ]] || [[ $MPI_LIB == "CRAY_MPI" ]]; then
+        local cvar=${CVARS[$cvar_indx]}
+        echo "Setting CVAR $cvar for algorithm $algo..."
+        export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
+    fi
+}
+export -f update_algorithm
+
 # Test algorithms here, loop through:
 # - algorithms
 # - number of mpi processes
@@ -136,17 +158,14 @@ export -f run_test
 # note that, if an algorithm is not internal to Open MPI, the dynamic
 # rule file will be set to 0 (i.e. automatic default algorithm selection)
 run_all_tests() {
+    local i=0
     for algo in ${ALGOS[@]}; do
         # Update dynamic rule file for the algorithm
-        if [[ "$MPI_LIB" == "OMPI_SWING" ]] || [[ "$MPI_LIB" == "OMPI" ]]; then
-            echo "Updating dynamic rule file for algorithm $algo..."
-            python3 $RULE_UPDATER_EXEC $algo || exit 1
-            export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
-        fi
+        update_algorithm $algo $i
 
         for size in ${ARR_SIZES[@]}; do
             # Skip specific algorithms if conditions are met
-            if [[ size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then
+            if [[ $size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then
                 echo "Skipping algorithm $algo for size=$size < N_NODES=$N_NODES"
                 continue
             fi
@@ -157,6 +176,7 @@ run_all_tests() {
                 run_test $size $type $algo
             done
         done
+        ((i++))
     done
 }
 export -f run_all_tests

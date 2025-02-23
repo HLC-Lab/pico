@@ -32,9 +32,9 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
         python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
         success "📂 Metadata of $DATA_DIR created"
     else
-        # export COLLECTIVE_TYPE="BCAST"
+        # export COLLECTIVE_TYPE="ALLREDUCE"
         # export ALGOS="swing_bdw_static_over"
-        export ARR_SIZES="32 124"
+        export ARR_SIZES="2048"
         export TYPES="int32" # For now only int,int32,int64 are supported in debug mode 
     fi
 

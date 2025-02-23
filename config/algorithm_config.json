@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.5.0",
+    "schema_version": "2.6.0",
     "created": "2024-01-30",
-    "last_modified": "2024-02-22",
+    "last_modified": "2024-02-23",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -10,12 +10,89 @@
   },
   "collective": {
     "ALLREDUCE": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "recursive_doubling_mpich": {
+        "desc": "MPICH recursive doubling algorithm.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "recursive_doubling",
+        "tags": [
+          "recursive_doubling",
+          "internal"
+        ]
+      },
+      "recursive_multiplying_mpich": {
+        "desc": "MPICH recursive multiplying algorithm. Generalization of the recursive doubling algorithm. The env var MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL can be used to set the value of k. If k=2 it is equivalent to recursive doubling.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "recursive_multiplying",
+        "tags": [
+          "recursive_multiplying",
+          "internal"
+        ]
+      },
+      "ring_mpich": {
+        "desc": "MPICH ring algorithm.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "ring",
+        "tags": [
+          "ring",
+          "internal"
+        ]
+      },
+      "rabenseifner_mpich": {
+        "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "reduce_scatter_allgather",
+        "tags": [
+          "rabenseifner",
+          "internal"
+        ]
+      },
+      "k_rabenseifner_mpich": {
+        "desc": "MPICH K-nomial Rabenseifner algorithm. Generalization of the rabenseifner algorithm that uses recursive multiplying instead of recursive doubling reduce scatter and allgather. Is called `k_reduce_scatter_allgather`. The variable `MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL` can be used to set the value of k. If k=2 it is equivalent to rabenseifner.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "k_reduce_scatter_allgather",
+        "tags": [
+          "k_rabenseifner",
+          "internal"
+        ]
+      },
+      "tree_mpich": {
+        "desc": "MPICH tree algorithm. Segments the message to pipeline communication and reduction. Sends the segmented message into a tree topology created by the function itself. The variables `MPIR_CVAR_ALLREDUCE_TREE_TYPE` and `MPIR_CVAR_ALLREDUCE_TREE_KVAL` can be used to set the tree type and the value of k of knomial and kary trees.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "tree",
+        "tags": [
+          "tree",
+          "internal"
+        ]
+      },
       "default_cray_mpich": {
         "desc": "Cray MPICH default algorithm selection",
         "library": {
           "cray_mpich": "8.0.0"
         },
-        "dynamic_rule": 0,
+        "cvar": "auto",
         "tags": [
           "default",
           "internal"
@@ -390,6 +467,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "recursive_doubling",
@@ -403,6 +481,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "constraints": [
           {
@@ -426,6 +505,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "constraints": [
           {
@@ -450,6 +530,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "swing_lat",
@@ -465,6 +546,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "constraints": [
           {
@@ -507,7 +589,7 @@
         "library": {
           "cray_mpich": "8.0.0"
         },
-        "dynamic_rule": 0,
+        "cvar": "auto",
         "tags": [
           "default",
           "internal"
@@ -653,6 +735,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "additional_parameters": {
           "radix": {
@@ -675,6 +758,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "constraints": [
           {
@@ -699,6 +783,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "ring",
@@ -711,6 +796,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "constraints": [
           {
@@ -742,7 +828,7 @@
         "library": {
           "cray_mpich": "8.0.0"
         },
-        "dynamic_rule": 0,
+        "cvar": "auto",
         "tags": [
           "default",
           "internal"
@@ -998,6 +1084,7 @@
             ]
           }
         ],
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "scatter_allgather",
@@ -1030,6 +1117,7 @@
             ]
           }
         ],
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "swing_lat",
@@ -1076,6 +1164,7 @@
             ]
           }
         ],
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "swing_bdw_static",
@@ -1092,7 +1181,7 @@
         "library": {
           "cray_mpich": "8.0.0"
         },
-        "dynamic_rule": 0,
+        "cvar": "auto",
         "tags": [
           "default",
           "internal"
@@ -1170,6 +1259,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "recursive_halving",
@@ -1183,6 +1273,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "ring",
@@ -1195,6 +1286,7 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "butterfly",
@@ -1223,6 +1315,7 @@
             ]
           }
         ],
+        "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
           "swing",
