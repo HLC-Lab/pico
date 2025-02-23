@@ -1,15 +1,14 @@
 
 *.a
-bin/*
 .cache
 compile_commands.json
-obj/.debug_flag
+bin/
+obj/
+lib/
 *.err
 *.o
 *.out
 out
-obj/lib/*
-obj/test/*
 results/local/*
 results/local_metadata.csv
 config/*_env.sh
