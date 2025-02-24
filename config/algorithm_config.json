@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.0",
+    "schema_version": "2.6.1",
     "created": "2024-01-30",
-    "last_modified": "2024-02-23",
+    "last_modified": "2024-02-24",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -13,6 +13,7 @@
       "default_mpich": {
         "desc": "MPICH default algorithm selection",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "auto",
@@ -21,9 +22,34 @@
           "internal"
         ]
       },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "smp_mpich": {
+        "desc": "MPICH SMP algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "smp",
+        "tags": [
+          "smp",
+          "internal"
+        ]
+      },
       "recursive_doubling_mpich": {
         "desc": "MPICH recursive doubling algorithm.",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "recursive_doubling",
@@ -35,6 +61,7 @@
       "recursive_multiplying_mpich": {
         "desc": "MPICH recursive multiplying algorithm. Generalization of the recursive doubling algorithm. The env var MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL can be used to set the value of k. If k=2 it is equivalent to recursive doubling.",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "recursive_multiplying",
@@ -43,9 +70,22 @@
           "internal"
         ]
       },
+      "rechexch_mpich": {
+        "desc": "MPICH recursive exchange algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "recexch",
+        "tags": [
+          "recexch",
+          "internal"
+        ]
+      },
       "ring_mpich": {
         "desc": "MPICH ring algorithm.",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "ring",
@@ -57,6 +97,7 @@
       "rabenseifner_mpich": {
         "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code.",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "reduce_scatter_allgather",
@@ -68,6 +109,7 @@
       "k_rabenseifner_mpich": {
         "desc": "MPICH K-nomial Rabenseifner algorithm. Generalization of the rabenseifner algorithm that uses recursive multiplying instead of recursive doubling reduce scatter and allgather. Is called `k_reduce_scatter_allgather`. The variable `MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL` can be used to set the value of k. If k=2 it is equivalent to rabenseifner.",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "k_reduce_scatter_allgather",
@@ -79,22 +121,12 @@
       "tree_mpich": {
         "desc": "MPICH tree algorithm. Segments the message to pipeline communication and reduction. Sends the segmented message into a tree topology created by the function itself. The variables `MPIR_CVAR_ALLREDUCE_TREE_TYPE` and `MPIR_CVAR_ALLREDUCE_TREE_KVAL` can be used to set the tree type and the value of k of knomial and kary trees.",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "tree",
         "tags": [
           "tree",
-          "internal"
-        ]
-      },
-      "default_cray_mpich": {
-        "desc": "Cray MPICH default algorithm selection",
-        "library": {
-          "cray_mpich": "8.0.0"
-        },
-        "cvar": "auto",
-        "tags": [
-          "default",
           "internal"
         ]
       },
@@ -584,14 +616,110 @@
       }
     },
     "ALLGATHER": {
-      "default_cray_mpich": {
-        "desc": "Cray MPICH default algorithm selection",
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
         "library": {
-          "cray_mpich": "8.0.0"
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
         },
         "cvar": "auto",
         "tags": [
           "default",
+          "internal"
+        ]
+      },
+      "brucks_mpich": {
+        "desc": "MPICH Brucks algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "brucks",
+        "tags": [
+          "brucks",
+          "internal"
+        ]
+      },
+      "k_brucks_mpich": {
+        "desc": "MPICH K-nomial Brucks algorithm. Generalization of the brucks algorithm that uses recursive multiplying instead of recursive doubling. Is called `k_brucks`. The variable `MPIR_CVAR_ALLGATHER_BRUCKS_KVAL` can be used to set the value of k. If k=2 it is equivalent to brucks.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "k_brucks",
+        "tags": [
+          "k_brucks",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH nonblocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "nb",
+          "internal"
+        ]
+      },
+      "recursive_doubling_mpich": {
+        "desc": "MPICH recursive doubling algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "recursive_doubling",
+        "tags": [
+          "recursive_doubling",
+          "internal"
+        ]
+      },
+      "ring_mpich": {
+        "desc": "MPICH ring algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "ring",
+        "tags": [
+          "ring",
+          "internal"
+        ]
+      },
+      "recexch_mpich": {
+        "desc": "MPICH recexch distance doubling algorithm. It is a generalization of the recursive doubling to work with any `k` radix. The cvar `MPIR_CVAR_ALLGATHER_RECEXCH_KVAL` can be used to set the value of k. If k=1 the algorithm is a distance halving allgather and can be also called with its own cvar. If k=2 it is equivalent to recursive doubling.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "recexch_doubling",
+        "tags": [
+          "recexch_doubling",
+          "internal"
+        ]
+      },
+      "recexch_halving_mpich": {
+        "desc": "MPICH recexch distance halving algorithm. It uses the same code of `rechexch_mpich` but with `k=1`.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "recexch_halving",
+        "tags": [
+          "recexch_halving",
           "internal"
         ]
       },
@@ -823,14 +951,99 @@
       }
     },
     "BCAST": {
-      "default_cray_mpich": {
-        "desc": "Cray MPICH default algorithm selection",
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
         "library": {
-          "cray_mpich": "8.0.0"
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
         },
         "cvar": "auto",
         "tags": [
           "default",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "smp_mpich": {
+        "desc": "MPICH smp algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "smp",
+        "tags": [
+          "smp",
+          "internal"
+        ]
+      },
+      "scatter_recursive_doubling_allgather_mpich": {
+        "desc": "MPICH scatter recursive-doubling allgather algorithm. It performs the broadcast pipelining a scatter followed by an allgather, both with recurisve doubling communication pattern.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "scatter_recursive_doubling_allgather",
+        "tags": [
+          "scatter_recursive_doubling_allgather",
+          "internal"
+        ]
+      },
+      "scatter_ring_allgather_mpich": {
+        "desc": "MPICH scatter ring allgather algorithm. This broadcast is based on a scatter followed by an allgather, both with ring communication pattern. Can outperform the recursive doubling variant for large messages or non power of two messages.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "scatter_ring_allgather",
+        "tags": [
+          "scatter_ring_allgather",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm. It performs the broadcast by sending messages to rank at comm_sz/2 away from the root. Those ranks become the roots of their own subtree and repeat the process until all ranks have received the message.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "tree_mpich": {
+        "desc": "MPICH general tree algorithm. It uses a k-nomial or k-ary tree to perform the broadcast. The variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` can be used to set the value of k and the type of tree.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "tree",
+        "tags": [
+          "tree",
+          "internal"
+        ]
+      },
+      "pipelined_tree_mpich": {
+        "desc": "MPICH pipelined tree based algorithm. It works like the tree based algorithm but segmenting the message into smaller chunks that are sent to the child processes in a pipelined fashion. It can outperform the tree based algorithm for large messages. Like the tree based algorithm it uses the variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` to set the value of k and the type of tree. Moreover it uses the variable `MPIR_CVAR_BCAST_TREE_PIPELINE_CHUNK_SIZE` to set the size of the chunks.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "pipelined_tree",
+        "tags": [
+          "pipelined_tree",
           "internal"
         ]
       },
@@ -1176,14 +1389,86 @@
       }
     },
     "REDUCE_SCATTER": {
-      "default_cray_mpich": {
-        "desc": "Cray MPICH default algorithm selection",
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
         "library": {
-          "cray_mpich": "8.0.0"
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
         },
         "cvar": "auto",
         "tags": [
           "default",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "non_commutative_mpich": {
+        "desc": "MPICH non-commutative algorithm. Described in `An Improved Algorithm for (Non-commutative) Reduce-Scatter with an Application`, the implemented version requires comm_sz to be a power of 2 and the blocks of equal size.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "noncommutative",
+        "tags": [
+          "non_commutative",
+          "internal"
+        ]
+      },
+      "pairwise_mpich": {
+        "desc": "MPICH pairwise algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "pairwise",
+        "tags": [
+          "pairwise",
+          "internal"
+        ]
+      },
+      "recursive_doubling_mpich": {
+        "desc": "MPICH recursive doubling algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "recursive_doubling",
+        "tags": [
+          "recursive_doubling",
+          "internal"
+        ]
+      },
+      "recursive_halving_mpich": {
+        "desc": "MPICH recursive halving algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "recursive_halving",
+        "tags": [
+          "recursive_halving",
           "internal"
         ]
       },

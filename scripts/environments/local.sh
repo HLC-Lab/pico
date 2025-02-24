@@ -14,7 +14,7 @@ export RUNFLAGS="--map-by :OVERSUBSCRIBE"
 export SWING_DIR=$HOME/University/Tesi/test
 
 # MPI library specific variables
-export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING
+export MPI_LIB='MPICH'    # Possible values: OMPI, OMPI_SWING
 if [[ "$MPI_LIB" == "OMPI_SWING" ]]; then
     export PATH=/opt/ompi_test/bin:$PATH
     export LD_LIBRARY_PATH=/opt/ompi_test/lib:$LD_LIBRARY_PATH

@@ -8,6 +8,7 @@
       "external"
     ],
     "exclude": [
+      "smp",
       "can_crash",
       "suboptimal"
     ]
