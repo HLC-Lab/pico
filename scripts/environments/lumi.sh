@@ -8,7 +8,7 @@ export NC='\033[0m'
 
 # General variables always needed
 export CC=cc
-export CFLAGS_COMP_SPECIFIC="-Ofast -funroll-loops -em"
+export CFLAGS_COMP_SPECIFIC="-Ofast -ffp=3 -MMD -MP"
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 

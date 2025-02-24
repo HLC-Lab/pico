@@ -14,6 +14,7 @@ OUTPUT = $(BIN_DIR)/test
 
 ifeq ($(DEBUG),1)
 	CFLAGS := $(filter-out -O%,$(CFLAGS))
+	CFLAGS := $(filter-out -ffp=3,$(CFLAGS))
 endif
 
 # Default target

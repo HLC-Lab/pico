@@ -37,8 +37,8 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
         export ARR_SIZES="2048"
         export TYPES="int32" # For now only int,int32,int64 are supported in debug mode 
     fi
-        export ARR_SIZES="2048"
-        export TYPES="int32" # For now only int,int32,int64 are supported in debug mode 
+
+    export TYPES="int32"
 
     # Sanity checks
     success "==========================================================\n\t\t SANITY CHECKS"
