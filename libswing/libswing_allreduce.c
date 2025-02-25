@@ -140,9 +140,9 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   ptrdiff_t block_offset, max_real_segsize;
   MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
 
-  ret = MPI_Comm_size(comm, &size);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
   ret = MPI_Comm_rank(comm, &rank);
+  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  ret = MPI_Comm_size(comm, &size);
   if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
   // if (rank == 0) {

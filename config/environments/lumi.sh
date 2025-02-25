@@ -1,6 +1,5 @@
 # General variables always needed
 export CC=cc
-export CFLAGS_COMP_SPECIFIC="-O3 -MMD -MP"
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 

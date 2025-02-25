@@ -21,7 +21,7 @@
     do{                                         \
       int my_r;                                 \
       MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
-      if (my_r == 0){ printf("%s\n\n", name); } \
+      if (my_r == 0){ printf("%s\n", name); } \
     } while(0)
 
   #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm)      \

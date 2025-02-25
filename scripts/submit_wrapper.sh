@@ -10,10 +10,10 @@ source scripts/utils.sh
 export LOCATION=""
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
+export INTERACTIVE="no"
 export NOTES="Default notes"
 export TASK_PER_NODE=1
 export TEST_TIME="01:00:00"
-export INTERACTIVE="no"
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
@@ -82,17 +82,19 @@ export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
 export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 
 # Submit the job.
-if [ $LOCATION == "local" ]; then
+if [[ "$LOCATION" == "local" ]]; then
     scripts/run_test_suite.sh
 else
     PARAMS="--account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME"
-    if [ "$QOS" != "" ]; then
-      PARAMS="$PARAMS --qos=$QOS"
-    fi
+    [[ -n "$QOS" ]] &&  PARAMS+="--qos=$QOS"
 
-    if [ $INTERACTIVE == "yes" ]; then
-      salloc $PARAMS
+    if [[ "$INTERACTIVE" == "yes" ]]; then
+        salloc $PARAMS
     else
-      sbatch $PARAMS --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
+        if [[ "$DEBUG_MODE" == "yes" ]]; then
+            sbatch $PARAMS --output="debug_%j.out" "$SWING_DIR/scripts/run_test_suite.sh"
+        else
+            sbatch $PARAMS --output="$OUTPUT_DIR/slurm_%j.out" --error="$OUTPUT_DIR/slurm_%j.err" "$SWING_DIR/scripts/run_test_suite.sh"
+        fi
     fi
 fi

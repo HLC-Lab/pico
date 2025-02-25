@@ -1,6 +1,5 @@
 # Variables always needed
 export CC=mpicc
-export CFLAGS_COMP_SPECIFIC="-O3 -MMD -MP"
 export RUN=mpiexec
 export RUNFLAGS="--map-by :OVERSUBSCRIBE"
 export SWING_DIR=$HOME/University/Tesi/test

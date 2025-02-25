@@ -3,7 +3,7 @@
 .PHONY: all clean libswing bench force_rebuild
 
 # Common settings to be shared with sub-makefiles
-CFLAGS_COMMON = -Wall -I$(SWING_DIR)/include $(CFLAGS_COMP_SPECIFIC)
+CFLAGS_COMMON = -O3 -Wall -I$(SWING_DIR)/include -MMD -MP
 
 ifeq ($(DEBUG),1)
 	CFLAGS_COMMON += -DDEBUG -g
@@ -43,3 +43,4 @@ clean:
 	@echo -e "${RED}[CLEAN] Cleaning all builds...$(NC)"
 	@$(MAKE) -C libswing clean
 	@$(MAKE) -C bench clean
+	@rm obj/.debug_flag obj/.last_lib

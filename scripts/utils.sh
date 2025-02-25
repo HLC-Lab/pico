@@ -31,6 +31,8 @@ cleanup() {
 }
 export -f cleanup
 
+
+# Show the usage message
 usage() {
     echo "Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]"
     echo "Options:"
@@ -47,6 +49,7 @@ usage() {
     echo "  --time              Sbatch time [default: 01:00:00]"
     echo "  --help              Show this help message"
 }
+
 
 # Parse the command line arguments
 parse_cli_args() {
@@ -77,7 +80,7 @@ parse_cli_args() {
                 shift 2
                 ;;
             --interactive)
-                INTERACTIVE="$2"
+                export INTERACTIVE="$2"
                 shift 2
                 ;;
             --debug)
@@ -109,15 +112,20 @@ parse_cli_args() {
     done
 }
 
+
+# Validate the command line arguments
 validate_args() {
     if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]; then
         error "--nodes must be a numeric value and at least 2."
+        usage
         return 1
     elif [[ "$INTERACTIVE" != "yes" ]] && [[ "$INTERACTIVE" != "no" ]]; then
         error "--interactive must be either 'yes' or 'no'."
+        usage
         return 1
     elif [[ "$DEBUG_MODE" != "yes" ]] && [[ "$DEBUG_MODE" != "no" ]]; then
         error "--debug must be either 'yes' or 'no'."
+        usage
         return 1
     fi
 
@@ -131,6 +139,7 @@ validate_args() {
         for size in ${ARR_SIZES_OVERRIDE//,/ }; do
             if [[ ! "$size" =~ ^[0-9]+$ ]]; then
                 error "--sizes must be a comma-separated list of numeric values."
+                usage
                 return 1
             fi
         done
@@ -140,6 +149,7 @@ validate_args() {
         for type in ${TYPES_OVERRIDE//,/ }; do
             if [[ ! "$type" =~ ^(int|int8|int16|int32|int64|float|double|char)$ ]]; then
                 error " --types must be a comma-separated list. Allowed types: int, int8, int16, int32, int64, float, double, char"
+                usage
                 return 1
             fi
         done
@@ -149,6 +159,7 @@ validate_args() {
     return 0
 }
 
+
 # Source the environment configuration
 source_environment() {
     local env_file="config/environments/$1.sh"
@@ -156,9 +167,11 @@ source_environment() {
         source "$env_file"
         return 0
     else
+        usage
         return 1
     fi
 }
+
 
 # Load the required modules
 load_modules(){
@@ -171,12 +184,13 @@ load_modules(){
     return 0
 }
 
+
 # Activate the virtual environment, if it exists, if not create it
 # Also checks and install the required Python packages
-export required_python_packages="jsonschema packaging"
 activate_virtualenv() {
     if [ -f "$HOME/.swing_venv/bin/activate" ]; then
         source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment." ; return 1; }
+        success "Virtual environment 'swing_venv' activated."
     else
         warning "Virtual environment 'swing_venv' does not exist. Creating it..."
         
@@ -189,6 +203,8 @@ activate_virtualenv() {
 
     # Check and install missing packages
     pip install --upgrade pip || { error "Failed to upgrade pip." ; return 1; }
+
+    local required_python_packages="jsonschema packaging"
     for package in $required_python_packages; do
         if ! pip show "$package" > /dev/null 2>&1; then
             warning "Package '$package' not found. Installing..."
@@ -199,6 +215,7 @@ activate_virtualenv() {
 
     return 0
 }
+
 
 # Compile the codebase
 compile_code() {
@@ -216,6 +233,7 @@ compile_code() {
     success "Compilation succeeded."
     return 0
 }
+
 
 # Determine the number of iterations based on array size
 get_iterations() {
@@ -238,24 +256,22 @@ export -f get_iterations
 
 
 # Function to run a single test case
-# Arguments: array size, iterations, data type, algorithm index
 run_bench() {
-    local size=$1
-    local type=$2
-    local algo=$3
+    local size=$1 algo=$2 type=$3
     local iter=$(get_iterations $size)
 
     if [ "$DEBUG_MODE" == "yes" ]; then
         echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
         $RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type
     else
-        echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
+        echo "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
         $RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; exit 1; }
     fi
 }
 export -f run_bench
 
-# Function to update the dynamic rule file for the given algorithm
+
+# Function to select the algorithm by exporting the cvar or updating dynamic rules
 update_algorithm() {
     local algo=$1
     local cvar_indx=$2
@@ -271,13 +287,11 @@ update_algorithm() {
 }
 export -f update_algorithm
 
+
 # Test algorithms here, loop through:
 # - algorithms
 # - number of mpi processes
 # - size of the array in number of elements (of type = TYPE) 
-#
-# note that, if an algorithm is not internal to Open MPI, the dynamic
-# rule file will be set to 0 (i.e. automatic default algorithm selection)
 run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
@@ -294,7 +308,7 @@ run_all_tests() {
             # Get the number of iterations for the size
             for type in ${TYPES[@]}; do
                 # Run the bench for the given configuration
-                run_bench $size $type $algo
+                run_bench $size $algo $type
             done
         done
         ((i++))
