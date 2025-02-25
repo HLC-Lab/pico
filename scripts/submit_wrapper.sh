@@ -5,38 +5,45 @@ source scripts/utils.sh
 ##################################################################################
 #               MODIFY THESE VARIABLES TO SUIT YOUR TEST ENVIRONMENT             #
 ##################################################################################
-# Global variables
 
-LOCATION=$1
-N_NODES=$2
-if [[ -z "$LOCATION" ]] || [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]; then
-    error "N_NODES or NOTATION is not given or not set correctly."
-    warning "Usage: ./submit_wrapper.sh <LOCATION> <N_NODES>"
-    exit 1
-fi
-
-export N_NODES
-export LOCATION
+# 1. Set default values for the variables
+export LOCATION=""
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
-export NOTES="debugging..."
-# SLURM specific variables, other variables are set in the environment script
-export TASK_PER_NODE=1              # Beware that the script will still run only one task per node
-export TEST_TIME=01:00:00
+export NOTES="Default notes"
+export TASK_PER_NODE=1
+export TEST_TIME="01:00:00"
 
+# 2. Parse and validate command line arguments
+parse_cli_args "$@"
+
+# 3. Set the location-specific environment variables
 if ! source_environment "$LOCATION"; then
     error "Environment script for '${LOCATION}' not found!"
     exit 1
 fi 
 
-TEST_CONFIG_FILE_LIST=(
-    "$SWING_DIR/config/test/allreduce.json"
-    "$SWING_DIR/config/test/allgather.json"
-    "$SWING_DIR/config/test/bcast.json"
-    "$SWING_DIR/config/test/reduce_scatter.json"
-)
+validate_args || exit 1
 
-# Convert array to a colon-separated string
+# 4. Set the test configuration files, or use --test_config if provided.
+if [ -n "$TEST_CONFIG_OVERRIDE" ]; then
+    IFS=',' read -r -a REL_PATHS <<< "$TEST_CONFIG_OVERRIDE"
+    TEST_CONFIG_FILE_LIST=()
+    for f_path in "${REL_PATHS[@]}"; do
+        if [ ! -f "$SWING_DIR/$f_path" ]; then
+            error "Test configuration file '$SWING_DIR/$f_path' not found!"
+            exit 1
+        fi
+        TEST_CONFIG_FILE_LIST+=( "$SWING_DIR/$f_path" )
+    done
+else
+    TEST_CONFIG_FILE_LIST=(
+        "$SWING_DIR/config/test/allreduce.json"
+        "$SWING_DIR/config/test/allgather.json"
+        "$SWING_DIR/config/test/bcast.json"
+        "$SWING_DIR/config/test/reduce_scatter.json"
+    )
+fi
 export TEST_CONFIG_FILES="${TEST_CONFIG_FILE_LIST[*]}"
 
 ###################################################################################
@@ -49,7 +56,6 @@ success "Modules successfully loaded."
 
 activate_virtualenv || exit 1
 success "Virtual environment activated."
-
 
 ###################################################################################
 #           COMPILE CODE, CREATE OUTPUT DIRECTORIES AND GENERATE METADATA         #
@@ -76,11 +82,11 @@ export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 
 # Submit the job.
 if [ $LOCATION == "local" ]; then
-    scripts/run_test_suite.sh $N_NODES
+    scripts/run_test_suite.sh
 else
     if [ "$QOS" != "" ]; then
-    sbatch --account=$ACCOUNT --partition=$PARTITION --qos=$QOS --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh $N_NODES
+    sbatch --account=$ACCOUNT --partition=$PARTITION --qos=$QOS --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
     else
-    sbatch --account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh $N_NODES
+    sbatch --account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
     fi
 fi

@@ -1,3 +1,11 @@
+# Colors for styling output, otherwise utils needs to be sourced at every make
+export RED='\033[0;31m'
+export GREEN='\033[0;32m'
+export YELLOW='\033[0;33m'
+export BLUE='\033[1;34m'
+export NC='\033[0m'
+
+
 # Print error messages in red
 error() {
     echo -e "\n${RED}❌❌❌ ERROR: $1 ❌❌❌${NC}\n" >&2
@@ -24,6 +32,108 @@ cleanup() {
 }
 export -f cleanup
 
+usage() {
+    echo "Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]"
+    echo "Options:"
+    echo "  --location          Location (required)"
+    echo "  --nodes             Number of nodes (required, integer >=2)"
+    echo "  --output-dir        Output dir of test (default: current date/time)"
+    echo "  --types             Data types, comma separated [defaults to all]"
+    echo "  --sizes             Array sizes, comma separated [defaults to all]"
+    echo "  --test-configs      Relative paths to config files, comma separated [default: 'config/test_configs/*.json']"
+    echo "  --debug-mode        Debug mode [default: no]"
+    echo "  --notes             Notes [default: 'Def notes']"
+    echo "  --task-per-node     Sbatch asks per node [default: 1]"
+    echo "  --test-time         Sbatch time [default: 01:00:00]"
+}
+
+# Parse the command line arguments
+parse_cli_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --location)
+                export LOCATION="$2"
+                shift 2
+                ;;
+            --nodes)
+                export N_NODES="$2"
+                shift 2
+                ;;
+            --output-dir)
+                export TIMESTAMP="$2"
+                shift 2
+                ;;
+            --types)
+                export TYPES_OVERRIDE="$2"
+                shift 2
+                ;;
+            --sizes)
+                export ARR_SIZES_OVERRIDE="$2"
+                shift 2
+                ;;
+            --test-configs)
+                TEST_CONFIG_OVERRIDE="$2"
+                shift 2
+                ;;
+            --debug-mode)
+                export DEBUG_MODE="$2"
+                shift 2
+                ;;
+            --notes)
+                export NOTES="$2"
+                shift 2
+                ;;
+            --task-per-node)
+                export TASK_PER_NODE="$2"
+                shift 2
+                ;;
+            --test-time)
+                export TEST_TIME="$2"
+                shift 2
+                ;;
+            --help)
+                usage
+                exit 0
+                ;;
+            *)
+                error "Error: Unknown option $1" >&2
+                usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+validate_args() {
+    if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]; then
+        error "N_NODES must be a numeric value and at least 2."
+        return 1
+    elif [[ "$DEBUG_MODE" != "yes" ]] && [[ "$DEBUG_MODE" != "no" ]]; then
+        error "DEBUG_MODE must be either 'yes' or 'no'."
+        return 1
+    fi
+
+    if [[ -n "$ARR_SIZES_OVERRIDE" ]]; then
+        for size in ${ARR_SIZES_OVERRIDE//,/ }; do
+            if [[ ! "$size" =~ ^[0-9]+$ ]]; then
+                error "--sizes must be a comma-separated list of numeric values."
+                return 1
+            fi
+        done
+    fi
+
+    if [[ -n "$TYPES_OVERRIDE" ]]; then
+        for type in ${TYPES_OVERRIDE//,/ }; do
+            if [[ ! "$type" =~ ^(int|int8|int16|int32|int64|float|double|char)$ ]]; then
+                error " --types must be a comma-separated list. Allowed types: int, int8, int16, int32, int64, float, double, char"
+                return 1
+            fi
+        done
+    fi
+
+    return 0
+}
+
 # Source the environment configuration
 source_environment() {
     local env_file="config/environments/$1.sh"
@@ -34,19 +144,20 @@ source_environment() {
         return 1
     fi
 }
-export -f source_environment
 
 # Load the required modules
 load_modules(){
     if [ -n "$MODULES" ]; then
+        OLD_IFS=$IFS
+        IFS=":"  # Set IFS to colon
         for module in $MODULES; do
-            module load $module || { error "Failed to load module $module." ; return 1; }
+            module load "$module" || { error "Failed to load module $module." ; return 1; }
         done
+        IFS=$OLD_IFS  # Restore IFS
     fi
 
     return 0
 }
-export -f load_modules
 
 # Activate the virtual environment, if it exists, if not create it
 # Also checks and install the required Python packages
@@ -76,7 +187,6 @@ activate_virtualenv() {
 
     return 0
 }
-export -f activate_virtualenv
 
 # Compile the codebase
 compile_code() {
@@ -94,7 +204,6 @@ compile_code() {
     success "Compilation succeeded."
     return 0
 }
-export -f compile_code
 
 # Determine the number of iterations based on array size
 get_iterations() {

@@ -1,11 +1,3 @@
-#!/bin/bash
-# Colors for styling output, otherwise utils needs to be sourced at every make
-export RED='\033[0;31m'
-export GREEN='\033[0;32m'
-export YELLOW='\033[0;33m'
-export BLUE='\033[1;34m'
-export NC='\033[0m'
-
 # Variables always needed
 export CC=mpicc
 export CFLAGS_COMP_SPECIFIC="-O3 -MMD -MP"
@@ -44,10 +36,4 @@ load_other_env_var(){
         fi
     fi
 }
-
-if [ -n "$BASH_VERSION" ]; then
-    export -f load_other_env_var
-elif [ -n "$ZSH_VERSION" ]; then
-    setopt FUNCTION_EXPORT
-    typeset -fx load_other_env_var
-fi
+export -f load_other_env_var

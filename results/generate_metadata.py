@@ -17,7 +17,7 @@ def update_metadata(system_name: str, timestamp: str, test_id: int, number_of_no
         fieldnames = [
             "timestamp",
             "test_id",
-            "number_of_nodes",
+            "nnodes",
             "collective_type",
             "mpi_lib",
             "mpi_lib_version",
@@ -35,7 +35,7 @@ def update_metadata(system_name: str, timestamp: str, test_id: int, number_of_no
         writer.writerow({
             "timestamp": timestamp,
             "test_id": test_id,
-            "number_of_nodes": number_of_nodes,
+            "nnodes": number_of_nodes,
             "collective_type": collective_type,
             "mpi_lib": mpi_lib,
             "mpi_lib_version": mpi_lib_version,
