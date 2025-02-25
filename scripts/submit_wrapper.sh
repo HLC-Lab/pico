@@ -23,9 +23,8 @@ validate_args || exit 1
 
 # 4. Set the test configuration files, or use --test_config if provided.
 if [ -n "$TEST_CONFIG_OVERRIDE" ]; then
-    IFS=',' read -r -a REL_PATHS <<< "$TEST_CONFIG_OVERRIDE"
     TEST_CONFIG_FILE_LIST=()
-    for f_path in "${REL_PATHS[@]}"; do
+    for f_path in ${TEST_CONFIG_OVERRIDE//,/ }; do
         if [ ! -f "$SWING_DIR/$f_path" ]; then
             error "Test configuration file '$SWING_DIR/$f_path' not found!"
             exit 1
