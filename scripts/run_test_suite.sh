@@ -33,11 +33,7 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
         # Generate test metadata
         python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
         success "📂 Metadata of $DATA_DIR created"
-    else # In development
-        export COLLECTIVE_TYPE="ALLREDUCE"
-        export ALGOS="swing_bdw_static_over"
     fi
-
 
     # Sanity checks
     success "==========================================================\n\t\t SANITY CHECKS"

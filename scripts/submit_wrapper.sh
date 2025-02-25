@@ -85,9 +85,14 @@ export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 if [ $LOCATION == "local" ]; then
     scripts/run_test_suite.sh
 else
+    PARAMS="--account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME"
+    if [ "$QOS" != "" ]; then
+      PARAMS="$PARAMS --qos=$QOS"
+    fi
+
     if [ $INTERACTIVE == "yes" ]; then
-      salloc --account=$ACCOUNT --partition=$PARTITION --qos=$QOS --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME
+      salloc $PARAMS
     else
-      sbatch --account=$ACCOUNT --partition=$PARTITION --qos=$QOS --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
+      sbatch $PARAMS --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
     fi
 fi

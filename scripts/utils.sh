@@ -41,7 +41,7 @@ usage() {
     echo "  --sizes             Array sizes, comma separated [defaults to all]"
     echo "  --test-config       Relative paths to config files, comma separated [default: 'config/test/*.json']"
     echo "  --interactive       Interactive mode (use salloc instead of sbatch) [default: no]"
-    echo "  --debug-mode        Debug mode [default: no]"
+    echo "  --debug             Debug mode (compile with debug flags, use int32, don't save results and don't exit after error) [default: no]"
     echo "  --notes             Notes [default: 'Def notes']"
     echo "  --task-per-node     Sbatch asks per node [default: 1]"
     echo "  --time              Sbatch time [default: 01:00:00]"
@@ -80,7 +80,7 @@ parse_cli_args() {
                 INTERACTIVE="$2"
                 shift 2
                 ;;
-            --debug-mode)
+            --debug)
                 export DEBUG_MODE="$2"
                 shift 2
                 ;;
@@ -111,14 +111,20 @@ parse_cli_args() {
 
 validate_args() {
     if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]; then
-        error "N_NODES must be a numeric value and at least 2."
+        error "--nodes must be a numeric value and at least 2."
         return 1
     elif [[ "$INTERACTIVE" != "yes" ]] && [[ "$INTERACTIVE" != "no" ]]; then
-        error "INTERACTIVE must be either 'yes' or 'no'."
+        error "--interactive must be either 'yes' or 'no'."
         return 1
     elif [[ "$DEBUG_MODE" != "yes" ]] && [[ "$DEBUG_MODE" != "no" ]]; then
-        error "DEBUG_MODE must be either 'yes' or 'no'."
+        error "--debug must be either 'yes' or 'no'."
         return 1
+    fi
+
+    if [[ "$DEBUG_MODE" == "yes" ]]; then
+        warning "Debug mode enabled. No results will be saved."
+        warning "Overriding --types to 'int32' regardless of the configuration."
+        export TYPES_OVERRIDE="int32"
     fi
 
     if [[ -n "$ARR_SIZES_OVERRIDE" ]]; then
@@ -138,6 +144,7 @@ validate_args() {
             fi
         done
     fi
+
 
     return 0
 }
