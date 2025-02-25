@@ -21,7 +21,7 @@ if [ "$MPI_LIB" == "OMPI_SWING" ]; then
     export MPI_LIB_VERSION='5.0.0'
 else
     export MPI_LIB_VERSION='4.1.6'
-    export MODULES="openmpi/4.1.6--gcc--12.2.0:$MODULES"
+    export MODULES="openmpi/4.1.6--gcc--12.2.0,$MODULES"
 fi
 
 # Load test dependnt environment variables
