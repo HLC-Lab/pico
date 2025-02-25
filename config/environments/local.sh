@@ -45,4 +45,9 @@ load_other_env_var(){
     fi
 }
 
-export -f load_other_env_var
+if [ -n "$BASH_VERSION" ]; then
+    export -f load_other_env_var
+elif [ -n "$ZSH_VERSION" ]; then
+    setopt FUNCTION_EXPORT
+    typeset -fx load_other_env_var
+fi

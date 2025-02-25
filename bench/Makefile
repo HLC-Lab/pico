@@ -3,18 +3,17 @@ CFLAGS = $(CFLAGS_COMMON)
 
 # Directories
 SRC_DIR = .
-OBJ_DIR = ../obj/test
+OBJ_DIR = ../obj/bench
 BIN_DIR = ../bin
 
 # Sources and output
 SRC = $(wildcard *.c)
 OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(SRC))
 DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(SRC))
-OUTPUT = $(BIN_DIR)/test
+OUTPUT = $(BIN_DIR)/bench
 
 ifeq ($(DEBUG),1)
 	CFLAGS := $(filter-out -O%,$(CFLAGS))
-	CFLAGS := $(filter-out -ffp=3,$(CFLAGS))
 endif
 
 # Default target
@@ -36,5 +35,5 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 
 # Clean target
 clean:
-	@echo -e "[CLEAN] Removing test object files and binary..."
+	@echo -e "[CLEAN] Removing bench object files and binary..."
 	@rm -rf $(OBJ_DIR) $(OUTPUT)

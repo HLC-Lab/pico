@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "test_utils.h"
+#include "bench_utils.h"
 #include "libswing.h"
 
 
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
   // Save results to a .csv file inside `/data/` subdirectory. Bash script `run_test_suite.sh`
   // is responsible to create the `/data/` subdir.
   if (rank == 0){
-    char data_filename[128], data_fullpath[TEST_MAX_PATH_LENGTH];
+    char data_filename[128], data_fullpath[BENCH_MAX_PATH_LENGTH];
     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
              count, algorithm, type_string);
     if (concatenate_path(data_dir, data_filename, data_fullpath) == -1) {
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 
   // Save to file allocations (it uses MPI parallel I/O operations)
   char alloc_filename[128] = "alloc.csv";
-  char alloc_fullpath[TEST_MAX_PATH_LENGTH];
+  char alloc_fullpath[BENCH_MAX_PATH_LENGTH];
   if (concatenate_path(outputdir, alloc_filename, alloc_fullpath) == -1){
     line = __LINE__;
     goto err_hndl;

@@ -26,7 +26,7 @@ export -f cleanup
 
 # Source the environment configuration
 source_environment() {
-    local env_file="scripts/environments/$1.sh"
+    local env_file="config/environments/$1.sh"
     if [ -f "$env_file" ]; then
         source "$env_file"
         return 0
@@ -118,7 +118,7 @@ export -f get_iterations
 
 # Function to run a single test case
 # Arguments: array size, iterations, data type, algorithm index
-run_test() {
+run_bench() {
     local size=$1
     local type=$2
     local algo=$3
@@ -126,13 +126,13 @@ run_test() {
 
     if [ "$DEBUG_MODE" == "yes" ]; then
         echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
-        $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type
+        $RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type
     else
         echo "Benchmarking $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
-        $RUN $RUNFLAGS -n $N_NODES $TEST_EXEC $size $iter $algo $type || { error "Failed to run test for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; exit 1; }
+        $RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; exit 1; }
     fi
 }
-export -f run_test
+export -f run_bench
 
 # Function to update the dynamic rule file for the given algorithm
 update_algorithm() {
@@ -172,8 +172,8 @@ run_all_tests() {
 
             # Get the number of iterations for the size
             for type in ${TYPES[@]}; do
-                # Run the test for the given configuration
-                run_test $size $type $algo
+                # Run the bench for the given configuration
+                run_bench $size $type $algo
             done
         done
         ((i++))

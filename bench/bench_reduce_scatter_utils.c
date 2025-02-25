@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <mpi.h>
 
-#include "test_utils.h"
+#include "bench_utils.h"
 
 int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
                              size_t type_size, MPI_Comm comm) {

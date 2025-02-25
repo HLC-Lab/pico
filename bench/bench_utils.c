@@ -7,7 +7,7 @@
 #include <math.h>
 #include <sys/stat.h>
 
-#include "test_utils.h"
+#include "bench_utils.h"
 
 /**
  * @brief Converts a string to a `coll_t` enum value.
@@ -64,7 +64,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_lat_over", allreduce_swing_lat);
   CHECK_STR(algorithm, "swing_bdw_static_over", allreduce_swing_bdw_static);
 
-  DEBUG_PRINT_STR("MPI_Allreduce");
+  BENCH_DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;
 }
 
@@ -82,7 +82,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "swing_static_over", allgather_swing_static);
 
-  DEBUG_PRINT_STR("MPI_Allgather");
+  BENCH_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
 }
 
@@ -99,7 +99,7 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_lat_over", bcast_swing_lat);
   CHECK_STR(algorithm, "swing_bdw_static_over", bcast_swing_bdw_static);
 
-  DEBUG_PRINT_STR("MPI_Bcast");
+  BENCH_DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
 }
 
@@ -118,7 +118,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "butterfly_over", reduce_scatter_butterfly);
   CHECK_STR(algorithm, "swing_static_over", reduce_scatter_swing_static);
 
-  DEBUG_PRINT_STR("MPI_Reduce_scatter");
+  BENCH_DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;
 }
 
@@ -456,7 +456,7 @@ int concatenate_path(const char *dir_path, const char *filename, char *fullpath)
     return -1;
   }
 
-  if (dir_path_len + filename_len + 2 > TEST_MAX_PATH_LENGTH) {
+  if (dir_path_len + filename_len + 2 > BENCH_MAX_PATH_LENGTH) {
     fprintf(stderr, "Combined path length exceeds buffer size.");
     return -1;
   }
@@ -482,7 +482,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     float *b1 = (float *) buf_1;
     float *b2 = (float *) buf_2;
 
-    float epsilon = comm_sz * TEST_BASE_EPSILON_FLOAT * 100.0f;
+    float epsilon = comm_sz * BENCH_BASE_EPSILON_FLOAT * 100.0f;
 
     for (size_t i = 0; i < count; i++) {
       if (fabs(b1[i] - b2[i]) > epsilon) {
@@ -493,7 +493,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     double *b1 = (double *) buf_1;
     double *b2 = (double *) buf_2;
 
-    double epsilon = comm_sz * TEST_BASE_EPSILON_DOUBLE * 100.0;
+    double epsilon = comm_sz * BENCH_BASE_EPSILON_DOUBLE * 100.0;
 
     for (size_t i = 0; i < count; i++) {
       if (fabs(b1[i] - b2[i]) > epsilon) {

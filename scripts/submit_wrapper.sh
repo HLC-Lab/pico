@@ -6,8 +6,17 @@ source scripts/utils.sh
 #               MODIFY THESE VARIABLES TO SUIT YOUR TEST ENVIRONMENT             #
 ##################################################################################
 # Global variables
-export N_NODES=4
-export LOCATION="local"
+
+LOCATION=$1
+N_NODES=$2
+if [[ -z "$LOCATION" ]] || [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]; then
+    error "N_NODES or NOTATION is not given or not set correctly."
+    warning "Usage: ./submit_wrapper.sh <LOCATION> <N_NODES>"
+    exit 1
+fi
+
+export N_NODES
+export LOCATION
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
 export NOTES="debugging..."
@@ -21,10 +30,10 @@ if ! source_environment "$LOCATION"; then
 fi 
 
 TEST_CONFIG_FILE_LIST=(
-    "$SWING_DIR/config/allreduce.json"
-    "$SWING_DIR/config/allgather.json"
-    "$SWING_DIR/config/bcast.json"
-    "$SWING_DIR/config/reduce_scatter.json"
+    "$SWING_DIR/config/test/allreduce.json"
+    "$SWING_DIR/config/test/allgather.json"
+    "$SWING_DIR/config/test/bcast.json"
+    "$SWING_DIR/config/test/reduce_scatter.json"
 )
 
 # Convert array to a colon-separated string
@@ -61,7 +70,7 @@ fi
 ###################################################################################
 #               DO NOT MODIFY THE FOLLOWING VARIABLES                             #
 ###################################################################################
-export TEST_EXEC=$SWING_DIR/bin/test
+export BENCH_EXEC=$SWING_DIR/bin/bench
 export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
 export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 

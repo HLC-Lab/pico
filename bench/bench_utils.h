@@ -1,5 +1,5 @@
-#ifndef TEST_TOOLS_H
-#define TEST_TOOLS_H
+#ifndef BENCH_UTILS_H
+#define BENCH_UTILS_H
 
 #include <mpi.h>
 #include <stdio.h>
@@ -7,24 +7,24 @@
 #include "libswing.h"
 
 #if defined(__GNUC__) || defined(__clang__)
-#define TEST_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define BENCH_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
-#define TEST_UNLIKELY(x) (x)
+#define BENCH_UNLIKELY(x) (x)
 #endif // defined(__GNUC__) || defined(__clang__)
 
 // Used to print algorithm and collective when in debug mode
 #ifndef DEBUG
-  #define DEBUG_PRINT_STR(name)
-  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) do {} while(0)
+  #define BENCH_DEBUG_PRINT_STR(name)
+  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) do {} while(0)
 #else
-  #define DEBUG_PRINT_STR(name)                 \
+  #define BENCH_DEBUG_PRINT_STR(name)                 \
     do{                                         \
       int my_r;                                 \
       MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
       if (my_r == 0){ printf("%s\n\n", name); } \
     } while(0)
 
-  #define DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm)      \
+  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm)      \
     do {                                                                 \
     debug_print_buffers((result), (expected), (count), (dtype), (comm)); \
     } while(0)
@@ -32,13 +32,13 @@
 
 #define CHECK_STR(var, name, ret)               \
   if (strcmp(var, name) == 0) {                 \
-    DEBUG_PRINT_STR(name);                      \
+    BENCH_DEBUG_PRINT_STR(name);                      \
     return ret;                                 \
   }
 
-#define TEST_MAX_PATH_LENGTH 512
-#define TEST_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
-#define TEST_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
+#define BENCH_MAX_PATH_LENGTH 512
+#define BENCH_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
+#define BENCH_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
 
 
 //-----------------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, \
     ret = test_routine.function.COLLECTIVE;                          \
     end_time = MPI_Wtime();                                          \
     times[i] = end_time - start_time;                                \
-    if (TEST_UNLIKELY(ret != MPI_SUCCESS)) {                         \
+    if (BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                         \
       fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...");    \
       return ret;                                                    \
     }                                                                \
@@ -204,13 +204,13 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
   do {                                                                        \
     if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
       if (memcmp((result), (expected), (count) * type_size) != 0) {           \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
         fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
     } else {                                                                  \
       if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
-        DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
         fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
@@ -394,5 +394,5 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm);
 #endif // DEBUG
 
-#endif // TEST_TOOLS_H
+#endif // BENCH_TOOLS_H
 

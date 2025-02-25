@@ -8,7 +8,6 @@ lib/
 *.err
 *.o
 *.out
-out
 results/local/*
 results/local_metadata.csv
-config/*_env.sh
+config/test/*_env.sh

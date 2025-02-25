@@ -8,12 +8,12 @@ export NC='\033[0m'
 
 # General variables always needed
 export CC=cc
-export CFLAGS_COMP_SPECIFIC="-Ofast -ffp=3 -MMD -MP"
+export CFLAGS_COMP_SPECIFIC="-O3 -MMD -MP"
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 
 # Account/partition specific variables
-export PARTITION=standard
+export PARTITION=standard-g
 export QOS=''
 export ACCOUNT=project_465000997
 
@@ -25,6 +25,7 @@ export MODULES="LUMI CrayEnv cray-python/3.11.5"
 
 # Dummy function to load other environment variables to silence errors
 load_other_env_var() {
+  export DUMMY_VAR=1 # Silence errors
 }
 
 export -f load_other_env_var
