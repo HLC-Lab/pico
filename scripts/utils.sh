@@ -148,12 +148,9 @@ source_environment() {
 # Load the required modules
 load_modules(){
     if [ -n "$MODULES" ]; then
-        OLD_IFS=$IFS
-        IFS=":"  # Set IFS to colon
-        for module in $MODULES; do
-            module load "$module" || { error "Failed to load module $module." ; return 1; }
+        for module in ${MODULES//,/ }; do
+            module load $module || { error "Failed to load module $module." ; return 1; }
         done
-        IFS=$OLD_IFS  # Restore IFS
     fi
 
     return 0
