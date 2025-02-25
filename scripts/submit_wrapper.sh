@@ -7,7 +7,6 @@ source scripts/utils.sh
 ##################################################################################
 
 # 1. Set default values for the variables
-export LOCATION=""
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEBUG_MODE="no"
 export INTERACTIVE="no"
