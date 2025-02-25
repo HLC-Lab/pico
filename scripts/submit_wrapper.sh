@@ -13,6 +13,7 @@ export DEBUG_MODE="no"
 export NOTES="Default notes"
 export TASK_PER_NODE=1
 export TEST_TIME="01:00:00"
+export INTERACTIVE="no"
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
@@ -84,9 +85,9 @@ export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 if [ $LOCATION == "local" ]; then
     scripts/run_test_suite.sh
 else
-    if [ "$QOS" != "" ]; then
-    sbatch --account=$ACCOUNT --partition=$PARTITION --qos=$QOS --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
+    if [ $INTERACTIVE == "yes" ]; then
+      salloc --account=$ACCOUNT --partition=$PARTITION --qos=$QOS --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME
     else
-    sbatch --account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
+      sbatch --account=$ACCOUNT --partition=$PARTITION --qos=$QOS --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME --output="${OUTPUT_DIR}/slurm_%j.out" --error="${OUTPUT_DIR}/slurm_%j.err" $SWING_DIR/scripts/run_test_suite.sh
     fi
 fi

@@ -5,7 +5,6 @@ export YELLOW='\033[0;33m'
 export BLUE='\033[1;34m'
 export NC='\033[0m'
 
-
 # Print error messages in red
 error() {
     echo -e "\n${RED}❌❌❌ ERROR: $1 ❌❌❌${NC}\n" >&2
@@ -40,11 +39,13 @@ usage() {
     echo "  --output-dir        Output dir of test (default: current date/time)"
     echo "  --types             Data types, comma separated [defaults to all]"
     echo "  --sizes             Array sizes, comma separated [defaults to all]"
-    echo "  --test-configs      Relative paths to config files, comma separated [default: 'config/test_configs/*.json']"
+    echo "  --test-config       Relative paths to config files, comma separated [default: 'config/test/*.json']"
+    echo "  --interactive       Interactive mode (use salloc instead of sbatch) [default: no]"
     echo "  --debug-mode        Debug mode [default: no]"
     echo "  --notes             Notes [default: 'Def notes']"
     echo "  --task-per-node     Sbatch asks per node [default: 1]"
-    echo "  --test-time         Sbatch time [default: 01:00:00]"
+    echo "  --time              Sbatch time [default: 01:00:00]"
+    echo "  --help              Show this help message"
 }
 
 # Parse the command line arguments
@@ -71,8 +72,12 @@ parse_cli_args() {
                 export ARR_SIZES_OVERRIDE="$2"
                 shift 2
                 ;;
-            --test-configs)
+            --test-config)
                 TEST_CONFIG_OVERRIDE="$2"
+                shift 2
+                ;;
+            --interactive)
+                INTERACTIVE="$2"
                 shift 2
                 ;;
             --debug-mode)
@@ -87,7 +92,7 @@ parse_cli_args() {
                 export TASK_PER_NODE="$2"
                 shift 2
                 ;;
-            --test-time)
+            --time)
                 export TEST_TIME="$2"
                 shift 2
                 ;;
@@ -107,6 +112,9 @@ parse_cli_args() {
 validate_args() {
     if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]; then
         error "N_NODES must be a numeric value and at least 2."
+        return 1
+    elif [[ "$INTERACTIVE" != "yes" ]] && [[ "$INTERACTIVE" != "no" ]]; then
+        error "INTERACTIVE must be either 'yes' or 'no'."
         return 1
     elif [[ "$DEBUG_MODE" != "yes" ]] && [[ "$DEBUG_MODE" != "no" ]]; then
         error "DEBUG_MODE must be either 'yes' or 'no'."
