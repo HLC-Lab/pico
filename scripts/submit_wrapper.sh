@@ -18,11 +18,7 @@ export TEST_TIME="01:00:00"
 parse_cli_args "$@"
 
 # 3. Set the location-specific environment variables
-if ! source_environment "$LOCATION"; then
-    error "Environment script for '${LOCATION}' not found!"
-    exit 1
-fi 
-
+source_environment "$LOCATION" || exit 1
 validate_args || exit 1
 
 # 4. Set the test configuration files, or use --test_config if provided.

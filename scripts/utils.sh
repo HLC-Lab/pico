@@ -163,15 +163,17 @@ validate_args() {
 # Source the environment configuration
 source_environment() {
     if [ -z "$1" ]; then
-      error "--location not provided."
-      usage
-      return 1
+        error "--location not provided."
+        usage
+        return 1
     fi
+
     local env_file="config/environments/$1.sh"
     if [ -f "$env_file" ]; then
         source "$env_file"
         return 0
     else
+        error "Environment script for '${LOCATION}' not found!"
         usage
         return 1
     fi
