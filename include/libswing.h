@@ -27,7 +27,7 @@ int bcast_scatter_allgather(BCAST_ARGS);
 int bcast_swing_lat(BCAST_ARGS);
 int bcast_swing_lat_reversed(BCAST_ARGS);
 int bcast_swing_bdw_static(BCAST_ARGS);
-int bcast_swing_bdw_static_reversed(BCAST_ARGS);
+// int bcast_swing_bdw_static_reversed(BCAST_ARGS);
 
 int reduce_scatter_recursivehalving(REDUCE_SCATTER_ARGS);
 int reduce_scatter_ring(REDUCE_SCATTER_ARGS);

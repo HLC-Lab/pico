@@ -99,7 +99,7 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_lat_over", bcast_swing_lat);
   CHECK_STR(algorithm, "swing_lat_reversed_over", bcast_swing_lat_reversed);
   CHECK_STR(algorithm, "swing_bdw_static_over", bcast_swing_bdw_static);
-  CHECK_STR(algorithm, "swing_bdw_static_reversed_over", bcast_swing_bdw_static_reversed);
+//  CHECK_STR(algorithm, "swing_bdw_static_reversed_over", bcast_swing_bdw_static_reversed);
 
   BENCH_DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
