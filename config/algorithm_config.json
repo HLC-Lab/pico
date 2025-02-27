@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.1",
+    "schema_version": "2.6.2",
     "created": "2024-01-30",
-    "last_modified": "2024-02-24",
+    "last_modified": "2024-02-27",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -61,7 +61,6 @@
       "recursive_multiplying_mpich": {
         "desc": "MPICH recursive multiplying algorithm. Generalization of the recursive doubling algorithm. The env var MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL can be used to set the value of k. If k=2 it is equivalent to recursive doubling.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "recursive_multiplying",
@@ -73,7 +72,6 @@
       "rechexch_mpich": {
         "desc": "MPICH recursive exchange algorithm.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "recexch",
@@ -85,7 +83,6 @@
       "ring_mpich": {
         "desc": "MPICH ring algorithm.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "ring",
@@ -109,7 +106,6 @@
       "k_rabenseifner_mpich": {
         "desc": "MPICH K-nomial Rabenseifner algorithm. Generalization of the rabenseifner algorithm that uses recursive multiplying instead of recursive doubling reduce scatter and allgather. Is called `k_reduce_scatter_allgather`. The variable `MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL` can be used to set the value of k. If k=2 it is equivalent to rabenseifner.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "k_reduce_scatter_allgather",
@@ -121,7 +117,6 @@
       "tree_mpich": {
         "desc": "MPICH tree algorithm. Segments the message to pipeline communication and reduction. Sends the segmented message into a tree topology created by the function itself. The variables `MPIR_CVAR_ALLREDUCE_TREE_TYPE` and `MPIR_CVAR_ALLREDUCE_TREE_KVAL` can be used to set the tree type and the value of k of knomial and kary trees.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "tree",
@@ -643,7 +638,6 @@
       "k_brucks_mpich": {
         "desc": "MPICH K-nomial Brucks algorithm. Generalization of the brucks algorithm that uses recursive multiplying instead of recursive doubling. Is called `k_brucks`. The variable `MPIR_CVAR_ALLGATHER_BRUCKS_KVAL` can be used to set the value of k. If k=2 it is equivalent to brucks.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "k_brucks",
@@ -702,7 +696,6 @@
       "recexch_mpich": {
         "desc": "MPICH recexch distance doubling algorithm. It is a generalization of the recursive doubling to work with any `k` radix. The cvar `MPIR_CVAR_ALLGATHER_RECEXCH_KVAL` can be used to set the value of k. If k=1 the algorithm is a distance halving allgather and can be also called with its own cvar. If k=2 it is equivalent to recursive doubling.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "recexch_doubling",
@@ -714,7 +707,6 @@
       "recexch_halving_mpich": {
         "desc": "MPICH recexch distance halving algorithm. It uses the same code of `rechexch_mpich` but with `k=1`.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "recexch_halving",
@@ -1026,7 +1018,6 @@
       "tree_mpich": {
         "desc": "MPICH general tree algorithm. It uses a k-nomial or k-ary tree to perform the broadcast. The variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` can be used to set the value of k and the type of tree.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "tree",
@@ -1038,7 +1029,6 @@
       "pipelined_tree_mpich": {
         "desc": "MPICH pipelined tree based algorithm. It works like the tree based algorithm but segmenting the message into smaller chunks that are sent to the child processes in a pipelined fashion. It can outperform the tree based algorithm for large messages. Like the tree based algorithm it uses the variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` to set the value of k and the type of tree. Moreover it uses the variable `MPIR_CVAR_BCAST_TREE_PIPELINE_CHUNK_SIZE` to set the size of the chunks.",
         "library": {
-          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "cvar": "pipelined_tree",
