@@ -92,11 +92,22 @@
         ]
       },
       "rabenseifner_mpich": {
-        "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code.",
+        "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code. It works only with count >= comm_sz.",
         "library": {
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "reduce_scatter_allgather",
         "tags": [
           "rabenseifner",
@@ -874,13 +885,22 @@
         ]
       },
       "recursive_doubling_over": {
-        "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes",
+        "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
         "library": {
           "libswing": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -899,12 +919,23 @@
         ]
       },
       "ring_over": {
-        "desc": "Libswing external ring algorithm. This algorithm is used for large messages",
+        "desc": "Libswing external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
         "library": {
           "libswing": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "tags": [
           "ring",
           "large_sizes",
@@ -912,13 +943,22 @@
         ]
       },
       "swing_static_over": {
-        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 32. This algorithm is used for medium to large messages",
+        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 32. Comm_sz must be greater or equal to count. This algorithm is used for medium to large messages",
         "library": {
           "libswing": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -1216,7 +1256,7 @@
             "key": "count",
             "conditions": [
               {
-                "operator": ">",
+                "operator": ">=",
                 "value": "comm_sz"
               }
             ]
@@ -1249,7 +1289,7 @@
             "key": "count",
             "conditions": [
               {
-                "operator": ">",
+                "operator": ">=",
                 "value": "comm_sz"
               }
             ]
@@ -1281,7 +1321,7 @@
             "key": "count",
             "conditions": [
               {
-                "operator": ">",
+                "operator": ">=",
                 "value": "comm_sz"
               }
             ]
