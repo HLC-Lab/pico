@@ -12,7 +12,7 @@ export ACCOUNT=project_465000997
 export MPI_LIB='CRAY_MPICH'
 export MPI_LIB_VERSION='8.1.29'
 
-export MODULES="LUMI/24.03 partition/L,cray-python/3.11.5"
+export MODULES="LUMI/24.03 partition/L,cray-python/3.11.5,EasyBuild-user,git-lfs/3.4.0"
 
 # Dummy function to load other environment variables to silence errors
 load_other_env_var() {
