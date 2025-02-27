@@ -8,8 +8,10 @@ source scripts/utils.sh
 
 # 1. Set default values for the variables
 export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
+export TYPES_OVERRIDE="int32"
 export DEBUG_MODE="no"
 export INTERACTIVE="no"
+export AUTO_COMPRESS="no"
 export NOTES="Default notes"
 export TASK_PER_NODE=1
 export TEST_TIME="01:00:00"

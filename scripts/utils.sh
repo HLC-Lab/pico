@@ -38,15 +38,16 @@ usage() {
     echo "Options:"
     echo "  --location          Location (required)"
     echo "  --nodes             Number of nodes (required, integer >=2)"
-    echo "  --output-dir        Output dir of test (default: current date/time)"
-    echo "  --types             Data types, comma separated [defaults to all]"
-    echo "  --sizes             Array sizes, comma separated [defaults to all]"
+    echo "  --output-dir        Output dir of test [default: current date-time]"
+    echo "  --types             Data types, comma separated. Use "" for all [default: int32]"
+    echo "  --sizes             Array sizes, comma separated [default: all]"
     echo "  --test-config       Relative paths to config files, comma separated [default: 'config/test/*.json']"
-    echo "  --interactive       Interactive mode (use salloc instead of sbatch) [default: no]"
+    echo "  --interactive       Interactive mode (use salloc instead of sbatch, the rest is up to you) [default: no]"
+    echo "  --auto-compress     Auto compress results, beware that if multiple slurm jobs are being run this can cause problems [default: no]"
     echo "  --debug             Debug mode (compile with debug flags, use int32, don't save results and don't exit after error) [default: no]"
     echo "  --notes             Notes [default: 'Def notes']"
-    echo "  --task-per-node     Sbatch asks per node [default: 1]"
-    echo "  --time              Sbatch time [default: 01:00:00]"
+    echo "  --task-per-node     Sbatch tasks per node [default: 1]"
+    echo "  --time              Sbatch time, in format HH:MM:SS [default: 01:00:00]"
     echo "  --help              Show this help message"
 }
 
@@ -81,6 +82,10 @@ parse_cli_args() {
                 ;;
             --interactive)
                 export INTERACTIVE="$2"
+                shift 2
+                ;;
+            --auto-compress)
+                export AUTO_COMPRESS="$2"
                 shift 2
                 ;;
             --debug)
@@ -125,6 +130,14 @@ validate_args() {
         return 1
     elif [[ "$DEBUG_MODE" != "yes" ]] && [[ "$DEBUG_MODE" != "no" ]]; then
         error "--debug must be either 'yes' or 'no'."
+        usage
+        return 1
+    elif [[ "$AUTO_COMPRESS" != "yes" ]] && [[ "$AUTO_COMPRESS" != "no" ]]; then
+        error "--auto-compress must be either 'yes' or 'no'."
+        usage
+        return 1
+    elif [[ ! "$TEST_TIME" =~ ^[0-9]{2}:[0-5][0-9]:[0-5][0-9]$ ]]; then
+        error "--time must be in the format 'HH:MM:SS' with minutes and seconds between 00 and 59."
         usage
         return 1
     fi
