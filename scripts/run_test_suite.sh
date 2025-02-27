@@ -30,7 +30,6 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     if [ $DEBUG_MODE == "no" ]; then
         export DATA_DIR="$OUTPUT_DIR/$i"
         mkdir -p "$DATA_DIR"
-        # Generate test metadata
         python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
         success "📂 Metadata of $DATA_DIR created"
     fi

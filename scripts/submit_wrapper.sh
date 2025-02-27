@@ -80,7 +80,7 @@ if [[ "$LOCATION" == "local" ]]; then
     scripts/run_test_suite.sh
 else
     PARAMS="--account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME"
-    [[ -n "$QOS" ]] &&  PARAMS+="--qos=$QOS"
+    [[ -n "$QOS" ]] &&  PARAMS+=" --qos=$QOS"
 
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS

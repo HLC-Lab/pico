@@ -5,6 +5,9 @@ compile_commands.json
 bin/
 obj/
 lib/
+plot/lumi/
+plot/local/
+plot/leonardo/
 *.err
 *.o
 *.out

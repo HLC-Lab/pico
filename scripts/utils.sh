@@ -211,7 +211,7 @@ activate_virtualenv() {
     # Check and install missing packages
     pip install --upgrade pip || { error "Failed to upgrade pip." ; return 1; }
 
-    local required_python_packages="jsonschema packaging"
+    local required_python_packages="jsonschema packaging numpy pandas"
     for package in $required_python_packages; do
         if ! pip show "$package" > /dev/null 2>&1; then
             warning "Package '$package' not found. Installing..."
@@ -286,7 +286,7 @@ update_algorithm() {
         echo "Updating dynamic rule file for algorithm $algo..."
         python3 $ALGO_CHANGE_SCRIPT $algo || exit 1
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
-    elif [[ $MPI_LIB == "MPICH" ]] || [[ $MPI_LIB == "CRAY_MPI" ]]; then
+    elif [[ $MPI_LIB == "MPICH" ]] || [[ $MPI_LIB == "CRAY_MPICH" ]]; then
         local cvar=${CVARS[$cvar_indx]}
         echo "Setting CVAR $cvar for algorithm $algo..."
         export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
