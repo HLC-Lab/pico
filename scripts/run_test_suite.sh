@@ -60,6 +60,9 @@ done
 ###################################################################################
 #              COMPRESS THE RESULTS AND ADD OUTPUT_DIR TO GITIGNORE               #
 ###################################################################################
-if [[ $DEBUG_MODE == "no" ]] && [[ $LOCATION != "local" ]]; then
-    $SWING_DIR/results/compress_results.sh
+if [[ $LOCATION != "local" ]]; then
+    if [[ $DEBUG_MODE == "no" ]]; then
+        $SWING_DIR/results/compress_results.sh
+    fi
+    squeue -j $SLURM_JOB_ID
 fi

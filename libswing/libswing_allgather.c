@@ -286,12 +286,8 @@ int allgather_swing_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   err = MPI_Type_get_extent (rdtype, &rlb, &rext);
   if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
 
-  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
-    line = __LINE__;
-    goto err_hndl;
-  }
-
-  if(get_perm_bitmap(&permutation, steps, size) == -1){
+  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1 ||
+     get_perm_bitmap(&permutation, steps, size) == -1){
     line = __LINE__;
     goto err_hndl;
   }

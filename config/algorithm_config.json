@@ -942,7 +942,7 @@
         ]
       },
       "swing_static_over": {
-        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 32. Comm_sz must be greater or equal to count. This algorithm is used for medium to large messages",
+        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This algorithm is used for medium to large messages",
         "library": {
           "libswing": "1.0.0"
         },
@@ -967,7 +967,7 @@
               },
               {
                 "operator": "<=",
-                "value": 32
+                "value": 256
               }
             ]
           }
@@ -1368,6 +1368,40 @@
           "external"
         ]
       },
+      "swing_lat_reversed_over": {
+        "desc": "Libswing external swing latency optimal algorithm with reversed peer selection. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_lat_reversed",
+          "swing",
+          "latency_optimal",
+          "external"
+        ]
+      },
       "swing_bdw_static_over": {
         "desc": "Libswing external swing bandwidth optimal algorithm with static bitmaps. This algorithm is a combination of a swing scatter and a swing allgather and utilizes static bitmaps. It does not utilizes standard collectives written elsewere since for the allgather phase it calculates which rank needs to send and which don't to avoid wasteful communications. It works only if `comm` is a power of 2 less or equal to 256 and root is 0. Also count must be greater than comm_sz.",
         "library": {
@@ -1410,6 +1444,54 @@
         "dynamic_rule": 0,
         "tags": [
           "swing_bdw_static",
+          "swing",
+          "bandwidth_optimal",
+          "static",
+          "external"
+        ]
+      },
+      "swing_bdw_static_reversed_over": {
+        "desc": "Libswing external swing bandwidth optimal algorithm with static bitmaps and reversed peer selection. This algorithm is a combination of a swing scatter and a swing allgather and utilizes static bitmaps. It does not utilizes standard collectives written elsewere since for the allgather phase it calculates which rank needs to send and which don't to avoid wasteful communications. It works only if `comm` is a power of 2 less or equal to 256 and root is 0. Also count must be greater than comm_sz.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              },
+              {
+                "operator": "<=",
+                "value": 256
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_bdw_static_reversed",
           "swing",
           "bandwidth_optimal",
           "static",

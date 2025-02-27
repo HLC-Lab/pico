@@ -288,7 +288,7 @@ update_algorithm() {
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
     elif [[ $MPI_LIB == "MPICH" ]] || [[ $MPI_LIB == "CRAY_MPICH" ]]; then
         local cvar=${CVARS[$cvar_indx]}
-        echo "Setting CVAR $cvar for algorithm $algo..."
+        echo "Setting 'MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
         export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
     fi
 }

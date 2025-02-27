@@ -9,6 +9,9 @@ extern const int perm_4[4];
 extern const int perm_8[8];
 extern const int perm_16[16];
 extern const int perm_32[32];
+extern const int perm_64[64];
+extern const int perm_128[128];
+extern const int perm_256[256];
 extern const void *perm_bitmaps[];
 
 extern const int send_2[2][1];
@@ -52,7 +55,7 @@ static inline int get_static_bitmap(const int** send_bitmap, const int** recv_bi
 
 static inline int get_perm_bitmap(int** permutation, int n_steps, int comm_sz) {
   // verify that comm_sz is exactly 2^n_steps
-  if (SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 5)) {
+  if (SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 8)) {
     return -1;
   }
   
