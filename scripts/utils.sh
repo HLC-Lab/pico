@@ -217,7 +217,7 @@ activate_virtualenv() {
             warning "Package '$package' not found. Installing..."
             pip install "$package" || { error "Failed to install $package." ; return 1; }
         fi
-        success "Packages already installed."
+        success "Package $package already installed."
     done
 
     return 0
