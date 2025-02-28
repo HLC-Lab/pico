@@ -43,7 +43,8 @@ usage() {
     echo "  --sizes             Array sizes, comma separated [default: all]"
     echo "  --test-config       Relative paths to config files, comma separated [default: 'config/test/*.json']"
     echo "  --interactive       Interactive mode (use salloc instead of sbatch, the rest is up to you) [default: no]"
-    echo "  --auto-compress     Auto compress results, beware that if multiple slurm jobs are being run this can cause problems [default: no]"
+    echo "  --compress          Compress result dir into a tar.gz [default: yes]"
+    echo "  --delete            Delete result dir after compression [default: no]"
     echo "  --debug             Debug mode (compile with debug flags, use int32, don't save results and don't exit after error) [default: no]"
     echo "  --notes             Notes [default: 'Def notes']"
     echo "  --task-per-node     Sbatch tasks per node [default: 1]"
@@ -84,8 +85,12 @@ parse_cli_args() {
                 export INTERACTIVE="$2"
                 shift 2
                 ;;
-            --auto-compress)
-                export AUTO_COMPRESS="$2"
+            --compress)
+                export COMPRESS="$2"
+                shift 2
+                ;;
+            --delete)
+                export DELETE="$2"
                 shift 2
                 ;;
             --debug)
@@ -132,14 +137,23 @@ validate_args() {
         error "--debug must be either 'yes' or 'no'."
         usage
         return 1
-    elif [[ "$AUTO_COMPRESS" != "yes" ]] && [[ "$AUTO_COMPRESS" != "no" ]]; then
-        error "--auto-compress must be either 'yes' or 'no'."
+    elif [[ "$COMPRESS" != "yes" ]] && [[ "$COMPRESS" != "no" ]]; then
+        error "--compress must be either 'yes' or 'no'."
+        usage
+        return 1
+    elif [[ "$DELETE" != "yes" ]] && [[ "$DELETE" != "no" ]]; then
+        error "--delete must be either 'yes' or 'no'."
         usage
         return 1
     elif [[ ! "$TEST_TIME" =~ ^[0-9]{2}:[0-5][0-9]:[0-5][0-9]$ ]]; then
         error "--time must be in the format 'HH:MM:SS' with minutes and seconds between 00 and 59."
         usage
         return 1
+    fi
+
+    if [[ "$COMPRESS" == "no" ]] && [[ "$DELETE" == "yes" ]]; then
+        warning "--compress is 'no', hence --delete will be ignored"
+        export $DELETE="no"
     fi
 
     if [[ "$DEBUG_MODE" == "yes" ]]; then

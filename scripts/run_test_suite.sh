@@ -61,8 +61,11 @@ done
 #              COMPRESS THE RESULTS AND ADD OUTPUT_DIR TO GITIGNORE               #
 ###################################################################################
 if [[ $LOCATION != "local" ]]; then
-    if [[ $DEBUG_MODE == "no" ]] && [[ $AUTO_COMPRESS == "yes" ]]; then
-        $SWING_DIR/results/compress_results.sh
-    fi
     squeue -j $SLURM_JOB_ID
+    if [[ $DEBUG_MODE == "no" ]] && [[ $COMPRESS == "yes" ]]; then
+        tar -czvf $OUTPUT_DIR.tar.gz $OUTPUT_DIR
+        if [[ $DELETE == "yes" ]]; then
+            rm -rf $OUTPUT_DIR
+        fi
+    fi
 fi
