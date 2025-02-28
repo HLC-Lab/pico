@@ -23,6 +23,7 @@ def process_benchmark_file(file_path, warmup_ratio=0.2):
     Read a benchmark CSV file, discard the warmup iterations,
     extract the 'highest' column, and compute summary statistics.
     """
+    # print(f"Processing file: {file_path}")
     df = pd.read_csv(file_path)
     warmup_count = int(len(df) * warmup_ratio)
     df = df.iloc[warmup_count:]

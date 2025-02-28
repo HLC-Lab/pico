@@ -63,7 +63,7 @@ done
 if [[ $LOCATION != "local" ]]; then
     squeue -j $SLURM_JOB_ID
     if [[ $DEBUG_MODE == "no" ]] && [[ $COMPRESS == "yes" ]]; then
-        tar -czvf $OUTPUT_DIR.tar.gz $OUTPUT_DIR
+        tar -czvf $(basename $OUTPUT_DIR).tar.gz -C $(dirname $OUTPUT_DIR) $(basename $OUTPUT_DIR)
         if [[ $DELETE == "yes" ]]; then
             rm -rf $OUTPUT_DIR
         fi
