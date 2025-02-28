@@ -354,7 +354,7 @@ cleanup_and_return:
  * Both phases utilizes swing communication pattern. The scatter phase is done using
  * a binomial tree scatter and the allgather phase is done using a recursive doubling.
  *
- * For now only works with size = 2^k,<=256, root = 0, and count <= comm_sz.
+ * For now only works with size = 2^k,<=512, root = 0, and count <= comm_sz.
  * Logic will be extended to work with any root.
  */
 int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
