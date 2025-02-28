@@ -1,4 +1,1 @@
-results/lumi/2025_02_25___16_55_27.tar.gz filter=lfs diff=lfs merge=lfs -text
-results/lumi/2025_02_27___14_35_55.tar.gz filter=lfs diff=lfs merge=lfs -text
-results/lumi/2025_02_25___16_44_28.tar.gz filter=lfs diff=lfs merge=lfs -text
 *.gz filter=lfs diff=lfs merge=lfs -text

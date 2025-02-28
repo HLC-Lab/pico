@@ -14,15 +14,5 @@ plot/leonardo/
 results/local/*
 results/local_metadata.csv
 config/test/*_env.sh
-results/lumi/2025_02_25___16_44_28/
-results/lumi/2025_02_25___16_55_27/
-results/lumi/2025_02_27___14_35_55/
-results/lumi/2025_02_27___21_32_46/
-results/lumi/2025_02_27___21_34_02/
-results/lumi/2025_02_27___21_37_05/
-results/lumi/2025_02_27___21_32_46/
-results/lumi/2025_02_27___21_34_02/
-results/lumi/2025_02_27___21_37_05/
-results/lumi/2025_02_27___21_32_46/
-results/lumi/2025_02_27___21_34_02/
-results/lumi/2025_02_27___21_37_05/
+results/*/*
+!results/*/*.tar.gz
