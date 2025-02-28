@@ -62,10 +62,12 @@ done
 ###################################################################################
 if [[ $LOCATION != "local" ]]; then
     squeue -j $SLURM_JOB_ID
-    if [[ $DEBUG_MODE == "no" ]] && [[ $COMPRESS == "yes" ]]; then
-        tar -czvf $(basename $OUTPUT_DIR).tar.gz -C $(dirname $OUTPUT_DIR) $(basename $OUTPUT_DIR)
-        if [[ $DELETE == "yes" ]]; then
-            rm -rf $OUTPUT_DIR
+fi
+if [[ "$DEBUG_MODE" == "no" && "$COMPRESS" == "yes" ]]; then
+    tarball_path="$(dirname "$OUTPUT_DIR")/$(basename "$OUTPUT_DIR").tar.gz"
+    if tar -czf "$tarball_path" -C "$(dirname "$OUTPUT_DIR")" "$(basename "$OUTPUT_DIR")"; then
+        if [[ "$DELETE" == "yes" ]]; then
+            rm -rf "$OUTPUT_DIR"
         fi
     fi
 fi
