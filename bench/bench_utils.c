@@ -321,8 +321,19 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
   return -1;
 }
 
-
-int write_output_to_file(const char *fullpath, double *highest, double *all_times, int iter) {
+/**
+* @breif Writes all timing results to a specified output file in CSV format.
+*
+* @param fullpath  The full path to the output file.
+* @param highest   An array containing the highest timing values for each iteration.
+* @param all_times A 2D array flattened into 1D containing timing values for all ranks
+*                  across all iterations.
+* @param iter      The number of iterations.
+*
+* @return int Returns 0 on success, or -1 if an error occurs.
+* @note Time is saved in ns (i.e. 10^-9 s).
+*/
+static inline int write_all_output_to_file(const char *fullpath, double *highest, double *all_times, int iter) {
   int comm_sz;
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
   FILE *output_file = fopen(fullpath, "w");
@@ -351,6 +362,46 @@ int write_output_to_file(const char *fullpath, double *highest, double *all_time
   return 0;
 }
 
+/**
+* @brief Writes the summarized timing results to a specified output file in CSV format.
+*
+* @param fullpath The full path to the output file.
+* @param highest An array containing the highest timing values for each iteration.
+* @param iter The number of iterations.
+*
+* @return int Returns 0 on success, or -1 if an error occurs.
+*
+* @note Time is saved in ns (i.e. 10^-9 s).
+*/
+static inline int write_summarized_output_to_file(const char *fullpath, double *highest, int iter){
+  FILE *output_file = fopen(fullpath, "w");
+  if (output_file == NULL) {
+    fprintf(stderr, "Error: Opening file %s for writing", fullpath);
+    return -1;
+  }
+
+  // Write the header with ranks from rank0 to rankN
+  fprintf(output_file, "highest\n");
+
+  // Write the timing data
+  for (int i = 0; i < iter; i++) {
+    fprintf(output_file, "%" PRId64"\n", (int64_t)(highest[i] * 1e9));
+  }
+
+  fclose(output_file);
+  return 0;
+}
+
+int write_output_to_file(const char *output_level, const char *filename, double *highest, double *all_times, int iter){
+  if (strcmp(output_level, "all") == 0) {
+    return write_all_output_to_file(filename, highest, all_times, iter);
+  } else if (strcmp(output_level, "summarized") == 0) {
+    return write_summarized_output_to_file(filename, highest, iter);
+  } else {
+    fprintf(stderr, "Error: Output level %s not recognized. Aborting...", output_level);
+    return -1;
+  }
+}
 
 int file_not_exists(const char* filename) {
   struct stat buffer;

@@ -33,13 +33,8 @@ test_config_schema = {
             "additionalProperties": False
         },
         "cuda": {"type": "boolean"},
-        "arr_counts" : {"type": "array", "items": {"type": "string"}},
-        "datatypes" : 
-            {"type": "array",
-             "items": {"type": "string",
-                       "enum": ["int8", "int16", "int32", "int64", "int", "float", "double", "char", "unsigned_char"]}},
     },
-    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda", "arr_counts", "datatypes"],
+    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda"],
     "additionalProperties": False
 }
 
@@ -189,8 +184,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
     algo_names = " ".join(matching_algorithms)
     skip_names = " ".join(skip_algorithms)
     cvars_str = " ".join(cvars) if cvars else ""
-    types = " ".join(str(x) for x in test_config["datatypes"])
-    arr_counts = " ".join(str(x) for x in test_config["arr_counts"])
 
     # Write the environment variables to a shell script that will be sourced
     try:
@@ -201,8 +194,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
             f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
             f.write(f"export CUDA='{cuda}'\n")
             f.write(f"export MPI_OP='{mpi_op}'\n")
-            f.write(f"export TYPES='{types}'\n")
-            f.write(f"export ARR_SIZES='{arr_counts}'\n")
             if cvars_str:
                 f.write(f"export CVARS=({cvars_str})\n")
     except IOError as e:

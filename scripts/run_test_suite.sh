@@ -14,15 +14,7 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     source $TEST_ENV
     load_other_env_var # Load env var dependant on test/environment combination
     success "📄 Test configuration ${TEST_CONFIG} parsed"
-    if [ -n "$TYPES_OVERRIDE" ]; then
-        IFS=',' read -r -a types_array <<< "$TYPES_OVERRIDE"
-        TYPES="${types_array[*]}"  # This joins the array with spaces.
-    fi
 
-    if [ -n "$ARR_SIZES_OVERRIDE" ]; then
-        IFS=',' read -r -a arr_sizes_array <<< "$ARR_SIZES_OVERRIDE"
-        ARR_SIZES="${arr_sizes_array[*]}"
-    fi
     ###################################################################################
     #               CREATE OUTPUT DIRECTORY AND GENERATE METADATA                     #
     #               ALTERNATIVELY, USE DEBUG VARIABLES                                #
@@ -40,10 +32,10 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     echo "Running tests in: $LOCATION"
     echo "Debug mode: $DEBUG_MODE"
     echo "Number of nodes: $N_NODES"
-    echo "Saving results in: $DATA_DIR"
+    echo "Saving $OUTPUT_LEVEL results in: $DATA_DIR"
     echo "Running benchmarks for collective: $COLLECTIVE_TYPE"
     echo -e "For algorithms: \n $ALGOS"
-    echo -e "With sizes: \n $ARR_SIZES"
+    echo -e "With sizes: \n $SIZES"
     echo -e "And data types: \n $TYPES"
     echo "MPI Library: $MPI_LIB, $MPI_LIB_VERSION"
     echo "Libswing Version: $LIBSWING_VERSION"

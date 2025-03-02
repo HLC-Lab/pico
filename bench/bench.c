@@ -24,11 +24,12 @@ int main(int argc, char *argv[]) {
 
   // Get test arguments
 #ifndef DEBUG
-  const char *outputdir = NULL, *data_dir = NULL;
+  const char *outputdir = NULL, *data_dir = NULL, *output_level = NULL;
   outputdir = getenv("OUTPUT_DIR");
   data_dir = getenv("DATA_DIR");
-  if (outputdir == NULL || data_dir == NULL){
-    fprintf(stderr, "Error: Environment variables OUTPUT_DIR or DATA_DIR not set. Aborting...");
+  output_level = getenv("OUTPUT_LEVEL");
+  if (outputdir == NULL || data_dir == NULL || output_level == NULL) {
+    fprintf(stderr, "Error: Environment variables OUTPUT_DIR, DATA_DIR or OUTPUT_LEVEL not set. Aborting...");
     line = __LINE__;
     goto err_hndl;
   }
@@ -101,7 +102,7 @@ int main(int argc, char *argv[]) {
       line = __LINE__;
       goto err_hndl;
     }
-    if (write_output_to_file(data_fullpath, highest, all_times, iter) == -1){
+    if (write_output_to_file(output_level, data_fullpath, highest, all_times, iter) == -1){
       line = __LINE__;
       goto err_hndl;
     }
@@ -126,9 +127,7 @@ int main(int argc, char *argv[]) {
   if ((should_write_alloc == 1) &&
       (write_allocations_to_file(alloc_fullpath, comm) != MPI_SUCCESS)){
     // Remove the file if the write operation failed
-    if (rank == 0){
-      remove(alloc_fullpath);
-    }
+    if (rank == 0){ remove(alloc_fullpath); }
     line = __LINE__;
     goto err_hndl;
   }

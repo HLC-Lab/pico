@@ -9,7 +9,7 @@ export QOS=''
 export ACCOUNT=IscrC_ASCEND
 
 export UCX_IB_SL=1
-export MODULES="python/3.11.6--gcc--8.5.0"
+export MODULES="python/3.11.6--gcc--8.5.0,git-lfs/3.1.2"
 
 # MPI library specific variables
 export MPI_LIB='OMPI_SWING'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)

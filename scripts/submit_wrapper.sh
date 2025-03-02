@@ -2,20 +2,18 @@
 
 source scripts/utils.sh
 
-##################################################################################
-#               MODIFY THESE VARIABLES TO SUIT YOUR TEST ENVIRONMENT             #
-##################################################################################
-
-# 1. Set default values for the variables
-export TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
-export TYPES_OVERRIDE="int32"
-export DEBUG_MODE="no"
-export INTERACTIVE="no"
-export COMPRESS="yes"
-export DELETE="no"
-export NOTES="Default notes"
-export TASK_PER_NODE=1
-export TEST_TIME="01:00:00"
+# 1. Set default values for the variables (are defined in `utils.sh`)
+export TIMESTAMP=$DEFAULT_TIMESTAMP
+export TYPES=$DEFAULT_TYPES
+export SIZES=$DEFAULT_SIZES
+export DEBUG_MODE=$DEFAULT_DEBUG_MODE
+export OUTPUT_LEVEL=$DEFAULT_OUTPUT_LEVEL
+export INTERACTIVE=$DEFAULT_INTERACTIVE
+export COMPRESS=$DEFAULT_COMPRESS
+export DELETE=$DEFAULT_DELETE
+export NOTES=$DEFAULT_NOTES
+export TASK_PER_NODE=$DEFAULT_TASK_PER_NODE
+export TEST_TIME=$DEFAULT_TEST_TIME
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
@@ -24,7 +22,7 @@ parse_cli_args "$@"
 source_environment "$LOCATION" || exit 1
 validate_args || exit 1
 
-# 4. Set the test configuration files, or use --test_config if provided.
+# 4. Set the test configuration files, or use --test-config if provided.
 if [ -n "$TEST_CONFIG_OVERRIDE" ]; then
     TEST_CONFIG_FILE_LIST=()
     for f_path in ${TEST_CONFIG_OVERRIDE//,/ }; do
@@ -67,9 +65,6 @@ if [ $DEBUG_MODE == "no" ]; then
     mkdir -p "$LOCATION_DIR"
     mkdir -p "$OUTPUT_DIR"
 fi
-
-###################################################################################
-
 
 ###################################################################################
 #               DO NOT MODIFY THE FOLLOWING VARIABLES                             #

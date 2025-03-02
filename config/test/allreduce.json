@@ -17,25 +17,5 @@
     "include": [],
     "exclude": []
   },
-  "cuda": false,
-  "arr_counts": [
-    "8",
-    "64",
-    "512",
-    "2048",
-    "16384",
-    "131072",
-    "1048576",
-    "8388608",
-    "67108864"
-  ],
-  "datatypes": [
-    "int64",
-    "int32",
-    "int16",
-    "int8",
-    "float",
-    "double",
-    "char"
-  ]
+  "cuda": false
 }

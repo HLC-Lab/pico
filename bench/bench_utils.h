@@ -160,7 +160,7 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, \
     ret = test_routine.function.COLLECTIVE;                          \
     end_time = MPI_Wtime();                                          \
     times[i] = end_time - start_time;                                \
-    if (BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                         \
+    if (BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                        \
       fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...");    \
       return ret;                                                    \
     }                                                                \
@@ -281,24 +281,25 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
 //-----------------------------------------------------------------------------------------------
 
 /**
- * @brief Writes the timing results to a specified output file.
+ * @brief Writes the timing results to a specified output file in CSV format.
  *
- * This function writes the highest timing values and the timings for each rank 
- * to a file in CSV format. The header includes "highest" followed by each rank 
- * from rank0 to rankN (where N is the number of ranks).
+ * The ammount of data to save is determined by the `output_level` parameter.
+ * If `output_level` is set to "all", the timing results for all ranks across all
+ * iterations will be saved. If `output_level` is set to "summarized", only the
+ * highest timing value for each iteration will be saved.
  *
+ * @param output_level The output level to save. Can be "all" or "summarized".
  * @param fullpath The full path to the output file.
  * @param highest An array containing the highest timing values for each iteration.
  * @param all_times A 2D array flattened into 1D containing timing values for all ranks 
  *                  across all iterations.
  * @param iter The number of iterations.
  *
- * @return int Returns 0 on success, or -1 if an error occurs while opening the file.
+ * @return int Returns 0 on success, or -1 if an error occurs.
  *
  * @note Time is saved in ns (i.e. 10^-9 s).
  */
-int write_output_to_file(const char *fullpath, double *highest, double *all_times, int iter);
-
+int write_output_to_file(const char *output_level, const char *filename, double *highest, double *all_times, int iter);
 
 /**
  * @brief Checks if a file does not exists.

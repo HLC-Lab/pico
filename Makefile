@@ -2,6 +2,9 @@
 
 .PHONY: all clean libswing bench force_rebuild
 
+obj:
+	@mkdir -p obj
+
 # Common settings to be shared with sub-makefiles
 CFLAGS_COMMON = -O3 -Wall -I$(SWING_DIR)/include -MMD -MP
 
@@ -17,7 +20,7 @@ PREV_LIB := $(shell [ -f obj/.last_lib ] && cat obj/.last_lib)
 # Build all components
 all: force_rebuild libswing bench
 
-force_rebuild:
+force_rebuild: obj
 	@if [ ! -f obj/.debug_flag ] || [ ! -f obj/.last_lib ] || [ "$(PREV_DEBUG)" != "$(DEBUG)" ] || [ "$(PREV_LIB)" != "$(MPI_LIB)" ]; then \
 		echo -e "$(RED)[BUILD] LIB or DEBUG flag changed. Cleaning subdirectories...$(NC)"; \
 		$(MAKE) -C libswing clean; \
@@ -43,4 +46,4 @@ clean:
 	@echo -e "${RED}[CLEAN] Cleaning all builds...$(NC)"
 	@$(MAKE) -C libswing clean
 	@$(MAKE) -C bench clean
-	@rm obj/.debug_flag obj/.last_lib
+	@rm -f obj/.debug_flag obj/.last_lib

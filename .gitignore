@@ -5,14 +5,12 @@ compile_commands.json
 bin/
 obj/
 lib/
-plot/lumi/
-plot/local/
-plot/leonardo/
+plot/*/*
 *.err
 *.o
 *.out
-results/local/*
-results/local_metadata.csv
 config/test/*_env.sh
 results/*/*
 !results/*/*.tar.gz
+results/local/*
+results/local_metadata.csv

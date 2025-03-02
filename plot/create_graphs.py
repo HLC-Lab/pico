@@ -1,11 +1,10 @@
 import os, sys, argparse
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import seaborn as sns
 
 
-def format_bytes(x, pos):
+def format_bytes(x):
     # Ensure x is a float
     try:
         x = float(x)
@@ -77,7 +76,7 @@ def normalize_dataset(data: pd.DataFrame, mpi_lib : str, base : str | None = Non
     return data
 
 
-def generate_barplot_2(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, std_threshold : float = 0.5) :
+def generate_cut_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, std_threshold : float = 0.5) :
     fig, (ax_top, ax_bot) = plt.subplots(
         2, 1, sharex=True,
         gridspec_kw={'height_ratios': [1, 3]},
@@ -107,7 +106,7 @@ def generate_barplot_2(data: pd.DataFrame, system, collective, nnodes, datatype,
         ax_bot.get_legend().remove()
 
     # Function to add error markers and error bars on an axis
-    def draw_errorbars(ax):
+    def draw_errorbars(ax, loc=0.05, top = False):
         unique_algos = data['algo_name'].unique().tolist()
         for i, algo in enumerate(unique_algos):
             algo_group = data[data['algo_name'] == algo]
@@ -120,20 +119,34 @@ def generate_barplot_2(data: pd.DataFrame, system, collective, nnodes, datatype,
                 # If standard deviation is too high, add a red dot
                 # real threshold is on percentage of the normalized mean`
                 real_threshold = std_threshold * y
-                if std_dev > real_threshold:
-                    ax.scatter(x, y + 0.05, color='red', s=50, zorder=5)
-                else:
+                if std_dev <= real_threshold:
                     ax.errorbar(x, y, yerr=std_dev, fmt='none', ecolor='black', capsize=3, zorder=4)
+                else:
+                    if top and y < 2.25:
+                        continue
+                    ax.scatter(x, y + loc, color='red', s=50, zorder=5)
 
-    # Draw errorbars on both axes
-    draw_errorbars(ax_top)
-    draw_errorbars(ax_bot)
 
     # Set y-limits: lower axis from 0 to 3.5, upper axis from 3.5 to a bit above the max
     y_max = data['normalized_mean'].max() * 1.1  # add 10% headroom
+    if y_max > 10.0:
+        y_max = 10.0
+
+    # Draw errorbars on both axes
+    draw_errorbars(ax_top, (y_max-2.25)*0.1, top=True)
+    draw_errorbars(ax_bot)
     ax_bot.set_ylim(0, 2.15)
     ax_top.set_ylim(2.25, y_max)
 
+    # Add markers for bars that exceed the top axis limit (y_max = 10)
+    top_limit = ax_top.get_ylim()[1]
+    for container in ax_top.containers:
+        for bar in container:
+            # Check if the bar's true height is greater than the current top limit
+            if hasattr(bar, "get_height") and bar.get_height() > top_limit:
+                x = bar.get_x() + bar.get_width() / 2.0
+                # Place a marker (an upward pointing triangle here) just inside the top limit
+                ax_top.scatter(x, top_limit - 0.5, marker='^', color='black', s=100, zorder=4)
     # Hide the spines between the two plots and adjust ticks
     ax_top.spines['bottom'].set_visible(True)
     ax_bot.spines['top'].set_visible(True)
@@ -164,7 +177,7 @@ def generate_barplot_2(data: pd.DataFrame, system, collective, nnodes, datatype,
         try:
             # Convert the current label (as string) to float before formatting
             label_val = float(t.get_text())
-            new_labels.append(format_bytes(label_val, None))
+            new_labels.append(format_bytes(label_val))
         except ValueError:
             new_labels.append(t.get_text())
     ax_bot.set_xticklabels(new_labels)
@@ -213,6 +226,16 @@ def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, t
             else:
                 ax.errorbar(x, y, yerr=std_dev, fmt='none', ecolor='black', capsize=3, zorder=4) 
 
+    ax.set_xticks(ax.get_xticks()) # Silence warning on unbound number of ticks
+    new_labels = []
+    for t in ax.get_xticklabels():
+        try:
+            # Convert the current label (as string) to float before formatting
+            label_val = float(t.get_text())
+            new_labels.append(format_bytes(label_val))
+        except ValueError:
+            new_labels.append(t.get_text())
+    ax.set_xticklabels(new_labels)
     handles, labels = ax.get_legend_handles_labels()
     if handles:
         ax.legend(handles, labels, loc='upper left', fontsize=9)
@@ -280,7 +303,7 @@ def main():
             generate_lineplot(subgroup, system_name, collective, nnodes, datatype, timestamp);
             normalized_data = normalize_dataset(subgroup, mpi_lib)
             generate_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp)
-            generate_barplot_2(normalized_data, system_name, collective, nnodes, datatype, timestamp)
+            generate_cut_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp)
 
 if __name__ == "__main__":
     main()

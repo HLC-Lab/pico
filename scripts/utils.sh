@@ -5,6 +5,20 @@ export YELLOW='\033[0;33m'
 export BLUE='\033[1;34m'
 export NC='\033[0m'
 
+
+# Set the default values
+export DEFAULT_TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
+export DEFAULT_OUTPUT_LEVEL="summarized"
+export DEFAULT_TYPES="int32"
+export DEFAULT_SIZES="8,64,512,2048,16384,131072,1048576,8388608,67108864"
+export DEFAULT_DEBUG_MODE="no"
+export DEFAULT_INTERACTIVE="no"
+export DEFAULT_COMPRESS="yes"
+export DEFAULT_DELETE="no"
+export DEFAULT_NOTES=""
+export DEFAULT_TASK_PER_NODE=1
+export DEFAULT_TEST_TIME="01:00:00"
+
 # Print error messages in red
 error() {
     echo -e "\n${RED}❌❌❌ ERROR: $1 ❌❌❌${NC}\n" >&2
@@ -23,6 +37,14 @@ warning() {
 }
 export -f warning
 
+check_arg() {
+    if [[ -z "$2" || "$2" =~ ^-- ]]; then
+        error "If given, option '$1' requires an argument."
+        usage
+        exit 1
+    fi
+}
+
 # Cleanup function for SIGINT
 cleanup() {
     error "Caught Ctrl+C! Killing all child processes..."
@@ -31,25 +53,49 @@ cleanup() {
 }
 export -f cleanup
 
-
 # Show the usage message
 usage() {
-    echo "Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]"
-    echo "Options:"
-    echo "  --location          Location (required)"
-    echo "  --nodes             Number of nodes (required, integer >=2)"
-    echo "  --output-dir        Output dir of test [default: current date-time]"
-    echo "  --types             Data types, comma separated. Use "" for all [default: int32]"
-    echo "  --sizes             Array sizes, comma separated [default: all]"
-    echo "  --test-config       Relative paths to config files, comma separated [default: 'config/test/*.json']"
-    echo "  --interactive       Interactive mode (use salloc instead of sbatch, the rest is up to you) [default: no]"
-    echo "  --compress          Compress result dir into a tar.gz [default: yes]"
-    echo "  --delete            Delete result dir after compression [default: no]"
-    echo "  --debug             Debug mode (compile with debug flags, use int32, don't save results and don't exit after error) [default: no]"
-    echo "  --notes             Notes [default: 'Def notes']"
-    echo "  --task-per-node     Sbatch tasks per node [default: 1]"
-    echo "  --time              Sbatch time, in format HH:MM:SS [default: 01:00:00]"
-    echo "  --help              Show this help message"
+    cat <<EOF
+Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]
+
+Options:
+  --location          Location (required)
+  --nodes             Number of nodes (required, integer >=2)
+  --output-dir        Output dir of test.
+                      [default: "${DEFAULT_TIMESTAMP}" (current timestamp)]
+  --types             Data types, comma separated.
+                      Allowed types: int,int8,int16,int32,int64,float,double,char.
+                      [default: "${DEFAULT_TYPES}"]
+  --sizes             Array sizes, comma separated.
+                      [default: "${DEFAULT_SIZES}"]
+  --output-level      Specify which test data to save.
+                      Allowed values:
+                        summarized  - Save summarized test data only.
+                        all         - Save all test data.
+                      [default: "${DEFAULT_OUTPUT_LEVEL}"]
+  --test-config       Relative paths to config files, comma separated.
+                      [default: "config/test/*.json"]
+  --interactive       Interactive mode (use salloc instead of sbatch).
+                      [default: "${DEFAULT_INTERACTIVE}"]
+  --compress          Compress result dir into a tar.gz.
+                      [default: "${DEFAULT_COMPRESS}"]
+  --delete            Delete result dir after compression.
+                      If --compress is 'no', this will be ignored.
+                      [default: "${DEFAULT_DELETE}"]
+  --debug             Debug mode:
+                        - Compile with -g -DDEBUG without optimization.
+                        - Use int32 data type.
+                        - Do not save results (--compress and --delete are ignored).
+                        - Do not exit after error.
+                      [default: "${DEFAULT_DEBUG_MODE}"]
+  --notes             Notes for metadata entry.
+                      [default: "${DEFAULT_NOTES}"]
+  --task-per-node     Sbatch tasks per node.
+                      [default: "${DEFAULT_TASK_PER_NODE}"]
+  --time              Sbatch time, in format HH:MM:SS.
+                      [default: "${DEFAULT_TEST_TIME}"]
+  --help              Show this help message
+EOF
 }
 
 
@@ -66,46 +112,62 @@ parse_cli_args() {
                 shift 2
                 ;;
             --output-dir)
+                check_arg "$1" "$2"
                 export TIMESTAMP="$2"
                 shift 2
                 ;;
             --types)
-                export TYPES_OVERRIDE="$2"
+                check_arg "$1" "$2"
+                export TYPES="$2"
                 shift 2
                 ;;
             --sizes)
-                export ARR_SIZES_OVERRIDE="$2"
+                check_arg "$1" "$2"
+                export SIZES="$2"
                 shift 2
                 ;;
             --test-config)
+                check_arg "$1" "$2"
                 TEST_CONFIG_OVERRIDE="$2"
                 shift 2
                 ;;
+            --output-level)
+                check_arg "$1" "$2"
+                export OUTPUT_LEVEL="$2"
+                shift 2
+                ;;
             --interactive)
+                check_arg "$1" "$2"
                 export INTERACTIVE="$2"
                 shift 2
                 ;;
             --compress)
+                check_arg "$1" "$2"
                 export COMPRESS="$2"
                 shift 2
                 ;;
             --delete)
+                check_arg "$1" "$2"
                 export DELETE="$2"
                 shift 2
                 ;;
             --debug)
+                check_arg "$1" "$2"
                 export DEBUG_MODE="$2"
                 shift 2
                 ;;
             --notes)
+                check_arg "$1" "$2"
                 export NOTES="$2"
                 shift 2
                 ;;
             --task-per-node)
+                check_arg "$1" "$2"
                 export TASK_PER_NODE="$2"
                 shift 2
                 ;;
             --time)
+                check_arg "$1" "$2"
                 export TEST_TIME="$2"
                 shift 2
                 ;;
@@ -127,6 +189,10 @@ parse_cli_args() {
 validate_args() {
     if [[ -z "$N_NODES" ]] || [[ ! "$N_NODES" =~ ^[0-9]+$ ]] || [ "$N_NODES" -lt 2 ]; then
         error "--nodes must be a numeric value and at least 2."
+        usage
+        return 1
+    elif [[ "$OUTPUT_LEVEL" != "summarized" ]] && [[ "$OUTPUT_LEVEL" != "all" ]]; then
+        error "--output-level must be either 'summarized' or 'all'."
         usage
         return 1
     elif [[ "$INTERACTIVE" != "yes" ]] && [[ "$INTERACTIVE" != "no" ]]; then
@@ -159,28 +225,24 @@ validate_args() {
     if [[ "$DEBUG_MODE" == "yes" ]]; then
         warning "Debug mode enabled. No results will be saved."
         warning "Overriding --types to 'int32' regardless of the configuration."
-        export TYPES_OVERRIDE="int32"
+        export TYPES="int32"
     fi
 
-    if [[ -n "$ARR_SIZES_OVERRIDE" ]]; then
-        for size in ${ARR_SIZES_OVERRIDE//,/ }; do
-            if [[ ! "$size" =~ ^[0-9]+$ ]]; then
-                error "--sizes must be a comma-separated list of numeric values."
-                usage
-                return 1
-            fi
-        done
-    fi
+    for size in ${SIZES//,/ }; do
+        if [[ ! "$size" =~ ^[0-9]+$ ]] || [[ $size -lt 1 ]]; then
+            error "--sizes must be a comma-separated list of positive integers."
+            usage
+            return 1
+        fi
+    done
 
-    if [[ -n "$TYPES_OVERRIDE" ]]; then
-        for type in ${TYPES_OVERRIDE//,/ }; do
-            if [[ ! "$type" =~ ^(int|int8|int16|int32|int64|float|double|char)$ ]]; then
-                error " --types must be a comma-separated list. Allowed types: int, int8, int16, int32, int64, float, double, char"
-                usage
-                return 1
-            fi
-        done
-    fi
+    for type in ${TYPES//,/ }; do
+        if [[ ! "$type" =~ ^(int|int8|int16|int32|int64|float|double|char)$ ]]; then
+            error " --types must be a comma-separated list. Allowed types: int,int8,int16,int32,int64,float,double,char"
+            usage
+            return 1
+        fi
+    done
 
 
     return 0
@@ -329,19 +391,15 @@ export -f update_algorithm
 run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
-        # Update dynamic rule file for the algorithm
         update_algorithm $algo $i
 
-        for size in ${ARR_SIZES[@]}; do
-            # Skip specific algorithms if conditions are met
+        for size in ${SIZES//,/ }; do
             if [[ $size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then
                 echo "Skipping algorithm $algo for size=$size < N_NODES=$N_NODES"
                 continue
             fi
 
-            # Get the number of iterations for the size
-            for type in ${TYPES[@]}; do
-                # Run the bench for the given configuration
+            for type in ${TYPES//,/ }; do
                 run_bench $size $algo $type
             done
         done
