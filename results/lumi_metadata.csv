@@ -83,3 +83,7 @@ timestamp,test_id,nnodes,collective_type,mpi_lib,mpi_lib_version,libswing_versio
 2025_02_28___22_29_17,3,8,REDUCE_SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,MPI_SUM,Default notes
 2025_02_28___22_29_03,2,4,BCAST,CRAY_MPICH,8.1.29,1.0.0,false,null,Default notes
 2025_02_28___22_29_03,3,4,REDUCE_SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,MPI_SUM,Default notes
+2025_02_28___21_37_22,0,512,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,MPI_SUM,Default notes
+2025_02_28___21_37_35,0,512,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,MPI_SUM,Default notes
+2025_02_28___21_37_58,0,512,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,MPI_SUM,Default notes
+2025_02_28___21_56_27,0,512,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,MPI_SUM,Default notes
