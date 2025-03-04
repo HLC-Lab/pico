@@ -63,6 +63,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "rabenseifner_over", allreduce_rabenseifner);
   CHECK_STR(algorithm, "swing_lat_over", allreduce_swing_lat);
   CHECK_STR(algorithm, "swing_bdw_static_over", allreduce_swing_bdw_static);
+  CHECK_STR(algorithm, "swing_bdw_remap_over", allreduce_swing_bdw_remap);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;

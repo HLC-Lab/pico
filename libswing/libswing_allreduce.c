@@ -476,7 +476,7 @@ int allreduce_swing_bdw_static(const void *send_buf, void *recv_buf, size_t coun
   // Copy into receive_buffer content of send_buffer to not produce
   // side effects on send_buffer
   if (send_buf != MPI_IN_PLACE) {
-    copy_buffer((char *)recv_buf, (char *)send_buf, count, dtype);
+    copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
   }
   
   const int *s_bitmap = NULL, *r_bitmap = NULL;
@@ -600,7 +600,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   tmp_buf = tmp_buf_raw - gap;
 
   if (sbuf != MPI_IN_PLACE) {
-    err = copy_buffer((char *)rbuf, (char *)sbuf, count, dtype);
+    err = copy_buffer((char *)sbuf, (char *)rbuf, count, dtype);
     if (MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
 
@@ -817,3 +817,110 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
     free(scount);
   return err;
 }
+
+
+int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
+                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
+  int size, rank, dest, steps, step, err = MPI_SUCCESS;
+  int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
+  size_t w_size;
+  uint32_t vrank;
+
+  char *tmp_send = NULL, *tmp_recv = NULL;
+  char *tmp_buf_raw = NULL, *tmp_buf;
+  ptrdiff_t lb, extent, true_extent, gap = 0, buf_size;
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  // Does not support non-power-of-two or negative sizes
+  steps = log_2(size);
+  if ( !is_power_of_two(size) || steps == -1 ) {
+    return MPI_ERR_ARG;
+  }
+
+  // Allocate temporary buffer for send/recv and reduce operations
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+  buf_size = true_extent + extent * (count >> 1);
+  tmp_buf_raw = (char *)malloc(buf_size);
+  tmp_buf = tmp_buf_raw - gap;
+
+  // Copy into receive_buffer content of send_buffer to not produce
+  // side effects on send_buffer
+  if (send_buf != MPI_IN_PLACE) {
+    err = copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
+    if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+  }
+
+  r_index = malloc(sizeof(*r_index) * steps);
+  s_index = malloc(sizeof(*s_index) * steps);
+  r_count = malloc(sizeof(*r_count) * steps);
+  s_count = malloc(sizeof(*s_count) * steps);
+  if (NULL == r_index || NULL == s_index || NULL == r_count || NULL == s_count) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup_and_return;
+  }
+
+  w_size = count;
+  s_index[0] = r_index[0] = 0;
+  vrank = remap_rank((uint32_t) size, (uint32_t) rank);
+  // Reduce-Scatter phase
+  for (step = 0; step < steps; step++) {
+    dest = pi(rank, step, size);
+
+    if (vrank < dest) {
+      r_count[step] = w_size / 2;
+      s_count[step] = w_size - r_count[step];
+      s_index[step] = r_index[step] + r_count[step];
+    } else {
+      s_count[step] = w_size / 2;
+      r_count[step] = w_size - s_count[step];
+      r_index[step] = s_index[step] + s_count[step];
+    }
+
+    tmp_send = (char *)recv_buf + s_index[step] * extent;
+    err = MPI_Sendrecv(tmp_send, s_count[step], dtype, dest, 0,
+                       tmp_buf, r_count[step], dtype, dest, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+    tmp_recv = (char *) recv_buf + r_index[step] * extent;
+    MPI_Reduce_local(tmp_buf, tmp_recv, r_count[step], dtype, op);
+
+    if (step + 1 < steps) {
+      r_index[step + 1] = r_index[step];
+      s_index[step + 1] = r_index[step];
+      w_size = r_count[step];
+    }
+  }
+
+  // Allgather phase
+  for (step = steps - 1; step >= 0; step--) {
+    dest = pi(rank, step, size);
+
+    tmp_send = (char *)recv_buf + r_index[step] * extent;
+    tmp_recv = (char *)recv_buf + s_index[step] * extent;
+
+    err = MPI_Sendrecv(tmp_send, r_count[step], dtype, dest, 0,
+                       tmp_recv, s_count[step], dtype, dest, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+  }
+
+  free(tmp_buf_raw);
+  free(r_index);
+  free(s_index);
+  free(r_count);
+  free(s_count);
+  return MPI_SUCCESS;
+
+cleanup_and_return:
+  if (NULL != tmp_buf_raw)  free(tmp_buf_raw);
+  if (NULL != r_index)      free(r_index);
+  if (NULL != s_index)      free(s_index);
+  if (NULL != r_count)      free(r_count);
+  if (NULL != s_count)      free(s_count);
+  return err;
+}
+

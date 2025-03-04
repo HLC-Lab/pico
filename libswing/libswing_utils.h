@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
+#include <assert.h>
 
 #ifdef DEBUG
 #define SWING_DEBUG_PRINT(fmt, ...) \
@@ -26,6 +28,8 @@
 static int rhos[SWING_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
 
+static int smallest_negabinary[SWING_MAX_STEPS] = {0, 0, -2, -2, -10, -10, -42, -42, -170, -170, -682, -682, -2730, -2730, -10922, -10922, -43690, -43690, -174762, -174762};
+static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85, 341, 341, 1365, 1365, 5461, 5461, 21845, 21845, 87381, 87381, 349525};
 
 /**
  * This macro gives a generic way to compute the well distributed block counts
@@ -186,6 +190,14 @@ static inline int log_2(int value) {
     return -1;
   }
   return sizeof(int)*8 - 1 - __builtin_clz(value);
+}
+
+
+/**
+ * @brief Returns if the given value is a power of two.
+ */
+static inline int is_power_of_two(int value) {
+    return (value & (value - 1)) == 0;
 }
 
 
@@ -407,6 +419,70 @@ static inline int rounddown(int num, int factor)
     num /= factor;
     return num * factor;    /* floor(num / factor) * factor */
 }
+static uint32_t binary_to_negabinary(int32_t bin) {
+    if (SWING_UNLIKELY(bin > 0x55555555)) return -1;
+    const uint32_t mask = 0xAAAAAAAA;
+    return (mask + bin) ^ mask;
+}
+
+
+static inline int in_range(int x, uint32_t nbits){
+    return x >= smallest_negabinary[nbits] && x <= largest_negabinary[nbits];
+}
+
+static inline uint32_t reverse(uint32_t x){
+    x = ((x >> 1) & 0x55555555u) | ((x & 0x55555555u) << 1);
+    x = ((x >> 2) & 0x33333333u) | ((x & 0x33333333u) << 2);
+    x = ((x >> 4) & 0x0f0f0f0fu) | ((x & 0x0f0f0f0fu) << 4);
+    x = ((x >> 8) & 0x00ff00ffu) | ((x & 0x00ff00ffu) << 8);
+    x = ((x >> 16) & 0xffffu) | ((x & 0xffffu) << 16);
+    return x;
+}
+
+static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, uint32_t rank){
+    binary_to_negabinary(rank);
+    uint32_t nba = UINT32_MAX, nbb = UINT32_MAX;
+    size_t num_bits = log_2(num_ranks);
+    if(rank % 2){
+        if(in_range(rank, num_bits)){
+            nba = binary_to_negabinary(rank);
+        }
+        if(in_range(rank - num_ranks, num_bits)){
+            nbb = binary_to_negabinary(rank - num_ranks);
+        }
+    }else{
+        if(in_range(-rank, num_bits)){
+            nba = binary_to_negabinary(-rank);
+        }
+        if(in_range(-rank + num_ranks, num_bits)){
+            nbb = binary_to_negabinary(-rank + num_ranks);
+        }
+    }
+
+    // TODO: adjust this
+    assert(nba != UINT32_MAX || nbb != UINT32_MAX);
+
+    if(nba == UINT32_MAX && nbb != UINT32_MAX){
+        return nbb;
+    }else if(nba != UINT32_MAX && nbb == UINT32_MAX){
+        return nba;
+    }else{ // Check MSB
+        if(nba & (80000000 >> (32 - num_bits))){
+            return nba;
+        }else{
+            return nbb;
+        }
+    }
+}
+
+static inline uint32_t remap_rank(uint32_t num_ranks, uint32_t rank){
+    uint32_t remap_rank = get_rank_negabinary_representation(num_ranks, rank);    
+    remap_rank = remap_rank ^ (remap_rank >> 1);
+    size_t num_bits = log_2(num_ranks);
+    remap_rank = reverse(remap_rank) >> (32 - num_bits);
+    return remap_rank;
+}
+
 
 #endif // LIBSWING_UTILS_H
 

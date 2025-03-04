@@ -185,6 +185,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
 {
   int size, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
   char *received = NULL;
+  MPI_Request request;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -247,11 +248,13 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
     // If I already have the message, send the data.
     if (recv_step < s) {
       dest = pi(rank, s, size);
-      err = MPI_Send(buf, count, dtype, dest, s, comm);
+      err = MPI_Isend(buf, count, dtype, dest, s, comm, &request);
       if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
     }
   }
+
+  if (recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
 
   free(received);
 
@@ -269,6 +272,7 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
 {
   int size, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
   char *received = NULL;
+  MPI_Request request;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -331,11 +335,12 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
     // If I already have the message, send the data.
     if (recv_step < s) {
       dest = pi(rank, steps - s - 1, size);
-      err = MPI_Send(buf, count, dtype, dest, s, comm);
+      err = MPI_Isend(buf, count, dtype, dest, s, comm, &request);
       if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
     }
   }
+  if (recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
 
   free(received);
 
@@ -354,7 +359,7 @@ cleanup_and_return:
  * Both phases utilizes swing communication pattern. The scatter phase is done using
  * a binomial tree scatter and the allgather phase is done using a recursive doubling.
  *
- * For now only works with size = 2^k,<=512, root = 0, and count <= comm_sz.
+ * For now only works with size = 2^k,<=256, root = 0, and count <= comm_sz.
  * Logic will be extended to work with any root.
  */
 int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
@@ -366,6 +371,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
   ptrdiff_t r_offset = 0, s_offset = 0, lb, extent;
   const int *s_bitmap, *r_bitmap;
   char *received = NULL;
+  MPI_Request request;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -473,11 +479,13 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
       s_offset = (s_bitmap[step] <= split_rank) ?
                   (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
                   (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-      err = MPI_Send((char *)buf + s_offset, s_count, dtype, dest, 0, comm);
+      err = MPI_Isend((char *)buf + s_offset, s_count, dtype, dest, 0, comm, &request);
       if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
     }
     w_size >>= 1;
   }
+
+  if (recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
 
   /* Allgather phase.
    *

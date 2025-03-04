@@ -17,6 +17,7 @@ int allreduce_ring(ALLREDUCE_ARGS);
 int allreduce_rabenseifner(ALLREDUCE_ARGS);
 int allreduce_swing_lat(ALLREDUCE_ARGS);
 int allreduce_swing_bdw_static(ALLREDUCE_ARGS);
+int allreduce_swing_bdw_remap(ALLREDUCE_ARGS);
 
 int allgather_k_bruck(ALLGATHER_ARGS, int radix);
 int allgather_recursivedoubling(ALLGATHER_ARGS);
