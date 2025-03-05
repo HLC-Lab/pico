@@ -46,11 +46,11 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_size);
 
-  if (comm_size < 2 || dtype_size == 0)
+  if(comm_size < 2 || dtype_size == 0)
     return MPI_SUCCESS;
 
-  if (count < (size_t)comm_size) {
-    if (rank == 0) {
+  if(count < (size_t)comm_size) {
+    if(rank == 0) {
       SWING_DEBUG_PRINT("Error: count < comm_size");
     }
     return MPI_ERR_COUNT;
@@ -65,17 +65,17 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
   /* Scatter by binomial tree: receive data from parent */
   int mask = 0x1;
   while (mask < comm_size) {
-    if (vrank & mask) {
+    if(vrank & mask) {
       int parent = (rank - mask + comm_size) % comm_size;
       /* Compute an upper bound on recv block size */
       recv_count = count - vrank * scatter_count;
-      if (recv_count <= 0) {
+      if(recv_count <= 0) {
         curr_count = 0;
       } else {
         /* Recv data from parent */
         err = MPI_Recv((char *)buf + (ptrdiff_t)vrank * scatter_count * extent,
                     recv_count, dtype, parent, 0, comm, &status);
-        if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+        if(MPI_SUCCESS != err) { goto cleanup_and_return; }
         /* Get received count */
         MPI_Get_count(&status, dtype, &tmp_count);
         curr_count = (size_t) tmp_count;
@@ -88,13 +88,13 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
   /* Scatter by binomial tree: send data to child processes */
   mask >>= 1;
   while (mask > 0) {
-    if (vrank + mask < comm_size) {
+    if(vrank + mask < comm_size) {
       send_count = curr_count - scatter_count * mask;
-      if (send_count > 0) {
+      if(send_count > 0) {
         int child = (rank + mask) % comm_size;
         err = MPI_Send((char *)buf + (ptrdiff_t)scatter_count * (vrank + mask) * extent,
                     send_count, dtype, child, 0, comm);
-        if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+        if(MPI_SUCCESS != err) { goto cleanup_and_return; }
         curr_count -= send_count;
       }
     }
@@ -107,7 +107,7 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
    */
   size_t rem_count = count - vrank * scatter_count;
   curr_count = (scatter_count < rem_count) ? scatter_count : rem_count;
-  if (curr_count < 0)
+  if(curr_count < 0)
     curr_count = 0;
 
   mask = 0x1;
@@ -118,16 +118,16 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
     int vrank_tree_root = rounddown(vrank, mask);
     int vremote_tree_root = rounddown(vremote, mask);
 
-    if (vremote < comm_size) {
+    if(vremote < comm_size) {
       ptrdiff_t send_offset = vrank_tree_root * scatter_count * extent;
       ptrdiff_t recv_offset = vremote_tree_root * scatter_count * extent;
       recv_count = count - vremote_tree_root * scatter_count;
-      if (recv_count < 0)
+      if(recv_count < 0)
         recv_count = 0;
       err = MPI_Sendrecv((char *)buf + send_offset, curr_count, dtype, remote, 0,
                          (char *)buf + recv_offset, recv_count, dtype, remote, 0,
                           comm, &status);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
       MPI_Get_count(&status, dtype, &tmp_count);
       recv_count = (size_t) tmp_count;
       curr_count += recv_count;
@@ -138,10 +138,10 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
      * to communicate with, we need to send him the current result.
      * Recursive halving algorithm is used for search of process.
      */
-    if (vremote_tree_root + mask > comm_size) {
+    if(vremote_tree_root + mask > comm_size) {
       int nprocs_alldata = comm_size - vrank_tree_root - mask;
       ptrdiff_t offset = scatter_count * (vrank_tree_root + mask);
-      for (int rhalving_mask = mask >> 1; rhalving_mask > 0; rhalving_mask >>= 1) {
+      for(int rhalving_mask = mask >> 1; rhalving_mask > 0; rhalving_mask >>= 1) {
         vremote = vrank ^ rhalving_mask;
         remote = (vremote + root) % comm_size;
         int tree_root = rounddown(vrank, rhalving_mask << 1);
@@ -150,17 +150,17 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
          * 1) current process has data: (vremote > vrank) && (vrank < tree_root + nprocs_alldata)
          * 2) remote process does not have data at any step: vremote >= tree_root + nprocs_alldata
          */
-        if ((vremote > vrank) && (vrank < tree_root + nprocs_alldata)
+        if((vremote > vrank) && (vrank < tree_root + nprocs_alldata)
           && (vremote >= tree_root + nprocs_alldata)) {
           err = MPI_Send((char *)buf + (ptrdiff_t)offset * extent,
                       recv_count, dtype, remote, 0, comm);
-          if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+          if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
-        } else if ((vremote < vrank) && (vremote < tree_root + nprocs_alldata)
+        } else if((vremote < vrank) && (vremote < tree_root + nprocs_alldata)
                && (vrank >= tree_root + nprocs_alldata)) {
           err = MPI_Recv((char *)buf + (ptrdiff_t)offset * extent,
                       count, dtype, remote, 0, comm, &status);
-          if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+          if(MPI_SUCCESS != err) { goto cleanup_and_return; }
           MPI_Get_count(&status, dtype, &tmp_count);
           recv_count = (size_t) tmp_count;
           curr_count += recv_count;
@@ -191,13 +191,13 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
 
   // Check if the number of processes is a power of 2
   steps = log_2(size);
-  if (size != (1 << steps)) {
+  if(size != (1 << steps)) {
     line = __LINE__;
     err = MPI_ERR_SIZE;
     goto cleanup_and_return;
   }
   // Only root = 0 logic is done
-  if (root != 0){
+  if(root != 0){
     line = __LINE__;
     err = MPI_ERR_ROOT;
     goto cleanup_and_return;
@@ -207,20 +207,20 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
   // Use an auxiliary array to record visited node in order
   // to calculate at which step node is gonna receive the message.
   received = calloc(size, sizeof(char));
-  if (received == NULL) {
+  if(received == NULL) {
     line = __LINE__;
     err = MPI_ERR_NO_MEM;
     goto cleanup_and_return;
   }
   received[root] = 1;
 
-  for (int step = 0; step < steps && !received[rank]; step++) {
-    for (int proc = 0; proc < size; proc++) {
-      if (!received[proc]) continue;
+  for(int step = 0; step < steps && !received[rank]; step++) {
+    for(int proc = 0; proc < size; proc++) {
+      if(!received[proc]) continue;
 
       int dest = pi(proc, step, size);
       received[dest] = 1;
-      if (dest == rank) {
+      if(dest == rank) {
         recv_step = step;
         break;
       }
@@ -235,26 +235,26 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
    *   - if recv_step ==s, it receives the data from the parent
    *   - otherwise it does nothing in this iteration
    */
-  for (int s = 0; s < steps; s++) {
+  for(int s = 0; s < steps; s++) {
     int dest;
     // If I don't have the data and I am scheduled to receive it, wait for it.
-    if (rank != root && recv_step == s) {
+    if(rank != root && recv_step == s) {
       dest = pi(rank, s, size);
       err = MPI_Recv(buf, count, dtype, dest, s, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
     }
 
     // If I already have the message, send the data.
-    if (recv_step < s) {
+    if(recv_step < s) {
       dest = pi(rank, s, size);
       err = MPI_Isend(buf, count, dtype, dest, s, comm, &request);
-      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
     }
   }
 
-  if (recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
+  if(recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
 
   free(received);
 
@@ -263,7 +263,7 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
 cleanup_and_return:
   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
-  if (NULL!= received)     free(received);
+  if(NULL!= received)     free(received);
 
   return err;
 }
@@ -278,13 +278,13 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
 
   // Check if the number of processes is a power of 2
   steps = log_2(size);
-  if (size != (1 << steps)) {
+  if(size != (1 << steps)) {
     line = __LINE__;
     err = MPI_ERR_SIZE;
     goto cleanup_and_return;
   }
   // Only root = 0 logic is done
-  if (root != 0){
+  if(root != 0){
     line = __LINE__;
     err = MPI_ERR_ROOT;
     goto cleanup_and_return;
@@ -294,20 +294,20 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
   // Use an auxiliary array to record visited node in order
   // to calculate at which step node is gonna receive the message.
   received = calloc(size, sizeof(char));
-  if (received == NULL) {
+  if(received == NULL) {
     line = __LINE__;
     err = MPI_ERR_NO_MEM;
     goto cleanup_and_return;
   }
   received[root] = 1;
 
-  for (int step = 0; step < steps && !received[rank]; step++) {
-    for (int proc = 0; proc < size; proc++) {
-      if (!received[proc]) continue;
+  for(int step = 0; step < steps && !received[rank]; step++) {
+    for(int proc = 0; proc < size; proc++) {
+      if(!received[proc]) continue;
 
       int dest = pi(proc, steps - step - 1, size);
       received[dest] = 1;
-      if (dest == rank) {
+      if(dest == rank) {
         recv_step = step;
         break;
       }
@@ -322,25 +322,25 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
    *   - if recv_step ==s, it receives the data from the parent
    *   - otherwise it does nothing in this iteration
    */
-  for (int s = 0; s < steps; s++) {
+  for(int s = 0; s < steps; s++) {
     int dest;
     // If I don't have the data and I am scheduled to receive it, wait for it.
-    if (rank != root && recv_step == s) {
+    if(rank != root && recv_step == s) {
       dest = pi(rank, steps - s - 1, size);
       err = MPI_Recv(buf, count, dtype, dest, s, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
     }
 
     // If I already have the message, send the data.
-    if (recv_step < s) {
+    if(recv_step < s) {
       dest = pi(rank, steps - s - 1, size);
       err = MPI_Isend(buf, count, dtype, dest, s, comm, &request);
-      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
       continue;
     }
   }
-  if (recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
+  if(recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
 
   free(received);
 
@@ -349,7 +349,7 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
 cleanup_and_return:
   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
-  if (NULL!= received)     free(received);
+  if(NULL!= received)     free(received);
 
   return err;
 }
@@ -380,11 +380,11 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
   MPI_Type_size(dtype, &dtype_size);
 
   // Trivial case
-  if (size < 2 || dtype_size == 0)
+  if(size < 2 || dtype_size == 0)
     return MPI_SUCCESS;
   
   // Check if count is less than the number of processes
-  if (count < (size_t)size) {
+  if(count < (size_t)size) {
     line = __LINE__;
     err = MPI_ERR_COUNT;
     goto cleanup_and_return;
@@ -392,14 +392,14 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
 
   // Check if the number of processes is a power of 2
   steps = log_2(size);
-  if (size != (1 << steps)) {
+  if(size != (1 << steps)) {
     line = __LINE__;
     err = MPI_ERR_SIZE;
     goto cleanup_and_return;
   }
 
   // Only root = 0 logic is done
-  if (root != 0){
+  if(root != 0){
     line = __LINE__;
     err = MPI_ERR_ROOT;
     goto cleanup_and_return;
@@ -408,19 +408,19 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
   // Use an auxiliary array to record visited node in order
   // to calculate at which step node is gonna receive the message.
   received = calloc(size, sizeof(char));
-  if (received == NULL) {
+  if(received == NULL) {
     line = __LINE__;
     err = MPI_ERR_NO_MEM;
     goto cleanup_and_return;
   }
   received[root] = 1;
-  for (step = 0; step < steps && !received[rank]; step++) {
-    for (int proc = 0; proc < size; proc++) {
-      if (!received[proc]) continue;
+  for(step = 0; step < steps && !received[rank]; step++) {
+    for(int proc = 0; proc < size; proc++) {
+      if(!received[proc]) continue;
 
       dest = pi(proc, step, size);
       received[dest] = 1;
-      if (dest == rank) {
+      if(dest == rank) {
         recv_step = step;
         break;
       }
@@ -437,7 +437,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
 
   
   // Gets rearranged contiguous bitmaps from "libswing_utils_bitmaps.c"
-  if (get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
+  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
     line = __LINE__;
     err = MPI_ERR_UNKNOWN;
     goto cleanup_and_return;
@@ -452,9 +452,9 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
    *   - otherwise it does nothing in this iteration
    */
   w_size = size >> 1;
-  for (step = 0; step < steps; step++) {
+  for(step = 0; step < steps; step++) {
     // If I don't have the data and I am scheduled to receive it, wait for it.
-    if (rank != root && recv_step == step) {
+    if(rank != root && recv_step == step) {
       dest = pi(rank, step, size);
       r_count = (r_bitmap[step] + w_size <= split_rank) ?
                   (size_t)w_size * big_blocks :
@@ -465,11 +465,11 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
                   (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
                   (ptrdiff_t)(r_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
       err = MPI_Recv((char*)buf + r_offset, r_count, dtype, dest, 0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
     }
 
     // If I already have the message, send the data.
-    if (recv_step < step) {
+    if(recv_step < step) {
       dest = pi(rank, step, size);
       s_count = (s_bitmap[step] + w_size <= split_rank) ?
                   (size_t)w_size * big_blocks :
@@ -480,12 +480,12 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
                   (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
                   (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
       err = MPI_Isend((char *)buf + s_offset, s_count, dtype, dest, 0, comm, &request);
-      if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
     }
     w_size >>= 1;
   }
 
-  if (recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
+  if(recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
 
   /* Allgather phase.
    *
@@ -525,7 +525,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
     err = MPI_Sendrecv((char *) buf + s_offset, s_count, dtype, sdest, 0,
                  (char *) buf + r_offset, r_count, dtype, rdest, 0,
                  comm, MPI_STATUS_IGNORE);
-    if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+    if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
     
     w_size <<= 1;
   }
@@ -537,7 +537,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
 cleanup_and_return:
   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void) line; // silence compiler warning
-  if (NULL!= received)     free(received);
+  if(NULL!= received)     free(received);
 
   return err;
 }
@@ -560,11 +560,11 @@ cleanup_and_return:
 //   MPI_Type_size(dtype, &dtype_size);
 //
 //   // Trivial case
-//   if (size < 2 || dtype_size == 0)
+//   if(size < 2 || dtype_size == 0)
 //     return MPI_SUCCESS;
 //   
 //   // Check if count is less than the number of processes
-//   if (count < (size_t)size) {
+//   if(count < (size_t)size) {
 //     line = __LINE__;
 //     err = MPI_ERR_COUNT;
 //     goto cleanup_and_return;
@@ -572,14 +572,14 @@ cleanup_and_return:
 //
 //   // Check if the number of processes is a power of 2
 //   steps = log_2(size);
-//   if (size != (1 << steps)) {
+//   if(size != (1 << steps)) {
 //     line = __LINE__;
 //     err = MPI_ERR_SIZE;
 //     goto cleanup_and_return;
 //   }
 //
 //   // Only root = 0 logic is done
-//   if (root != 0){
+//   if(root != 0){
 //     line = __LINE__;
 //     err = MPI_ERR_ROOT;
 //     goto cleanup_and_return;
@@ -588,19 +588,19 @@ cleanup_and_return:
 //   // Use an auxiliary array to record visited node in order
 //   // to calculate at which step node is gonna receive the message.
 //   received = calloc(size, sizeof(char));
-//   if (received == NULL) {
+//   if(received == NULL) {
 //     line = __LINE__;
 //     err = MPI_ERR_NO_MEM;
 //     goto cleanup_and_return;
 //   }
 //   received[root] = 1;
-//   for (step = 0; step < steps && !received[rank]; step++) {
-//     for (int proc = 0; proc < size; proc++) {
-//       if (!received[proc]) continue;
+//   for(step = 0; step < steps && !received[rank]; step++) {
+//     for(int proc = 0; proc < size; proc++) {
+//       if(!received[proc]) continue;
 //
 //       dest = pi(proc, steps - step - 1, size);
 //       received[dest] = 1;
-//       if (dest == rank) {
+//       if(dest == rank) {
 //         recv_step = step;
 //         break;
 //       }
@@ -617,7 +617,7 @@ cleanup_and_return:
 //
 //   
 //   // Gets rearranged contiguous bitmaps from "libswing_utils_bitmaps.c"
-//   if (get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
+//   if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
 //     line = __LINE__;
 //     err = MPI_ERR_UNKNOWN;
 //     goto cleanup_and_return;
@@ -632,9 +632,9 @@ cleanup_and_return:
 //    *   - otherwise it does nothing in this iteration
 //    */
 //   w_size = size >> 1;
-//   for (step = 0; step < steps; step++) {
+//   for(step = 0; step < steps; step++) {
 //     // If I don't have the data and I am scheduled to receive it, wait for it.
-//     if (rank != root && recv_step == step) {
+//     if(rank != root && recv_step == step) {
 //       dest = pi(rank, steps - step - 1, size);
 //       r_count = (r_bitmap[step] + w_size <= split_rank) ?
 //                   (size_t)w_size * big_blocks :
@@ -645,11 +645,11 @@ cleanup_and_return:
 //                   (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
 //                   (ptrdiff_t)(r_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
 //       err = MPI_Recv((char*)buf + r_offset, r_count, dtype, dest, 0, comm, MPI_STATUS_IGNORE);
-//       if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+//       if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
 //     }
 //
 //     // If I already have the message, send the data.
-//     if (recv_step < step) {
+//     if(recv_step < step) {
 //       dest = pi(rank, steps - step - 1, size);
 //       s_count = (s_bitmap[step] + w_size <= split_rank) ?
 //                   (size_t)w_size * big_blocks :
@@ -660,7 +660,7 @@ cleanup_and_return:
 //                   (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
 //                   (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
 //       err = MPI_Send((char *)buf + s_offset, s_count, dtype, dest, 0, comm);
-//       if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+//       if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
 //     }
 //     w_size >>= 1;
 //   }
@@ -703,7 +703,7 @@ cleanup_and_return:
 //     err = MPI_Sendrecv((char *) buf + s_offset, s_count, dtype, sdest, 0,
 //                  (char *) buf + r_offset, r_count, dtype, rdest, 0,
 //                  comm, MPI_STATUS_IGNORE);
-//     if (MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+//     if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
 //     
 //     w_size <<= 1;
 //   }
@@ -715,7 +715,7 @@ cleanup_and_return:
 // cleanup_and_return:
 //   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
 //   (void) line; // silence compiler warning
-//   if (NULL!= received)     free(received);
+//   if(NULL!= received)     free(received);
 //
 //   return err;
 // }

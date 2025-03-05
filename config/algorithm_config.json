@@ -2,7 +2,7 @@
   "config_metadata": {
     "schema_version": "2.6.3",
     "created": "2024-01-30",
-    "last_modified": "2024-03-03",
+    "last_modified": "2024-03-05",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -941,7 +941,7 @@
         ]
       },
       "recursive_doubling_over": {
-        "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+        "desc": "Libswing external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
         "library": {
           "libswing": "1.0.0"
         },
@@ -974,6 +974,38 @@
           "external"
         ]
       },
+      "recursive_distance_doubling_over": {
+        "desc": "Libswing external recursive distance doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "recursive_distance_doubling",
+          "external"
+        ]
+      },
       "ring_over": {
         "desc": "Libswing external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
         "library": {
@@ -998,8 +1030,47 @@
           "external"
         ]
       },
-      "swing_static_over": {
-        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This algorithm is used for medium to large messages",
+      "swing_static_memcpy_over": {
+        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              },
+              {
+                "operator": "<=",
+                "value": 256
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing_static",
+          "swing",
+          "medium_sizes",
+          "large_sizes",
+          "external"
+        ]
+      },
+      "swing_static_send_over": {
+        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses an additional send to the first step to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
           "libswing": "1.0.0"
         },

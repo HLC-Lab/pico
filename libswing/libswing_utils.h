@@ -46,7 +46,7 @@ static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
                                        EARLY_BLOCK_COUNT, LATE_BLOCK_COUNT ) \
     EARLY_BLOCK_COUNT = LATE_BLOCK_COUNT = COUNT / NUM_BLOCKS;               \
     SPLIT_INDEX = COUNT % NUM_BLOCKS;                                        \
-    if (0 != SPLIT_INDEX) {                                                  \
+    if(0 != SPLIT_INDEX) {                                                  \
         EARLY_BLOCK_COUNT = EARLY_BLOCK_COUNT + 1;                           \
     }                                                                        \
 
@@ -68,10 +68,10 @@ static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
 static inline int pi(int rank, int step, int comm_sz) {
   int dest;
 
-  if ((rank & 1) == 0) dest = (rank + rhos[step]) % comm_sz;  // Even rank
+  if((rank & 1) == 0) dest = (rank + rhos[step]) % comm_sz;  // Even rank
   else dest = (rank - rhos[step]) % comm_sz;                  // Odd rank
 
-  if (dest < 0) dest += comm_sz;                              // Adjust for negative ranks
+  if(dest < 0) dest += comm_sz;                              // Adjust for negative ranks
 
   return dest;
 }
@@ -91,7 +91,7 @@ static inline int pi(int rank, int step, int comm_sz) {
  */
 static inline int copy_buffer(const void *input_buffer, void *output_buffer,
                               size_t count, const MPI_Datatype datatype) {
-  if (SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || count <= 0)) {
+  if(SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || count <= 0)) {
     return MPI_ERR_UNKNOWN;
   }
 
@@ -123,7 +123,7 @@ static inline int copy_buffer(const void *input_buffer, void *output_buffer,
 static inline int copy_buffer_different_dt (const void *input_buffer, size_t scount,
                                             const MPI_Datatype sdtype, void *output_buffer,
                                             size_t rcount, const MPI_Datatype rdtype) {
-  if (SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
+  if(SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
     return MPI_ERR_UNKNOWN;
   }
 
@@ -135,7 +135,7 @@ static inline int copy_buffer_different_dt (const void *input_buffer, size_t sco
   size_t s_size = (size_t) sdtype_size * scount;
   size_t r_size = (size_t) rdtype_size * rcount;
 
-  if (r_size < s_size) {
+  if(r_size < s_size) {
     memcpy(output_buffer, input_buffer, r_size); // Copy as much as possible
     return MPI_ERR_TRUNCATE;      // Indicate truncation
   }
@@ -160,7 +160,7 @@ static inline int copy_buffer_different_dt (const void *input_buffer, size_t sco
  * @return The total memory span required for `count` repetitions of the datatype.
  */
 static inline ptrdiff_t datatype_span(MPI_Datatype dtype, size_t count, ptrdiff_t *gap) {
-  if (count == 0) {
+  if(count == 0) {
     *gap = 0;
     return 0;                                 // No memory span required for zero repetitions
   }
@@ -186,7 +186,7 @@ static inline ptrdiff_t datatype_span(MPI_Datatype dtype, size_t count, ptrdiff_
  * @returns The log_2 of value or -1 for negative value.
  */
 static inline int log_2(int value) {
-  if (SWING_UNLIKELY(1 > value)) {
+  if(SWING_UNLIKELY(1 > value)) {
     return -1;
   }
   return sizeof(int)*8 - 1 - __builtin_clz(value);
@@ -210,11 +210,11 @@ static inline int is_power_of_two(int value) {
  */
 static inline int next_poweroftwo(int value)
 {
-  if (SWING_UNLIKELY(0 > value)) {
+  if(SWING_UNLIKELY(0 > value)) {
     return -1;
   }
 
-  if (0 == value) {
+  if(0 == value) {
     return 1;
   }
 
@@ -244,7 +244,7 @@ static inline int hibit(int value, int start)
   /* Only look at the part that the caller wanted looking at */
   mask = value & ((1 << start) - 1);
 
-  if (0 == mask) {
+  if(0 == mask) {
     return -1;
   }
 
@@ -268,14 +268,14 @@ typedef struct {
  * @return         Pointer to the array of MPI_Request, or NULL if allocation failed.
  */
 static inline MPI_Request* alloc_reqs(request_manager_t* manager, int nreqs) {
-  if (nreqs == 0) {
+  if(nreqs == 0) {
     return NULL;
   }
 
   // If the current array is too small, resize it
-  if (manager->num_reqs < nreqs) {
+  if(manager->num_reqs < nreqs) {
     MPI_Request* new_reqs = realloc(manager->reqs, sizeof(MPI_Request) * nreqs);
-    if (new_reqs == NULL) {
+    if(new_reqs == NULL) {
       // Allocation failed, reset the manager
       manager->reqs = NULL;
       manager->num_reqs = 0;
@@ -286,7 +286,7 @@ static inline MPI_Request* alloc_reqs(request_manager_t* manager, int nreqs) {
     manager->reqs = new_reqs;
 
     // Initialize new entries to MPI_REQUEST_NULL
-    for (int i = manager->num_reqs; i < nreqs; i++) {
+    for(int i = manager->num_reqs; i < nreqs; i++) {
       manager->reqs[i] = MPI_REQUEST_NULL;
     }
 
@@ -303,7 +303,7 @@ static inline MPI_Request* alloc_reqs(request_manager_t* manager, int nreqs) {
  * @param manager  Pointer to the request_manager_t structure to clean up.
  */
 static inline void cleanup_reqs(request_manager_t* manager) {
-  if (manager->reqs != NULL) {
+  if(manager->reqs != NULL) {
     free(manager->reqs);
     manager->reqs = NULL;
   }
@@ -350,18 +350,18 @@ static inline unsigned int mirror_perm(unsigned int x, int nbits)
  */
 static inline int reorder_blocks(void *buffer, size_t block_size,
                                   int *block_permutation, int num_blocks) {
-  if (SWING_UNLIKELY(buffer == NULL || block_permutation == NULL || num_blocks <= 0)) {
+  if(SWING_UNLIKELY(buffer == NULL || block_permutation == NULL || num_blocks <= 0)) {
     return MPI_ERR_ARG;
   }
 
   char *buf = (char *)buffer;
   void *temp = malloc(block_size);
   char *visited = (char *)calloc(num_blocks, sizeof(int));
-  if (temp == NULL || visited == NULL) {
+  if(temp == NULL || visited == NULL) {
     return MPI_ERR_NO_MEM;
   }
 
-  for (int i = 0; i < num_blocks; ++i) {
+  for(int i = 0; i < num_blocks; ++i) {
     // Skip if the block is already in its correct position or visited
     if(visited[i] == 1 || block_permutation[i] == i) {
       continue;
@@ -402,8 +402,8 @@ static inline int reorder_blocks(void *buffer, size_t block_size,
  */
 static inline int get_sender(const int *p, int n, int i) {
   // Iterate over the array to find the index j for which p[j] == i.
-  for (int j = 0; j < n; j++) {
-      if (p[j] == i) {
+  for(int j = 0; j < n; j++) {
+      if(p[j] == i) {
           return j;  // Found the sender.
       }
   }
@@ -420,7 +420,7 @@ static inline int rounddown(int num, int factor)
     return num * factor;    /* floor(num / factor) * factor */
 }
 static uint32_t binary_to_negabinary(int32_t bin) {
-    if (SWING_UNLIKELY(bin > 0x55555555)) return -1;
+    if(SWING_UNLIKELY(bin > 0x55555555)) return -1;
     const uint32_t mask = 0xAAAAAAAA;
     return (mask + bin) ^ mask;
 }

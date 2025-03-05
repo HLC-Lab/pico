@@ -21,10 +21,10 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
   MPI_Comm_rank(comm, &rank);
 
   /* Special case for size == 1 */
-  if (1 == size) {
-    if (MPI_IN_PLACE != sbuf) {
+  if(1 == size) {
+    if(MPI_IN_PLACE != sbuf) {
       ret = copy_buffer((char *) sbuf, (char *) rbuf, count, dtype);
-      if (ret < 0) { line = __LINE__; goto error_hndl; }
+      if(ret < 0) { line = __LINE__; goto error_hndl; }
     }
     return MPI_SUCCESS;
   }
@@ -33,15 +33,15 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
   span = datatype_span(dtype, count, &gap);
 
   inplacebuf_free = (char*) malloc(span);
-  if (NULL == inplacebuf_free) { ret = -1; line = __LINE__; goto error_hndl; }
+  if(NULL == inplacebuf_free) { ret = -1; line = __LINE__; goto error_hndl; }
   inplacebuf = inplacebuf_free - gap;
 
-  if (MPI_IN_PLACE == sbuf) {
+  if(MPI_IN_PLACE == sbuf) {
       ret = copy_buffer((char*)rbuf, inplacebuf, count, dtype);
-      if (ret < 0) { line = __LINE__; goto error_hndl; }
+      if(ret < 0) { line = __LINE__; goto error_hndl; }
   } else {
       ret = copy_buffer((char*)sbuf, inplacebuf, count, dtype);
-      if (ret < 0) { line = __LINE__; goto error_hndl; }
+      if(ret < 0) { line = __LINE__; goto error_hndl; }
   }
 
   tmpsend = (char*) inplacebuf;
@@ -58,15 +58,15 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
      - Everyone else sets rank to rank - extra_ranks
   */
   extra_ranks = size - adjsize;
-  if (rank <  (2 * extra_ranks)) {
-    if (0 == (rank % 2)) {
+  if(rank <  (2 * extra_ranks)) {
+    if(0 == (rank % 2)) {
       ret = MPI_Send(tmpsend, count, dtype, (rank + 1), 0, comm);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
       newrank = -1;
     } else {
       ret = MPI_Recv(tmprecv, count, dtype, (rank - 1), 0, comm,
                   MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
       /* tmpsend = tmprecv (op) tmpsend */
       // reduction((int64_t *) tmprecv, (int64_t *) tmpsend, count);
       MPI_Reduce_local((char *) tmprecv, (char *) tmpsend, count, dtype, op);
@@ -81,8 +81,8 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
      - Perform appropriate operation taking in account order of operations:
      result = value (op) result
   */
-  for (distance = 0x1; distance < adjsize; distance <<=1) {
-    if (newrank < 0) break;
+  for(distance = 0x1; distance < adjsize; distance <<=1) {
+    if(newrank < 0) break;
     /* Determine remote node */
     newremote = newrank ^ distance;
     remote = (newremote < extra_ranks) ? (newremote * 2 + 1) : (newremote + extra_ranks);
@@ -91,7 +91,7 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
     ret = MPI_Sendrecv(tmpsend, count, dtype, remote, 0,
                        tmprecv, count, dtype, remote, 0,
                        comm, MPI_STATUS_IGNORE);
-    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+    if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
     // reduction((int64_t *) tmprecv, (int64_t *) tmpsend, count);
     MPI_Reduce_local((char *) tmprecv, (char *) tmpsend, count, dtype, op);
@@ -102,30 +102,30 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
      (rank - 1)
      - Even ranks less than 2 * extra_ranks receive result from (rank + 1)
   */
-  if (rank < (2 * extra_ranks)) {
-    if (0 == (rank % 2)) {
+  if(rank < (2 * extra_ranks)) {
+    if(0 == (rank % 2)) {
       ret = MPI_Recv(rbuf, count, dtype, (rank + 1), 0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
       tmpsend = (char*)rbuf;
     } else {
       ret = MPI_Send(tmpsend, count, dtype, (rank - 1), 0, comm);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
     }
   }
 
   /* Ensure that the final result is in rbuf */
-  if (tmpsend != rbuf) {
+  if(tmpsend != rbuf) {
     ret = copy_buffer(tmpsend, (char*)rbuf, count, dtype);
-    if (ret < 0) { line = __LINE__; goto error_hndl; }
+    if(ret < 0) { line = __LINE__; goto error_hndl; }
   }
 
-  if (NULL != inplacebuf_free) free(inplacebuf_free);
+  if(NULL != inplacebuf_free) free(inplacebuf_free);
   return MPI_SUCCESS;
 
   error_hndl:
     SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
     (void)line;  // silence compiler warning
-    if (NULL != inplacebuf_free) free(inplacebuf_free);
+    if(NULL != inplacebuf_free) free(inplacebuf_free);
     return ret;
 }
 
@@ -141,34 +141,34 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
 
   ret = MPI_Comm_rank(comm, &rank);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
   ret = MPI_Comm_size(comm, &size);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
-  // if (rank == 0) {
+  // if(rank == 0) {
   //   printf("4: RING\n");
   //   fflush(stdout);
   // }
 
   /* Special case for size == 1 */
-  if (1 == size) {
-    if (MPI_IN_PLACE != sbuf) {
+  if(1 == size) {
+    if(MPI_IN_PLACE != sbuf) {
       ret = copy_buffer((char *) sbuf, (char *) rbuf, count, dtype);
-      if (ret < 0) { line = __LINE__; goto error_hndl; }
+      if(ret < 0) { line = __LINE__; goto error_hndl; }
     }
     return MPI_SUCCESS;
   }
 
   /* Special case for count less than size - use recursive doubling */
-  if (count < (size_t) size) {
+  if(count < (size_t) size) {
     return (allreduce_recursivedoubling(sbuf, rbuf, count, dtype, op, comm));
   }
 
   /* Allocate and initialize temporary buffers */
   ret = MPI_Type_get_extent(dtype, &lb, &extent);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
   ret = MPI_Type_get_true_extent(dtype, &true_lb, &true_extent);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
   /* Determine the number of elements per block and corresponding
      block sizes.
@@ -184,16 +184,16 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
 
 
   inbuf[0] = (char*)malloc(max_real_segsize);
-  if (NULL == inbuf[0]) { ret = -1; line = __LINE__; goto error_hndl; }
-  if (size > 2) {
+  if(NULL == inbuf[0]) { ret = -1; line = __LINE__; goto error_hndl; }
+  if(size > 2) {
     inbuf[1] = (char*)malloc(max_real_segsize);
-    if (NULL == inbuf[1]) { ret = -1; line = __LINE__; goto error_hndl; }
+    if(NULL == inbuf[1]) { ret = -1; line = __LINE__; goto error_hndl; }
   }
 
   /* Handle MPI_IN_PLACE */
-  if (MPI_IN_PLACE != sbuf) {
+  if(MPI_IN_PLACE != sbuf) {
     ret = copy_buffer((char *)sbuf, (char *) rbuf, count, dtype);
-    if (ret < 0) { line = __LINE__; goto error_hndl; }
+    if(ret < 0) { line = __LINE__; goto error_hndl; }
   }
 
   /* Computation loop */
@@ -219,7 +219,7 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   inbi = 0;
   /* Initialize first receive from the neighbor on the left */
   ret = MPI_Irecv(inbuf[inbi], max_segcount, dtype, recv_from, 0, comm, &reqs[inbi]);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
   /* Send first block (my block) to the neighbor on the right */
   block_offset = ((rank < split_rank)?
           ((ptrdiff_t)rank * (ptrdiff_t)early_segcount) :
@@ -227,20 +227,20 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   block_count = ((rank < split_rank)? early_segcount : late_segcount);
   tmpsend = ((char*)rbuf) + block_offset * extent;
   ret = MPI_Send(tmpsend, block_count, dtype, send_to, 0, comm);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
-  for (k = 2; k < size; k++) {
+  for(k = 2; k < size; k++) {
     const int prevblock = (rank + size - k + 1) % size;
 
     inbi = inbi ^ 0x1;
 
     /* Post irecv for the current block */
     ret = MPI_Irecv(inbuf[inbi], max_segcount, dtype, recv_from, 0, comm, &reqs[inbi]);
-    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+    if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
     /* Wait on previous block to arrive */
     ret = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
-    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+    if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
     /* Apply operation on previous block: result goes to rbuf
        rbuf[prevblock] = inbuf[inbi ^ 0x1] (op) rbuf[prevblock]
@@ -254,12 +254,12 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
 
     /* send previous block to send_to */
     ret = MPI_Send(tmprecv, block_count, dtype, send_to, 0, comm);
-    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+    if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
   }
 
   /* Wait on the last block to arrive */
   ret = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
-  if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+  if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
 
   /* Apply operation on the last block (from neighbor (rank + 1)
      rbuf[rank+1] = inbuf[inbi] (op) rbuf[rank + 1] */
@@ -274,7 +274,7 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   /* Distribution loop - variation of ring allgather */
   send_to = (rank + 1) % size;
   recv_from = (rank + size - 1) % size;
-  for (k = 0; k < size - 1; k++) {
+  for(k = 0; k < size - 1; k++) {
     const int recv_data_from = (rank + size - k) % size;
     const int send_data_from = (rank + 1 + size - k) % size;
     const int send_block_offset =
@@ -294,12 +294,12 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
     ret = MPI_Sendrecv(tmpsend, block_count, dtype, send_to, 0,
                        tmprecv, max_segcount, dtype, recv_from,
                        0, comm, MPI_STATUS_IGNORE);
-    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl;}
+    if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl;}
 
   }
 
-  if (NULL != inbuf[0]) free(inbuf[0]);
-  if (NULL != inbuf[1]) free(inbuf[1]);
+  if(NULL != inbuf[0]) free(inbuf[0]);
+  if(NULL != inbuf[1]) free(inbuf[1]);
 
   return MPI_SUCCESS;
 
@@ -308,8 +308,8 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   MPI_Request_free(&reqs[0]);
   MPI_Request_free(&reqs[1]);
   (void)line;  // silence compiler warning
-  if (NULL != inbuf[0]) free(inbuf[0]);
-  if (NULL != inbuf[1]) free(inbuf[1]);
+  if(NULL != inbuf[0]) free(inbuf[0]);
+  if(NULL != inbuf[1]) free(inbuf[1]);
   return ret;
 }
 
@@ -324,10 +324,10 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   MPI_Comm_rank(comm, &rank);
 
   // Special case for size == 1
-  if (1 == size) {
-    if (MPI_IN_PLACE != sbuf) {
+  if(1 == size) {
+    if(MPI_IN_PLACE != sbuf) {
       ret = copy_buffer((char *) sbuf, (char *) rbuf, count, dtype);
-      if (ret < 0) { line = __LINE__; goto error_hndl; }
+      if(ret < 0) { line = __LINE__; goto error_hndl; }
     }
     return MPI_SUCCESS;
   }
@@ -338,12 +338,12 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   char *inplacebuf = inplacebuf_free + gap;
 
   // Copy content from sbuffer to inplacebuf
-  if (MPI_IN_PLACE == sbuf) {
+  if(MPI_IN_PLACE == sbuf) {
       ret = copy_buffer((char*)rbuf, inplacebuf, count, dtype);
-      if (ret < 0) { line = __LINE__; goto error_hndl; }
+      if(ret < 0) { line = __LINE__; goto error_hndl; }
   } else {
       ret = copy_buffer((char*)sbuf, inplacebuf, count, dtype);
-      if (ret < 0) { line = __LINE__; goto error_hndl; }
+      if(ret < 0) { line = __LINE__; goto error_hndl; }
   }
 
   tmpsend = inplacebuf;
@@ -352,7 +352,7 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   // Determine nearest power of two less than or equal to size
   // and return an error if size is 0
   int steps = hibit(size, (int)(sizeof(size) * CHAR_BIT) - 1);
-  if (steps == -1) {
+  if(steps == -1) {
       return MPI_ERR_ARG;
   }
   int adjsize = 1 << steps;  // Largest power of two <= size
@@ -370,14 +370,14 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   // called new_node, used to calculate their correct destination wrt this
   // new "cut" topology.
   int new_rank = rank, loop_flag = 0;
-  if (rank <  (2 * extra_ranks)) {
-    if (0 == (rank % 2)) {
+  if(rank <  (2 * extra_ranks)) {
+    if(0 == (rank % 2)) {
       ret = MPI_Send(tmpsend, count, dtype, (rank + 1), 0, comm);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
       loop_flag = 1;
     } else {
       ret = MPI_Recv(tmprecv, count, dtype, (rank - 1), 0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
       MPI_Reduce_local((char *) tmprecv, (char *) tmpsend, count, dtype, op);
       new_rank = rank >> 1;
     }
@@ -386,8 +386,8 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   
   // Actual allreduce computation for general cases
   int s, vdest, dest;
-  for (s = 0; s < steps; s++){
-    if (loop_flag) break;
+  for(s = 0; s < steps; s++){
+    if(loop_flag) break;
     vdest = pi(new_rank, s, adjsize);
 
     dest = is_power_of_two ?
@@ -398,27 +398,27 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
     ret = MPI_Sendrecv(tmpsend, count, dtype, dest, 0,
                        tmprecv, count, dtype, dest, 0,
                        comm, MPI_STATUS_IGNORE);
-    if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+    if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
     
     MPI_Reduce_local((char *) tmprecv, (char *) tmpsend, count, dtype, op);
   }
   
   // Final results is sent to nodes that are not included in general computation
   // (general computation loop requires 2^n nodes).
-  if (rank < (2 * extra_ranks)){
-    if (!loop_flag){
+  if(rank < (2 * extra_ranks)){
+    if(!loop_flag){
       ret = MPI_Send(tmpsend, count, dtype, (rank - 1), 0, comm);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
     } else {
       ret = MPI_Recv(rbuf, count, dtype, (rank + 1), 0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+      if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
       tmpsend = (char*)rbuf;
     }
   }
 
-  if (tmpsend != rbuf) {
+  if(tmpsend != rbuf) {
     ret = copy_buffer(tmpsend, (char*) rbuf, count, dtype);
-    if (ret < 0) { line = __LINE__; goto error_hndl; }
+    if(ret < 0) { line = __LINE__; goto error_hndl; }
   }
 
   free(inplacebuf_free);
@@ -427,7 +427,7 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   error_hndl:
     SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
     (void)line;  // silence compiler warning
-    if (NULL != inplacebuf_free) free(inplacebuf_free);
+    if(NULL != inplacebuf_free) free(inplacebuf_free);
     return ret;
 }
 
@@ -443,7 +443,7 @@ int allreduce_swing_bdw_static(const void *send_buf, void *recv_buf, size_t coun
   // and alias of the rank to be used if size != adj_size
   //Determine nearest power of two less than or equal to size
   int steps = hibit(size, (int) (sizeof(size) * CHAR_BIT) - 1);
-  if (-1 == steps){
+  if(-1 == steps){
     return MPI_ERR_ARG;
   }
   int adjsize = 1 << steps;
@@ -475,7 +475,7 @@ int allreduce_swing_bdw_static(const void *send_buf, void *recv_buf, size_t coun
 
   // Copy into receive_buffer content of send_buffer to not produce
   // side effects on send_buffer
-  if (send_buf != MPI_IN_PLACE) {
+  if(send_buf != MPI_IN_PLACE) {
     copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
   }
   
@@ -489,7 +489,7 @@ int allreduce_swing_bdw_static(const void *send_buf, void *recv_buf, size_t coun
   size_t s_count, r_count;
   ptrdiff_t s_offset, r_offset;
   // Reduce-Scatter phase
-  for (step = 0; step < steps; step++) {
+  for(step = 0; step < steps; step++) {
     w_size >>= 1;
     vdest = pi(vrank, step, adjsize);
 
@@ -567,7 +567,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
-  // if (rank == 0) {
+  // if(rank == 0) {
   //   printf("6: RABENSEIFNER\n");
   //   fflush(stdout);
   // }
@@ -578,7 +578,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   // and alias of the rank to be used if size != adj_size
   //Determine nearest power of two less than or equal to size
   int steps = hibit(size, (int) (sizeof(size) * CHAR_BIT) - 1);
-  if (-1 == steps){
+  if(-1 == steps){
     return MPI_ERR_ARG;
   }
   int adjsize = 1 << steps;
@@ -595,13 +595,13 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   /* Temporary buffer for receiving messages */
   char *tmp_buf = NULL;
   char *tmp_buf_raw = (char *)malloc(buf_size);
-  if (NULL == tmp_buf_raw)
+  if(NULL == tmp_buf_raw)
     return MPI_ERR_UNKNOWN;
   tmp_buf = tmp_buf_raw - gap;
 
-  if (sbuf != MPI_IN_PLACE) {
+  if(sbuf != MPI_IN_PLACE) {
     err = copy_buffer((char *)sbuf, (char *)rbuf, count, dtype);
-    if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
 
   /*
@@ -624,11 +624,11 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   int vrank, step, wsize;
   int nprocs_rem = size - adjsize;
 
-  if (rank < 2 * nprocs_rem) {
+  if(rank < 2 * nprocs_rem) {
     int count_lhalf = count / 2;
     int count_rhalf = count - count_lhalf;
 
-    if (rank % 2 != 0) {
+    if(rank % 2 != 0) {
       /*
        * Odd process -- exchange with rank - 1
        * Send the left half of the input vector to the left neighbor,
@@ -637,7 +637,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
       err = MPI_Sendrecv(rbuf, count_lhalf, dtype, rank - 1, 0,
                       (char *)tmp_buf + (ptrdiff_t)count_lhalf * extent,
                       count_rhalf, dtype, rank - 1, 0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
       /* Reduce on the right half of the buffers (result in rbuf) */
       MPI_Reduce_local((char *)tmp_buf + (ptrdiff_t)count_lhalf * extent,
@@ -646,7 +646,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
       /* Send the right half to the left neighbor */
       err = MPI_Send((char *)rbuf + (ptrdiff_t)count_lhalf * extent,
                      count_rhalf, dtype, rank - 1, 0, comm);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
       /* This process does not pariticipate in recursive doubling phase */
       vrank = -1;
@@ -661,7 +661,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
                       count_rhalf, dtype, rank + 1, 0,
                       tmp_buf, count_lhalf, dtype, rank + 1, 0, comm,
                       MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
       /* Reduce on the right half of the buffers (result in rbuf) */
       MPI_Reduce_local(tmp_buf, rbuf, count_lhalf, dtype, op);
@@ -669,7 +669,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
       /* Recv the right half from the right neighbor */
       err = MPI_Recv((char *)rbuf + (ptrdiff_t)count_lhalf * extent,
                   count_rhalf, dtype, rank + 1, 0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
       vrank = rank / 2;
     }
@@ -693,17 +693,17 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   sindex = malloc(sizeof(*sindex) * steps);
   rcount = malloc(sizeof(*rcount) * steps);
   scount = malloc(sizeof(*scount) * steps);
-  if (NULL == rindex || NULL == sindex || NULL == rcount || NULL == scount) {
+  if(NULL == rindex || NULL == sindex || NULL == rcount || NULL == scount) {
     err = MPI_ERR_UNKNOWN;
     goto cleanup_and_return;
   }
 
-  if (vrank != -1) {
+  if(vrank != -1) {
     step = 0;
     wsize = count;
     sindex[0] = rindex[0] = 0;
 
-    for (int mask = 1; mask < adjsize; mask <<= 1) {
+    for(int mask = 1; mask < adjsize; mask <<= 1) {
       /*
        * On each iteration: rindex[step] = sindex[step] -- beginning of the
        * current window. Length of the current window is storded in wsize.
@@ -712,7 +712,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
       /* Translate vdest virtual rank to real rank */
       int dest = (vdest < nprocs_rem) ? vdest * 2 : vdest + nprocs_rem;
 
-      if (rank < dest) {
+      if(rank < dest) {
         /*
          * Recv into the left half of the current window, send the right
          * half of the window to the peer (perform reduce on the left
@@ -738,7 +738,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
                       (char *)tmp_buf + (ptrdiff_t)rindex[step] * extent,
                       rcount[step], dtype, dest, 0, comm,
                       MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
       /* Local reduce: rbuf[] = tmp_buf[] <op> rbuf[] */
       MPI_Reduce_local((char *)tmp_buf + (ptrdiff_t)rindex[step] * extent,
@@ -746,7 +746,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
                rcount[step], dtype, op);
 
       /* Move the current window to the received message */
-      if (step + 1 < steps) {
+      if(step + 1 < steps) {
         rindex[step + 1] = rindex[step];
         sindex[step + 1] = rindex[step];
         wsize = rcount[step];
@@ -768,7 +768,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
 
     step = steps - 1;
 
-    for (int mask = adjsize >> 1; mask > 0; mask >>= 1) {
+    for(int mask = adjsize >> 1; mask > 0; mask >>= 1) {
       int vdest = vrank ^ mask;
       /* Translate vdest virtual rank to real rank */
       int dest = (vdest < nprocs_rem) ? vdest * 2 : vdest + nprocs_rem;
@@ -781,7 +781,7 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
                       rcount[step], dtype, dest, 0,
                       (char *)rbuf + (ptrdiff_t)sindex[step] * extent,
                       scount[step], dtype, dest, 0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
       step--;
     }
   }
@@ -789,31 +789,31 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   /*
    * Step 4. Send total result to excluded odd ranks.
    */
-  if (rank < 2 * nprocs_rem) {
-    if (rank % 2 != 0) {
+  if(rank < 2 * nprocs_rem) {
+    if(rank % 2 != 0) {
       /* Odd process -- recv result from rank - 1 */
       err = MPI_Recv(rbuf, count, dtype, rank - 1,
                   0, comm, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
     } else {
       /* Even process -- send result to rank + 1 */
       err = MPI_Send(rbuf, count, dtype, rank + 1,
                   0, comm);
-      if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
     }
   }
 
   cleanup_and_return:
-  if (NULL != tmp_buf_raw)
+  if(NULL != tmp_buf_raw)
     free(tmp_buf_raw);
-  if (NULL != rindex)
+  if(NULL != rindex)
     free(rindex);
-  if (NULL != sindex)
+  if(NULL != sindex)
     free(sindex);
-  if (NULL != rcount)
+  if(NULL != rcount)
     free(rcount);
-  if (NULL != scount)
+  if(NULL != scount)
     free(scount);
   return err;
 }
@@ -835,7 +835,7 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
 
   // Does not support non-power-of-two or negative sizes
   steps = log_2(size);
-  if ( !is_power_of_two(size) || steps == -1 ) {
+  if( !is_power_of_two(size) || steps == -1 ) {
     return MPI_ERR_ARG;
   }
 
@@ -848,16 +848,16 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
 
   // Copy into receive_buffer content of send_buffer to not produce
   // side effects on send_buffer
-  if (send_buf != MPI_IN_PLACE) {
+  if(send_buf != MPI_IN_PLACE) {
     err = copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
-    if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
 
   r_index = malloc(sizeof(*r_index) * steps);
   s_index = malloc(sizeof(*s_index) * steps);
   r_count = malloc(sizeof(*r_count) * steps);
   s_count = malloc(sizeof(*s_count) * steps);
-  if (NULL == r_index || NULL == s_index || NULL == r_count || NULL == s_count) {
+  if(NULL == r_index || NULL == s_index || NULL == r_count || NULL == s_count) {
     err = MPI_ERR_NO_MEM;
     goto cleanup_and_return;
   }
@@ -866,10 +866,10 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
   s_index[0] = r_index[0] = 0;
   vrank = remap_rank((uint32_t) size, (uint32_t) rank);
   // Reduce-Scatter phase
-  for (step = 0; step < steps; step++) {
+  for(step = 0; step < steps; step++) {
     dest = pi(rank, step, size);
 
-    if (vrank < dest) {
+    if(vrank < dest) {
       r_count[step] = w_size / 2;
       s_count[step] = w_size - r_count[step];
       s_index[step] = r_index[step] + r_count[step];
@@ -883,12 +883,12 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
     err = MPI_Sendrecv(tmp_send, s_count[step], dtype, dest, 0,
                        tmp_buf, r_count[step], dtype, dest, 0,
                        comm, MPI_STATUS_IGNORE);
-    if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
     tmp_recv = (char *) recv_buf + r_index[step] * extent;
     MPI_Reduce_local(tmp_buf, tmp_recv, r_count[step], dtype, op);
 
-    if (step + 1 < steps) {
+    if(step + 1 < steps) {
       r_index[step + 1] = r_index[step];
       s_index[step + 1] = r_index[step];
       w_size = r_count[step];
@@ -896,7 +896,7 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
   }
 
   // Allgather phase
-  for (step = steps - 1; step >= 0; step--) {
+  for(step = steps - 1; step >= 0; step--) {
     dest = pi(rank, step, size);
 
     tmp_send = (char *)recv_buf + r_index[step] * extent;
@@ -905,7 +905,7 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
     err = MPI_Sendrecv(tmp_send, r_count[step], dtype, dest, 0,
                        tmp_recv, s_count[step], dtype, dest, 0,
                        comm, MPI_STATUS_IGNORE);
-    if (MPI_SUCCESS != err) { goto cleanup_and_return; }
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
 
   free(tmp_buf_raw);
@@ -916,11 +916,11 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  if (NULL != tmp_buf_raw)  free(tmp_buf_raw);
-  if (NULL != r_index)      free(r_index);
-  if (NULL != s_index)      free(s_index);
-  if (NULL != r_count)      free(r_count);
-  if (NULL != s_count)      free(s_count);
+  if(NULL != tmp_buf_raw)  free(tmp_buf_raw);
+  if(NULL != r_index)      free(r_index);
+  if(NULL != s_index)      free(s_index);
+  if(NULL != r_count)      free(r_count);
+  if(NULL != s_count)      free(s_count);
   return err;
 }
 

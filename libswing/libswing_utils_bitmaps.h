@@ -42,7 +42,7 @@ extern const void* static_send_bitmaps[];
 extern const void* static_recv_bitmaps[];
 
 static inline int get_static_bitmap(const int** send_bitmap, const int** recv_bitmap, int n_steps, int comm_sz, int rank) {
-  if (SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 8)) {
+  if(SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 8)) {
     return -1;
   }
 
@@ -55,7 +55,7 @@ static inline int get_static_bitmap(const int** send_bitmap, const int** recv_bi
 
 static inline int get_perm_bitmap(int** permutation, int n_steps, int comm_sz) {
   // verify that comm_sz is exactly 2^n_steps
-  if (SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 8)) {
+  if(SWING_UNLIKELY(comm_sz != (1 << n_steps) || n_steps < 1 || n_steps > 8)) {
     return -1;
   }
   

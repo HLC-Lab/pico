@@ -78,10 +78,12 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
 * defauls to the internal allgather function.
 */
 static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
-  // if (strcmp(algorithm, "K_BRUCK_OVER") == 0 ) return allgather_k_bruck;
+  // if(strcmp(algorithm, "K_BRUCK_OVER") == 0 ) return allgather_k_bruck;
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
+  CHECK_STR(algorithm, "recursive_distance_doubling_over", allgather_recursive_distance_doubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
-  CHECK_STR(algorithm, "swing_static_over", allgather_swing_static);
+  CHECK_STR(algorithm, "swing_static_memcpy_over", allgather_swing_static_memcpy);
+  CHECK_STR(algorithm, "swing_static_send_over", allgather_swing_static_send);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
@@ -131,7 +133,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
   // Get the collective type from the environment variable
   coll_str = getenv("COLLECTIVE_TYPE");
-  if (NULL == coll_str) {
+  if(NULL == coll_str) {
     fprintf(stderr, "Error! `COLLECTIVE_TYPE` environment \
                     variable not set. Aborting...");
     return -1;
@@ -139,7 +141,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
   // Convert the collective string to a `coll_t` enum value
   test_routine->collective = get_collective_from_string(coll_str);
-  if (test_routine->collective == COLL_UNKNOWN) {
+  if(test_routine->collective == COLL_UNKNOWN) {
     fprintf(stderr, "Error! Invalid `COLLECTIVE_TYPE` value: \
                      %s. Aborting...", coll_str);
     return -1;
@@ -147,7 +149,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
   // Set the right allocator based on the collective type
   test_routine->allocator = get_allocator(test_routine->collective);
-  if (NULL == test_routine->allocator) {
+  if(NULL == test_routine->allocator) {
     fprintf(stderr, "Error! Allocator is NULL. Aborting...");
     return -1;
   }
@@ -198,7 +200,7 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
-      for (int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
+      for(int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
       ret = reduce_scatter_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm, iter,
                                times, test_routine);
       free(rcounts);
@@ -229,7 +231,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
     case BCAST:
-      if (rank == 0) {
+      if(rank == 0) {
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
       PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
@@ -237,7 +239,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
-      for (int i = 0; i < comm_sz; i++){
+      for(int i = 0; i < comm_sz; i++){
         rcounts[i] = count / comm_sz;
       }
       PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
@@ -254,20 +256,20 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
 
 int get_command_line_arguments(int argc, char** argv, size_t *array_count, int* iter,
                                const char **algorithm, const char **type_string) {
-  if (argc != 5) {
+  if(argc != 5) {
     fprintf(stderr, "Usage: %s <array_count> <iterations> <algorithm> <dtype>", argv[0]);
     return -1;
   }
 
   char *endptr;
   *array_count = (size_t) strtoll(argv[1], &endptr, 10);
-  if (*endptr != '\0' || *array_count <= 0) {
+  if(*endptr != '\0' || *array_count <= 0) {
     fprintf(stderr, "Error: Invalid array count. It must be a positive integer. Aborting...");
     return -1;
   }
 
   *iter = (int) strtol(argv[2], &endptr, 10);
-  if (*endptr != '\0' || *iter <= 0) {
+  if(*endptr != '\0' || *iter <= 0) {
     fprintf(stderr, "Error: Invalid number of iterations. It must be a positive integer. Aborting...");
     return -1;
   }
@@ -310,8 +312,8 @@ const static TypeMap type_map[] = {
 int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_size) {
   int num_types = sizeof(type_map) / sizeof(type_map[0]);
 
-  for (int i = 0; i < num_types; i++) {
-    if (strcmp(type_string, type_map[i].t_string) == 0) {
+  for(int i = 0; i < num_types; i++) {
+    if(strcmp(type_string, type_map[i].t_string) == 0) {
       *dtype = type_map[i].mpi_type;
       *type_size = type_map[i].t_size;
       return 0;
@@ -338,22 +340,22 @@ static inline int write_all_output_to_file(const char *fullpath, double *highest
   int comm_sz;
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
   FILE *output_file = fopen(fullpath, "w");
-  if (output_file == NULL) {
+  if(output_file == NULL) {
     fprintf(stderr, "Error: Opening file %s for writing", fullpath);
     return -1;
   }
 
   // Write the header with ranks from rank0 to rankN
   fprintf(output_file, "highest");
-  for (int rank = 0; rank < comm_sz; rank++) {
+  for(int rank = 0; rank < comm_sz; rank++) {
     fprintf(output_file, ",rank%d", rank);
   }
   fprintf(output_file, "\n");
 
   // Write the timing data
-  for (int i = 0; i < iter; i++) {
+  for(int i = 0; i < iter; i++) {
     fprintf(output_file, "%" PRId64, (int64_t)(highest[i] * 1e9));
-    for (int j = 0; j < comm_sz; j++) {
+    for(int j = 0; j < comm_sz; j++) {
       fprintf(output_file, ",%" PRId64, (int64_t)(all_times[j * iter + i] * 1e9));
     }
     fprintf(output_file, "\n");
@@ -376,7 +378,7 @@ static inline int write_all_output_to_file(const char *fullpath, double *highest
 */
 static inline int write_summarized_output_to_file(const char *fullpath, double *highest, int iter){
   FILE *output_file = fopen(fullpath, "w");
-  if (output_file == NULL) {
+  if(output_file == NULL) {
     fprintf(stderr, "Error: Opening file %s for writing", fullpath);
     return -1;
   }
@@ -385,7 +387,7 @@ static inline int write_summarized_output_to_file(const char *fullpath, double *
   fprintf(output_file, "highest\n");
 
   // Write the timing data
-  for (int i = 0; i < iter; i++) {
+  for(int i = 0; i < iter; i++) {
     fprintf(output_file, "%" PRId64"\n", (int64_t)(highest[i] * 1e9));
   }
 
@@ -394,9 +396,9 @@ static inline int write_summarized_output_to_file(const char *fullpath, double *
 }
 
 int write_output_to_file(const char *output_level, const char *filename, double *highest, double *all_times, int iter){
-  if (strcmp(output_level, "all") == 0) {
+  if(strcmp(output_level, "all") == 0) {
     return write_all_output_to_file(filename, highest, all_times, iter);
-  } else if (strcmp(output_level, "summarized") == 0) {
+  } else if(strcmp(output_level, "summarized") == 0) {
     return write_summarized_output_to_file(filename, highest, iter);
   } else {
     fprintf(stderr, "Error: Output level %s not recognized. Aborting...", output_level);
@@ -420,8 +422,8 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm) {
   MPI_Get_processor_name(processor_name, &name_len);
 
   MPI_File file;
-  if (MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
-    if (rank == 0) {
+  if(MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
+    if(rank == 0) {
       fprintf(stderr, "Error: Opening file %s for writing", filename);
     }
     return MPI_ERR_FILE;
@@ -429,7 +431,7 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm) {
 
   const char header[] = "MPI_Rank,allocation\n";
   // Rank 0 writes the header to the file
-  if (rank == 0) {
+  if(rank == 0) {
     MPI_File_write_at(file, 0, header, sizeof(header) - 1, MPI_CHAR, MPI_STATUS_IGNORE);
   }
 
@@ -458,7 +460,7 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   unsigned int seed = time(NULL) + rank;
   
   // For BCAST, only rank 0 generates the sendbuf
-  if (test_routine.collective == BCAST && rank != 0) {
+  if(test_routine.collective == BCAST && rank != 0) {
     return 0;
   }
   // If generating sendbuf for an ALLGATHER, the number of element is
@@ -467,24 +469,24 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
     (test_routine.collective == ALLGATHER) ?
                                         count / (size_t) comm_sz : count;
 
-  for (size_t i = 0; i < real_sbuf_count; i++) {
-    if (dtype == MPI_INT8_T) {
+  for(size_t i = 0; i < real_sbuf_count; i++) {
+    if(dtype == MPI_INT8_T) {
       ((int8_t *)sbuf)[i] = (int8_t)((rand_r(&seed) % 256) - 128);
     } else if(dtype == MPI_INT16_T) {
       ((int16_t *)sbuf)[i] = (int16_t)((rand_r(&seed) % 65536) - 32768);
-    } else if (dtype == MPI_INT32_T) {
+    } else if(dtype == MPI_INT32_T) {
       ((int32_t *)sbuf)[i] = (int32_t)(rand_r(&seed));
-    } else if (dtype == MPI_INT64_T) {
+    } else if(dtype == MPI_INT64_T) {
       ((int64_t *)sbuf)[i] = ((int64_t)rand_r(&seed) << 32) | rand_r(&seed);
-    } else if (dtype == MPI_INT) {
+    } else if(dtype == MPI_INT) {
       ((int *)sbuf)[i] = (int)rand_r(&seed);
-    } else if (dtype == MPI_FLOAT) {
+    } else if(dtype == MPI_FLOAT) {
       ((float *)sbuf)[i] = (float)rand_r(&seed) / (float) RAND_MAX * 100.0f;
-    } else if (dtype == MPI_DOUBLE) {
+    } else if(dtype == MPI_DOUBLE) {
       ((double *)sbuf)[i] = (double)rand_r(&seed) / (double) RAND_MAX * 100.0;
-    } else if (dtype == MPI_CHAR) {
+    } else if(dtype == MPI_CHAR) {
       ((char *)sbuf)[i] = (char)((rand_r(&seed) % 256) - 128);
-    } else if (dtype == MPI_UNSIGNED_CHAR) {
+    } else if(dtype == MPI_UNSIGNED_CHAR) {
       ((unsigned char *)sbuf)[i] = (unsigned char)(rand_r(&seed) % 256);
     } else {
       fprintf(stderr, "Error: sbuf not generated correctly. Aborting...");
@@ -497,7 +499,7 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
 
 int concatenate_path(const char *dir_path, const char *filename, char *fullpath) {
-  if (dir_path == NULL || filename == NULL) {
+  if(dir_path == NULL || filename == NULL) {
     fprintf(stderr, "Directory path or filename is NULL.");
     return -1;
   }
@@ -505,18 +507,18 @@ int concatenate_path(const char *dir_path, const char *filename, char *fullpath)
   size_t dir_path_len = strlen(dir_path);
   size_t filename_len = strlen(filename);
 
-  if (dir_path_len == 0) {
+  if(dir_path_len == 0) {
     fprintf(stderr, "Directory path is empty.");
     return -1;
   }
 
-  if (dir_path_len + filename_len + 2 > BENCH_MAX_PATH_LENGTH) {
+  if(dir_path_len + filename_len + 2 > BENCH_MAX_PATH_LENGTH) {
     fprintf(stderr, "Combined path length exceeds buffer size.");
     return -1;
   }
 
   strcpy(fullpath, dir_path);
-  if (dir_path[dir_path_len - 1] != '/') {
+  if(dir_path[dir_path_len - 1] != '/') {
     strcat(fullpath, "/");
   }
   strcat(fullpath, filename);
@@ -530,27 +532,27 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
   int comm_sz;
   MPI_Comm_size(comm, &comm_sz);
 
-  if (count == 0) return 0;
+  if(count == 0) return 0;
 
-  if (MPI_FLOAT == dtype) {
+  if(MPI_FLOAT == dtype) {
     float *b1 = (float *) buf_1;
     float *b2 = (float *) buf_2;
 
     float epsilon = comm_sz * BENCH_BASE_EPSILON_FLOAT * 100.0f;
 
-    for (size_t i = 0; i < count; i++) {
-      if (fabs(b1[i] - b2[i]) > epsilon) {
+    for(size_t i = 0; i < count; i++) {
+      if(fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
     }
-  } else if (MPI_DOUBLE == dtype) {
+  } else if(MPI_DOUBLE == dtype) {
     double *b1 = (double *) buf_1;
     double *b2 = (double *) buf_2;
 
     double epsilon = comm_sz * BENCH_BASE_EPSILON_DOUBLE * 100.0;
 
-    for (size_t i = 0; i < count; i++) {
-      if (fabs(b1[i] - b2[i]) > epsilon) {
+    for(size_t i = 0; i < count; i++) {
+      if(fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
     }
@@ -567,10 +569,10 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
  */
 static inline int64_t int_pow_64(int base, int exp) {
   int64_t result = 1, base_ = base;
-  if (exp == 0) return 1;
+  if(exp == 0) return 1;
 
   while (exp > 0) {
-    if (exp % 2 == 1) result *= base_;
+    if(exp % 2 == 1) result *= base_;
     base_ *= base_;
     exp /= 2;
   }
@@ -584,10 +586,10 @@ static inline int64_t int_pow_64(int base, int exp) {
  */
 static inline int32_t int_pow_32(int base, int exp) {
   int32_t result = 1, base_ = base;
-  if (exp == 0) return 1;
+  if(exp == 0) return 1;
 
   while (exp > 0) {
-    if (exp % 2 == 1) result *= base_;
+    if(exp % 2 == 1) result *= base_;
     base_ *= base_;
     exp /= 2;
   }
@@ -601,10 +603,10 @@ static inline int32_t int_pow_32(int base, int exp) {
  */
 static inline int int_pow(int base, int exp) {
   int result = 1;
-  if (exp == 0) return 1;
+  if(exp == 0) return 1;
 
   while (exp > 0) {
-    if (exp % 2 == 1) result *= base;
+    if(exp % 2 == 1) result *= base;
     base *= base;
     exp /= 2;
   }
@@ -618,7 +620,7 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   MPI_Comm_size(comm, &comm_sz);
 
   // For BCAST, only rank 0 has a valid sbuf
-  if (test_routine.collective == BCAST && rank != 0) {
+  if(test_routine.collective == BCAST && rank != 0) {
     return 0;
   }
 
@@ -627,11 +629,11 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
                                         count / (size_t) comm_sz : count;
 
   for(int i=0; i< real_sbuf_count; i++){
-    if (dtype == MPI_INT64_T) {
+    if(dtype == MPI_INT64_T) {
       ((int64_t*)sbuf)[i] = int_pow_64(10, rank);
-    } else if (dtype == MPI_INT32_T) {
+    } else if(dtype == MPI_INT32_T) {
       ((int32_t*)sbuf)[i] = int_pow_32(10, rank);
-    } else if (dtype == MPI_INT){
+    } else if(dtype == MPI_INT){
       ((int*)sbuf)[i] = int_pow(10, rank);
     } else {
       fprintf(stderr, "Error: Datatype not implemented for `debug_sbuf_init`...");
@@ -645,19 +647,19 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
  * Helper function to print an array of elements based on MPI_Datatype.
  */
 static void print_buffer_helper(const void *buf, size_t count, MPI_Datatype dtype) {
-  if (dtype == MPI_INT64_T) {
+  if(dtype == MPI_INT64_T) {
     const int64_t *data = (const int64_t *)buf;
-    for (size_t j = 0; j < count; j++) {
+    for(size_t j = 0; j < count; j++) {
       printf("%" PRId64 " ", data[j]);
     }
-  } else if (dtype == MPI_INT32_T) {
+  } else if(dtype == MPI_INT32_T) {
     const int32_t *data = (const int32_t *)buf;
-    for (size_t j = 0; j < count; j++) {
+    for(size_t j = 0; j < count; j++) {
       printf("%" PRId32 " ", data[j]);
     }
-  } else if (dtype == MPI_INT) {
+  } else if(dtype == MPI_INT) {
     const int *data = (const int *)buf;
-    for (size_t j = 0; j < count; j++) {
+    for(size_t j = 0; j < count; j++) {
       printf("%d ", data[j]);
     }
   } else {
@@ -666,20 +668,20 @@ static void print_buffer_helper(const void *buf, size_t count, MPI_Datatype dtyp
 }
 
 void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count,
-                         MPI_Datatype dtype, MPI_Comm comm){
+                        MPI_Datatype dtype, MPI_Comm comm, int use_barrier) {
   int rank, comm_sz;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
-  for (int i = 0; i < comm_sz; i++) {
-    if (rank == i) {
-      printf("Rank %d:\n", rank);
-      printf("recvbuf: ");
+  for(int i = 0; i < comm_sz; i++) {
+    if(rank == i) {
+      printf("\nRank %d:\nrecvbuf: ", rank);
       print_buffer_helper(rbuf, count, dtype);
       printf("\ng_truth: ");
       print_buffer_helper(rbuf_gt, count, dtype);
       printf("\n\n");
-      fflush(stdout);
     }
+    fflush(stdout);
+    if(use_barrier == 0) MPI_Barrier(comm);
   }
 }
 

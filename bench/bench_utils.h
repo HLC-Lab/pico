@@ -15,23 +15,23 @@
 // Used to print algorithm and collective when in debug mode
 #ifndef DEBUG
   #define BENCH_DEBUG_PRINT_STR(name)
-  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm) do {} while(0)
+  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier) do {} while(0)
 #else
   #define BENCH_DEBUG_PRINT_STR(name)                 \
     do{                                         \
       int my_r;                                 \
       MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
-      if (my_r == 0){ printf("%s\n", name); } \
+      if(my_r == 0){ printf("%s\n", name); } \
     } while(0)
 
-  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm)      \
+  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier)      \
     do {                                                                 \
-    debug_print_buffers((result), (expected), (count), (dtype), (comm)); \
+    debug_print_buffers((result), (expected), (count), (dtype), (comm), (use_barrier)); \
     } while(0)
 #endif // DEBUG
 
 #define CHECK_STR(var, name, ret)               \
-  if (strcmp(var, name) == 0) {                 \
+  if(strcmp(var, name) == 0) {                 \
     BENCH_DEBUG_PRINT_STR(name);                      \
     return ret;                                 \
   }
@@ -155,12 +155,12 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, \
   int ret = MPI_SUCCESS;                                             \
   double start_time, end_time;                                       \
   MPI_Barrier(comm);                                                 \
-  for (int i = 0; i < iter; i++) {                                   \
+  for(int i = 0; i < iter; i++) {                                   \
     start_time = MPI_Wtime();                                        \
     ret = test_routine.function.COLLECTIVE;                          \
     end_time = MPI_Wtime();                                          \
     times[i] = end_time - start_time;                                \
-    if (BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                        \
+    if(BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                        \
       fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...");    \
       return ret;                                                    \
     }                                                                \
@@ -202,15 +202,15 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
  */
 #define GT_CHECK_BUFFER(result, expected, count, dtype, comm)                 \
   do {                                                                        \
-    if (dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
-      if (memcmp((result), (expected), (count) * type_size) != 0) {           \
-        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+    if(dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
+      if(memcmp((result), (expected), (count) * type_size) != 0) {           \
+        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (1));  \
         fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
     } else {                                                                  \
-      if (are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
-        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm));  \
+      if(are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
+        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (1));  \
         fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
@@ -392,7 +392,7 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
  * @param dtype The MPI datatype of the buffer.
  * @param comm The MPI communicator.
  */
-void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm);
+void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm, int use_barrier);
 #endif // DEBUG
 
 #endif // BENCH_TOOLS_H
