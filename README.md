@@ -1,3 +1,9 @@
+# IMPORTANT
+
+**THIS DOCUMENTATION IS NOT UP TO DATE, TO GET THE GENERAL WORKFLOW OF THE APPLICATION RUN `scripts/submit_wrapper.sh --help`**
+
+**DOCS WILL BE UPDATED ONCE THE TOOL IS STABILIZED IN ITS FUNCTIONALITIES AND INTERFACE**
+
 # Project Overview
 Swing_Test is the implementation, debug and benchmarking project for [Swing algorithm](https://arxiv.org/abs/2401.09356).
 
