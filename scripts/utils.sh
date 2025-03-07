@@ -37,21 +37,27 @@ warning() {
 }
 export -f warning
 
-check_arg() {
-    if [[ -z "$2" || "$2" =~ ^-- ]]; then
-        error "If given, option '$1' requires an argument."
-        usage
-        exit 1
-    fi
+# Info messages in blue
+inform() {
+    echo -e "${BLUE}$1${NC}"
 }
+export -f inform
 
 # Cleanup function for SIGINT
 cleanup() {
-    error "Caught Ctrl+C! Killing all child processes..."
+    error "Killing all child processes and aborting..."
     pkill -P $$
     exit 1
 }
 export -f cleanup
+
+check_arg() {
+    if [[ -z "$2" || "$2" =~ ^-- ]]; then
+        error "If given, option '$1' requires an argument."
+        usage
+        cleanup
+    fi
+}
 
 # Show the usage message
 usage() {
@@ -178,7 +184,7 @@ parse_cli_args() {
             *)
                 error "Error: Unknown option $1" >&2
                 usage
-                exit 1
+                cleanup
                 ;;
         esac
     done
@@ -357,11 +363,10 @@ run_bench() {
     local iter=$(get_iterations $size)
 
     if [ "$DEBUG_MODE" == "yes" ]; then
-        echo "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
+        inform "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
         $RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type
     else
-        echo "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo. Iter: $iter)"
-        $RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; exit 1; }
+        $RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; cleanup; }
     fi
 }
 export -f run_bench
@@ -372,12 +377,12 @@ update_algorithm() {
     local algo=$1
     local cvar_indx=$2
     if [[ "$MPI_LIB" == "OMPI_SWING" ]] || [[ "$MPI_LIB" == "OMPI" ]]; then
-        echo "Updating dynamic rule file for algorithm $algo..."
-        python3 $ALGO_CHANGE_SCRIPT $algo || exit 1
+        success "Updating dynamic rule file for algorithm $algo..."
+        python3 $ALGO_CHANGE_SCRIPT $algo || cleanup
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
     elif [[ $MPI_LIB == "MPICH" ]] || [[ $MPI_LIB == "CRAY_MPICH" ]]; then
         local cvar=${CVARS[$cvar_indx]}
-        echo "Setting 'MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
+        success "Setting 'MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
         export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
     fi
 }
@@ -392,6 +397,7 @@ run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
         update_algorithm $algo $i
+        inform "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes"
 
         for size in ${SIZES//,/ }; do
             if [[ $size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then

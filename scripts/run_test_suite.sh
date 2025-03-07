@@ -63,3 +63,6 @@ if [[ "$DEBUG_MODE" == "no" && "$COMPRESS" == "yes" ]]; then
         fi
     fi
 fi
+
+
+pkill -P $$

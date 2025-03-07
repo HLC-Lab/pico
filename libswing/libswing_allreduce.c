@@ -317,7 +317,7 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   int rank, size;
   int ret, line; // for error handling
   char *tmpsend, *tmprecv, *inplacebuf_free = NULL;
-  ptrdiff_t span, gap = 0;
+  ptrdiff_t extent, true_extent, lb,gap, span = 0;
   
 
   MPI_Comm_size(comm, &size);
@@ -332,8 +332,11 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
     return MPI_SUCCESS;
   }
   
+
   // Allocate and initialize temporary send buffer
-  span = datatype_span(dtype, count, &gap);
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+  span = true_extent + extent * (count - 1);
   inplacebuf_free = (char*) malloc(span + gap);
   char *inplacebuf = inplacebuf_free + gap;
 
@@ -824,7 +827,7 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
   int size, rank, dest, steps, step, err = MPI_SUCCESS;
   int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
   size_t w_size;
-  uint32_t vrank;
+  uint32_t vrank, vdest;
 
   char *tmp_send = NULL, *tmp_recv = NULL;
   char *tmp_buf_raw = NULL, *tmp_buf;
@@ -865,11 +868,13 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
   w_size = count;
   s_index[0] = r_index[0] = 0;
   vrank = remap_rank((uint32_t) size, (uint32_t) rank);
+
   // Reduce-Scatter phase
   for(step = 0; step < steps; step++) {
     dest = pi(rank, step, size);
+    vdest = remap_rank((uint32_t) size, (uint32_t) dest);
 
-    if(vrank < dest) {
+    if(vrank < vdest) {
       r_count[step] = w_size / 2;
       s_count[step] = w_size - r_count[step];
       s_index[step] = r_index[step] + r_count[step];
@@ -878,7 +883,6 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
       r_count[step] = w_size - s_count[step];
       r_index[step] = s_index[step] + s_count[step];
     }
-
     tmp_send = (char *)recv_buf + s_index[step] * extent;
     err = MPI_Sendrecv(tmp_send, s_count[step], dtype, dest, 0,
                        tmp_buf, r_count[step], dtype, dest, 0,
@@ -901,7 +905,6 @@ int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count
 
     tmp_send = (char *)recv_buf + r_index[step] * extent;
     tmp_recv = (char *)recv_buf + s_index[step] * extent;
-
     err = MPI_Sendrecv(tmp_send, r_count[step], dtype, dest, 0,
                        tmp_recv, s_count[step], dtype, dest, 0,
                        comm, MPI_STATUS_IGNORE);

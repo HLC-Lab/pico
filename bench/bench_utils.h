@@ -26,7 +26,7 @@
 
   #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier)      \
     do {                                                                 \
-    debug_print_buffers((result), (expected), (count), (dtype), (comm), (use_barrier)); \
+    print_buffers(NULL, (result), (expected), 0, (count), (dtype), (comm), (use_barrier)); \
     } while(0)
 #endif // DEBUG
 
@@ -364,6 +364,19 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t array_size,
  */
 int concatenate_path(const char *dirpath, const char *filename, char *fullpath);
 
+/**
+ * @brief Prints the contents of two buffers for debugging purposes.
+ *
+ * @param rbuf The buffer to print.
+ * @param rbuf_gt The ground-truth buffer to print.
+ * @param count The number of elements in the buffer.
+ * @param dtype The MPI datatype of the buffer.
+ * @param comm The MPI communicator.
+ * @param use_barrier Flag to indicate if a barrier should be used.
+ */
+void print_buffers(const void *sbuf, const void *rbuf, const void *rbuf_gt,
+                   size_t sbuf_count, size_t rbuf_count, MPI_Datatype dtype,
+                   MPI_Comm comm, int use_barrier);
 
 //-----------------------------------------------------------------------------------------------
 //                          DEBUGGING FUNCTIONS
@@ -383,16 +396,6 @@ int concatenate_path(const char *dirpath, const char *filename, char *fullpath);
 int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
                     MPI_Comm comm, test_routine_t test_routine);
 
-/**
- * @brief Prints the contents of two buffers for debugging purposes.
- *
- * @param rbuf The buffer to print.
- * @param rbuf_gt The ground-truth buffer to print.
- * @param count The number of elements in the buffer.
- * @param dtype The MPI datatype of the buffer.
- * @param comm The MPI communicator.
- */
-void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm, int use_barrier);
 #endif // DEBUG
 
 #endif // BENCH_TOOLS_H

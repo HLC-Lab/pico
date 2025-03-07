@@ -28,8 +28,10 @@
 static int rhos[SWING_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
 
-static int smallest_negabinary[SWING_MAX_STEPS] = {0, 0, -2, -2, -10, -10, -42, -42, -170, -170, -682, -682, -2730, -2730, -10922, -10922, -43690, -43690, -174762, -174762};
-static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85, 341, 341, 1365, 1365, 5461, 5461, 21845, 21845, 87381, 87381, 349525};
+static int smallest_negabinary[SWING_MAX_STEPS] = {0, 0, -2, -2, -10, -10, -42, -42,
+          -170, -170, -682, -682, -2730, -2730, -10922, -10922, -43690, -43690, -174762, -174762};
+static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
+          341, 341, 1365, 1365, 5461, 5461, 21845, 21845, 87381, 87381, 349525};
 
 /**
  * This macro gives a generic way to compute the well distributed block counts
@@ -74,6 +76,29 @@ static inline int pi(int rank, int step, int comm_sz) {
   if(dest < 0) dest += comm_sz;                              // Adjust for negative ranks
 
   return dest;
+}
+
+
+
+static inline void get_indexes_aux(int rank, int step, const int n_steps, const int adj_size, unsigned char *bitmap){
+  if (step >= n_steps) return;
+
+  int peer;
+  
+  for (int s = step; s < n_steps; s++){
+    peer = pi(rank, s, adj_size);
+    *(bitmap + peer) = 0x1;
+    get_indexes_aux(peer, s + 1, n_steps, adj_size, bitmap);
+  }
+}
+
+
+static inline void get_indexes(int rank, int step, const int n_steps, const int adj_size, unsigned char *bitmap){
+  if (step >= n_steps) return;
+  
+  int peer = pi(rank, step, adj_size);
+  *(bitmap + peer) = 0x1;
+  get_indexes_aux(peer, step + 1, n_steps, adj_size, bitmap);
 }
 
 /**
@@ -459,7 +484,6 @@ static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, ui
         }
     }
 
-    // TODO: adjust this
     assert(nba != UINT32_MAX || nbb != UINT32_MAX);
 
     if(nba == UINT32_MAX && nbb != UINT32_MAX){
@@ -481,6 +505,11 @@ static inline uint32_t remap_rank(uint32_t num_ranks, uint32_t rank){
     size_t num_bits = log_2(num_ranks);
     remap_rank = reverse(remap_rank) >> (32 - num_bits);
     return remap_rank;
+}
+
+static inline uint32_t inverse_rank(uint32_t num_ranks, uint32_t rank){
+    size_t num_bits = log_2(num_ranks);
+    return reverse(rank) >> (32 - num_bits);
 }
 
 

@@ -14,7 +14,7 @@ int reduce_scatter_recursivehalving(const void *sbuf, void *rbuf, const int rcou
   int tmp_size, remain = 0, tmp_rank;
   size_t count;
   ptrdiff_t *disps = NULL;
-  ptrdiff_t extent, lb, buf_size, gap = 0;
+  ptrdiff_t extent, true_extent, lb, buf_size, gap = 0;
   char *recv_buf = NULL, *recv_buf_free = NULL;
   char *result_buf = NULL, *result_buf_free = NULL;
 
@@ -40,7 +40,10 @@ int reduce_scatter_recursivehalving(const void *sbuf, void *rbuf, const int rcou
 
   /* get datatype information */
   MPI_Type_get_extent(dtype, &lb, &extent);
-  buf_size = datatype_span(dtype, count, &gap);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+
+  // Calculate the total memory span
+  buf_size = true_extent + extent * (count - 1);
 
   /* Handle MPI_IN_PLACE */
   if(MPI_IN_PLACE == sbuf) {
@@ -248,6 +251,254 @@ int reduce_scatter_recursivehalving(const void *sbuf, void *rbuf, const int rcou
   return err;
 }
 
+int reduce_scatter_recursive_distance_doubling(const void *sbuf, void *rbuf, const int rcounts[],
+                                    MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
+{
+  int i, rank, size, err = MPI_SUCCESS;
+  int tmp_size, remain = 0, tmp_rank;
+  size_t count;
+  ptrdiff_t *disps = NULL;
+  ptrdiff_t extent, true_extent, lb, buf_size, gap = 0;
+  char *recv_buf = NULL, *recv_buf_free = NULL;
+  char *result_buf = NULL, *result_buf_free = NULL;
+
+  err = MPI_Comm_size(comm, &size);
+  err = MPI_Comm_rank(comm, &rank);
+
+
+  /* Find displacements and the like */
+  disps = (ptrdiff_t*) malloc(sizeof(ptrdiff_t) * size);
+  if(NULL == disps) return MPI_ERR_NO_MEM;
+
+  disps[0] = 0;
+  for(i = 0; i < (size - 1); ++i) {
+    disps[i + 1] = disps[i] + rcounts[i];
+  }
+  count = disps[size - 1] + rcounts[size - 1];
+
+  /* short cut the trivial case */
+  if(0 == count) {
+    free(disps);
+    return MPI_SUCCESS;
+  }
+
+  /* get datatype information */
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+
+  // Calculate the total memory span
+  buf_size = true_extent + extent * (count - 1);
+
+  /* Handle MPI_IN_PLACE */
+  if(MPI_IN_PLACE == sbuf) {
+    sbuf = rbuf;
+  }
+
+  /* Allocate temporary receive buffer. */
+  recv_buf_free = (char*) malloc(buf_size);
+  recv_buf = recv_buf_free - gap;
+  if(NULL == recv_buf_free) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup;
+  }
+
+  /* allocate temporary buffer for results */
+  result_buf_free = (char*) malloc(buf_size);
+  result_buf = result_buf_free - gap;
+
+  /* copy local buffer into the temporary results */
+  err = copy_buffer_different_dt(sbuf, count, dtype, result_buf, count, dtype);
+  if(MPI_SUCCESS != err) goto cleanup;
+
+  /* figure out power of two mapping: grow until larger than
+     comm size, then go back one, to get the largest power of
+     two less than comm size */
+  tmp_size = next_poweroftwo (size);
+  tmp_size >>= 1;
+  remain = size - tmp_size;
+
+  /* If comm size is not a power of two, have the first "remain"
+     procs with an even rank send to rank + 1, leaving a power of
+     two procs to do the rest of the algorithm */
+  if(rank < 2 * remain) {
+    if((rank & 1) == 0) {
+      err = MPI_Send(result_buf, count, dtype, rank + 1, 0, comm);
+      if(MPI_SUCCESS != err) goto cleanup;
+
+      /* we don't participate from here on out */
+      tmp_rank = -1;
+    } else {
+      err = MPI_Recv(recv_buf, count, dtype, rank - 1, 0, comm, MPI_STATUS_IGNORE);
+
+      /* integrate their results into our temp results */
+      MPI_Reduce_local(recv_buf, result_buf, count, dtype, op);
+
+      /* adjust rank to be the bottom "remain" ranks */
+      tmp_rank = rank / 2;
+    }
+  } else {
+    /* just need to adjust rank to show that the bottom "even
+       remain" ranks dropped out */
+    tmp_rank = rank - remain;
+  }
+
+  /* For ranks not kicked out by the above code, perform the
+     recursive halving */
+  if(tmp_rank >= 0) {
+    size_t *tmp_rcounts = NULL;
+    ptrdiff_t *tmp_disps = NULL;
+    int mask, send_index, recv_index, last_index;
+
+    /* recalculate disps and rcounts to account for the
+       special "remainder" processes that are no longer doing
+       anything */
+    tmp_rcounts = (size_t*) malloc(tmp_size * sizeof(size_t));
+    if(NULL == tmp_rcounts) {
+      err = MPI_ERR_NO_MEM;
+      goto cleanup;
+    }
+    tmp_disps = (ptrdiff_t*) malloc(tmp_size * sizeof(ptrdiff_t));
+    if(NULL == tmp_disps) {
+      free(tmp_rcounts);
+      err = MPI_ERR_NO_MEM;
+      goto cleanup;
+    }
+
+    for(i = 0 ; i < tmp_size ; ++i) {
+      if(i < remain) {
+        /* need to include old neighbor as well */
+        tmp_rcounts[i] = rcounts[i * 2 + 1] + rcounts[i * 2];
+      } else {
+        tmp_rcounts[i] = rcounts[i + remain];
+      }
+    }
+
+    tmp_disps[0] = 0;
+    for(i = 0; i < tmp_size - 1; ++i) {
+      tmp_disps[i + 1] = tmp_disps[i] + tmp_rcounts[i];
+    }
+
+    /* do the recursive halving communication.  Don't use the
+       dimension information on the communicator because I
+       think the information is invalidated by our "shrinking"
+       of the communicator */
+    mask = tmp_size >> 1;
+    int dist_mask = 0x1;
+    send_index = recv_index = 0;
+    last_index = tmp_size;
+    while (mask > 0) {
+      int tmp_peer, peer;
+      size_t send_count, recv_count;
+      MPI_Request request;
+
+      tmp_peer = tmp_rank ^ dist_mask;
+      peer = (tmp_peer < remain) ? tmp_peer * 2 + 1 : tmp_peer + remain;
+
+      /* figure out if we're sending, receiving, or both */
+      send_count = recv_count = 0;
+      if(tmp_rank < tmp_peer) {
+        send_index = recv_index + mask;
+        for(i = send_index ; i < last_index ; ++i) {
+          send_count += tmp_rcounts[i];
+        }
+        for(i = recv_index ; i < send_index ; ++i) {
+          recv_count += tmp_rcounts[i];
+        }
+      } else {
+        recv_index = send_index + mask;
+        for(i = send_index ; i < recv_index ; ++i) {
+          send_count += tmp_rcounts[i];
+        }
+        for(i = recv_index ; i < last_index ; ++i) {
+          recv_count += tmp_rcounts[i];
+        }
+      }
+
+      /* actual data transfer.  Send from result_buf,
+         receive into recv_buf */
+      if(recv_count > 0) {
+        err = MPI_Irecv(recv_buf + tmp_disps[recv_index] * extent,
+                        recv_count, dtype, peer, 0, comm, &request);
+        if(MPI_SUCCESS != err) {
+          free(tmp_rcounts);
+          free(tmp_disps);
+          goto cleanup;
+        }
+      }
+      if(send_count > 0) {
+        err = MPI_Send(result_buf + tmp_disps[send_index] * extent,
+                       send_count, dtype, peer, 0, comm);
+        if(MPI_SUCCESS != err) {
+          free(tmp_rcounts);
+          free(tmp_disps);
+          goto cleanup;
+        }
+      }
+
+      /* if we received something on this step, push it into
+         the results buffer */
+      if(recv_count > 0) {
+        err = MPI_Wait(&request, MPI_STATUS_IGNORE);
+        if(MPI_SUCCESS != err) {
+          free(tmp_rcounts);
+          free(tmp_disps);
+          goto cleanup;
+        }
+
+        MPI_Reduce_local(recv_buf + tmp_disps[recv_index] * extent,
+                         result_buf + tmp_disps[recv_index] * extent,
+                         recv_count, dtype, op);
+      }
+
+      /* update for next iteration */
+      send_index = recv_index;
+      last_index = recv_index + mask;
+      mask >>= 1;
+      dist_mask <<= 1;
+    }
+
+    // FIX: IT DOES NOT WORK FOR NON-POWER OF TWO, it is probably copy_buffer_different_dt 
+    // or the last send-recv pair
+
+    /* copy local results from results buffer into real receive buffer */
+    if(0 != rcounts[rank]) {
+      err = copy_buffer_different_dt(result_buf + disps[(int) inverse_rank(tmp_size, rank)] * extent, rcounts[rank],
+                                     dtype, rbuf, rcounts[rank], dtype);
+      if(MPI_SUCCESS != err) {
+        free(tmp_rcounts);
+        free(tmp_disps);
+        goto cleanup;
+      }
+    }
+
+    free(tmp_rcounts);
+    free(tmp_disps);
+  }
+
+  /* Now fix up the non-power of two case, by having the odd
+     procs send the even procs the proper results */
+  if(rank < (2 * remain)) {
+    if((rank & 1) == 0) {
+      if(rcounts[rank]) {
+        err = MPI_Recv(rbuf, rcounts[rank], dtype, rank + 1, 0, comm, MPI_STATUS_IGNORE);
+        if(MPI_SUCCESS != err) goto cleanup;
+      }
+    } else {
+      if(rcounts[rank - 1]) {
+        err = MPI_Send(result_buf + disps[(int) inverse_rank(log_2(size), rank - 1)] * extent,
+                       rcounts[rank - 1], dtype, rank - 1, 0, comm);
+        if(MPI_SUCCESS != err) goto cleanup;
+      }
+    }
+  }
+
+ cleanup:
+  if(NULL != disps) free(disps);
+  if(NULL != recv_buf_free) free(recv_buf_free);
+  if(NULL != result_buf_free) free(result_buf_free);
+
+  return err;
+}
 
 int reduce_scatter_ring( const void *sbuf, void *rbuf, const int rcounts[],
                         MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
@@ -597,14 +848,14 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
   int i, rank, size, steps, w_size, err = MPI_SUCCESS;
   size_t count;
   ptrdiff_t *disps = NULL;
-  ptrdiff_t extent, lb, buf_size, gap = 0;
+  ptrdiff_t extent, true_extent,lb, buf_size, gap = 0;
   char *recv_buf = NULL, *recv_buf_free = NULL;
   char *result_buf = NULL, *result_buf_free = NULL;
   const int *s_bitmap = NULL, *r_bitmap = NULL;
   int *permutation = NULL;
 
-  err = MPI_Comm_size(comm, &size);
-  err = MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
 
 
   /* Find displacements and total count*/
@@ -623,9 +874,20 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
     return MPI_SUCCESS;
   }
 
+  /* Current implementation only handles power-of-two number of processes.*/
+  steps = log_2(size);
+  if(!is_power_of_two(size) || steps < 1) {
+    SWING_DEBUG_PRINT("ERROR! Swing static reduce scatter works only with po2 ranks!");
+    return MPI_ERR_SIZE;
+  }
+
   /* get datatype information */
   MPI_Type_get_extent(dtype, &lb, &extent);
-  buf_size = datatype_span(dtype, count, &gap);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+
+  // Calculate the total memory span
+  buf_size = true_extent + extent * (count - 1);
+
 
   /* Handle MPI_IN_PLACE */
   if(MPI_IN_PLACE == sbuf) {
@@ -648,13 +910,6 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
   err = copy_buffer_different_dt(sbuf, count, dtype, result_buf, count, dtype);
   if(MPI_SUCCESS != err) goto cleanup;
 
-  /* Current implementation only handles power-of-two number of processes.*/
-  steps = log_2(size);
-  if(size != (1 << steps)) {
-    SWING_DEBUG_PRINT("ERROR! Swing static reduce scatter works only with po2 ranks!");
-    err = MPI_ERR_SIZE;
-    goto cleanup;
-  }
   if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1 ||
       get_perm_bitmap(&permutation, steps, size) == -1) {
     err = MPI_ERR_UNKNOWN;
@@ -729,3 +984,142 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
 
   return err;
 }
+
+
+// int reduce_scatter_swing_dtypes(const void *sbuf, void *rbuf, const int rcounts[],
+//                                     MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
+// {
+//   int i, rank, size, steps, w_size, err = MPI_SUCCESS;
+//   size_t count;
+//   ptrdiff_t *disps = NULL;
+//   ptrdiff_t extent, true_extent,lb, buf_size, gap = 0;
+//   char *recv_buf = NULL, *recv_buf_free = NULL;
+//   char *result_buf = NULL, *result_buf_free = NULL;
+//   
+//   MPI_Datatype sendtype, recvtype;
+//   int dis[2], blklens[2], total_count, dst;
+//
+//   MPI_Comm_size(comm, &size);
+//   MPI_Comm_rank(comm, &rank);
+//
+//
+//   /* Find displacements and total count*/
+//   disps = (ptrdiff_t*) malloc(sizeof(ptrdiff_t) * size);
+//   if(NULL == disps) return MPI_ERR_NO_MEM;
+//
+//   disps[0] = 0;
+//   for(i = 0; i < (size - 1); ++i) {
+//     disps[i + 1] = disps[i] + rcounts[i];
+//   }
+//   count = disps[size - 1] + rcounts[size - 1];
+//
+//   /* short cut the trivial case */
+//   if(0 == count) {
+//     free(disps);
+//     return MPI_SUCCESS;
+//   }
+//
+//   /* Current implementation only handles power-of-two number of processes.*/
+//   steps = log_2(size);
+//   if(!is_power_of_two(size) || steps < 1) {
+//     SWING_DEBUG_PRINT("ERROR! Swing static reduce scatter works only with po2 ranks!");
+//     return MPI_ERR_SIZE;
+//   }
+//
+//   /* get datatype information */
+//   MPI_Type_get_extent(dtype, &lb, &extent);
+//   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+//
+//   // Calculate the total memory span
+//   buf_size = true_extent + extent * (count - 1);
+//
+//
+//   /* Handle MPI_IN_PLACE */
+//   if(MPI_IN_PLACE == sbuf) {
+//     sbuf = rbuf;
+//   }
+//
+//   /* Allocate temporary receive buffer. */
+//   recv_buf_free = (char*) malloc(buf_size);
+//   recv_buf = recv_buf_free - gap;
+//   if(NULL == recv_buf_free) {
+//     err = MPI_ERR_NO_MEM;
+//     goto cleanup;
+//   }
+//
+//   /* allocate temporary buffer for results */
+//   result_buf_free = (char*) malloc(buf_size);
+//   result_buf = result_buf_free - gap;
+//
+//   /* copy local buffer into the temporary results */
+//   err = copy_buffer_different_dt(sbuf, count, dtype, result_buf, count, dtype);
+//   if(MPI_SUCCESS != err) goto cleanup;
+//
+//   /* Main communication and reduction loop */
+//   w_size = size >> 1;
+//   for(int step = 0; step < steps; step++){
+//     int peer, send_index, recv_index;
+//     size_t s_count, r_count;
+//
+//     /* determine the peer we will communicate with */
+//     peer = pi(rank, step, size);
+//
+//     /* use the bitmaps to figure out what we're sending and
+//       receiving */
+//     send_index = s_bitmap[step];
+//     recv_index = r_bitmap[step];
+//     s_count = r_count = 0;
+//     for(int i = 0; i < w_size; ++i) {
+//       s_count += rcounts[s_bitmap[step] + i];
+//       r_count += rcounts[r_bitmap[step] + i];
+//     }
+//
+//     /* actual data transfer.  Send from result_buf,
+//         receive into recv_buf */
+//     err = MPI_Sendrecv(result_buf + disps[send_index] * extent, s_count, dtype, peer, 0,
+//                recv_buf + disps[recv_index] * extent, r_count, dtype, peer, 0,
+//                comm, MPI_STATUS_IGNORE);
+//     if(MPI_SUCCESS != err) {
+//       goto cleanup;
+//     }
+//
+//     /* if we received something on this step, push it into
+//         the results buffer and perform the reduction*/
+//     if(r_count > 0) {
+//       err = MPI_Reduce_local(recv_buf + disps[recv_index] * extent,
+//                         result_buf + disps[recv_index] * extent,
+//                         r_count, dtype, op);
+//       if(MPI_SUCCESS != err) {
+//         goto cleanup;
+//       }
+//     }
+//     /* halve the window size for the next iteration */
+//     w_size >>= 1;
+//   }
+//
+//
+//   if(rank != permutation[rank]) {
+//     /* send result to correct rank's recv buffer */
+//     err = MPI_Sendrecv(result_buf + disps[r_bitmap[steps - 1]] * extent,
+//             rcounts[permutation[rank]], dtype, permutation[rank], 0,
+//             rbuf, rcounts[rank], dtype, get_sender(permutation, size, rank), 0,
+//             comm, MPI_STATUS_IGNORE);
+//     if(MPI_SUCCESS != err) {
+//       goto cleanup;
+//     }
+//   } else {
+//     /* copy local results from results buffer into real receive buffer */
+//     err = copy_buffer_different_dt(result_buf + disps[rank] * extent, rcounts[rank],
+//                                     dtype, rbuf, rcounts[rank], dtype);
+//     if(MPI_SUCCESS != err) {
+//       goto cleanup;
+//     }
+//   }
+//
+//  cleanup:
+//   if(NULL != disps) free(disps);
+//   if(NULL != recv_buf_free) free(recv_buf_free);
+//   if(NULL != result_buf_free) free(result_buf_free);
+//
+//   return err;
+// }

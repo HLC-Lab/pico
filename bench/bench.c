@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "bench_utils.h"
 #include "libswing.h"
@@ -91,6 +92,11 @@ int main(int argc, char *argv[]) {
   // Gather all process times to rank 0 and find the highest execution time of each iteration
   PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
   PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
+
+  if (rank == 0) {
+    printf("--------------------------------------------------------------------------------------------\n");
+    printf("   %-30s\n    Last Iter Time: %15" PRId64"ns     %10ld elements of %s dtype\t%6d iter\n", algorithm, (int64_t) (highest[iter-1] * 1e9), count, type_string, iter);
+  }
   
   // Save results to a .csv file inside `/data/` subdirectory. Bash script `run_test_suite.sh`
   // is responsible to create the `/data/` subdir.

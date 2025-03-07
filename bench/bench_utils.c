@@ -119,6 +119,7 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
 */
 static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *algorithm){
   CHECK_STR(algorithm, "recursive_halving_over", reduce_scatter_recursivehalving);
+  CHECK_STR(algorithm, "recursive_distance_doubling_over", reduce_scatter_recursive_distance_doubling);
   CHECK_STR(algorithm, "ring_over", reduce_scatter_ring);
   CHECK_STR(algorithm, "butterfly_over", reduce_scatter_butterfly);
   CHECK_STR(algorithm, "swing_static_over", reduce_scatter_swing_static);
@@ -561,6 +562,55 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
   return 0;
 }
 
+/**
+ * Helper function to print an array of elements based on MPI_Datatype.
+ */
+static inline void print_buffer_helper(const void *buf, size_t count, MPI_Datatype dtype) {
+  if(dtype == MPI_INT64_T) {
+    const int64_t *data = (const int64_t *)buf;
+    for(size_t j = 0; j < count; j++) {
+      printf("%" PRId64 " ", data[j]);
+    }
+  } else if(dtype == MPI_INT32_T) {
+    const int32_t *data = (const int32_t *)buf;
+    for(size_t j = 0; j < count; j++) {
+      printf("%" PRId32 " ", data[j]);
+    }
+  } else if(dtype == MPI_INT) {
+    const int *data = (const int *)buf;
+    for(size_t j = 0; j < count; j++) {
+      printf("%d ", data[j]);
+    }
+  } else {
+    fprintf(stderr, "Error: Datatype print not supported.");
+  }
+}
+
+void print_buffers(const void *sbuf, const void *rbuf, const void *rbuf_gt,
+                          size_t sbuf_count, size_t rbuf_count, MPI_Datatype dtype,
+                          MPI_Comm comm, int use_barrier) {
+  int rank, comm_sz;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &comm_sz);
+  for(int i = 0; i < comm_sz; i++) {
+    if(rank == i) {
+      if (sbuf != NULL) {
+        printf("\nRank %d:\nsendbuf: ", rank);
+        print_buffer_helper(sbuf, sbuf_count, dtype);
+        printf("\nrecvbuf: ");
+      } else {
+        printf("\nRank %d:\nrecvbuf: ", rank);
+      }
+      print_buffer_helper(rbuf, rbuf_count, dtype);
+      printf("\ng_truth: ");
+      print_buffer_helper(rbuf_gt, rbuf_count, dtype);
+      printf("\n\n");
+      fflush(stdout);
+    }
+    if (use_barrier == 0) MPI_Barrier(comm);
+  }
+}
+
 #ifdef DEBUG
 /**
  * @brief Little helper function to calculate integer powers for debugging purposes.
@@ -641,30 +691,6 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
     }
   }
   return 0;
-}
-
-/**
- * Helper function to print an array of elements based on MPI_Datatype.
- */
-static void print_buffer_helper(const void *buf, size_t count, MPI_Datatype dtype) {
-  if(dtype == MPI_INT64_T) {
-    const int64_t *data = (const int64_t *)buf;
-    for(size_t j = 0; j < count; j++) {
-      printf("%" PRId64 " ", data[j]);
-    }
-  } else if(dtype == MPI_INT32_T) {
-    const int32_t *data = (const int32_t *)buf;
-    for(size_t j = 0; j < count; j++) {
-      printf("%" PRId32 " ", data[j]);
-    }
-  } else if(dtype == MPI_INT) {
-    const int *data = (const int *)buf;
-    for(size_t j = 0; j < count; j++) {
-      printf("%d ", data[j]);
-    }
-  } else {
-    fprintf(stderr, "Error: Datatype print not supported.");
-  }
 }
 
 void debug_print_buffers(const void *rbuf, const void *rbuf_gt, size_t count,
