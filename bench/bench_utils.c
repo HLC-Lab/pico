@@ -80,10 +80,13 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
 static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   // if(strcmp(algorithm, "K_BRUCK_OVER") == 0 ) return allgather_k_bruck;
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
-  CHECK_STR(algorithm, "recursive_distance_doubling_over", allgather_recursive_distance_doubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "swing_static_memcpy_over", allgather_swing_static_memcpy);
   CHECK_STR(algorithm, "swing_static_send_over", allgather_swing_static_send);
+  CHECK_STR(algorithm, "swing_remap_memcpy_over", allgather_swing_remap_memcpy);
+  CHECK_STR(algorithm, "swing_remap_send_over", allgather_swing_remap_send);
+  CHECK_STR(algorithm, "swing_no_remap_over", allgather_swing_no_remap);
+  CHECK_STR(algorithm, "swing_no_remap_dtype_over", allgather_swing_no_remap_dtype);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
@@ -244,6 +247,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
         rcounts[i] = count / comm_sz;
       }
       PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
+      print_buffers(sbuf, rbuf, rbuf_gt, count, rcounts[0], dtype, comm, 0);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
       free(rcounts);
       break;

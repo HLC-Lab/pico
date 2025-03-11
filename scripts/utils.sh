@@ -45,7 +45,7 @@ export -f inform
 
 # Cleanup function for SIGINT
 cleanup() {
-    error "Killing all child processes and aborting..."
+    error "Cleanup called! Killing all child processes and aborting..."
     pkill -P $$
     exit 1
 }
@@ -397,7 +397,9 @@ run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
         update_algorithm $algo $i
-        inform "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes"
+        if [ "$DEBUG_MODE" == "no" ]; then
+            inform "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes"
+        fi
 
         for size in ${SIZES//,/ }; do
             if [[ $size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then

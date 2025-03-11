@@ -185,7 +185,8 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
 {
   int size, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
   char *received = NULL;
-  MPI_Request request;
+  MPI_Request requests[SWING_MAX_STEPS];
+  int request_count = 0;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -248,13 +249,17 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
     // If I already have the message, send the data.
     if(recv_step < s) {
       dest = pi(rank, s, size);
-      err = MPI_Isend(buf, count, dtype, dest, s, comm, &request);
+      err = MPI_Isend(buf, count, dtype, dest, s, comm, &requests[request_count]);
       if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      request_count++;
       continue;
     }
   }
 
-  if(recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
+  if(request_count > 0) {
+    err = MPI_Waitall(request_count, requests, MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+  }
 
   free(received);
 
@@ -272,7 +277,8 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
 {
   int size, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
   char *received = NULL;
-  MPI_Request request;
+  MPI_Request requests[SWING_MAX_STEPS];
+  int request_count = 0;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -335,12 +341,17 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
     // If I already have the message, send the data.
     if(recv_step < s) {
       dest = pi(rank, steps - s - 1, size);
-      err = MPI_Isend(buf, count, dtype, dest, s, comm, &request);
+      err = MPI_Isend(buf, count, dtype, dest, s, comm, &requests[request_count]);
       if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      request_count++;
       continue;
     }
   }
-  if(recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
+
+  if(request_count > 0) {
+    err = MPI_Waitall(request_count, requests, MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+  }
 
   free(received);
 
@@ -371,7 +382,8 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
   ptrdiff_t r_offset = 0, s_offset = 0, lb, extent;
   const int *s_bitmap, *r_bitmap;
   char *received = NULL;
-  MPI_Request request;
+  MPI_Request requests[SWING_MAX_STEPS]; // Array to store all request handles
+  int request_count = 0;           // Count of active requests
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -479,13 +491,18 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
       s_offset = (s_bitmap[step] <= split_rank) ?
                   (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
                   (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-      err = MPI_Isend((char *)buf + s_offset, s_count, dtype, dest, 0, comm, &request);
+      err = MPI_Isend((char *)buf + s_offset, s_count, dtype, dest, 0, comm, &requests[request_count]);
       if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+      request_count++;
     }
     w_size >>= 1;
   }
 
-  if(recv_step != steps - 1) MPI_Wait(&request, MPI_STATUS_IGNORE);
+  // Wait for all send requests to complete
+  if(request_count > 0) {
+    err = MPI_Waitall(request_count, requests, MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
+  }
 
   /* Allgather phase.
    *

@@ -49,6 +49,7 @@ for i in ${!TEST_CONFIG_FILES[@]}; do
     run_all_tests || exit 1
 done
 
+success "All tests completed successfully"
 ###################################################################################
 #              COMPRESS THE RESULTS AND ADD OUTPUT_DIR TO GITIGNORE               #
 ###################################################################################
@@ -63,6 +64,3 @@ if [[ "$DEBUG_MODE" == "no" && "$COMPRESS" == "yes" ]]; then
         fi
     fi
 fi
-
-
-pkill -P $$

@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.3",
+    "schema_version": "2.6.6",
     "created": "2024-01-30",
-    "last_modified": "2024-03-05",
+    "last_modified": "2024-03-11",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -974,38 +974,6 @@
           "external"
         ]
       },
-      "recursive_distance_doubling_over": {
-        "desc": "Libswing external recursive distance doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
-        "library": {
-          "libswing": "1.0.0"
-        },
-        "cvar": "auto",
-        "dynamic_rule": 0,
-        "constraints": [
-          {
-            "key": "count",
-            "conditions": [
-              {
-                "operator": ">=",
-                "value": "comm_sz"
-              }
-            ]
-          },
-          {
-            "key": "comm_sz",
-            "conditions": [
-              {
-                "operator": "is_power_of_two",
-                "value": true
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "recursive_distance_doubling",
-          "external"
-        ]
-      },
       "ring_over": {
         "desc": "Libswing external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
         "library": {
@@ -1105,6 +1073,144 @@
           "swing",
           "medium_sizes",
           "large_sizes",
+          "external"
+        ]
+      },
+      "swing_remap_memcpy_over": {
+        "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. This version remaps rank to allow the sending of contiguous buffers. Count must be greater or equal to comm_sz.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              },
+              {
+                "operator": "<=",
+                "value": 256
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing_remap",
+          "swing",
+          "external"
+        ]
+      },
+      "swing_remap_send_over": {
+        "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              },
+              {
+                "operator": "<=",
+                "value": 256
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing_remap",
+          "swing",
+          "external"
+        ]
+      },
+      "swing_no_remap_over": {
+        "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing",
+          "external"
+        ]
+      },
+      "swing_no_remap_dtype_over": {
+        "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing",
           "external"
         ]
       }
