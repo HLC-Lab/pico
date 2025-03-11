@@ -247,7 +247,6 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
         rcounts[i] = count / comm_sz;
       }
       PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
-      print_buffers(sbuf, rbuf, rbuf_gt, count, rcounts[0], dtype, comm, 0);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
       free(rcounts);
       break;
