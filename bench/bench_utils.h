@@ -41,6 +41,21 @@
 #define BENCH_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
 
 
+// ----------------------------------------------------------------------------------------------
+//                                MACRO FOR CUDA FUNCTION CALLS
+// ----------------------------------------------------------------------------------------------
+
+
+#define CUDA_CHECK(cmd) do {                         \
+  cudaError_t e = cmd;                              \
+  if( e != cudaSuccess ) {                          \
+    printf("Failed: Cuda error %s:%d '%s'\n",             \
+        __FILE__,__LINE__,cudaGetErrorString(e));   \
+    exit(EXIT_FAILURE);                             \
+  }                                                 \
+} while(0)
+
+
 //-----------------------------------------------------------------------------------------------
 //                        ENUM FOR COLLECTIVE SELECTION
 // ----------------------------------------------------------------------------------------------
@@ -399,4 +414,3 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 #endif // DEBUG
 
 #endif // BENCH_TOOLS_H
-

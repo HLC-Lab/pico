@@ -4,6 +4,8 @@
 
 #include "bench_utils.h"
 
+#ifndef CUDA_AWARE
+
 int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
                              size_t type_size, MPI_Comm comm) {
   int comm_sz;
@@ -20,4 +22,23 @@ int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t co
   }
   return 0; // Success
 }
+
+
+#else
+
+int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
+  size_t type_size, MPI_Comm comm) {
+  int comm_sz;
+  MPI_Comm_size(comm, &comm_sz);
+
+  // sbuf must contain only the data specific to the current rank,
+  // while rbuf (and rbuf_gt) must contain the data from all ranks.
+  CUDA_CHECK(cudaMalloc(sbuf, count * type_size));
+  CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
+  CUDA_CHECK(cudaMalloc(rbuf_gt, count * type_size));
+
+  return 0; // Success
+}
+
+#endif
 

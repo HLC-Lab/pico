@@ -4,6 +4,9 @@
 
 #include "bench_utils.h"
 
+
+
+#ifndef CUDA_AWARE
 int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
                         size_t type_size, MPI_Comm comm) {
   int comm_sz;
@@ -21,3 +24,20 @@ int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
   return 0; // Success
 }
 
+#else
+
+int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
+  size_t type_size, MPI_Comm comm) {
+  int comm_sz;
+  MPI_Comm_size(comm, &comm_sz);
+
+  // rbuf must contain only the data specific to the current rank,
+  // while sbuf must contain the data from all ranks.
+  CUDA_CHECK(cudaMalloc(sbuf, (count / (size_t) comm_sz) * type_size));
+  CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
+  CUDA_CHECK(cudaMalloc(rbuf_gt, count * type_size));
+
+  return 0; // Success
+}
+
+#endif

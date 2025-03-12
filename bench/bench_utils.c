@@ -184,7 +184,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
 int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
               MPI_Datatype dtype, MPI_Comm comm, int iter, double *times){
-  int rank, comm_sz, ret, *rcounts = NULL;
+  int rank, comm_sz, ret, *h_rcounts = NULL;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
   
@@ -203,12 +203,26 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                       test_routine);
       break;
     case REDUCE_SCATTER:
-      rcounts = (int *)malloc(comm_sz * sizeof(int));
+      // for translations of reduce_scatter, we must do a cudaMemcpy!!!!
+      h_rcounts = (int *)malloc(comm_sz * sizeof(int));
       for(int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
-      ret = reduce_scatter_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm, iter,
-                               times, test_routine);
-      free(rcounts);
+
+      #ifndef CUDA_AWARE
+        ret = reduce_scatter_test_loop(sbuf, rbuf, h_rcounts, dtype, MPI_SUM, comm, iter,
+          times, test_routine);
+        free(h_rcounts);  
+      #else
+        int *d_rcounts;
+        CUDA_CHECK(cudaMalloc((void **)&d_rcounts, comm_sz * sizeof(int)));
+        CUDA_CHECK(cudaMemcpy(d_rcounts, h_rcounts, comm_sz * sizeof(int), cudaMemcpyHostToDevice));
+        ret = reduce_scatter_test_loop(sbuf, rbuf, d_rcounts, dtype, MPI_SUM, comm, iter,
+          times, test_routine);
+
+        CUDA_CHECK(cudaFree(d_rcounts));
+        free(h_rcounts);  
+      #endif
       break;
+
     default:
       fprintf(stderr, "still not implemented, aborting...");
       return -1;
@@ -227,28 +241,74 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
   switch (test_routine.collective){
     case ALLREDUCE:
       PMPI_Allreduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+
+      #ifndef CUDA_AWARE
+        GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      #else
+        int *h_rbuf = malloc(count * type_size);
+        int *h_rbuf_gt = malloc(count * type_size);
+        CUDA_CHECK(cudaMemcpy(rbuf, h_rbuf, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(rbuf_gt, h_rbuf_gt, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        GT_CHECK_BUFFER(h_rbuf, h_rbuf_gt, count, dtype, comm);
+      #endif
+
       break;
     case ALLGATHER:
       PMPI_Allgather(sbuf, count / (size_t) comm_sz, dtype, \
                  rbuf_gt, count / (size_t) comm_sz, dtype, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+
+      #ifndef CUDA_AWARE
+        GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      #else
+        int *h_rbuf = malloc(count * type_size)
+        int *h_rbuf_gt = malloc(count * type_size);
+        CUDA_CHECK(cudaMemcpy(rbuf, h_rbuf, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(rbuf_gt, h_rbuf_gt, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        GT_CHECK_BUFFER(h_rbuf, h_rbuf_gt, count, dtype, comm);
+      #endif
+
       break;
     case BCAST:
       if(rank == 0) {
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
       PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
-      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
+
+      #ifndef CUDA_AWARE
+        GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      #else
+        int *h_rbuf = malloc(count * type_size)
+        int *h_rbuf_gt = malloc(count * type_size);
+        CUDA_CHECK(cudaMemcpy(rbuf, h_rbuf, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(rbuf_gt, h_rbuf_gt, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        GT_CHECK_BUFFER(h_rbuf, h_rbuf_gt, count, dtype, comm);
+      #endif
+
       break;
     case REDUCE_SCATTER:
-      rcounts = (int *)malloc(comm_sz * sizeof(int));
-      for(int i = 0; i < comm_sz; i++){
-        rcounts[i] = count / comm_sz;
-      }
-      PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
-      free(rcounts);
+      // for translations of reduce_scatter, we must do a cudaMemcpy!!!!
+      h_rcounts = (int *)malloc(comm_sz * sizeof(int));
+      for(int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
+
+      #ifndef CUDA_AWARE
+        PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
+        GT_CHECK_BUFFER(rbuf, rbuf_gt, h_rcounts[rank], dtype, comm);
+        free(h_rcounts);
+      #else
+        int *d_rcounts;
+        int *h_rbuf = malloc((count / (size_t) comm_sz) * type_size)
+        int *h_rbuf_gt = malloc((count / (size_t) comm_sz) * type_size);
+        CUDA_CHECK(cudaMalloc((void **)&d_rcounts, comm_sz * sizeof(int)));
+        CUDA_CHECK(cudaMemcpy(d_rcounts, h_rcounts, comm_sz * sizeof(int), cudaMemcpyHostToDevice));
+        PMPI_Reduce_scatter(sbuf, rbuf_gt, d_rcounts, dtype, MPI_SUM, comm);
+
+        CUDA_CHECK(cudaMemcpy(rbuf, h_rbuf, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(rbuf_gt, h_rbuf_gt, comm_sz * sizeof(int), cudaMemcpyDeviceToHost));
+        GT_CHECK_BUFFER(h_rbuf, h_rbuf_gt, count, dtype, comm);
+
+        CUDA_CHECK(cudaFree(d_rcounts));
+        free(rcounts);
+      #endif
       break;
     default:
       fprintf(stderr, "still not implemented, aborting...");

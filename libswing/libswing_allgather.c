@@ -824,7 +824,7 @@ err_hndl:
 // ---------------------------------------------------
 
 
-inline int permute_blocks(void *buffer, size_t block_size, int *block_permutation, int num_blocks) {
+static inline int permute_blocks(void *buffer, size_t block_size, int *block_permutation, int num_blocks) {
 
   char* tmp_buffer = (char*) malloc(block_size * num_blocks);
   if (!tmp_buffer) {
@@ -884,7 +884,7 @@ int allgather_swing_find_permutation(const void *sbuf, size_t scount, MPI_Dataty
 
 // ALLGATHER IMPLEMENTATION USING PERMUTATION PRECOMPUTED
 
-double allgather_swing_permute_require(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
+int allgather_swing_permute_require(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
   void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm, int* permutation) {
 
   int rank, size, step, steps, send_rank, recv_rank;
