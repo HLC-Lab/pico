@@ -12,7 +12,7 @@ export UCX_IB_SL=1
 export MODULES="python/3.11.6--gcc--8.5.0,git-lfs/3.1.2"
 
 # MPI library specific variables
-export MPI_LIB='OMPI_SWING'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)
+export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)
 if [ "$MPI_LIB" == "OMPI_SWING" ]; then
     export PATH=$HOME/bin:$PATH
     export LD_LIBRARY_PATH=$HOME/lib:$LD_LIBRARY_PATH
