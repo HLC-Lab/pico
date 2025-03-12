@@ -815,3 +815,112 @@ err_hndl:
   return err;
 }
 
+
+// ---------------------------------------------------
+// MODIFICATIONS INTRODUCTED BY LORENZO
+// 
+// The following implementations are not implemented in the framework yet.
+//
+// ---------------------------------------------------
+
+
+inline int permute_blocks(void *buffer, size_t block_size, int *block_permutation, int num_blocks) {
+
+  char* tmp_buffer = (char*) malloc(block_size * num_blocks);
+  if (!tmp_buffer) {
+      fprintf(stderr, "Memory allocation failed\n");
+      return MPI_ERR_NO_MEM;
+  }
+
+  for (int i = 0; i < num_blocks; ++i) {
+      memcpy(tmp_buffer + block_permutation[i] * block_size, (char*)buffer + i * block_size, block_size);
+  }
+
+  memcpy(buffer, tmp_buffer, block_size * num_blocks);
+  free(tmp_buffer);
+  return MPI_SUCCESS;
+}
+
+// AUXILIARY FUNCTION USED TO FIND PERMUTATIONS
+
+int allgather_swing_find_permutation(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
+  void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm) {
+
+  int rank, size, step, steps, send_rank, recv_rank;
+  MPI_Aint lb, extent;
+  char *sendbuf_off = (char*) sbuf, *recvbuf_off = (char*) rbuf;
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  MPI_Type_get_extent(sdtype, &lb, &extent);
+
+  memcpy(recvbuf_off, sendbuf_off, rcount * extent);
+
+  steps = log_2(size);
+  for(step = 0; step < steps; ++step) {
+
+      int powStep = 1 << step;;
+      int negpowStep = -1 << (step+1);
+
+      if(rank % 2 == 0){
+          send_rank = (int)((rank + (1-1*negpowStep)/3) + size) % size; 
+          recv_rank = send_rank; 
+      } else {
+          send_rank = (int)((rank - (1-1*negpowStep)/3) + size) % size;
+          recv_rank = send_rank; 
+      }   
+
+      sendbuf_off = (char*) sbuf;
+      recvbuf_off = (char*) rbuf + (ptrdiff_t) powStep * (ptrdiff_t) rcount * extent;
+  
+
+      MPI_Sendrecv(sendbuf_off, rcount * powStep, rdtype, send_rank, 0,
+      recvbuf_off, rcount * powStep, rdtype, recv_rank, 0, comm, MPI_STATUS_IGNORE);
+
+  }
+
+  return MPI_SUCCESS;
+}
+
+// ALLGATHER IMPLEMENTATION USING PERMUTATION PRECOMPUTED
+
+double allgather_swing_permute_require(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
+  void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm, int* permutation) {
+
+  int rank, size, step, steps, send_rank, recv_rank;
+  MPI_Aint lb, extent;
+  char *sendbuf_off = (char*) sbuf, *recvbuf_off = (char*) rbuf;
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  MPI_Type_get_extent(sdtype, &lb, &extent);
+
+  memcpy(recvbuf_off, sendbuf_off, rcount * extent);
+
+  steps = log_2(size);
+  for(step = 0; step < steps; ++step) {
+
+      int powStep = 1 << step;;
+      int negpowStep = -1 << (step+1);
+
+      if(rank % 2 == 0){
+          send_rank = (int)((rank + (1-1*negpowStep)/3) + size) % size; 
+          recv_rank = send_rank; 
+      } else {
+          send_rank = (int)((rank - (1-1*negpowStep)/3) + size) % size;
+          recv_rank = send_rank; 
+      }   
+
+      sendbuf_off = (char*) sbuf;
+      recvbuf_off = (char*) rbuf + (ptrdiff_t) powStep * (ptrdiff_t) rcount * extent;
+  
+
+      MPI_Sendrecv(sendbuf_off, rcount * powStep, rdtype, send_rank, 0,
+      recvbuf_off, rcount * powStep, rdtype, recv_rank, 0, comm, MPI_STATUS_IGNORE);
+
+  }
+  
+  reorder_blocks(rbuf, rcount * extent, permutation, size);
+
+  return MPI_SUCCESS;
+}
