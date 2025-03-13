@@ -301,14 +301,15 @@ int reduce_scatter_recursive_distance_doubling(const void *sbuf, void *rbuf, con
   /* Allocate temporary receive buffer. */
   recv_buf_free = (char*) malloc(buf_size);
   recv_buf = recv_buf_free - gap;
-  if(NULL == recv_buf_free) {
-    err = MPI_ERR_NO_MEM;
-    goto cleanup;
-  }
 
   /* allocate temporary buffer for results */
   result_buf_free = (char*) malloc(buf_size);
   result_buf = result_buf_free - gap;
+  
+  if(NULL == recv_buf_free || NULL == result_buf_free) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup;
+  }
 
   /* copy local buffer into the temporary results */
   err = copy_buffer_different_dt(sbuf, count, dtype, result_buf, count, dtype);
@@ -369,6 +370,8 @@ int reduce_scatter_recursive_distance_doubling(const void *sbuf, void *rbuf, con
                         result_buf + disps[recv_index] * extent,
                         recv_count, dtype, op);
     }
+
+
     /* update for next iteration */
     send_index = recv_index;
     last_index = recv_index + w_size;
@@ -376,12 +379,31 @@ int reduce_scatter_recursive_distance_doubling(const void *sbuf, void *rbuf, con
     dist_mask <<= 1;
   }
 
-  /* copy local results from results buffer into real receive buffer */
-  if(0 != rcounts[rank]) {
-    err = copy_buffer_different_dt(result_buf + disps[(int) inverse_rank(size, rank)] * extent, rcounts[rank],
+  // /* copy local results from results buffer into real receive buffer */
+  // if(0 != rcounts[rank]) {
+  //   err = copy_buffer_different_dt(result_buf + disps[(int) inverse_rank(size, rank)] * extent, rcounts[rank],
+  //                                   dtype, rbuf, rcounts[rank], dtype);
+  //   if(MPI_SUCCESS != err) { goto cleanup; }
+  // }
+
+  int inverse = inverse_rank(size, rank);
+  if(rank != inverse) {
+    /* send result to correct rank's recv buffer */
+    err = MPI_Sendrecv(result_buf + disps[inverse] * extent, rcounts[inverse], dtype, inverse, 0,
+                       rbuf, rcounts[rank], dtype, inverse, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) {
+      goto cleanup;
+    }
+  } else {
+    /* copy local results from results buffer into real receive buffer */
+    err = copy_buffer_different_dt(result_buf + disps[rank] * extent, rcounts[rank],
                                     dtype, rbuf, rcounts[rank], dtype);
-    if(MPI_SUCCESS != err) { goto cleanup; }
+    if(MPI_SUCCESS != err) {
+      goto cleanup;
+    }
   }
+
 
 cleanup:
   if(NULL != disps) free(disps);
