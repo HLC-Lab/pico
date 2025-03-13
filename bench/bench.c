@@ -74,6 +74,17 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
   #endif // DEBUG
+
+  #ifdef CUDA_AWARE
+  dsbuf, drbuf;
+  CUDAMALLOC(dSBUF,dRBUf)
+  CUDAmemcpy(sbuf...dth)
+  tmpsbuf = sbuf;
+  tmprbuf = rbuf;
+  sbuf = dsbuf;
+  rbuf =drbuf;
+  #endif
+  
   
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
@@ -81,6 +92,14 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
+  #ifdef CUDA_AWARE
+  drbuf = rbuf
+  dsbuf = sbuf
+  rbuf = tmprbuf
+  sbuf = tmpsbuf
+  cudamemcpy(drbuf rbuf htd)
+  cudafree(dsbuf, drbuf)
+  #endif
 
   // Check the results against the ground truth
   if(ground_truth_check(test_routine, sbuf, rbuf, rbuf_gt, count, dtype, comm) != 0){
