@@ -1,14 +1,12 @@
 {
   "libswing_version": "1.0.0",
-  "collective": "ALLREDUCE",
+  "collective": "ALLGATHER",
   "MPI_Op": "MPI_SUM",
   "tags": {
     "include": [
-      "internal",
-      "external"
+      "cuda"
     ],
     "exclude": [
-      "smp",
       "can_crash",
       "suboptimal"
     ]

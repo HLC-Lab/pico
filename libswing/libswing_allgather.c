@@ -38,7 +38,13 @@ int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sd
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
+
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
 
   }
@@ -102,7 +108,14 @@ int allgather_k_bruck(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   if(0 != rank) {
     /* Compute the temporary buffer size, including datatypes empty gaps */
     rsize = datatype_span(rdtype, (size_t)rcount * (size - rank), &rgap);
+    
+#ifdef CUDA_AWARE
+    SWING_CUDA_CHECK(cudaMalloc((void**)&tmp_buf, rsize));
+    SWING_CUDA_CHECK(cudaMemset(tmp_buf, 0, rsize));
+#else
     tmp_buf = (char *) malloc(rsize);
+#endif
+
     tmp_buf_start = tmp_buf - rgap;
   }
 
@@ -110,7 +123,13 @@ int allgather_k_bruck(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   tmprecv = (char*) rbuf;
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
+
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
+
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
   } else if(0 != rank) {
     // root data placement is at the correct poistion
@@ -214,7 +233,13 @@ int allgather_ring(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
+
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
+
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -291,7 +316,11 @@ int allgather_swing_static_memcpy(const void *sbuf, size_t scount, MPI_Datatype 
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)r_bitmap[steps - 1] * (ptrdiff_t)rcount * rext;
 
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -453,7 +482,11 @@ int allgather_swing_remap_memcpy(const void *sbuf, size_t scount, MPI_Datatype s
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)vrank * (ptrdiff_t)rcount * rext;
 
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -545,7 +578,11 @@ int allgather_swing_remap_send(const void *sbuf, size_t scount, MPI_Datatype sdt
   else{
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)vrank * (ptrdiff_t)rcount * rext;
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -618,7 +655,11 @@ int allgather_swing_no_remap(const void *sbuf, size_t scount, MPI_Datatype sdtyp
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
 
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -725,7 +766,11 @@ int allgather_swing_no_remap_dtype(const void *sbuf, size_t scount, MPI_Datatype
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
 
+#ifdef CUDA_AWARE
+    err = copy_buffer_different_dt_cuda(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#else
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+#endif
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -823,10 +868,18 @@ err_hndl:
 //
 // ---------------------------------------------------
 
+// TOCCA METTERE TUTTO IN CUDA
 
 static inline int permute_blocks(void *buffer, size_t block_size, int *block_permutation, int num_blocks) {
 
-  char* tmp_buffer = (char*) malloc(block_size * num_blocks);
+  char* tmp_buffer;
+#ifdef CUDA_AWARE
+  SWING_CUDA_CHECK(cudaMalloc((void**)&tmp_buffer, block_size * num_blocks));
+  SWING_CUDA_CHECK(cudaMemset(tmp_buffer, 0, block_size * num_blocks));
+#else
+  tmp_buffer = (char*) malloc(block_size * num_blocks);
+#endif
+
   if (!tmp_buffer) {
       fprintf(stderr, "Memory allocation failed\n");
       return MPI_ERR_NO_MEM;

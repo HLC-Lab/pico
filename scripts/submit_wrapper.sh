@@ -6,6 +6,7 @@ source scripts/utils.sh
 export TIMESTAMP=$DEFAULT_TIMESTAMP
 export TYPES=$DEFAULT_TYPES
 export SIZES=$DEFAULT_SIZES
+export CUDA=$DEFAULT_CUDA
 export DEBUG_MODE=$DEFAULT_DEBUG_MODE
 export OUTPUT_LEVEL=$DEFAULT_OUTPUT_LEVEL
 export INTERACTIVE=$DEFAULT_INTERACTIVE
@@ -79,7 +80,8 @@ if [[ "$LOCATION" == "local" ]]; then
 else
     PARAMS="--account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME"
     [[ -n "$QOS" ]] &&  PARAMS+=" --qos=$QOS"
-
+    [[ "$CUDA" == "True" ]] && PARAMS+=" --gres=gpu:1 --gpus-per-task=1 --gpus-per-node=1"
+    
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS
     else

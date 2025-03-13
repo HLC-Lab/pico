@@ -3,7 +3,12 @@
 
 #define SWING_MAX_STEPS 20
 
+#ifdef CUDA_AWARE
+#include <cuda_runtime.h>
+#endif
+
 #include <mpi.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -51,6 +56,49 @@ static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
     if(0 != SPLIT_INDEX) {                                                  \
         EARLY_BLOCK_COUNT = EARLY_BLOCK_COUNT + 1;                           \
     }                                                                        \
+
+// ----------------------------------------------------------------------------------------------
+//                                MACRO FOR CUDA FUNCTION CALLS
+// ----------------------------------------------------------------------------------------------
+
+#ifdef CUDA_AWARE
+
+#define SWING_CUDA_CHECK(cmd) do {                         \
+  cudaError_t e = cmd;                              \
+  if( e != cudaSuccess ) {                          \
+    fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n",             \
+        __FILE__,__LINE__,cudaGetErrorString(e));   \
+    exit(EXIT_FAILURE);                             \
+  }                                                 \
+} while(0)
+
+
+static inline int copy_buffer_different_dt_cuda(const void *input_buffer, size_t scount,
+  const MPI_Datatype sdtype, void *output_buffer,
+  size_t rcount, const MPI_Datatype rdtype) {
+  if(SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
+  return MPI_ERR_UNKNOWN;
+  }
+
+  int sdtype_size;
+  MPI_Type_size(sdtype, &sdtype_size);
+  int rdtype_size;
+  MPI_Type_size(rdtype, &rdtype_size);
+
+  size_t s_size = (size_t) sdtype_size * scount;
+  size_t r_size = (size_t) rdtype_size * rcount;
+
+  if(r_size < s_size) {
+    SWING_CUDA_CHECK(cudaMemcpy(output_buffer, input_buffer, r_size, cudaMemcpyDeviceToDevice));
+    return MPI_ERR_TRUNCATE;      // Indicate truncation
+  }
+
+  SWING_CUDA_CHECK(cudaMemcpy(output_buffer, input_buffer, s_size, cudaMemcpyDeviceToDevice));   // Perform the memory copy
+
+  return MPI_SUCCESS;
+}
+
+#endif // CUDA_AWARE
 
 
 /**
@@ -169,7 +217,6 @@ static inline int copy_buffer_different_dt (const void *input_buffer, size_t sco
 
   return MPI_SUCCESS;
 }
-
 
 /**
  * @brief Computes the memory span for `count` repetitions of the given

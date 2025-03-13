@@ -4,7 +4,7 @@
 
 #include "bench_utils.h"
 
-#ifndef CUDA_AWARE
+//#ifndef CUDA_AWARE
 
 int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
                         size_t count, size_t type_size, MPI_Comm comm) {
@@ -18,7 +18,7 @@ int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
 
   return 0; // Success
 }
-
+/*
 #else
 
 int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
@@ -31,3 +31,4 @@ int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
 }
 
 #endif
+*/

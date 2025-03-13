@@ -75,16 +75,17 @@ int main(int argc, char *argv[]) {
   }
   #endif // DEBUG
 
+
+
   #ifdef CUDA_AWARE
-  dsbuf, drbuf;
-  CUDAMALLOC(dSBUF,dRBUf)
-  CUDAmemcpy(sbuf...dth)
-  tmpsbuf = sbuf;
-  tmprbuf = rbuf;
-  sbuf = dsbuf;
-  rbuf =drbuf;
+    void *d_sbuf = NULL, *d_rbuf = NULL;
+    cuda_coll_malloc((void**)&d_rbuf, (void**)&d_sbuf, count, type_size, test_routine.collective);
+    BENCH_CUDA_CHECK(cudaMemcpy(d_sbuf, sbuf, (count  / comm_sz)* type_size, cudaMemcpyHostToDevice));
+    void *tmpsbuf = sbuf;
+    void *tmprbuf = rbuf;
+    sbuf = d_sbuf;
+    rbuf = d_rbuf;
   #endif
-  
   
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
@@ -92,13 +93,13 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
+
   #ifdef CUDA_AWARE
-  drbuf = rbuf
-  dsbuf = sbuf
-  rbuf = tmprbuf
-  sbuf = tmpsbuf
-  cudamemcpy(drbuf rbuf htd)
-  cudafree(dsbuf, drbuf)
+    rbuf = tmprbuf;
+    sbuf = tmpsbuf;
+    BENCH_CUDA_CHECK(cudaMemcpy(rbuf, d_rbuf, count * type_size, cudaMemcpyDeviceToHost));
+    BENCH_CUDA_CHECK(cudaFree(d_sbuf));
+    BENCH_CUDA_CHECK(cudaFree(d_rbuf));
   #endif
 
   // Check the results against the ground truth

@@ -31,10 +31,9 @@ test_config_schema = {
             },
             "required": ["include", "exclude"],
             "additionalProperties": False
-        },
-        "cuda": {"type": "boolean"},
+        }
     },
-    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda"],
+    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific"],
     "additionalProperties": False
 }
 
@@ -180,7 +179,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
     else:
         mpi_op = "null"
     libswing_version = test_config.get("libswing_version", "")
-    cuda = test_config["cuda"]
     algo_names = " ".join(matching_algorithms)
     skip_names = " ".join(skip_algorithms)
     cvars_str = " ".join(cvars) if cvars else ""
@@ -192,7 +190,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
             f.write(f"export ALGOS='{algo_names}'\n")
             f.write(f"export SKIP='{skip_names}'\n")
             f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
-            f.write(f"export CUDA='{cuda}'\n")
             f.write(f"export MPI_OP='{mpi_op}'\n")
             if cvars_str:
                 f.write(f"export CVARS=({cvars_str})\n")

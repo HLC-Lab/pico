@@ -15,6 +15,7 @@ export DEFAULT_DEBUG_MODE="no"
 export DEFAULT_INTERACTIVE="no"
 export DEFAULT_COMPRESS="yes"
 export DEFAULT_DELETE="no"
+export DEFAULT_CUDA="False"
 export DEFAULT_NOTES=""
 export DEFAULT_TASK_PER_NODE=1
 export DEFAULT_TEST_TIME="01:00:00"
@@ -74,6 +75,8 @@ Options:
                       [default: "${DEFAULT_TYPES}"]
   --sizes             Array sizes, comma separated.
                       [default: "${DEFAULT_SIZES}"]
+  --cuda              Enable CUDA support.
+                      [default: "${DEFAULT_CUDA}"]
   --output-level      Specify which test data to save.
                       Allowed values:
                         summarized  - Save summarized test data only.
@@ -130,6 +133,11 @@ parse_cli_args() {
             --sizes)
                 check_arg "$1" "$2"
                 export SIZES="$2"
+                shift 2
+                ;;
+            --cuda)
+                check_arg "$1" "$2"
+                export CUDA="$2"
                 shift 2
                 ;;
             --test-config)
@@ -203,6 +211,10 @@ validate_args() {
         return 1
     elif [[ "$INTERACTIVE" != "yes" ]] && [[ "$INTERACTIVE" != "no" ]]; then
         error "--interactive must be either 'yes' or 'no'."
+        usage
+        return 1
+    elif [[ "$CUDA" != "True" ]] && [[ "$CUDA" != "False" ]]; then
+        error "--cuda must be either 'True' or 'False'."
         usage
         return 1
     elif [[ "$DEBUG_MODE" != "yes" ]] && [[ "$DEBUG_MODE" != "no" ]]; then
@@ -325,6 +337,10 @@ compile_code() {
       make_command="make all DEBUG=1"
     else
       make_command="make all -s"
+    fi
+
+    if [ "$CUDA" == "True" ]; then
+        make_command="$make_command CUDA_AWARE=1"
     fi
 
     if ! $make_command; then

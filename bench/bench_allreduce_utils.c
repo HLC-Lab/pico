@@ -5,7 +5,7 @@
 #include "bench_utils.h"
 
 
-#ifndef CUDA_AWARE
+//#ifndef CUDA_AWARE
 int allreduce_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
                         size_t count, size_t type_size, MPI_Comm comm) {
   *sbuf = (char *)malloc(count * type_size);
@@ -20,6 +20,8 @@ int allreduce_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
   return 0; // Success
 }
 
+
+/*
 #else
 
 
@@ -39,3 +41,4 @@ int allreduce_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
 }
 
 #endif
+*/

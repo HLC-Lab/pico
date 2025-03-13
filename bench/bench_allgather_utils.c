@@ -6,7 +6,7 @@
 
 
 
-#ifndef CUDA_AWARE
+//#ifndef CUDA_AWARE
 int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
                         size_t type_size, MPI_Comm comm) {
   int comm_sz;
@@ -24,6 +24,7 @@ int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
   return 0; // Success
 }
 
+/*
 #else
 
 int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
@@ -41,3 +42,4 @@ int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
 }
 
 #endif
+*/

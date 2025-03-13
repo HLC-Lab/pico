@@ -4,7 +4,7 @@
 
 #include "bench_utils.h"
 
-#ifndef CUDA_AWARE
+//#ifndef CUDA_AWARE
 
 int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
                              size_t type_size, MPI_Comm comm) {
@@ -23,7 +23,7 @@ int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t co
   return 0; // Success
 }
 
-
+/*
 #else
 
 int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
@@ -41,4 +41,4 @@ int reduce_scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t co
 }
 
 #endif
-
+*/

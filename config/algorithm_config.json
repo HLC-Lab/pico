@@ -971,6 +971,7 @@
           "recursive_doubling",
           "small_sizes",
           "medium_sizes",
+          "cuda",
           "external"
         ]
       },

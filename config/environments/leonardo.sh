@@ -23,6 +23,10 @@ else
     export MODULES="openmpi/4.1.6--gcc--12.2.0,$MODULES"
 fi
 
+if [ "$CUDA" == "True" ]; then
+    export MODULES="cuda/12.1,$MODULES"
+fi
+
 # Load test dependnt environment variables
 load_other_env_var(){
     export OMPI_MCA_coll_hcoll_enable=0
