@@ -1,0 +1,115 @@
+{
+  "ALLREDUCE": {
+    "ring": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s"
+      },
+      "phases": [
+        {
+          "name": "ring_reduce_scatter",
+          "steps": "p - 1",
+          "send_to": "(r + 1) mod p",
+          "recv_from": "(r - 1 + p) mod p",
+          "message_size": "n / p"
+        },
+        {
+          "name": "ring_allgather",
+          "steps": "p - 1",
+          "send_to": "(r - 1 + p) mod p",
+          "recv_from": "(r + 1) mod p",
+          "message_size": "n / p"
+        }
+      ],
+      "total_steps": "2 * (p - 1)"
+    },
+    "recursive_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s"
+      },
+      "phases": [
+        {
+          "name": "recursive_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "r xor (2 ^ s)",
+          "recv_from": "r xor (2 ^ s)",
+          "message_size": "n"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "swing_latency": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s"
+      },
+      "phases": [
+        {
+          "name": "recursive_doubling_swing",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "recv_from": "fi(r, s, p)",
+          "message_size": "n"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "rabenseifner": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s"
+      },
+      "phases": [
+        {
+          "name": "reduce_scatter",
+          "steps": "log(p, 2)",
+          "send_to": "r xor (2 ^ s)",
+          "recv_from": "r xor (2 ^ s)",
+          "message_size": "n / (2 ^ (s + 1))"
+        },
+        {
+          "name": "allgather",
+          "steps": "log(p, 2)",
+          "send_to": "r xor (2 ^ s)",
+          "recv_from": "r xor (2 ^ s)",
+          "message_size": "n / (2 ^ (s + 1))"
+        }
+      ],
+      "total_steps": "2 * log(p, 2)"
+    },
+    "swing_bandwidth": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s"
+      },
+      "phases": [
+        {
+          "name": "reduce_scatter",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "recv_from": "fi(r, s, p)",
+          "message_size": "n / (2 ^ (s + 1))"
+        },
+        {
+          "name": "allgather",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "recv_from": "fi(r, s, p)",
+          "message_size": "n / (2 ^ (s + 1))"
+        }
+      ],
+      "total_steps": "2 * log(p, 2)"
+    }
+  }
+}
