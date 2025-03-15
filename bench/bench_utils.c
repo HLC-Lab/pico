@@ -415,43 +415,78 @@ int file_not_exists(const char* filename) {
   return (stat(filename, &buffer) != 0) ? 1 : 0;
 }
 
+static inline void trim_newline(char *str) {
+    str[strcspn(str, "\r\n")] = '\0';
+}
+
 
 int write_allocations_to_file(const char* filename, MPI_Comm comm) {
-  int rank, comm_sz;
-  char processor_name[MPI_MAX_PROCESSOR_NAME];
-  int name_len;
-
+  int rank, comm_sz, name_len;
+  const char *location = NULL;
+  char processor_name[MPI_MAX_PROCESSOR_NAME], local_entry[BENCH_MAX_ALLOC_NAME_LEN];
+  char* gather_buffer = NULL;
+  
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
   MPI_Get_processor_name(processor_name, &name_len);
 
-  MPI_File file;
-  if(MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
-    if(rank == 0) {
-      fprintf(stderr, "Error: Opening file %s for writing", filename);
+  location = getenv("LOCATION");
+  if (location == NULL) {
+      fprintf(stderr, "Error: `LOCATION` environment variable not set. Aborting...\n");
+      return -1;
+  }
+
+  memset(local_entry, 0, sizeof(local_entry));
+  if (strcmp(location, "lumi") == 0) {
+    FILE *xname_file = fopen("/etc/cray/xname", "r");
+    char xname[32];
+    if (xname_file == NULL) {
+      fprintf(stderr, "Error: Could not open /etc/cray/xname for reading.\n");
+      return -1;
     }
-    return MPI_ERR_FILE;
+    fgets(xname, sizeof(xname), xname_file);
+    fclose(xname_file);
+    trim_newline(xname);
+
+    snprintf(local_entry, sizeof(local_entry), "%d,%s,%s\n", rank, processor_name, xname);
+  } else {
+    snprintf(local_entry, sizeof(local_entry), "%d,%s\n", rank, processor_name);
   }
 
-  const char header[] = "MPI_Rank,allocation\n";
-  // Rank 0 writes the header to the file
-  if(rank == 0) {
-    MPI_File_write_at(file, 0, header, sizeof(header) - 1, MPI_CHAR, MPI_STATUS_IGNORE);
+  if (rank == 0) {
+    gather_buffer = malloc(comm_sz * BENCH_MAX_ALLOC_NAME_LEN * sizeof(char));
+    if (gather_buffer == NULL) {
+      fprintf(stderr, "Error: Unable to allocate gather_buffer.\n");
+      return -1;
+    }
   }
 
-  MPI_Barrier(comm);  // Ensure header is written before writing rank data
+  MPI_Gather(local_entry, BENCH_MAX_ALLOC_NAME_LEN, MPI_CHAR,
+              gather_buffer, BENCH_MAX_ALLOC_NAME_LEN, MPI_CHAR,
+              0, comm);
 
-  // Define a fixed-length buffer for each rank's entry
-  char buffer[MPI_MAX_PROCESSOR_NAME + 16];  // Fixed space for rank, comma, name, and newline
-  snprintf(buffer, sizeof(buffer), "%d,%s\n", rank, processor_name);
+  if (rank == 0) {
+    FILE *output_file = fopen(filename, "w");
+    if (output_file == NULL) {
+      fprintf(stderr, "Error: Could not open file %s for writing.\n", filename);
+      free(gather_buffer);
+      return -1;
+    }
+    if (strcmp(location, "lumi") == 0) {
+      fprintf(output_file, "%s", BENCH_HEADER_LUMI);
+    } else {
+      fprintf(output_file, "%s", BENCH_HEADER_DEFAULT);
+    }
 
-  // Calculate a unique offset for each rank using fixed-size entries
-  MPI_Offset offset = sizeof(header) - 1 + rank * (MPI_MAX_PROCESSOR_NAME + 16);
+    for (int i = 0; i < comm_sz; i++) {
+      char *entry = gather_buffer + i * BENCH_MAX_ALLOC_NAME_LEN;
+      int actual_length = strlen(entry);
+      fprintf(output_file, "%.*s", actual_length, entry);
+    }
+    fclose(output_file);
+    free(gather_buffer);
+  }
 
-  // Write each rank's data at its calculated offset
-  MPI_File_write_at(file, offset, buffer, strlen(buffer), MPI_CHAR, MPI_STATUS_IGNORE);
-
-  MPI_File_close(&file);
   return MPI_SUCCESS;
 }
 

@@ -40,6 +40,9 @@
 #define BENCH_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
 #define BENCH_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
 
+#define BENCH_MAX_ALLOC_NAME_LEN ( MPI_MAX_PROCESSOR_NAME + 64 )
+#define BENCH_HEADER_LUMI "MPI_Rank,allocation,xname\n"
+#define BENCH_HEADER_DEFAULT "MPI_Rank,allocation\n"
 
 //-----------------------------------------------------------------------------------------------
 //                        ENUM FOR COLLECTIVE SELECTION
