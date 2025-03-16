@@ -384,6 +384,15 @@ update_algorithm() {
         local cvar=${CVARS[$cvar_indx]}
         success "Setting 'MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
         export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
+
+        # Disable optimized collectives for MPICH that can override algorithm selection
+        if [[ $MPI_LIB == "CRAY_MPICH" ]]; then
+            if [[ "$cvar" == "auto" ]]; then
+                export MPICH_COLL_OPT_OFF=0
+            else 
+                export MPICH_COLL_OPT_OFF=1
+            fi
+        fi
     fi
 }
 export -f update_algorithm
