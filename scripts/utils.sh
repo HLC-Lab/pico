@@ -382,17 +382,20 @@ update_algorithm() {
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
     elif [[ $MPI_LIB == "MPICH" ]] || [[ $MPI_LIB == "CRAY_MPICH" ]]; then
         local cvar=${CVARS[$cvar_indx]}
+        # Disable optimized collectives for MPICH that can override algorithm selection
+        if [[ $MPI_LIB == "CRAY_MPICH" ]]; then
+            export MPICH_ALLREDUCE_NO_SMP=1
+            if [[ "$cvar" == "auto" ]]; then
+                export MPICH_COLL_OPT_OFF=0
+                export MPICH_SHARED_MEM_COLL_OPT=0
+            else 
+                export MPICH_COLL_OPT_OFF=1
+                export MPICH_SHARED_MEM_COLL_OPT=1
+            fi
+        fi
         success "Setting 'MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
         export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
 
-        # Disable optimized collectives for MPICH that can override algorithm selection
-        if [[ $MPI_LIB == "CRAY_MPICH" ]]; then
-            if [[ "$cvar" == "auto" ]]; then
-                export MPICH_COLL_OPT_OFF=0
-            else 
-                export MPICH_COLL_OPT_OFF=1
-            fi
-        fi
     fi
 }
 export -f update_algorithm
