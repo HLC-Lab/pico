@@ -87,3 +87,4 @@ timestamp,test_id,nnodes,collective_type,mpi_lib,mpi_lib_version,libswing_versio
 2025_02_28___21_37_35,0,512,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,all,MPI_SUM,Swing Bdw crashed
 2025_02_28___21_37_58,0,512,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,all,MPI_SUM,Swing Bdw crashed
 2025_02_28___21_56_27,0,512,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,all,MPI_SUM,Swing Bdw crashed
+2025_03_16___14_58_59,0,16,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
