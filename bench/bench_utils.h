@@ -146,6 +146,33 @@ typedef struct {
   }                                                 \
 } while(0)
 
+static inline int cuda_coll_memcpy(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
+
+  int comm_sz;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+
+  switch (coll) {
+    case BCAST:
+      BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
+      break;
+    case ALLREDUCE:
+      BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
+      break;
+    case ALLGATHER:
+      BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, (count  / comm_sz)* type_size, cudaMemcpyHostToDevice));
+      break;
+    case REDUCE_SCATTER:
+      BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
+      break;
+    default:
+      fprintf(stderr, "Error: Unsupported collective type. Aborting...");
+      return -1;
+  }
+
+  return 0;
+}
+
+
 
 static inline int cuda_coll_malloc(void** rbuf, void** sbuf, size_t count, size_t type_size, coll_t coll) {
 

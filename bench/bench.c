@@ -79,8 +79,11 @@ int main(int argc, char *argv[]) {
 
   #ifdef CUDA_AWARE
     void *d_sbuf = NULL, *d_rbuf = NULL;
+    int gpuRank = rank % 4;
+    BENCH_CUDA_CHECK(cudaSetDevice(gpuRank));
     cuda_coll_malloc((void**)&d_rbuf, (void**)&d_sbuf, count, type_size, test_routine.collective);
-    BENCH_CUDA_CHECK(cudaMemcpy(d_sbuf, sbuf, (count  / comm_sz)* type_size, cudaMemcpyHostToDevice));
+    //BENCH_CUDA_CHECK(cudaMemcpy(d_sbuf, sbuf, (count  / comm_sz)* type_size, cudaMemcpyHostToDevice));
+    cuda_coll_memcpy(d_sbuf, sbuf, count, type_size, test_routine.collective);
     void *tmpsbuf = sbuf;
     void *tmprbuf = rbuf;
     sbuf = d_sbuf;
