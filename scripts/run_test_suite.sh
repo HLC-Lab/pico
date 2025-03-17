@@ -21,6 +21,7 @@ for config in ${TEST_CONFIG_FILES[@]//,/ }; do
 
     print_sanity_checks
 
+    export MPI_TASKS=$(expr $N_NODES \* $TASK_PER_NODE)
     run_all_tests
     ((iter++))
 done

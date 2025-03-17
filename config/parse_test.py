@@ -206,7 +206,7 @@ def main():
     algorithm_file = os.getenv("ALGORITHM_CONFIG_FILE")
     test_file = os.getenv("TEST_CONFIG")
     output_file = os.getenv("TEST_ENV")
-    number_of_nodes = os.getenv("N_NODES")
+    number_of_nodes = os.getenv("MPI_TASKS")
     mpi_type = os.getenv("MPI_LIB")
     mpi_version = os.getenv("MPI_LIB_VERSION")
     cuda = os.getenv("CUDA")

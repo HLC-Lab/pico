@@ -138,8 +138,6 @@ Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]
 Options:
 --location          Location (required)
 --nodes             Number of nodes (required if not in --compile-only)
---compile-only      Compile only.
-                    [default: "${DEFAULT_COMPILE_ONLY}"]
 
 For full help, run: $0 --help-full
 EOF
@@ -573,10 +571,9 @@ export -f get_iterations
 run_bench() {
     local size=$1 algo=$2 type=$3
     local iter=$(get_iterations $size)
-    local srun_n = $((N_NODES * TASK_PER_NODE))
-    local command="$RUN $RUNFLAGS -n $srun_n $BENCH_EXEC $size $iter $algo $type"
+    local command="$RUN $RUNFLAGS -n $MPI_TASKS $BENCH_EXEC $size $iter $algo $type"
 
-    [[ "$DEBUG_MODE" == "yes" ]] && inform "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
+    [[ "$DEBUG_MODE" == "yes" ]] && inform "DEBUG: $COLLECTIVE_TYPE -> $MPI_TASKS processes ($N_NODES nodes), $size array size, $type datatype ($algo)"
 
     if [[ "$DRY_RUN" == "yes" ]]; then
         inform "Would run: $command"
@@ -627,11 +624,11 @@ run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
         update_algorithm $algo $i
-        [[ "$DEBUG_MODE" == "no" ]] && inform "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes"
+        [[ "$DEBUG_MODE" == "no" ]] && inform "BENCH: $COLLECTIVE_TYPE -> $MPI_TASKS processes ($N_NODES nodes)"
 
         for size in ${SIZES//,/ }; do
-            if [[ $size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then
-                echo "Skipping algorithm $algo for size=$size < N_NODES=$N_NODES"
+            if [[ $size -lt $MPI_TASKS && " ${SKIP} " =~ " ${algo} " ]]; then
+                echo "Skipping algorithm $algo for size=$size < N_NODES=$MPI_TASKS"
                 continue
             fi
 

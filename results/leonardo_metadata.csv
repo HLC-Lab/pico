@@ -1,7 +1,7 @@
-timestamp,test_id,nnodes,collective_type,mpi_lib,mpi_lib_version,libswing_version,CUDA,output_level,MPI_Op,notes
-2025_03_12___12_18_24,0,8,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_12___12_18_24,1,8,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_12___12_18_24,2,8,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_12___12_18_24,3,8,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_13___15_38_05,0,4,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
-2025_03_13___15_47_02,0,4,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,libswing_version,CUDA,output_level,MPI_Op,notes
+2025_03_12___12_18_24,0,8,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
+2025_03_12___12_18_24,1,8,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_03_12___12_18_24,2,8,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_03_12___12_18_24,3,8,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
+2025_03_13___15_38_05,0,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
+2025_03_13___15_47_02,0,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
