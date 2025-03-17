@@ -30,9 +30,9 @@
 #endif // defined(__GNUC__) || defined(__clang__)
 
 #ifdef CUDA_AWARE
-#define COPY_BUFF_DIFF_DT(args) copy_buffer_different_dt_cuda(args)
+#define COPY_BUFF_DIFF_DT(...) copy_buffer_different_dt_cuda(__VA_ARGS__)
 #else
-#define COPY_BUFF_DIFF_DT(args) copy_buffer_different_dt(args)
+#define COPY_BUFF_DIFF_DT(...) copy_buffer_different_dt(__VA_ARGS__)
 #endif
 
 

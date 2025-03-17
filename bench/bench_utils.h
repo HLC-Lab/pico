@@ -20,23 +20,23 @@
   #define BENCH_DEBUG_PRINT_STR(name)
   #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier) do {} while(0)
 #else
-  #define BENCH_DEBUG_PRINT_STR(name)                 \
+  #define BENCH_DEBUG_PRINT_STR(name)           \
     do{                                         \
       int my_r;                                 \
       MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
-      if(my_r == 0){ printf("%s\n", name); } \
+      if(my_r == 0){ printf("%s\n", name); }    \
     } while(0)
 
   #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier)      \
-    do {                                                                 \
-    print_buffers(NULL, (result), (expected), 0, (count), (dtype), (comm), (use_barrier)); \
+    do {                                                                                    \
+    print_buffers(NULL, (result), (expected), 0, (count), (dtype), (comm), (use_barrier));  \
     } while(0)
 #endif // DEBUG
 
-#define CHECK_STR(var, name, ret)               \
+#define CHECK_STR(var, name, ret)              \
   if(strcmp(var, name) == 0) {                 \
-    BENCH_DEBUG_PRINT_STR(name);                      \
-    return ret;                                 \
+    BENCH_DEBUG_PRINT_STR(name);               \
+    return ret;                                \
   }
 
 #define BENCH_MAX_PATH_LENGTH 512
@@ -140,13 +140,13 @@ typedef struct {
 
 #ifdef CUDA_AWARE
 
-#define BENCH_CUDA_CHECK(cmd) do {                         \
-  cudaError_t e = cmd;                              \
-  if( e != cudaSuccess ) {                          \
-    fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n",             \
-        __FILE__,__LINE__,cudaGetErrorString(e));   \
-    exit(EXIT_FAILURE);                             \
-  }                                                 \
+#define BENCH_CUDA_CHECK(cmd) do {                      \
+  cudaError_t e = cmd;                                  \
+  if( e != cudaSuccess ) {                              \
+    fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n",  \
+        __FILE__,__LINE__,cudaGetErrorString(e));       \
+    exit(EXIT_FAILURE);                                 \
+  }                                                     \
 } while(0)
 
 static inline int cuda_coll_memcpy(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
@@ -238,12 +238,12 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, \
   int ret = MPI_SUCCESS;                                             \
   double start_time, end_time;                                       \
   MPI_Barrier(comm);                                                 \
-  for(int i = 0; i < iter; i++) {                                   \
+  for(int i = 0; i < iter; i++) {                                    \
     start_time = MPI_Wtime();                                        \
     ret = test_routine.function.COLLECTIVE;                          \
     end_time = MPI_Wtime();                                          \
     times[i] = end_time - start_time;                                \
-    if(BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                        \
+    if(BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                         \
       fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...");    \
       return ret;                                                    \
     }                                                                \

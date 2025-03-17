@@ -7,9 +7,6 @@
 #include "bench_utils.h"
 #include "libswing.h"
 
-#define CUDA_AWARE
-
-
 int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
   MPI_Comm comm = MPI_COMM_WORLD;
@@ -62,36 +59,36 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
   
-  #ifndef DEBUG
+#ifndef DEBUG
   // Randomly generate the sbuf
   if(rand_sbuf_generator(sbuf, dtype, count, comm, test_routine) != 0){
     line = __LINE__;
     goto err_hndl;
   }
-  #else
+#else
   // Initialize the sbuf with a sequence of powers of 10
   // WARNING: Only int32, int64 and int supported
   if(debug_sbuf_generator(sbuf, dtype, count, comm, test_routine) != 0){
     line = __LINE__;
     goto err_hndl;
   }
-  #endif // DEBUG
+#endif // DEBUG
 
 
 
-  #ifdef CUDA_AWARE
-    void *d_sbuf = NULL, *d_rbuf = NULL;
-    const char *gpu_per_node = getenv("GPU_PER_NODE");
-    int gpu_per_node_int = atoi(gpu_per_node);
-    int gpuRank = rank % gpu_per_node_int;
-    BENCH_CUDA_CHECK(cudaSetDevice(gpuRank));
-    cuda_coll_malloc((void**)&d_rbuf, (void**)&d_sbuf, count, type_size, test_routine.collective);
-    cuda_coll_memcpy(d_sbuf, sbuf, count, type_size, test_routine.collective);
-    void *tmpsbuf = sbuf;
-    void *tmprbuf = rbuf;
-    sbuf = d_sbuf;
-    rbuf = d_rbuf;
-  #endif
+#ifdef CUDA_AWARE
+  void *d_sbuf = NULL, *d_rbuf = NULL;
+  const char *gpu_per_node = getenv("GPU_PER_NODE");
+  int gpu_per_node_int = atoi(gpu_per_node);
+  int gpuRank = rank % gpu_per_node_int;
+  BENCH_CUDA_CHECK(cudaSetDevice(gpuRank));
+  cuda_coll_malloc((void**)&d_rbuf, (void**)&d_sbuf, count, type_size, test_routine.collective);
+  cuda_coll_memcpy(d_sbuf, sbuf, count, type_size, test_routine.collective);
+  void *tmpsbuf = sbuf;
+  void *tmprbuf = rbuf;
+  sbuf = d_sbuf;
+  rbuf = d_rbuf;
+#endif
   
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
@@ -100,14 +97,14 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 
-  #ifdef CUDA_AWARE
-    rbuf = tmprbuf;
-    sbuf = tmpsbuf;
-    // FIX: Adjust count
-    BENCH_CUDA_CHECK(cudaMemcpy(rbuf, d_rbuf, count * type_size, cudaMemcpyDeviceToHost));
-    BENCH_CUDA_CHECK(cudaFree(d_sbuf));
-    BENCH_CUDA_CHECK(cudaFree(d_rbuf));
-  #endif
+#ifdef CUDA_AWARE
+  rbuf = tmprbuf;
+  sbuf = tmpsbuf;
+  // FIX: Adjust count
+  BENCH_CUDA_CHECK(cudaMemcpy(rbuf, d_rbuf, count * type_size, cudaMemcpyDeviceToHost));
+  BENCH_CUDA_CHECK(cudaFree(d_sbuf));
+  BENCH_CUDA_CHECK(cudaFree(d_rbuf));
+#endif
 
   // Check the results against the ground truth
   if(ground_truth_check(test_routine, sbuf, rbuf, rbuf_gt, count, dtype, comm) != 0){
