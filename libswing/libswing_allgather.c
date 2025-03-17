@@ -38,7 +38,9 @@ int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sd
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
 
   }
@@ -102,7 +104,14 @@ int allgather_k_bruck(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   if(0 != rank) {
     /* Compute the temporary buffer size, including datatypes empty gaps */
     rsize = datatype_span(rdtype, (size_t)rcount * (size - rank), &rgap);
+    
+#ifdef CUDA_AWARE
+    SWING_CUDA_CHECK(cudaMalloc((void**)&tmp_buf, rsize));
+    SWING_CUDA_CHECK(cudaMemset(tmp_buf, 0, rsize));
+#else
     tmp_buf = (char *) malloc(rsize);
+#endif
+
     tmp_buf_start = tmp_buf - rgap;
   }
 
@@ -110,7 +119,9 @@ int allgather_k_bruck(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   tmprecv = (char*) rbuf;
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
   } else if(0 != rank) {
     // root data placement is at the correct poistion
@@ -214,7 +225,9 @@ int allgather_ring(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -545,6 +558,7 @@ int allgather_swing_remap_send(const void *sbuf, size_t scount, MPI_Datatype sdt
   else{
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)vrank * (ptrdiff_t)rcount * rext;
+
     err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
@@ -618,7 +632,7 @@ int allgather_swing_no_remap(const void *sbuf, size_t scount, MPI_Datatype sdtyp
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
 
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -725,7 +739,7 @@ int allgather_swing_no_remap_dtype(const void *sbuf, size_t scount, MPI_Datatype
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
 
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -815,3 +829,120 @@ err_hndl:
   return err;
 }
 
+
+// ---------------------------------------------------
+// MODIFICATIONS INTRODUCTED BY LORENZO
+// 
+// The following implementations are not implemented in the framework yet.
+//
+// ---------------------------------------------------
+
+// TOCCA METTERE TUTTO IN CUDA
+
+// static inline int permute_blocks(void *buffer, size_t block_size, int *block_permutation, int num_blocks) {
+//
+//   char* tmp_buffer;
+// #ifdef CUDA_AWARE
+//   SWING_CUDA_CHECK(cudaMalloc((void**)&tmp_buffer, block_size * num_blocks));
+//   SWING_CUDA_CHECK(cudaMemset(tmp_buffer, 0, block_size * num_blocks));
+// #else
+//   tmp_buffer = (char*) malloc(block_size * num_blocks);
+// #endif
+//
+//   if (!tmp_buffer) {
+//       fprintf(stderr, "Memory allocation failed\n");
+//       return MPI_ERR_NO_MEM;
+//   }
+//
+//   for (int i = 0; i < num_blocks; ++i) {
+//       memcpy(tmp_buffer + block_permutation[i] * block_size, (char*)buffer + i * block_size, block_size);
+//   }
+//
+//   memcpy(buffer, tmp_buffer, block_size * num_blocks);
+//   free(tmp_buffer);
+//   return MPI_SUCCESS;
+// }
+//
+// // AUXILIARY FUNCTION USED TO FIND PERMUTATIONS
+//
+// int allgather_swing_find_permutation(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
+//   void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm) {
+//
+//   int rank, size, step, steps, send_rank, recv_rank;
+//   MPI_Aint lb, extent;
+//   char *sendbuf_off = (char*) sbuf, *recvbuf_off = (char*) rbuf;
+//
+//   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//   MPI_Comm_size(MPI_COMM_WORLD, &size);
+//   MPI_Type_get_extent(sdtype, &lb, &extent);
+//
+//   memcpy(recvbuf_off, sendbuf_off, rcount * extent);
+//
+//   steps = log_2(size);
+//   for(step = 0; step < steps; ++step) {
+//
+//       int powStep = 1 << step;;
+//       int negpowStep = -1 << (step+1);
+//
+//       if(rank % 2 == 0){
+//           send_rank = (int)((rank + (1-1*negpowStep)/3) + size) % size; 
+//           recv_rank = send_rank; 
+//       } else {
+//           send_rank = (int)((rank - (1-1*negpowStep)/3) + size) % size;
+//           recv_rank = send_rank; 
+//       }   
+//
+//       sendbuf_off = (char*) sbuf;
+//       recvbuf_off = (char*) rbuf + (ptrdiff_t) powStep * (ptrdiff_t) rcount * extent;
+//   
+//
+//       MPI_Sendrecv(sendbuf_off, rcount * powStep, rdtype, send_rank, 0,
+//       recvbuf_off, rcount * powStep, rdtype, recv_rank, 0, comm, MPI_STATUS_IGNORE);
+//
+//   }
+//
+//   return MPI_SUCCESS;
+// }
+//
+// // ALLGATHER IMPLEMENTATION USING PERMUTATION PRECOMPUTED
+//
+// int allgather_swing_permute_require(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
+//   void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm, int* permutation) {
+//
+//   int rank, size, step, steps, send_rank, recv_rank;
+//   MPI_Aint lb, extent;
+//   char *sendbuf_off = (char*) sbuf, *recvbuf_off = (char*) rbuf;
+//
+//   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//   MPI_Comm_size(MPI_COMM_WORLD, &size);
+//   MPI_Type_get_extent(sdtype, &lb, &extent);
+//
+//   memcpy(recvbuf_off, sendbuf_off, rcount * extent);
+//
+//   steps = log_2(size);
+//   for(step = 0; step < steps; ++step) {
+//
+//       int powStep = 1 << step;;
+//       int negpowStep = -1 << (step+1);
+//
+//       if(rank % 2 == 0){
+//           send_rank = (int)((rank + (1-1*negpowStep)/3) + size) % size; 
+//           recv_rank = send_rank; 
+//       } else {
+//           send_rank = (int)((rank - (1-1*negpowStep)/3) + size) % size;
+//           recv_rank = send_rank; 
+//       }   
+//
+//       sendbuf_off = (char*) sbuf;
+//       recvbuf_off = (char*) rbuf + (ptrdiff_t) powStep * (ptrdiff_t) rcount * extent;
+//   
+//
+//       MPI_Sendrecv(sendbuf_off, rcount * powStep, rdtype, send_rank, 0,
+//       recvbuf_off, rcount * powStep, rdtype, recv_rank, 0, comm, MPI_STATUS_IGNORE);
+//
+//   }
+//   
+//   reorder_blocks(rbuf, rcount * extent, permutation, size);
+//
+//   return MPI_SUCCESS;
+// }

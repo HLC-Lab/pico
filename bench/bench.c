@@ -7,6 +7,8 @@
 #include "bench_utils.h"
 #include "libswing.h"
 
+#define CUDA_AWARE
+
 
 int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
@@ -74,6 +76,22 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
   #endif // DEBUG
+
+
+
+  #ifdef CUDA_AWARE
+    void *d_sbuf = NULL, *d_rbuf = NULL;
+    const char *gpu_per_node = getenv("GPU_PER_NODE");
+    int gpu_per_node_int = atoi(gpu_per_node);
+    int gpuRank = rank % gpu_per_node_int;
+    BENCH_CUDA_CHECK(cudaSetDevice(gpuRank));
+    cuda_coll_malloc((void**)&d_rbuf, (void**)&d_sbuf, count, type_size, test_routine.collective);
+    cuda_coll_memcpy(d_sbuf, sbuf, count, type_size, test_routine.collective);
+    void *tmpsbuf = sbuf;
+    void *tmprbuf = rbuf;
+    sbuf = d_sbuf;
+    rbuf = d_rbuf;
+  #endif
   
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
@@ -81,6 +99,15 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
+
+  #ifdef CUDA_AWARE
+    rbuf = tmprbuf;
+    sbuf = tmpsbuf;
+    // FIX: Adjust count
+    BENCH_CUDA_CHECK(cudaMemcpy(rbuf, d_rbuf, count * type_size, cudaMemcpyDeviceToHost));
+    BENCH_CUDA_CHECK(cudaFree(d_sbuf));
+    BENCH_CUDA_CHECK(cudaFree(d_rbuf));
+  #endif
 
   // Check the results against the ground truth
   if(ground_truth_check(test_routine, sbuf, rbuf, rbuf_gt, count, dtype, comm) != 0){

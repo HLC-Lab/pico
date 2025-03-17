@@ -15,6 +15,5 @@
   "specific": {
     "include": [],
     "exclude": []
-  },
-  "cuda": false
+  }
 }

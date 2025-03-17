@@ -4,6 +4,7 @@
 
 #include "bench_utils.h"
 
+
 int allreduce_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
                         size_t count, size_t type_size, MPI_Comm comm) {
   *sbuf = (char *)malloc(count * type_size);

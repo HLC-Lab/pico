@@ -8,6 +8,7 @@ export TYPES=$DEFAULT_TYPES
 export SIZES=$DEFAULT_SIZES
 export COLLECTIVES=$DEFAULT_COLLECTIVES
 export TEST_TIME=$DEFAULT_TEST_TIME
+export CUDA=$DEFAULT_CUDA
 export OUTPUT_LEVEL=$DEFAULT_OUTPUT_LEVEL
 export COMPRESS=$DEFAULT_COMPRESS
 export DELETE=$DEFAULT_DELETE
@@ -63,7 +64,19 @@ if [[ "$LOCATION" == "local" ]]; then
 else
     PARAMS="--account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME"
     [[ -n "$QOS" ]] &&  PARAMS+=" --qos=$QOS"
+    [[ "$CUDA" == "True" ]] && PARAMS+=" --gres=gpu:$TASK_PER_NODE --gpus-per-task=1 --gpus-per-node=$TASK_PER_NODE"
 
+    '''
+    MULTI-GPU FULL NODE EXAMPLE FOR 8 TASKS 
+    #SBATCH --nodes=2
+    #SBATCH --ntasks-per-node=4   
+    #SBATCH --ntasks-per-socket=4 
+    #SBATCH --cpus-per-task=8
+    #SBATCH --gpus-per-task=1     
+    #SBATCH --gpus-per-node=4     
+    #SBATCH --gres=gpu:4    
+    '''
+    
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS
     else

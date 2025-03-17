@@ -203,12 +203,14 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                       test_routine);
       break;
     case REDUCE_SCATTER:
+      // for translations of reduce_scatter, we must do a cudaMemcpy!!!!
       rcounts = (int *)malloc(comm_sz * sizeof(int));
       for(int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
       ret = reduce_scatter_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm, iter,
-                               times, test_routine);
-      free(rcounts);
+        times, test_routine);
+      free(rcounts);  
       break;
+
     default:
       fprintf(stderr, "still not implemented, aborting...");
       return -1;
@@ -239,13 +241,11 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
       PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
-      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
-      for(int i = 0; i < comm_sz; i++){
-        rcounts[i] = count / comm_sz;
-      }
+      for(int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
       PMPI_Reduce_scatter(sbuf, rbuf_gt, rcounts, dtype, MPI_SUM, comm);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, rcounts[rank], dtype, comm);
       free(rcounts);

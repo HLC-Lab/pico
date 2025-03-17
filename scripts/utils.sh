@@ -25,6 +25,7 @@ export DEFAULT_DEBUG_MODE="no"
 export DEFAULT_DRY_RUN="no"
 export DEFAULT_INTERACTIVE="no"
 export DEFAULT_SHOW_MPICH_ENV="no"
+export DEFAULT_CUDA="False"
 export DEFAULT_NOTES=""
 export DEFAULT_TASK_PER_NODE=1
 
@@ -93,6 +94,8 @@ Options:
 --collectives       Comma separated list of collectives to test.
                     To each collective, it must correspond a JSON file in `config/test/`.
                     [default: "${DEFAULT_COLLECTIVES}"]
+--cuda              Enable CUDA support.
+                    [default: "${DEFAULT_CUDA}"]
 --time              Sbatch time, in format HH:MM:SS.
                     [default: "${DEFAULT_TEST_TIME}"]
 --output-level      Specify which test data to save.
@@ -125,9 +128,6 @@ Options:
                     [default: "${DEFAULT_SHOW_MPICH_ENV}"]
 --notes             Notes for metadata entry.
                     [default: "${DEFAULT_NOTES}"]
---task-per-node     Sbatch tasks per node. As of now, even if you set this to a value greater than 1,
-                    srun will run with just -n=--nodes. This behaviour will be updated in future.
-                    [default: "${DEFAULT_TASK_PER_NODE}"]
 --help              Show short help message
 --help-full         Show full help message
 EOF
@@ -181,6 +181,11 @@ parse_cli_args() {
             --sizes)
                 check_arg "$1" "$2"
                 export SIZES="$2"
+                shift 2
+                ;;
+            --cuda)
+                check_arg "$1" "$2"
+                export CUDA="$2"
                 shift 2
                 ;;
             --collectives)
@@ -238,11 +243,6 @@ parse_cli_args() {
                 export NOTES="$2"
                 shift 2
                 ;;
-            --task-per-node)
-                check_arg "$1" "$2"
-                export TASK_PER_NODE="$2"
-                shift 2
-                ;;
             --help)
                 usage
                 exit 0
@@ -274,6 +274,12 @@ check_yes_no() {
 validate_args() {
     check_yes_no "$COMPILE_ONLY" "--compile-only" || return 1
     check_yes_no "$DEBUG_MODE" "--debug" || return 1
+    if [[ "$CUDA" != "True" && "$CUDA" != "False" ]]; then
+        error "--cuda must be either 'True' or 'False'."
+        usage
+        return 1
+    fi
+
     if [[ "$COMPILE_ONLY" == "yes" ]]; then
         success "Compile only mode. Skipping validation."
         return 0
@@ -300,6 +306,15 @@ validate_args() {
     check_yes_no "$SHOW_MPICH_ENV" "--show-mpich-env" || return 1
 
     [[ "$DRY_RUN" == "yes" ]] && warning "DRY RUN MODE: Commands will be printed but not executed"
+
+    if [[ "$CUDA" == "True" ]]; then
+        if [[ -z "$GPU_NODE_PARTITON" ]]; then
+            error "CUDA is enabled but 'GPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
+            return 1
+        fi
+        warning "CUDA is enabled. Setting --task-per-node to ${GPU_NODE_PARTITION}"
+        export TASK_PER_NODE=${GPU_NODE_PARTITION}
+    fi
 
     if [[ "$COMPRESS" == "no" ]] && [[ "$DELETE" == "yes" ]]; then
         warning "--compress is 'no', hence --delete will be ignored"
@@ -424,27 +439,24 @@ activate_virtualenv() {
 # Compile the codebase
 ###############################################################################
 compile_code() {
-    if [ "$DRY_RUN" == "yes" ]; then
-        if [ "$DEBUG_MODE" == "yes" ]; then
-            inform "Would run: make all DEBUG=1"
-        else
-            inform "Would run: make all -s"
-        fi
+    make_command="make all"
+    [[ "$DEBUG_MODE" == "yes" ]] && make_command+=" DEBUG=1"
+    [[ "$DEBUG_MODE" == "no"  ]] && make_command+=" -s"
+    [[ "$CUDA" == "True" ]] && make_command+=" CUDA_AWARE=1"
+
+    if [[ "$DRY_RUN" == "yes" ]]; then
+        inform "Would run: "$make_command""
         success "Compilation would be attempted (dry run)."
         return 0
-    else
-        if [ "$DEBUG_MODE" == "yes" ]; then
-            make_command="make all DEBUG=1"
-        else
-            make_command="make all -s"
-        fi
-        if ! $make_command; then
-            error "Compilation failed. Exiting."
-            return 1
-        fi
-        success "Compilation succeeded."
-        return 0
     fi
+
+    if ! $make_command; then
+        error "Compilation failed. Exiting."
+        return 1
+    fi
+
+    success "Compilation succeeded."
+    return 0
 }
 
 ###############################################################################
@@ -527,6 +539,7 @@ print_sanity_checks() {
     echo "  • MPI Library:           $MPI_LIB $MPI_LIB_VERSION"
     echo "  • Libswing Version:      $LIBSWING_VERSION"
     echo "  • CUDA Enabled:          $CUDA"
+    [[ "${CUDA}" == "True" ]] && echo "  • GPU per node:          $TASK_PER_NODE"
     [ -n "$NOTES" ] && echo -e "\nNotes: $NOTES"
 
     success "${SEPARATOR}"
@@ -560,14 +573,15 @@ export -f get_iterations
 run_bench() {
     local size=$1 algo=$2 type=$3
     local iter=$(get_iterations $size)
-    local command="$RUN $RUNFLAGS -n $N_NODES $BENCH_EXEC $size $iter $algo $type"
-    
+    local srun_n = $((N_NODES * TASK_PER_NODE))
+    local command="$RUN $RUNFLAGS -n $srun_n $BENCH_EXEC $size $iter $algo $type"
+
     [[ "$DEBUG_MODE" == "yes" ]] && inform "DEBUG: $COLLECTIVE_TYPE -> $N_NODES processes, $size array size, $type datatype ($algo)"
-    
+
     if [[ "$DRY_RUN" == "yes" ]]; then
         inform "Would run: $command"
     else
-        if [ "$DEBUG_MODE" == "yes" ]; then
+        if [[ "$DEBUG_MODE" == "yes" ]]; then
             $command
         else
             $command || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; cleanup; }
@@ -582,15 +596,13 @@ export -f run_bench
 update_algorithm() {
     local algo=$1
     local cvar_indx=$2
-    if [[ "$MPI_LIB" == "OMPI_SWING" ]] || [[ "$MPI_LIB" == "OMPI" ]]; then
+    if [[ "$MPI_LIB" == "OMPI_SWING" || "$MPI_LIB" == "OMPI" ]]; then
         success "Updating dynamic rule file for algorithm $algo..."
         python3 $ALGO_CHANGE_SCRIPT $algo || cleanup
         export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
-    elif [[ $MPI_LIB == "MPICH" ]] || [[ $MPI_LIB == "CRAY_MPICH" ]]; then
+    elif [[ $MPI_LIB == "MPICH" || $MPI_LIB == "CRAY_MPICH" ]]; then
         local cvar=${CVARS[$cvar_indx]}
-        if [[ $MPI_LIB == "CRAY_MPICH" ]]; then
-            warning "CRAY_MPICH may not support algorithm selection via CVARs. Results may vary."
-        fi
+        [[ $MPI_LIB == "CRAY_MPICH" ]] && warning "CRAY_MPICH may not support algorithm selection via CVARs. Results may vary."
         # FIX: CRAY_MPICH does not support algo selection
         #
         # Disable optimized collectives for MPICH that can override algorithm selection
@@ -604,7 +616,6 @@ update_algorithm() {
         #     fi
         success "Setting 'MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
         export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
-
     fi
 }
 export -f update_algorithm
@@ -616,9 +627,7 @@ run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
         update_algorithm $algo $i
-        if [ "$DEBUG_MODE" == "no" ]; then
-            inform "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes"
-        fi
+        [[ "$DEBUG_MODE" == "no" ]] && inform "BENCH: $COLLECTIVE_TYPE -> $N_NODES processes"
 
         for size in ${SIZES//,/ }; do
             if [[ $size -lt $N_NODES && " ${SKIP} " =~ " ${algo} " ]]; then

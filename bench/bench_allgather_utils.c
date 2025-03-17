@@ -4,6 +4,7 @@
 
 #include "bench_utils.h"
 
+
 int allgather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
                         size_t type_size, MPI_Comm comm) {
   int comm_sz;

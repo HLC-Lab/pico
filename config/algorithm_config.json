@@ -933,10 +933,9 @@
         },
         "tags": [
           "k_bruck",
+          "cuda",
           "can_crash",
           "additional_parameter",
-          "medium_sizes",
-          "large_sizes",
           "external"
         ]
       },
@@ -969,8 +968,7 @@
         ],
         "tags": [
           "recursive_doubling",
-          "small_sizes",
-          "medium_sizes",
+          "cuda",
           "external"
         ]
       },
@@ -994,7 +992,7 @@
         ],
         "tags": [
           "ring",
-          "large_sizes",
+          "cuda",
           "external"
         ]
       },
@@ -1071,8 +1069,6 @@
         "tags": [
           "swing_static",
           "swing",
-          "medium_sizes",
-          "large_sizes",
           "external"
         ]
       },
@@ -1179,6 +1175,7 @@
         ],
         "tags": [
           "swing",
+          "cuda",
           "external"
         ]
       },
@@ -1211,6 +1208,7 @@
         ],
         "tags": [
           "swing",
+          "cuda",
           "external"
         ]
       }

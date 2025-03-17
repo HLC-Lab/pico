@@ -31,10 +31,9 @@ test_config_schema = {
             },
             "required": ["include", "exclude"],
             "additionalProperties": False
-        },
-        "cuda": {"type": "boolean"},
+        }
     },
-    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific", "cuda"],
+    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific"],
     "additionalProperties": False
 }
 
@@ -111,7 +110,7 @@ def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_versio
 
 
 
-def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_type: str, mpi_version: str):
+def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_type: str, mpi_version: str, cuda: str):
     """Get algorithms that match the test configuration."""
     collective = test_config["collective"]
     libswing_version = test_config["libswing_version"]
@@ -119,6 +118,7 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
     exclude_tags = test_config["tags"]["exclude"]
     include_specific = test_config["specific"]["include"]
     exclude_specific = test_config["specific"]["exclude"]
+    cuda_bool = cuda.lower() == "true"
     
     matching_algorithms = []
     skip_algorithms = []
@@ -133,6 +133,9 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
         if not check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version):
             continue
         if "constraints" in algo_data and not check_comm_sz(algo_data["constraints"], comm_sz):
+            continue
+
+        if cuda_bool and "cuda" not in algo_data["tags"]:
             continue
 
         # Handle specific inclusions: add these algorithms regardless of tags.
@@ -180,7 +183,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
     else:
         mpi_op = "null"
     libswing_version = test_config.get("libswing_version", "")
-    cuda = test_config["cuda"]
     algo_names = " ".join(matching_algorithms)
     skip_names = " ".join(skip_algorithms)
     cvars_str = " ".join(cvars) if cvars else ""
@@ -192,7 +194,6 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
             f.write(f"export ALGOS='{algo_names}'\n")
             f.write(f"export SKIP='{skip_names}'\n")
             f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
-            f.write(f"export CUDA='{cuda}'\n")
             f.write(f"export MPI_OP='{mpi_op}'\n")
             if cvars_str:
                 f.write(f"export CVARS=({cvars_str})\n")
@@ -208,12 +209,14 @@ def main():
     number_of_nodes = os.getenv("N_NODES")
     mpi_type = os.getenv("MPI_LIB")
     mpi_version = os.getenv("MPI_LIB_VERSION")
+    cuda = os.getenv("CUDA")
     if not (algorithm_file and test_file and output_file and number_of_nodes and
-            number_of_nodes.isdigit() and mpi_type and mpi_version):
-        print(f"{__file__}: Environment variables not set.", file=sys.stderr)
+            number_of_nodes.isdigit() and mpi_type and mpi_version and cuda):
+        print(f"\n{__file__}: Environment variables not set.\n", file=sys.stderr)
         print(f"ALGORITHM_CONFIG_FILE={algorithm_file}\nTEST_CONFIG={test_file}"
               f"\nTEST_ENV={output_file}\nN_NODES={number_of_nodes}\n"
-              f"MPI_LIB={mpi_type}, MPI_LIB_VERSION={mpi_version}", file=sys.stderr)
+              f"MPI_LIB={mpi_type}, MPI_LIB_VERSION={mpi_version}\n"
+              f"CUDA={cuda}\n", file=sys.stderr)
         sys.exit(1)
     number_of_nodes = int(number_of_nodes)
 
@@ -234,7 +237,7 @@ def main():
 
     # Get matching algorithms
     matching_algorithms, skip_algorithms, cvars = get_matching_algorithms(
-        algorithm_config, test_config, number_of_nodes, mpi_type, mpi_version)
+        algorithm_config, test_config, number_of_nodes, mpi_type, mpi_version, cuda)
 
     # Write environment variables to a shell script to be sourced
     export_environment_variables(matching_algorithms, skip_algorithms, cvars, test_config, output_file)

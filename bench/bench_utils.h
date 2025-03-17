@@ -3,13 +3,16 @@
 
 #include <mpi.h>
 #include <stdio.h>
+#ifdef CUDA_AWARE
+#include <cuda_runtime.h>
+#endif
 
 #include "libswing.h"
 
 #if defined(__GNUC__) || defined(__clang__)
-#define BENCH_UNLIKELY(x) __builtin_expect(!!(x), 0)
+  #define BENCH_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
-#define BENCH_UNLIKELY(x) (x)
+  #define BENCH_UNLIKELY(x) (x)
 #endif // defined(__GNUC__) || defined(__clang__)
 
 // Used to print algorithm and collective when in debug mode
@@ -43,6 +46,7 @@
 #define BENCH_MAX_ALLOC_NAME_LEN ( MPI_MAX_PROCESSOR_NAME + 64 )
 #define BENCH_HEADER_LUMI "MPI_Rank,allocation,xname\n"
 #define BENCH_HEADER_DEFAULT "MPI_Rank,allocation\n"
+
 
 //-----------------------------------------------------------------------------------------------
 //                        ENUM FOR COLLECTIVE SELECTION
@@ -128,6 +132,82 @@ typedef struct {
     reduce_scatter_func_ptr reduce_scatter;
   } function;
 } test_routine_t;
+
+
+// ----------------------------------------------------------------------------------------------
+//                                MACRO FOR CUDA FUNCTION CALLS
+// ----------------------------------------------------------------------------------------------
+
+#ifdef CUDA_AWARE
+
+#define BENCH_CUDA_CHECK(cmd) do {                         \
+  cudaError_t e = cmd;                              \
+  if( e != cudaSuccess ) {                          \
+    fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n",             \
+        __FILE__,__LINE__,cudaGetErrorString(e));   \
+    exit(EXIT_FAILURE);                             \
+  }                                                 \
+} while(0)
+
+static inline int cuda_coll_memcpy(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
+
+  int comm_sz;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+
+  switch (coll) {
+    // case BCAST:
+    //   BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
+    //   break;
+    // case ALLREDUCE:
+    //   BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
+    //   break;
+    case ALLGATHER:
+      BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, (count  / comm_sz)* type_size, cudaMemcpyHostToDevice));
+      break;
+    // case REDUCE_SCATTER:
+    //   BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
+    //   break;
+    default:
+      fprintf(stderr, "Error: Unsupported collective type. Aborting...");
+      return -1;
+  }
+
+  return 0;
+}
+
+
+
+static inline int cuda_coll_malloc(void** rbuf, void** sbuf, size_t count, size_t type_size, coll_t coll) {
+
+  int comm_sz;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+
+  switch (coll) {
+    // case BCAST:
+    //   BENCH_CUDA_CHECK(cudaMalloc(sbuf, count * type_size));
+    //   BENCH_CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
+    //   break;
+    // case ALLREDUCE:
+    //   BENCH_CUDA_CHECK(cudaMalloc(sbuf, count * type_size));
+    //   BENCH_CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
+    //   break;
+    case ALLGATHER:
+      BENCH_CUDA_CHECK(cudaMalloc(sbuf, (count/comm_sz) * type_size));
+      BENCH_CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
+      break;
+    // case REDUCE_SCATTER:
+    //   BENCH_CUDA_CHECK(cudaMalloc(sbuf, count * type_size));
+    //   BENCH_CUDA_CHECK(cudaMalloc(rbuf, (count/comm_sz) * type_size));
+    //   break;
+    default:
+      fprintf(stderr, "Error: Unsupported collective type. Aborting...");
+      return -1;
+  }
+
+  return 0;
+}
+
+#endif // CUDA_AWARE
 
 
 //-----------------------------------------------------------------------------------------------
@@ -402,4 +482,3 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 #endif // DEBUG
 
 #endif // BENCH_TOOLS_H
-
