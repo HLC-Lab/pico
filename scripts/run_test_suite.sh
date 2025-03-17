@@ -2,61 +2,39 @@
 # Trap SIGINT (Ctrl+C) and call cleanup function
 trap cleanup SIGINT
 
-IFS=' ' read -r -a TEST_CONFIG_FILES <<< "$TEST_CONFIG_FILES"
 
-for i in ${!TEST_CONFIG_FILES[@]}; do
-    ###################################################################################
-    #               PARSE THE TEST CONFIGURATION FILE TO GET THE TEST VARIABLES       #
-    ###################################################################################
-    export TEST_CONFIG=${TEST_CONFIG_FILES[$i]}
+iter=0
+for config in ${TEST_CONFIG_FILES[@]//,/ }; do
+    export TEST_CONFIG=${config}
     export TEST_ENV="${TEST_CONFIG}_env.sh"
     python3 $SWING_DIR/config/parse_test.py || exit 1
     source $TEST_ENV
     load_other_env_var # Load env var dependant on test/environment combination
     success "📄 Test configuration ${TEST_CONFIG} parsed"
 
-    ###################################################################################
-    #               CREATE OUTPUT DIRECTORY AND GENERATE METADATA                     #
-    #               ALTERNATIVELY, USE DEBUG VARIABLES                                #
-    ###################################################################################
-    if [ $DEBUG_MODE == "no" ]; then
-        export DATA_DIR="$OUTPUT_DIR/$i"
+    if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
+        export DATA_DIR="$OUTPUT_DIR/$iter"
         mkdir -p "$DATA_DIR"
-        python3 $SWING_DIR/results/generate_metadata.py $i || exit 1
+        python3 $SWING_DIR/results/generate_metadata.py $iter || exit 1
         success "📂 Metadata of $DATA_DIR created"
     fi
 
-    # Sanity checks
-    success "==========================================================\n\t\t SANITY CHECKS"
-    echo "Running test configuration: ${TEST_CONFIG_FILES[$i]}"
-    echo "Running tests in: $LOCATION"
-    echo "Debug mode: $DEBUG_MODE"
-    echo "Number of nodes: $N_NODES"
-    echo "Saving $OUTPUT_LEVEL results in: $DATA_DIR"
-    echo "Running benchmarks for collective: $COLLECTIVE_TYPE"
-    echo -e "For algorithms: \n $ALGOS"
-    echo -e "With sizes: \n $SIZES"
-    echo -e "And data types: \n $TYPES"
-    echo "MPI Library: $MPI_LIB, $MPI_LIB_VERSION"
-    echo "Libswing Version: $LIBSWING_VERSION"
-    echo "CUDA Enabled: $CUDA"
-    echo "NOTES: $NOTES"
-    success "=========================================================="
+    print_sanity_checks
 
-    ###################################################################################
-    #               RUN THE TESTS FOR THE GIVEN CONFIGURATION                         #
-    ###################################################################################
-    run_all_tests || exit 1
+    run_all_tests
+    ((iter++))
 done
 
 success "All tests completed successfully"
-###################################################################################
-#              COMPRESS THE RESULTS AND ADD OUTPUT_DIR TO GITIGNORE               #
-###################################################################################
+
 if [[ $LOCATION != "local" ]]; then
     squeue -j $SLURM_JOB_ID
 fi
-if [[ "$DEBUG_MODE" == "no" && "$COMPRESS" == "yes" ]]; then
+
+###################################################################################
+#              COMPRESS THE RESULTS AND DELETE THE OUTPUT DIR IF REQUESTED        #
+###################################################################################
+if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" && "$COMPRESS" == "yes" ]]; then
     tarball_path="$(dirname "$OUTPUT_DIR")/$(basename "$OUTPUT_DIR").tar.gz"
     if tar -czf "$tarball_path" -C "$(dirname "$OUTPUT_DIR")" "$(basename "$OUTPUT_DIR")"; then
         if [[ "$DELETE" == "yes" ]]; then

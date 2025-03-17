@@ -6,74 +6,54 @@ source scripts/utils.sh
 export TIMESTAMP=$DEFAULT_TIMESTAMP
 export TYPES=$DEFAULT_TYPES
 export SIZES=$DEFAULT_SIZES
-export DEBUG_MODE=$DEFAULT_DEBUG_MODE
+export COLLECTIVES=$DEFAULT_COLLECTIVES
+export TEST_TIME=$DEFAULT_TEST_TIME
 export OUTPUT_LEVEL=$DEFAULT_OUTPUT_LEVEL
-export INTERACTIVE=$DEFAULT_INTERACTIVE
 export COMPRESS=$DEFAULT_COMPRESS
 export DELETE=$DEFAULT_DELETE
+export DEBUG_MODE=$DEFAULT_DEBUG_MODE
+export DRY_RUN=$DEFAULT_DRY_RUN
+export INTERACTIVE=$DEFAULT_INTERACTIVE
+export SHOW_MPICH_ENV=$DEFAULT_SHOW_MPICH_ENV
 export NOTES=$DEFAULT_NOTES
 export TASK_PER_NODE=$DEFAULT_TASK_PER_NODE
-export TEST_TIME=$DEFAULT_TEST_TIME
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
 
-# 3. Set the location-specific environment variables
+# 3. Set the location-specific configuration (defined in `config/environment/$LOCATION.sh`)
 source_environment "$LOCATION" || exit 1
+
+# 4. Validate all the given arguments
 validate_args || exit 1
 
-# 4. Set the test configuration files, or use --test-config if provided.
-if [ -n "$TEST_CONFIG_OVERRIDE" ]; then
-    TEST_CONFIG_FILE_LIST=()
-    for f_path in ${TEST_CONFIG_OVERRIDE//,/ }; do
-        if [ ! -f "$SWING_DIR/$f_path" ]; then
-            error "Test configuration file '$SWING_DIR/$f_path' not found!"
-            exit 1
-        fi
-        TEST_CONFIG_FILE_LIST+=( "$SWING_DIR/$f_path" )
-    done
-else
-    TEST_CONFIG_FILE_LIST=(
-        "$SWING_DIR/config/test/allreduce.json"
-        "$SWING_DIR/config/test/allgather.json"
-        "$SWING_DIR/config/test/bcast.json"
-        "$SWING_DIR/config/test/reduce_scatter.json"
-    )
-fi
-export TEST_CONFIG_FILES="${TEST_CONFIG_FILE_LIST[*]}"
-
-###################################################################################
-#               PARSE THE TEST CONFIGURATION FILE TO GET THE TEST VARIABLES       #
-###################################################################################
-export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
-
+# 5. Load required modules (defined in `config/environment/$LOCATION.sh`)
 load_modules || exit 1
 success "Modules successfully loaded."
 
+# 6. Activate the virtual environment, install Python packages if not presents
 activate_virtualenv || exit 1
 success "Virtual environment activated."
 
-###################################################################################
-#           COMPILE CODE, CREATE OUTPUT DIRECTORIES AND GENERATE METADATA         #
-###################################################################################
+# 7. Compile code. If `$DEBUG_MODE` is `yes`, debug flags will be added
 compile_code || exit 1
 
+# 8. Defines env dependant variables
+export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
 export LOCATION_DIR="$SWING_DIR/results/$LOCATION"
 export OUTPUT_DIR="$SWING_DIR/results/$LOCATION/$TIMESTAMP"
-if [ $DEBUG_MODE == "no" ]; then
+export BENCH_EXEC=$SWING_DIR/bin/bench
+export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
+export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
+
+# 9. Create output directories if not in debug mode or dry run
+if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
     success "📂 Creating output directories..."
     mkdir -p "$LOCATION_DIR"
     mkdir -p "$OUTPUT_DIR"
 fi
 
-###################################################################################
-#               DO NOT MODIFY THE FOLLOWING VARIABLES                             #
-###################################################################################
-export BENCH_EXEC=$SWING_DIR/bin/bench
-export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
-export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
-
-# Submit the job.
+# 10. Submit the job.
 if [[ "$LOCATION" == "local" ]]; then
     scripts/run_test_suite.sh
 else
@@ -83,10 +63,10 @@ else
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS
     else
-        if [[ "$DEBUG_MODE" == "yes" ]]; then
-            sbatch $PARAMS --output="debug_%j.out" "$SWING_DIR/scripts/run_test_suite.sh"
-        else
+        if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
             sbatch $PARAMS --output="$OUTPUT_DIR/slurm_%j.out" --error="$OUTPUT_DIR/slurm_%j.err" "$SWING_DIR/scripts/run_test_suite.sh"
+        else
+            sbatch $PARAMS --output="debug_%j.out" "$SWING_DIR/scripts/run_test_suite.sh"
         fi
     fi
 fi

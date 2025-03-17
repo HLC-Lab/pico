@@ -1,6 +1,6 @@
 # Cluster Map Overview
 
-This document explains how the `leo_map.tex` cluster map works. The key concepts are outlined below.
+This document explains how the `leonardo.tex` cluster map works. The key concepts are outlined below.
 
 ## Switch Identifier
 

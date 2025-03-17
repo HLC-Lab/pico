@@ -4,7 +4,6 @@ import re
 import sys
 import argparse
 from math import log
-from sympy import sympify, symbols
 
 def load_communication_pattern(filename):
     with open(filename, 'r') as f:
