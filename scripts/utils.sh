@@ -12,6 +12,7 @@ export SEPARATOR="==============================================================
 ###############################################################################
 # Default values
 ###############################################################################
+export DEFAULT_COMPILE_ONLY="no"
 export DEFAULT_TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEFAULT_TYPES="int32"
 export DEFAULT_SIZES="8,64,512,2048,16384,131072,1048576,8388608,67108864"
@@ -79,7 +80,9 @@ Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]
 
 Options:
 --location          Location (required)
---nodes             Number of nodes (required, integer >=2)
+--nodes             Number of nodes (required if not in --compile-only)
+--compile-only      Compile only.
+                    [default: "${DEFAULT_COMPILE_ONLY}"]
 --output-dir        Output dir of test.
                     [default: "${DEFAULT_TIMESTAMP}" (current timestamp)]
 --types             Data types, comma separated.
@@ -131,6 +134,12 @@ EOF
     else
         cat <<EOF
 Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]
+
+Options:
+--location          Location (required)
+--nodes             Number of nodes (required if not in --compile-only)
+--compile-only      Compile only.
+                    [default: "${DEFAULT_COMPILE_ONLY}"]
 
 For full help, run: $0 --help-full
 EOF
@@ -199,6 +208,11 @@ parse_cli_args() {
                 export DELETE="$2"
                 shift 2
                 ;;
+            --compile-only)
+                check_arg "$1" "$2"
+                export COMPILE_ONLY="$2"
+                shift 2
+                ;;
             --debug)
                 check_arg "$1" "$2"
                 export DEBUG_MODE="$2"
@@ -258,6 +272,13 @@ check_yes_no() {
 }
 
 validate_args() {
+    check_yes_no "$COMPILE_ONLY" "--compile-only" || return 1
+    check_yes_no "$DEBUG_MODE" "--debug" || return 1
+    if [[ "$COMPILE_ONLY" == "yes" ]]; then
+        success "Compile only mode. Skipping validation."
+        return 0
+    fi
+
     if [[ -z "$N_NODES" || ! "$N_NODES" =~ ^[0-9]+$ || "$N_NODES" -lt 2 ]]; then
         error "--nodes must be a numeric value and at least 2."
         usage
@@ -274,7 +295,6 @@ validate_args() {
 
     check_yes_no "$COMPRESS" "--compress" || return 1
     check_yes_no "$DELETE" "--delete" || return 1
-    check_yes_no "$DEBUG_MODE" "--debug" || return 1
     check_yes_no "$DRY_RUN" "--dry-run" || return 1
     check_yes_no "$INTERACTIVE" "--interactive" || return 1
     check_yes_no "$SHOW_MPICH_ENV" "--show-mpich-env" || return 1

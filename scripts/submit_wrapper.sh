@@ -11,6 +11,7 @@ export TEST_TIME=$DEFAULT_TEST_TIME
 export OUTPUT_LEVEL=$DEFAULT_OUTPUT_LEVEL
 export COMPRESS=$DEFAULT_COMPRESS
 export DELETE=$DEFAULT_DELETE
+export COMPILE_ONLY=$DEFAULT_COMPILE_ONLY
 export DEBUG_MODE=$DEFAULT_DEBUG_MODE
 export DRY_RUN=$DEFAULT_DRY_RUN
 export INTERACTIVE=$DEFAULT_INTERACTIVE
@@ -32,11 +33,14 @@ load_modules || exit 1
 success "Modules successfully loaded."
 
 # 6. Activate the virtual environment, install Python packages if not presents
-activate_virtualenv || exit 1
-success "Virtual environment activated."
+if [[ "$COMPILE_ONLY" == "no" ]]; then
+    activate_virtualenv || exit 1
+    success "Virtual environment activated."
+fi
 
 # 7. Compile code. If `$DEBUG_MODE` is `yes`, debug flags will be added
 compile_code || exit 1
+[[ "$COMPILE_ONLY" == "yes" ]] && exit 0
 
 # 8. Defines env dependant variables
 export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
