@@ -31,9 +31,12 @@ load_other_env_var(){
     export OMPI_MCA_coll_hcoll_enable=0
     export OMPI_MCA_coll_tuned_use_dynamic_rules=1
     if [ "$CUDA" == "False" ]; then
-        export CUDA_VISIBLE_DEVICES=""
         export OMPI_MCA_btl="^smcuda"
         export OMPI_MCA_mpi_cuda_support=0
+    fi
+    if [ "$CUDA" == "False" ]; then
+        export OMPI_MCA_btl=""
+        export OMPI_MCA_mpi_cuda_support=1
     fi
 }
 export -f load_other_env_var
