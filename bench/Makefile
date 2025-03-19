@@ -20,9 +20,10 @@ ifeq ($(DEBUG),1)
 	CFLAGS := $(filter-out -O%,$(CFLAGS))
 endif
 
+ifeq ($(CUDA_AWARE),1)
+all: $(BENCH_CUDA) $(BENCH)
+else
 all: $(BENCH)
-ifeq ($(CUDA_WARE),1)
-all: $(BENCH_CUDA)
 endif
 
 # Build the executable

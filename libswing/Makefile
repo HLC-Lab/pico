@@ -14,9 +14,10 @@ LIB_DEPS_CUDA = $(patsubst %.c, $(OBJ_DIR_CUDA)/%.d, $(LIB_SRC))
 LIBSWING_CUDA = $(LIB_DIR)/libswing_cuda.a
 
 # Default target
+ifeq ($(CUDA_AWARE),1)
+all: $(LIBSWING) $(LIBSWING_CUDA)
+else
 all: $(LIBSWING)
-ifeq ($(CUDA_WARE),1)
-all: $(LIBSWING_CUDA)
 endif
 
 ######################################################################

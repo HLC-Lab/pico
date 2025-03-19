@@ -479,7 +479,7 @@ compile_code() {
     [[ "$CUDA" == "True" ]] && make_command+=" CUDA_AWARE=1"
 
     if [[ "$DRY_RUN" == "yes" ]]; then
-        inform "Would run: "$make_command""
+        inform "Would run: $make_command"
         success "Compilation would be attempted (dry run)."
         return 0
     fi
