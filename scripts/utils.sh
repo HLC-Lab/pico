@@ -26,6 +26,7 @@ export DEFAULT_DRY_RUN="no"
 export DEFAULT_INTERACTIVE="no"
 export DEFAULT_SHOW_MPICH_ENV="no"
 export DEFAULT_NOTES=""
+export DEFAULT_CUDA="False"
 export DEFAULT_GPU_PER_NODE="0"
 export DEFAULT_TASK_PER_NODE=1
 
@@ -94,9 +95,14 @@ Options:
 --collectives       Comma separated list of collectives to test.
                     To each collective, it must correspond a JSON file in `config/test/`.
                     [default: "${DEFAULT_COLLECTIVES}"]
+--cuda              Enable CUDA support.
+                    As of now only allgather is supported.
+                    [default: "${DEFAULT_CUDA}"]
 --gpu-per-node      Defines number of gpus per node to use in the test.
                     Comma separated list to allow for multiple testing options.
-                    As of now only allgather is supported.
+                    If CUDA is enabled and this option not selected, it will be set
+                    to the value GPU_NODE_PARTITION defined in `config/environments/`.
+                    If CUDA is disabled, it will be ignored.
                     [default: "${DEFAULT_GPU_PER_NODE}"]
 --time              Sbatch time, in format HH:MM:SS.
                     [default: "${DEFAULT_TEST_TIME}"]
@@ -181,6 +187,11 @@ parse_cli_args() {
             --sizes)
                 check_arg "$1" "$2"
                 export SIZES="$2"
+                shift 2
+                ;;
+            --cuda)
+                check_arg "$1" "$2"
+                export CUDA="$2"
                 shift 2
                 ;;
             --gpu-per-node)
@@ -275,26 +286,11 @@ validate_args() {
     check_yes_no "$COMPILE_ONLY" "--compile-only" || return 1
     check_yes_no "$DEBUG_MODE" "--debug" || return 1
 
-    local cuda="False"
-    local task_per_node=1
-    for gpu in ${GPU_PER_NODE//,/ }; do
-        [[ "$gpu" == "0" ]] && continue
-
-        if [[ -z "$GPU_NODE_PARTITION" ]]; then
-            error "'GPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
-            return 1
-        fi
-
-        if [[ ! "$gpu" =~ ^[0-9]+$  ||  "$gpu" -gt "$GPU_NODE_PARTITION" ]]; then
-            error "--gpu-per-node must be a comma-separated list of non negative integers, less then or equal to GPU_NODE_PARTITON."
-            usage
-            return 1
-        fi
-        cuda="True"
-        [[ "$gpu" -gt "$task_per_node" ]] && task_per_node=$gpu
-    done
-    export CUDA=$cuda
-    export TASK_PER_NODE=$task_per_node
+    if [[ "$CUDA" != "True" && "$CUDA" != "False" ]]; then
+      error "--cuda must be either 'True' or 'False'."
+      usage
+      return 1
+    fi
 
     if [[ "$COMPILE_ONLY" == "yes" ]]; then
         success "Compile only mode. Skipping validation."
@@ -376,9 +372,32 @@ validate_args() {
     done
     export TEST_CONFIG_FILES=$(IFS=','; echo "${test_conf_files[*]}")
 
-    if [[ "$SHOW_MPICH_ENV" == "yes" && "$DEBUG_MODE" == "yes" && "$MPI_LIB" == "CRAY_MPICH" ]]; then
-        export MPICH_ENV_DISPLAY=1
+    local task_per_node=1
+    if [[ "$CUDA" == "True" ]]; then
+        if [[ -z "$GPU_NODE_PARTITION" ]]; then
+            error "'GPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
+            return 1
+        fi
+        for gpu in ${GPU_PER_NODE//,/ }; do
+            if [[ ! "$gpu" =~ ^[0-9]+$  ||  "$gpu" -gt "$GPU_NODE_PARTITION" ]]; then
+                error "--gpu-per-node must be a comma-separated list of non negative integers, less then or equal to GPU_NODE_PARTITON."
+                usage
+                return 1
+            fi
+            [[ "$gpu" -gt "$task_per_node" ]] && task_per_node=$gpu
+        done
+
+        if [[ "$DEFAULT_GPU_PER_NODE" == "$GPU_PER_NODE" ]]; then
+          warning "No --gpu-per-node specified. Setting it to 'GPU_PER_NODE_PARTITION'."
+          export GPU_PER_NODE=$GPU_NODE_PARTITION
+          task_per_node=$GPU_NODE_PARTITION
+        fi
+    else 
+        export $GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
     fi
+    export TASK_PER_NODE=$task_per_node
+
+    [[ "$SHOW_MPICH_ENV" == "yes" && "$DEBUG_MODE" == "yes" && "$MPI_LIB" == "CRAY_MPICH" ]] && export MPICH_ENV_DISPLAY=1
 
     return 0
 }
