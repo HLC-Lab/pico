@@ -265,7 +265,7 @@ err_hndl:
   return err;
 }
 
-int allgather_swing_static_memcpy(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_swing_permute_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
@@ -344,7 +344,7 @@ err_hndl:
 }
 
 
-int allgather_swing_static_send(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_swing_send_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                                 void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
@@ -427,7 +427,7 @@ err_hndl:
 }
 
 
-int allgather_swing_remap_memcpy(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_swing_permute_remap(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS;
@@ -513,7 +513,7 @@ err_hndl:
 }
 
 
-int allgather_swing_remap_send(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_swing_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS;
@@ -600,7 +600,7 @@ err_hndl:
 }
 
 
-int allgather_swing_no_remap(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_swing_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
@@ -707,7 +707,7 @@ err_hndl:
 }
 
 
-int allgather_swing_no_remap_dtype(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_swing_2_blocks_dtype(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;

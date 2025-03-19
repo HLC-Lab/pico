@@ -22,12 +22,12 @@ int allreduce_swing_bdw_remap(ALLREDUCE_ARGS);
 int allgather_k_bruck(ALLGATHER_ARGS, int radix);
 int allgather_recursivedoubling(ALLGATHER_ARGS);
 int allgather_ring(ALLGATHER_ARGS);
-int allgather_swing_static_memcpy(ALLGATHER_ARGS);
-int allgather_swing_static_send(ALLGATHER_ARGS);
-int allgather_swing_remap_memcpy(ALLGATHER_ARGS);
-int allgather_swing_remap_send(ALLGATHER_ARGS);
-int allgather_swing_no_remap(ALLGATHER_ARGS);
-int allgather_swing_no_remap_dtype(ALLGATHER_ARGS);
+int allgather_swing_permute_static(ALLGATHER_ARGS);
+int allgather_swing_send_static(ALLGATHER_ARGS);
+int allgather_swing_permute_remap(ALLGATHER_ARGS);
+int allgather_swing_send_remap(ALLGATHER_ARGS);
+int allgather_swing_2_blocks(ALLGATHER_ARGS);
+int allgather_swing_2_blocks_dtype(ALLGATHER_ARGS);
 
 int bcast_scatter_allgather(BCAST_ARGS);
 int bcast_swing_lat(BCAST_ARGS);

@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.7",
+    "schema_version": "2.6.8",
     "created": "2024-01-30",
-    "last_modified": "2024-03-17",
+    "last_modified": "2024-03-19",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -254,6 +254,7 @@
           "ring_segmented",
           "ring",
           "segmented",
+          "can_crash",
           "additional_parameter",
           "large_sizes",
           "internal"
@@ -996,7 +997,7 @@
           "external"
         ]
       },
-      "swing_static_memcpy_over": {
+      "swing_permute_static_over": {
         "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
           "libswing": "1.0.0"
@@ -1035,7 +1036,7 @@
           "external"
         ]
       },
-      "swing_static_send_over": {
+      "swing_send_static_over": {
         "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses an additional send to the first step to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
           "libswing": "1.0.0"
@@ -1072,7 +1073,7 @@
           "external"
         ]
       },
-      "swing_remap_memcpy_over": {
+      "swing_permute_remap_over": {
         "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. This version remaps rank to allow the sending of contiguous buffers. Count must be greater or equal to comm_sz.",
         "library": {
           "libswing": "1.0.0"
@@ -1109,7 +1110,7 @@
           "external"
         ]
       },
-      "swing_remap_send_over": {
+      "swing_send_remap_over": {
         "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
         "library": {
           "libswing": "1.0.0"
@@ -1146,7 +1147,7 @@
           "external"
         ]
       },
-      "swing_no_remap_over": {
+      "swing_2_blocks_over": {
         "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
         "library": {
           "libswing": "1.0.0"
@@ -1179,7 +1180,7 @@
           "external"
         ]
       },
-      "swing_no_remap_dtype_over": {
+      "swing_2_blocks_dtype_over": {
         "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
         "library": {
           "libswing": "1.0.0"

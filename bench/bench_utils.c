@@ -81,12 +81,12 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   // if(strcmp(algorithm, "K_BRUCK_OVER") == 0 ) return allgather_k_bruck;
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
-  CHECK_STR(algorithm, "swing_static_memcpy_over", allgather_swing_static_memcpy);
-  CHECK_STR(algorithm, "swing_static_send_over", allgather_swing_static_send);
-  CHECK_STR(algorithm, "swing_remap_memcpy_over", allgather_swing_remap_memcpy);
-  CHECK_STR(algorithm, "swing_remap_send_over", allgather_swing_remap_send);
-  CHECK_STR(algorithm, "swing_no_remap_over", allgather_swing_no_remap);
-  CHECK_STR(algorithm, "swing_no_remap_dtype_over", allgather_swing_no_remap_dtype);
+  CHECK_STR(algorithm, "swing_permute_static_over", allgather_swing_permute_static);
+  CHECK_STR(algorithm, "swing_send_static_over", allgather_swing_send_static);
+  CHECK_STR(algorithm, "swing_permute_remap_over", allgather_swing_permute_remap);
+  CHECK_STR(algorithm, "swing_send_remap_over", allgather_swing_send_remap);
+  CHECK_STR(algorithm, "swing_2_blocks_over", allgather_swing_2_blocks);
+  CHECK_STR(algorithm, "swing_2_blocks_dtype_over", allgather_swing_2_blocks_dtype);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
