@@ -428,6 +428,7 @@ source_environment() {
 ###############################################################################
 load_modules(){
     if [ -n "$MODULES" ]; then
+        inform "Loading modules: $MODULES"
         for module in ${MODULES//,/ }; do
             module load $module || { error "Failed to load module $module." ; return 1; }
         done
