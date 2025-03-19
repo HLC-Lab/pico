@@ -10,10 +10,11 @@ if [[ "$PARTITION" == "boost_usr_prod" ]]; then
 
     if [[ "$N_NODES" -gt 64 ]]; then
         export QOS='boost_qos_bprod'
-        export FORCE_TASKS_PER_NODE=32 # necessary for the qos
+        export QOS_TASKS_PER_NODE=32 # necessary for the qos
+        export QOS_GRES='gpu:4'
     fi
 
-    [[ "$N_NODES" == 2 && "$DEBUG" == "yes" ]] && export QOS='boost_qos_dbg'
+    [[ "$N_NODES" == 2 && "$DEBUG_MODE" == "yes" ]] && export QOS='boost_qos_dbg'
 fi
 export ACCOUNT=IscrC_ASCEND
 

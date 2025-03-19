@@ -63,16 +63,28 @@ fi
 if [[ "$LOCATION" == "local" ]]; then
     scripts/run_test_suite.sh
 else
-    [[ -n "$FORCE_TASKS_PER_NODE" ]] && export TASK_PER_NODE=$FORCE_TASKS_PER_NODE
-    PARAMS="--account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME"
-    [[ -n "$QOS" ]] &&  PARAMS+=" --qos=$QOS"
-    [[ "$CUDA" == "True" ]] && PARAMS+=" --gres=gpu:$MAX_GPU_TEST --gpus-per-task=1 --gpus-per-node=$MAX_GPU_TEST"
+    PARAMS="--account $ACCOUNT --nodes $N_NODES --time $TEST_TIME --partition $PARTITION"
+
+    if [[ -n "$QOS" ]]; then
+        PARAMS+=" --qos $QOS"
+        [[ -n "$QOS_TASKS_PER_NODE" ]] && export TASK_PER_NODE="$QOS_TASKS_PER_NODE"
+        [[ -n "$QOS_GRES" ]] && GRES="$QOS_GRES"
+    fi
+
+    if [[ "$CUDA" == "True" ]]; then
+        [[ -z "$GRES" ]] && GRES="gpu:$MAX_GPU_TEST"
+        PARAMS+=" --gpus-per-task 1 --gpus-per-node $MAX_GPU_TEST"
+    fi
+
+    PARAMS+=" --ntasks-per-node $TASK_PER_NODE"
+
+    [[ -n "$GRES" ]] && PARAMS+=" --gres=$GRES"
 
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS
     else
         if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
-            sbatch $PARAMS --output="$OUTPUT_DIR/slurm_%j.out" --error="$OUTPUT_DIR/slurm_%j.err" "$SWING_DIR/scripts/run_test_suite.sh"
+            sbatch $PARAMS --exclusive --output="$OUTPUT_DIR/slurm_%j.out" --error="$OUTPUT_DIR/slurm_%j.err" "$SWING_DIR/scripts/run_test_suite.sh"
         else
             sbatch $PARAMS --output="debug_%j.out" "$SWING_DIR/scripts/run_test_suite.sh"
         fi
