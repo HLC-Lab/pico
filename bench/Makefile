@@ -14,7 +14,6 @@ BENCH = $(BIN_DIR)/bench
 BENCH_OBJ_DIR_CUDA = ../obj/bench_cuda
 BENCH_OBJS_CUDA = $(patsubst %.c, $(BENCH_OBJ_DIR_CUDA)/%.o, $(BENCH_SRC))
 BENCH_DEPS_CUDA = $(patsubst %.c, $(BENCH_OBJ_DIR_CUDA)/%.d, $(BENCH_SRC))
-LIB_DIR_CUDA = ../lib_cuda
 BENCH_CUDA = $(BIN_DIR)/bench_cuda
 
 ifeq ($(DEBUG),1)
@@ -31,26 +30,25 @@ endif
 $(BENCH): $(BENCH_OBJS)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking bench: $< -> $@$(NC)"
-	$(CC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR) -lswing -lm
+	$(SWINGCC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR) -lswing -lm
 
 # Compile source files
 $(BENCH_OBJ_DIR)/%.o: %.c
 	@mkdir -p $(BENCH_OBJ_DIR)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(SWINGCC) $(CFLAGS) -c $< -o $@
 
 -include $(BENCH_DEPS)
 
 $(BENCH_CUDA): $(BENCH_OBJS_CUDA)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking bench_cuda: $< -> $@$(NC)"
-	$(CC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR_CUDA) -lswing_cuda -lm
-
+	$(SWINGCC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR) -lswing_cuda -lcudart -lm
 
 $(BENCH_OBJ_DIR_CUDA)/%.o: %.c
 	@mkdir -p $(BENCH_OBJ_DIR_CUDA)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
-	$(CC) $(CFLAGS) -DCUDA_AWARE -lcudart -c $< -o $@
+	$(SWINGCC) $(CFLAGS) -DCUDA_AWARE -lcudart -c $< -o $@
 
 -include $(BENCH_DEPS_CUDA)
 

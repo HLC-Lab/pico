@@ -1,5 +1,5 @@
 # Variables always needed
-export CC=mpicc
+export SWINGCC=mpicc
 export RUN=srun
 export RUNFLAGS=--mpi=pmix
 export SWING_DIR=$HOME/Swing_Test/

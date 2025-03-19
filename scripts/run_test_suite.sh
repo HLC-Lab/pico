@@ -10,10 +10,12 @@ for config in ${TEST_CONFIG_FILES[@]//,/ }; do
             export CUDA="False"
             export MPI_TASKS=$N_NODES
             export CURRENT_TASK_PER_NODE=1
+            export BENCH_EXEC=$BENCH_EXEC_CPU
         else
             export CUDA="True"
             export MPI_TASKS=$(expr $N_NODES \* $gpu)
             export CURRENT_TASK_PER_NODE=$gpu
+            export BENCH_EXEC=$BENCH_EXEC_CUDA
         fi
         export TEST_CONFIG=${config}
         export TEST_ENV="${TEST_CONFIG}_env.sh"

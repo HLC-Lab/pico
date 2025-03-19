@@ -47,7 +47,7 @@ compile_code || exit 1
 export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
 export LOCATION_DIR="$SWING_DIR/results/$LOCATION"
 export OUTPUT_DIR="$SWING_DIR/results/$LOCATION/$TIMESTAMP"
-export BENCH_EXEC=$SWING_DIR/bin/bench
+export BENCH_EXEC_CPU=$SWING_DIR/bin/bench
 [[ "$CUDA" == "True" ]] && export BENCH_EXEC_CUDA=$SWING_DIR/bin/bench_cuda
 export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
 export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt

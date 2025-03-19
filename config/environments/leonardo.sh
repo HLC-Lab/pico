@@ -1,5 +1,5 @@
 # Variables always needed
-export CC=mpicc
+export SWINGCC=mpicc
 export RUN=srun
 export SWING_DIR=$HOME/Swing_Test
 
@@ -10,6 +10,9 @@ export ACCOUNT=IscrC_ASCEND
 
 export UCX_IB_SL=1
 export MODULES="python/3.11.6--gcc--8.5.0"
+
+[[ "$CUDA" == "True" ]] && export MODULES="cuda/12.1,$MODULES"
+[[ "$PARTITION" == "boost_usr_prod" ]] && export GPU_NODE_PARTITION=4
 
 # MPI library specific variables
 export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)
@@ -22,9 +25,6 @@ else
     export MPI_LIB_VERSION='4.1.6'
     export MODULES="openmpi/4.1.6--gcc--12.2.0,$MODULES"
 fi
-
-[[ "$CUDA" == "True" ]] && export MODULES="cuda/12.2,$MODULES"
-[[ "$PARTITION" == "boost_usr_prod" ]] && export GPU_NODE_PARTITION=4
 
 # Load test dependnt environment variables
 load_other_env_var(){
