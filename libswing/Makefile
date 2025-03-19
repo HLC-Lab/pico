@@ -4,14 +4,14 @@ LIB_DIR = ../lib
 LIB_DIR_CUDA = ../lib_cuda
 LIB_SRC = $(wildcard *.c)
 
-OBJ_DIR = ../obj/lib
-LIB_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(LIB_SRC))
-LIB_DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(LIB_SRC))
+LIB_OBJ_DIR = ../obj/lib
+LIB_OBJS = $(patsubst %.c, $(LIB_OBJ_DIR)/%.o, $(LIB_SRC))
+LIB_DEPS = $(patsubst %.c, $(LIB_OBJ_DIR)/%.d, $(LIB_SRC))
 LIBSWING = $(LIB_DIR)/libswing.a
 
-OBJ_DIR_CUDA = ../obj/lib_cuda
-LIB_OBJS_CUDA = $(patsubst %.c, $(OBJ_DIR_CUDA)/%.o, $(LIB_SRC))
-LIB_DEPS_CUDA = $(patsubst %.c, $(OBJ_DIR_CUDA)/%.d, $(LIB_SRC))
+LIB_OBJ_DIR_CUDA = ../obj/lib_cuda
+LIB_OBJS_CUDA = $(patsubst %.c, $(LIB_OBJ_DIR_CUDA)/%.o, $(LIB_SRC))
+LIB_DEPS_CUDA = $(patsubst %.c, $(LIB_OBJ_DIR_CUDA)/%.d, $(LIB_SRC))
 LIBSWING_CUDA = $(LIB_DIR_CUDA)/libswing_cuda.a
 
 # Default target
@@ -29,8 +29,8 @@ $(LIBSWING): $(LIB_OBJS)
 	@echo -e "$(GREEN)[AR] Creating static library: $(LIBSWING)$(NC)"
 	ar rcs $@ $^
 
-$(OBJ_DIR)/%.o: %.c
-	@mkdir -p $(OBJ_DIR)
+$(LIB_OBJ_DIR)/%.o: %.c
+	@mkdir -p $(LIB_OBJ_DIR)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -44,8 +44,8 @@ $(LIBSWING_CUDA): $(LIB_OBJS_CUDA)
 	@echo -e "$(GREEN)[AR] Creating static library: $(LIBSWING_CUDA)$(NC)"
 	ar rcs $@ $^
 
-$(OBJ_DIR_CUDA)/%.o: %.c
-	@mkdir -p $(OBJ_DIR_CUDA)
+$(LIB_OBJ_DIR_CUDA)/%.o: %.c
+	@mkdir -p $(LIB_OBJ_DIR_CUDA)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
 	$(CC) $(CFLAGS) -DCUDA_AWARE -ldcudart -c $< -o $@
 
@@ -53,4 +53,4 @@ $(OBJ_DIR_CUDA)/%.o: %.c
 
 clean:
 	@echo -e "[CLEAN] Removing object files and library..."
-	@rm -rf $(OBJ_DIR) $(LIBSWING) $(OBJ_DIR_CUDA) $(LIBSWING_CUDA)
+	@rm -rf $(LIB_OBJ_DIR) $(LIBSWING) $(LIB_OBJ_DIR_CUDA) $(LIBSWING_CUDA)
