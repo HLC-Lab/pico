@@ -200,7 +200,7 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
       break;
     case BCAST:
       ret = bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
-                      test_routine);
+                            test_routine);
       break;
     case REDUCE_SCATTER:
       // for translations of reduce_scatter, we must do a cudaMemcpy!!!!
@@ -241,7 +241,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
       PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));

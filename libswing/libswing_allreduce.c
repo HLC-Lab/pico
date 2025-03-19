@@ -8,7 +8,6 @@
 #include "libswing_utils_bitmaps.h"
 
 
-
 int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
                                 MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
@@ -331,7 +330,6 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
     }
     return MPI_SUCCESS;
   }
-  
 
   // Allocate and initialize temporary send buffer
   MPI_Type_get_extent(dtype, &lb, &extent);
@@ -434,135 +432,7 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
     return ret;
 }
 
-int allreduce_swing_bdw_static(const void *send_buf, void *recv_buf, size_t count,
-                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
-  int size, rank; 
-  MPI_Comm_size(comm, &size);
-  MPI_Comm_rank(comm, &rank);
-
-  // Find number of steps of scatter-reduce and allgather,
-  // biggest power of two smaller or equal to size,
-  // size of send_window (number of chunks to send/recv at each step)
-  // and alias of the rank to be used if size != adj_size
-  //Determine nearest power of two less than or equal to size
-  int steps = hibit(size, (int) (sizeof(size) * CHAR_BIT) - 1);
-  if(-1 == steps){
-    return MPI_ERR_ARG;
-  }
-  int adjsize = 1 << steps;
-  
-  //WARNING: Assuming size is a pow of 2
-  int vrank, vdest;
-  vrank = rank;
-  
-  ptrdiff_t lb, extent, gap = 0;
-  MPI_Type_get_extent(dtype, &lb, &extent);
-  
-  int split_rank;
-  size_t small_blocks, big_blocks;
-  COLL_BASE_COMPUTE_BLOCKCOUNT(count, adjsize, split_rank,
-                               big_blocks, small_blocks);
-  
-  // Find the biggest power-of-two smaller than count to allocate
-  // as few memory as necessary for buffers
-  int n_pow = hibit((int) count, (int) (sizeof(count) * CHAR_BIT) -1); 
-  size_t buf_count = 1 << n_pow;
-  ptrdiff_t buf_size = datatype_span(dtype, buf_count, &gap);
-
-  // Temporary target buffer for send operations and source buffer
-  // for reduce and overwrite operations
-  char *tmp_send = NULL, *tmp_recv = NULL;
-  char *tmp_buf_raw = NULL, *tmp_buf;
-  tmp_buf_raw = (char *)malloc(buf_size);
-  tmp_buf = tmp_buf_raw - gap;
-
-  // Copy into receive_buffer content of send_buffer to not produce
-  // side effects on send_buffer
-  if(send_buf != MPI_IN_PLACE) {
-    copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
-  }
-  
-  const int *s_bitmap = NULL, *r_bitmap = NULL;
-  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
-    free(tmp_buf);
-    return MPI_ERR_UNKNOWN;
-  }
-  
-  int step, w_size = adjsize;
-  size_t s_count, r_count;
-  ptrdiff_t s_offset, r_offset;
-  // Reduce-Scatter phase
-  for(step = 0; step < steps; step++) {
-    w_size >>= 1;
-    vdest = pi(vrank, step, adjsize);
-
-    s_count = (s_bitmap[step] + w_size <= split_rank) ?
-                (size_t)w_size * big_blocks :
-                  (s_bitmap[step] >= split_rank) ?
-                    (size_t)w_size * small_blocks :
-                    (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
-    s_offset = (s_bitmap[step] <= split_rank) ?
-                (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-                (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-
-    r_count = (r_bitmap[step] + w_size <= split_rank) ?
-                (size_t)w_size * big_blocks :
-                  (r_bitmap[step] >= split_rank) ?
-                    (size_t)w_size * small_blocks :
-                    (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
-    r_offset = (r_bitmap[step] <= split_rank) ?
-                (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-                (ptrdiff_t)(r_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-    
-    tmp_send = (char *)recv_buf + s_offset;
-    MPI_Sendrecv(tmp_send, s_count, dtype, vdest, 0,
-                 tmp_buf, r_count, dtype, vdest, 0,
-                 comm, MPI_STATUS_IGNORE);
-    
-    tmp_recv = (char *) recv_buf + r_offset;
-    MPI_Reduce_local(tmp_buf, tmp_recv, r_count, dtype, op);
-  }
-  
-  // Allgather phase
-  for(step = steps - 1; step >= 0; step--) {
-    vdest = pi(vrank, step, adjsize);
-    
-    s_count = (s_bitmap[step] + w_size <= split_rank) ?
-                (size_t)w_size * big_blocks :
-                  (s_bitmap[step] >= split_rank) ?
-                    (size_t)w_size * small_blocks :
-                    (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
-    s_offset = (s_bitmap[step] <= split_rank) ?
-                (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-                (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-
-    r_count = (r_bitmap[step] + w_size <= split_rank) ?
-                (size_t)w_size * big_blocks :
-                  (r_bitmap[step] >= split_rank) ?
-                    (size_t)w_size * small_blocks :
-                    (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
-    r_offset = (r_bitmap[step] <= split_rank) ?
-                (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-                (ptrdiff_t)(r_bitmap[step] * (int)small_blocks + split_rank) * (ptrdiff_t) extent;
-    
-    tmp_send = (char *)recv_buf + s_offset;
-    tmp_recv = (char *)recv_buf + r_offset;
-
-    MPI_Sendrecv(tmp_recv, r_count, dtype, vdest, 0,
-                 tmp_send, s_count, dtype, vdest, 0,
-                 comm, MPI_STATUS_IGNORE);
-    
-    w_size <<= 1;
-  }
-
-  free(tmp_buf_raw);
-
-  return MPI_SUCCESS;
-}
-
-
-
-int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
+int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
                            MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
   int *rindex = NULL, *rcount = NULL, *sindex = NULL, *scount = NULL;
@@ -821,9 +691,132 @@ int allreduce_rabenseifner( const void *sbuf, void *rbuf, size_t count,
   return err;
 }
 
+int allreduce_swing_bdw_static(const void *send_buf, void *recv_buf, size_t count,
+                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
+  int size, rank, dest, err = MPI_SUCCESS; 
+  int steps, step, split_rank;
+  size_t small_blocks, big_blocks;
+  ptrdiff_t lb, extent, true_extent, gap = 0, buf_size;
+  char *tmp_send = NULL, *tmp_recv = NULL;
+  char *tmp_buf_raw = NULL, *tmp_buf;
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  // Still not implemented for non power of two number of processes
+  steps = log_2(size);
+  if(!is_power_of_two(size) || steps < 1){
+    return MPI_ERR_ARG;
+  }
+  
+  // Find the dimension in number of elements of the blocks.
+  // Also find the number of big and small blocks.
+  // The big blocks are the firsts count % size blocks
+  // that have an extra element.
+  COLL_BASE_COMPUTE_BLOCKCOUNT(count, size, split_rank,
+                               big_blocks, small_blocks);
+
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+
+  buf_size = true_extent + extent * (count >> 1);
+  tmp_buf_raw = (char *)malloc(buf_size);
+  tmp_buf = tmp_buf_raw - gap;
+
+  // Copy into receive_buffer content of send_buffer to not produce
+  // side effects on send_buffer
+  if(send_buf != MPI_IN_PLACE) {
+    err = copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+  }
+  
+  const int *s_bitmap = NULL, *r_bitmap = NULL;
+  if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
+    err = MPI_ERR_OTHER;
+    goto cleanup_and_return;
+  }
+  
+  int w_size = size;
+  size_t s_count, r_count;
+  ptrdiff_t s_offset, r_offset;
+  // Reduce-Scatter phase
+  for(step = 0; step < steps; step++) {
+    w_size >>= 1;
+    dest = pi(rank, step, size);
+
+    s_count = (s_bitmap[step] + w_size <= split_rank) ?
+                (size_t)w_size * big_blocks :
+                  (s_bitmap[step] >= split_rank) ?
+                    (size_t)w_size * small_blocks :
+                    (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
+    s_offset = (s_bitmap[step] <= split_rank) ?
+                (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
+
+    r_count = (r_bitmap[step] + w_size <= split_rank) ?
+                (size_t)w_size * big_blocks :
+                  (r_bitmap[step] >= split_rank) ?
+                    (size_t)w_size * small_blocks :
+                    (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
+    r_offset = (r_bitmap[step] <= split_rank) ?
+                (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                (ptrdiff_t)(r_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
+    
+    tmp_send = (char *)recv_buf + s_offset;
+    err = MPI_Sendrecv(tmp_send, s_count, dtype, dest, 0,
+                       tmp_buf, r_count, dtype, dest, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+    
+    tmp_recv = (char *) recv_buf + r_offset;
+    err = MPI_Reduce_local(tmp_buf, tmp_recv, r_count, dtype, op);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+  }
+  
+  // Allgather phase
+  for(step = steps - 1; step >= 0; step--) {
+    dest = pi(rank, step, size);
+    
+    s_count = (s_bitmap[step] + w_size <= split_rank) ?
+                (size_t)w_size * big_blocks :
+                  (s_bitmap[step] >= split_rank) ?
+                    (size_t)w_size * small_blocks :
+                    (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
+    s_offset = (s_bitmap[step] <= split_rank) ?
+                (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
+
+    r_count = (r_bitmap[step] + w_size <= split_rank) ?
+                (size_t)w_size * big_blocks :
+                  (r_bitmap[step] >= split_rank) ?
+                    (size_t)w_size * small_blocks :
+                    (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
+    r_offset = (r_bitmap[step] <= split_rank) ?
+                (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
+                (ptrdiff_t)(r_bitmap[step] * (int)small_blocks + split_rank) * (ptrdiff_t) extent;
+    
+    tmp_send = (char *)recv_buf + s_offset;
+    tmp_recv = (char *)recv_buf + r_offset;
+
+    err = MPI_Sendrecv(tmp_recv, r_count, dtype, dest, 0,
+                       tmp_send, s_count, dtype, dest, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+    w_size <<= 1;
+  }
+
+  free(tmp_buf_raw);
+
+  return MPI_SUCCESS;
+cleanup_and_return:
+  if(NULL != tmp_buf_raw)  free(tmp_buf_raw);
+  return err;
+}
+
 
 int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
-                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
+                              MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
   int size, rank, dest, steps, step, err = MPI_SUCCESS;
   int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
   size_t w_size;

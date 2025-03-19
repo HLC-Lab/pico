@@ -25,8 +25,8 @@ export DEFAULT_DEBUG_MODE="no"
 export DEFAULT_DRY_RUN="no"
 export DEFAULT_INTERACTIVE="no"
 export DEFAULT_SHOW_MPICH_ENV="no"
-export DEFAULT_CUDA="False"
 export DEFAULT_NOTES=""
+export DEFAULT_GPU_PER_NODE="0"
 export DEFAULT_TASK_PER_NODE=1
 
 ###############################################################################
@@ -46,7 +46,7 @@ warning() {
     echo -e "\n${YELLOW}WARNING: ${1}${NC}"
 
     if [[ $# -gt 1 ]]; then
-        shift  # Remove the first argument
+        shift
         for msg in "$@"; do
             echo -e "${YELLOW}  • $msg ${NC}"
         done
@@ -94,14 +94,16 @@ Options:
 --collectives       Comma separated list of collectives to test.
                     To each collective, it must correspond a JSON file in `config/test/`.
                     [default: "${DEFAULT_COLLECTIVES}"]
---cuda              Enable CUDA support.
-                    [default: "${DEFAULT_CUDA}"]
+--gpu-per-node      Defines number of gpus per node to use in the test.
+                    Comma separated list to allow for multiple testing options.
+                    As of now only allgather is supported.
+                    [default: "${DEFAULT_GPU_PER_NODE}"]
 --time              Sbatch time, in format HH:MM:SS.
                     [default: "${DEFAULT_TEST_TIME}"]
 --output-level      Specify which test data to save.
                     Allowed values:
-                    summarized  - Save summarized test data only.
-                    all         - Save all test data.
+                      - summarized  save summarized test data only.
+                      - all         save all test data.
                     [default: "${DEFAULT_OUTPUT_LEVEL}"]
 --compress          Compress result dir into a tar.gz.
                     [default: "${DEFAULT_COMPRESS}"]
@@ -181,9 +183,9 @@ parse_cli_args() {
                 export SIZES="$2"
                 shift 2
                 ;;
-            --cuda)
+            --gpu-per-node)
                 check_arg "$1" "$2"
-                export CUDA="$2"
+                export GPU_PER_NODE="$2"
                 shift 2
                 ;;
             --collectives)
@@ -272,11 +274,27 @@ check_yes_no() {
 validate_args() {
     check_yes_no "$COMPILE_ONLY" "--compile-only" || return 1
     check_yes_no "$DEBUG_MODE" "--debug" || return 1
-    if [[ "$CUDA" != "True" && "$CUDA" != "False" ]]; then
-        error "--cuda must be either 'True' or 'False'."
-        usage
-        return 1
-    fi
+
+    local cuda="False"
+    local task_per_node=1
+    for gpu in ${GPU_PER_NODE//,/ }; do
+        [[ "$gpu" == "0" ]] && continue
+
+        if [[ -z "$GPU_NODE_PARTITION" ]]; then
+            error "'GPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
+            return 1
+        fi
+
+        if [[ ! "$gpu" =~ ^[0-9]+$  ||  "$gpu" -gt "$GPU_NODE_PARTITION" ]]; then
+            error "--gpu-per-node must be a comma-separated list of non negative integers, less then or equal to GPU_NODE_PARTITON."
+            usage
+            return 1
+        fi
+        cuda="True"
+        [[ "$gpu" -gt "$task_per_node" ]] && task_per_node=$gpu
+    done
+    export CUDA=$cuda
+    export TASK_PER_NODE=$task_per_node
 
     if [[ "$COMPILE_ONLY" == "yes" ]]; then
         success "Compile only mode. Skipping validation."
@@ -289,7 +307,7 @@ validate_args() {
         return 1
     elif [[ "$OUTPUT_LEVEL" != "summarized" && "$OUTPUT_LEVEL" != "all" ]]; then
         error "--output-level must be either 'summarized' or 'all'."
-        usage
+        usage 
         return 1
     elif [[ ! "$TEST_TIME" =~ ^[0-9]{2}:[0-5][0-9]:[0-5][0-9]$ ]]; then
         error "--time must be in the format 'HH:MM:SS' with minutes and seconds between 00 and 59."
@@ -304,15 +322,6 @@ validate_args() {
     check_yes_no "$SHOW_MPICH_ENV" "--show-mpich-env" || return 1
 
     [[ "$DRY_RUN" == "yes" ]] && warning "DRY RUN MODE: Commands will be printed but not executed"
-
-    if [[ "$CUDA" == "True" ]]; then
-        if [[ -z "$GPU_NODE_PARTITON" ]]; then
-            error "CUDA is enabled but 'GPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
-            return 1
-        fi
-        warning "CUDA is enabled. Setting --task-per-node to ${GPU_NODE_PARTITION}"
-        export TASK_PER_NODE=${GPU_NODE_PARTITION}
-    fi
 
     if [[ "$COMPRESS" == "no" ]] && [[ "$DELETE" == "yes" ]]; then
         warning "--compress is 'no', hence --delete will be ignored"
@@ -351,6 +360,12 @@ validate_args() {
 
     local test_conf_files=()
     for collective in ${COLLECTIVES//,/ }; do
+        if [[ $collective != "allgather" && $CUDA == "True" ]]; then
+            error "Only 'allgather' collective is supported with CUDA enabled."
+            usage
+            return 1
+        fi
+
         local file_path="$SWING_DIR/config/test/${collective}.json"
         if [ ! -f "$file_path" ]; then
             error "--collectives must be a comma-separated list. No '${collective}.json' file found in config/test/"
@@ -397,6 +412,7 @@ load_modules(){
         for module in ${MODULES//,/ }; do
             module load $module || { error "Failed to load module $module." ; return 1; }
         done
+        success "Modules successfully loaded."
     fi
 
     return 0
@@ -515,6 +531,8 @@ print_sanity_checks() {
     echo "  • Location:              $LOCATION"
     echo "  • Debug Mode:            $DEBUG_MODE"
     echo "  • Number of Nodes:       $N_NODES"
+    echo "  • Total MPI tasks:       $MPI_TASKS"
+    echo "  • Task per Node:         $CURRENT_TASK_PER_NODE"
 
     inform "Output Settings:"
     echo "  • Output Level:          $OUTPUT_LEVEL"
@@ -537,7 +555,7 @@ print_sanity_checks() {
     echo "  • MPI Library:           $MPI_LIB $MPI_LIB_VERSION"
     echo "  • Libswing Version:      $LIBSWING_VERSION"
     echo "  • CUDA Enabled:          $CUDA"
-    [[ "${CUDA}" == "True" ]] && echo "  • GPU per node:          $TASK_PER_NODE"
+    [[ "${CUDA}" == "True" ]] && echo "  • GPU per node:          $CURRENT_TASK_PER_NODE"
     [ -n "$NOTES" ] && echo -e "\nNotes: $NOTES"
 
     success "${SEPARATOR}"

@@ -8,7 +8,7 @@ export TYPES=$DEFAULT_TYPES
 export SIZES=$DEFAULT_SIZES
 export COLLECTIVES=$DEFAULT_COLLECTIVES
 export TEST_TIME=$DEFAULT_TEST_TIME
-export CUDA=$DEFAULT_CUDA
+export GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
 export OUTPUT_LEVEL=$DEFAULT_OUTPUT_LEVEL
 export COMPRESS=$DEFAULT_COMPRESS
 export DELETE=$DEFAULT_DELETE
@@ -31,7 +31,6 @@ validate_args || exit 1
 
 # 5. Load required modules (defined in `config/environment/$LOCATION.sh`)
 load_modules || exit 1
-success "Modules successfully loaded."
 
 # 6. Activate the virtual environment, install Python packages if not presents
 if [[ "$COMPILE_ONLY" == "no" ]]; then
@@ -48,6 +47,7 @@ export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
 export LOCATION_DIR="$SWING_DIR/results/$LOCATION"
 export OUTPUT_DIR="$SWING_DIR/results/$LOCATION/$TIMESTAMP"
 export BENCH_EXEC=$SWING_DIR/bin/bench
+[[ "$CUDA" == "True" ]] && export BENCH_EXEC_CUDA=$SWING_DIR/bin/bench_cuda
 export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
 export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 

@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
   void *d_sbuf = NULL, *d_rbuf = NULL;
   const char *gpu_per_node = getenv("GPU_PER_NODE");
   int gpu_per_node_int = atoi(gpu_per_node);
-  int gpuRank = rank % gpu_per_node_int;
-  BENCH_CUDA_CHECK(cudaSetDevice(gpuRank));
+  int gpu_rank = rank % gpu_per_node_int;
+  BENCH_CUDA_CHECK(cudaSetDevice(gpu_rank));
   cuda_coll_malloc((void**)&d_rbuf, (void**)&d_sbuf, count, type_size, test_routine.collective);
   cuda_coll_memcpy(d_sbuf, sbuf, count, type_size, test_routine.collective);
   void *tmpsbuf = sbuf;

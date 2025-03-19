@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     system_name = os.getenv('LOCATION')
     number_of_nodes = os.getenv('N_NODES')
-    tasks_per_node = os.getenv('TASK_PER_NODE')
+    tasks_per_node = os.getenv('CURRENT_TASK_PER_NODE')
     timestamp = os.getenv('TIMESTAMP')
     collective_type = os.getenv('COLLECTIVE_TYPE')
     mpi_lib = os.getenv('MPI_LIB')
