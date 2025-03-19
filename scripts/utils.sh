@@ -373,6 +373,7 @@ validate_args() {
     export TEST_CONFIG_FILES=$(IFS=','; echo "${test_conf_files[*]}")
 
     local task_per_node=1
+    local max_gpu_per_node=0
     if [[ "$CUDA" == "True" ]]; then
         if [[ -z "$GPU_NODE_PARTITION" ]]; then
             error "'GPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
@@ -385,17 +386,20 @@ validate_args() {
                 return 1
             fi
             [[ "$gpu" -gt "$task_per_node" ]] && task_per_node=$gpu
+            [[ "$gpu" -gt "$max_gpu_per_node" ]] && max_gpu_per_node=$gpu
         done
 
         if [[ "$DEFAULT_GPU_PER_NODE" == "$GPU_PER_NODE" ]]; then
           warning "No --gpu-per-node specified. Setting it to 'GPU_PER_NODE_PARTITION'."
           export GPU_PER_NODE=$GPU_NODE_PARTITION
           task_per_node=$GPU_NODE_PARTITION
+          max_gpu_per_node=$GPU_NODE_PARTITION
         fi
     else 
         export $GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
     fi
     export TASK_PER_NODE=$task_per_node
+    export MAX_GPU_TEST=$max_gpu_per_node
 
     [[ "$SHOW_MPICH_ENV" == "yes" && "$DEBUG_MODE" == "yes" && "$MPI_LIB" == "CRAY_MPICH" ]] && export MPICH_ENV_DISPLAY=1
 

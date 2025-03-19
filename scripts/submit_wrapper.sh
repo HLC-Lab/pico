@@ -63,10 +63,10 @@ fi
 if [[ "$LOCATION" == "local" ]]; then
     scripts/run_test_suite.sh
 else
-    [[ -n "$FORCE_TASKS_PER_NODE" ]] && TASK_PER_NODE=$FORCE_TASKS_PER_NODE
+    [[ -n "$FORCE_TASKS_PER_NODE" ]] && export TASK_PER_NODE=$FORCE_TASKS_PER_NODE
     PARAMS="--account=$ACCOUNT --partition=$PARTITION --nodes=$N_NODES --ntasks-per-node=$TASK_PER_NODE --exclusive --time=$TEST_TIME"
     [[ -n "$QOS" ]] &&  PARAMS+=" --qos=$QOS"
-    [[ "$CUDA" == "True" ]] && PARAMS+=" --gres=gpu:$TASK_PER_NODE --gpus-per-task=1 --gpus-per-node=$TASK_PER_NODE"
+    [[ "$CUDA" == "True" ]] && PARAMS+=" --gres=gpu:$MAX_GPU_TEST --gpus-per-task=1 --gpus-per-node=$MAX_GPU_TEST"
 
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS
