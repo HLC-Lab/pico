@@ -1,4 +1,4 @@
-CFLAGS = ${CFLAGS_COMMON}
+CFLAGS = $(CFLAGS_COMMON)
 
 LIB_DIR = ../lib
 LIB_DIR_CUDA = ../lib_cuda

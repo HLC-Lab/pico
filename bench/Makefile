@@ -47,7 +47,7 @@ $(BENCH_CUDA): $(BENCH_OBJS_CUDA)
 	$(CC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR_CUDA) -lswing_cuda -lm
 
 
-$(BENCH_OBJS_DIR_CUDA)/%.o: %.c
+$(BENCH_OBJ_DIR_CUDA)/%.o: %.c
 	@mkdir -p $(BENCH_OBJ_DIR_CUDA)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
 	$(CC) $(CFLAGS) -DCUDA_AWARE -lcudart -c $< -o $@
