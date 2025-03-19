@@ -33,8 +33,7 @@ load_other_env_var(){
     if [ "$CUDA" == "False" ]; then
         export OMPI_MCA_btl="^smcuda"
         export OMPI_MCA_mpi_cuda_support=0
-    fi
-    if [ "$CUDA" == "False" ]; then
+    else
         export OMPI_MCA_btl=""
         export OMPI_MCA_mpi_cuda_support=1
     fi

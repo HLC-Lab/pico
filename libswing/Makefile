@@ -40,7 +40,7 @@ $(OBJ_DIR)/%.o: %.c
 ######################CUDA-AWARE MAKEFILE TARGETS#####################
 ######################################################################
 $(LIBSWING_CUDA): $(LIB_OBJS_CUDA)
-	@mkdir -p $(LIB_DIR)
+	@mkdir -p $(LIB_DIR_CUDA)
 	@echo -e "$(GREEN)[AR] Creating static library: $(LIBSWING_CUDA)$(NC)"
 	ar rcs $@ $^
 
