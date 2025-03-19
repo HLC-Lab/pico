@@ -4,7 +4,6 @@ CFLAGS = $(CFLAGS_COMMON)
 # Directories
 SRC_DIR = .
 BIN_DIR = ../bin
-BIN_DIR_CUDA = ../bin_cuda
 OBJ_DIR = ../obj/bench
 OBJ_DIR_CUDA = ../obj/bench_cuda
 LIB_DIR = ../lib
@@ -16,7 +15,7 @@ DEPS = $(patsubst %.c, $(OBJ_DIR)/%.d, $(SRC))
 BENCH = $(BIN_DIR)/bench
 OBJS_CUDA = $(patsubst %.c, $(OBJ_DIR_CUDA)/%.o, $(SRC))
 DEPS_CUDA = $(patsubst %.c, $(OBJ_DIR_CUDA)/%.d, $(SRC))
-BENCH_CUDA = $(BIN_DIR_CUDA)/bench_cuda
+BENCH_CUDA = $(BIN_DIR)/bench_cuda
 
 ifeq ($(DEBUG),1)
 	CFLAGS := $(filter-out -O%,$(CFLAGS))
@@ -43,12 +42,12 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 -include $(DEPS)
 
 $(BENCH_CUDA): $(OBJS_CUDA)
-	@mkdir -p $(BIN_DIR_CUDA)
+	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking bench_cuda: $< -> $@$(NC)"
 	$(CC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR_CUDA) -lswing_cuda -lm
 
 
-$(OBJS_CUDA): $(SRC_DIR)/%.c
+$(OBJS_CUDA)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR_CUDA)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
 	$(CC) $(CFLAGS) -DCUDA_AWARE -lcudart -c $< -o $@
