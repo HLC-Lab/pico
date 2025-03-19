@@ -9,7 +9,7 @@ export QOS=''
 export ACCOUNT=IscrC_ASCEND
 
 export UCX_IB_SL=1
-export MODULES="python/3.11.6--gcc--8.5.0,git-lfs/3.1.2"
+export MODULES="python/3.11.6--gcc--8.5.0"
 
 # MPI library specific variables
 export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)
@@ -23,7 +23,7 @@ else
     export MODULES="openmpi/4.1.6--gcc--12.2.0,$MODULES"
 fi
 
-[[ "$CUDA" == "True" ]] && export MODULES="$MODULES,cuda/12.1"
+[[ "$CUDA" == "True" ]] && export MODULES="cuda/12.2,$MODULES"
 [[ "$PARTITION" == "boost_usr_prod" ]] && export GPU_NODE_PARTITION=4
 
 # Load test dependnt environment variables
