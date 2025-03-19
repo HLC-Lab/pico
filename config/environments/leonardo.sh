@@ -5,7 +5,8 @@ export SWING_DIR=$HOME/Swing_Test
 
 # Account/partition specific variables
 export PARTITION=boost_usr_prod
-export QOS=''
+[[ "$N_NODES" -gt 64 ]] && export QOS='boost_qos_bprod'
+[[ "$N_NODES" == 2 && "$DEBUG" == "yes" ]] && export QOS='boost_qos_dbg'
 export ACCOUNT=IscrC_ASCEND
 
 export UCX_IB_SL=1
