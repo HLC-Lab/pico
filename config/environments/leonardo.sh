@@ -23,7 +23,7 @@ else
     export MODULES="openmpi/4.1.6--gcc--12.2.0,$MODULES"
 fi
 
-[[ "$CUDA" == "True" ]] && export MODULES="cuda/12.1,$MODULES"
+[[ "$CUDA" == "True" ]] && export MODULES="$MODULES,cuda/12.1"
 [[ "$PARTITION" == "boost_usr_prod" ]] && export GPU_NODE_PARTITION=4
 
 # Load test dependnt environment variables
