@@ -1,6 +1,7 @@
 CFLAGS = ${CFLAGS_COMMON}
 
 LIB_DIR = ../lib
+LIB_DIR_CUDA = ../lib_cuda
 LIB_SRC = $(wildcard *.c)
 
 OBJ_DIR = ../obj/lib
@@ -11,7 +12,7 @@ LIBSWING = $(LIB_DIR)/libswing.a
 OBJ_DIR_CUDA = ../obj/lib_cuda
 LIB_OBJS_CUDA = $(patsubst %.c, $(OBJ_DIR_CUDA)/%.o, $(LIB_SRC))
 LIB_DEPS_CUDA = $(patsubst %.c, $(OBJ_DIR_CUDA)/%.d, $(LIB_SRC))
-LIBSWING_CUDA = $(LIB_DIR)/libswing_cuda.a
+LIBSWING_CUDA = $(LIB_DIR_CUDA)/libswing_cuda.a
 
 # Default target
 ifeq ($(CUDA_AWARE),1)

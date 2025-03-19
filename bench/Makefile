@@ -7,6 +7,7 @@ BIN_DIR = ../bin
 OBJ_DIR = ../obj/bench
 OBJ_DIR_CUDA = ../obj/bench_cuda
 LIB_DIR = ../lib
+LIB_DIR_CUDA = ../lib_cuda
 
 SRC = $(wildcard *.c)
 OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(SRC))
@@ -43,7 +44,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 $(BENCH_CUDA): $(OBJS_CUDA)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking bench_cuda: $< -> $@$(NC)"
-	$(CC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR) -lswing_cuda -lm
+	$(CC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR_CUDA) -lswing_cuda -lm
 
 
 $(OBJS_CUDA): $(SRC_DIR)/%.c
