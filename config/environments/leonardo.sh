@@ -5,15 +5,22 @@ export SWING_DIR=$HOME/Swing_Test
 
 # Account/partition specific variables
 export PARTITION=boost_usr_prod
-[[ "$N_NODES" -gt 64 ]] && export QOS='boost_qos_bprod'
-[[ "$N_NODES" == 2 && "$DEBUG" == "yes" ]] && export QOS='boost_qos_dbg'
+if [[ "$PARTITION" == "boost_usr_prod" ]]; then
+    export GPU_NODE_PARTITION=4
+
+    if [[ "$N_NODES" -gt 64 ]]; then
+        export QOS='boost_qos_bprod'
+        export FORCE_TASKS_PER_NODE=32 # necessary for the qos
+    fi
+
+    [[ "$N_NODES" == 2 && "$DEBUG" == "yes" ]] && export QOS='boost_qos_dbg'
+fi
 export ACCOUNT=IscrC_ASCEND
 
 export UCX_IB_SL=1
 export MODULES="python/3.11.6--gcc--8.5.0"
 
 [[ "$CUDA" == "True" ]] && export MODULES="cuda/12.1,$MODULES"
-[[ "$PARTITION" == "boost_usr_prod" ]] && export GPU_NODE_PARTITION=4
 
 # MPI library specific variables
 export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)
