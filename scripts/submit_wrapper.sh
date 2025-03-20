@@ -73,7 +73,7 @@ else
 
     if [[ "$CUDA" == "True" ]]; then
         [[ -z "$GRES" ]] && GRES="gpu:$MAX_GPU_TEST"
-        PARAMS+=" --gpus-per-task 1 --gpus-per-node $MAX_GPU_TEST"
+        PARAMS+=" --gpus-per-node $MAX_GPU_TEST"
     fi
 
     PARAMS+=" --ntasks-per-node $TASK_PER_NODE"
