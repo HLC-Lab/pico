@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef CUDA_AWARE
   void *d_sbuf = NULL, *d_rbuf = NULL;
-  const char *gpu_per_node = getenv("GPU_PER_NODE");
+  const char *gpu_per_node = getenv("CURRENT_TASK_PER_NODE");
   int gpu_per_node_int = atoi(gpu_per_node);
   int gpu_rank = rank % gpu_per_node_int;
   BENCH_CUDA_CHECK(cudaSetDevice(gpu_rank));
