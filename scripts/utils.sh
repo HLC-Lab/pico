@@ -396,7 +396,7 @@ validate_args() {
           max_gpu_per_node=$GPU_NODE_PARTITION
         fi
     else 
-        export $GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
+        export GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
     fi
     export TASK_PER_NODE=$task_per_node
     export MAX_GPU_TEST=$max_gpu_per_node

@@ -24,6 +24,21 @@ def load_allocation(filename):
             allocation[rank] = hostname
     return allocation
 
+def info_rank_to_cell(allocation, node_to_cell):
+    """
+    Maps each MPI rank to a cell based on its hostname and the node-to-cell mapping.
+    """
+    rank_to_cell = {}
+    for rank, hostname in allocation.items():
+        node_id = re.search(r'lrdn(\d+)',hostname)
+        if node_id is not None:
+            node_id = int(node_id.group(1))
+            cell = node_to_cell.get(node_id)
+            if cell not in rank_to_cell:
+                rank_to_cell[cell] = []
+            rank_to_cell[cell].append({rank:node_id})
+    return rank_to_cell
+
 def map_rank_to_cell(allocation, node_to_cell):
     """
     Maps each MPI rank to a cell based on its hostname and the node-to-cell mapping.
@@ -158,6 +173,7 @@ def main():
     allocation = load_allocation(args.alloc)
     node_to_cell = load_topology(args.map)
     rank_to_cell = map_rank_to_cell(allocation, node_to_cell)
+    info = info_rank_to_cell(allocation, node_to_cell)
     comm_pattern = load_communication_pattern(args.comm).get(args.coll, {})
 
     count = count_inter_cell_bytes(comm_pattern, rank_to_cell)
@@ -175,6 +191,10 @@ def main():
         print("-" * 40)  # Separator between entries
 
     print("\n`n` denotes the size of the send buffer")
+
+    print(f"\n\ninfo allocation")
+    for el in info.items():
+        print(f"switch {el[0]:<4}: {el[1]}")
 
 if __name__ == "__main__":
     main()

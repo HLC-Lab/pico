@@ -132,7 +132,12 @@ def generate_lineplot(data: pd.DataFrame, system, collective, nnodes, datatype, 
     plt.grid(True, linestyle='--', linewidth=0.25)
     plt.tight_layout()
 
-    plt.legend(fontsize=13)
+    ncols = 1
+    if (len(data['algo_name'].unique()) > 5):
+        ncols = 2
+    elif (len(data['algo_name'].unique()) > 10):
+        ncols = 3
+    plt.legend(ncol=ncols, fontsize=13)
 
     name = f'{collective.lower()}_{nnodes}_{datatype}_{timestamp}_lineplot.png'
     dir = f'plot/{system}'
@@ -172,7 +177,12 @@ def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, t
 
     handles, labels = ax.get_legend_handles_labels()
     if handles:
-        ax.legend(handles, labels, loc='upper left', fontsize=9)
+        ncols = 1
+        if (len(handles) > 5):
+            ncols = 2
+        elif (len(handles) > 10):
+            ncols = 3
+        ax.legend(handles, labels, ncol=ncols,loc='upper left', fontsize=9)
 
     plt.title(f'{system}, {collective.lower()}, {nnodes} nodes', fontsize=18)
     plt.xlabel('Message Size', fontsize=15)
@@ -281,7 +291,12 @@ def generate_cut_barplot(data: pd.DataFrame, system, collective, nnodes, datatyp
     # Add legend to the bottom axis
     handles, labels = ax_bot.get_legend_handles_labels()
     if handles:
-        ax_bot.legend(handles, labels, loc='lower left', fontsize=7)
+        ncols = 1
+        if (len(handles) > 5):
+            ncols = 2
+        elif (len(handles) > 10):
+            ncols = 3
+        ax_bot.legend(handles, labels, ncol=ncols,loc='lower left', fontsize=9)
 
     # Adjust layout to make room for the suptitle
     plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
