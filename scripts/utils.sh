@@ -15,7 +15,7 @@ export SEPARATOR="==============================================================
 export DEFAULT_COMPILE_ONLY="no"
 export DEFAULT_TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEFAULT_TYPES="int32"
-export DEFAULT_SIZES="1,8,64,512,4096,32768,262144,262144,16777216,134217728"
+export DEFAULT_SIZES="8,64,512,4096,32768,262144,262144,16777216,134217728"
 export DEFAULT_COLLECTIVES="allreduce,allgather,bcast,reduce_scatter"
 export DEFAULT_TEST_TIME="01:00:00"
 export DEFAULT_OUTPUT_LEVEL="summarized"

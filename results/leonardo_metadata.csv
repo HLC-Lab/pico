@@ -15,3 +15,7 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_03_20___12_52_50,1,4,2,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
 2025_03_20___12_52_50,2,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
 2025_03_20___12_52_50,3,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_03_22___10_48_09,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
+2025_03_22___10_48_09,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_03_22___10_48_09,2,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_03_22___10_48_09,3,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
