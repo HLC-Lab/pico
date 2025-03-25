@@ -87,6 +87,8 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_permute_remap_over", allgather_swing_permute_remap);
   CHECK_STR(algorithm, "swing_send_remap_over", allgather_swing_send_remap);
   CHECK_STR(algorithm, "swing_2_blocks_over", allgather_swing_2_blocks);
+  CHECK_STR(algorithm, "swing_2_blocks_b_over", allgather_swing_2_blocks_b);
+  CHECK_STR(algorithm, "swing_2_blocks_c_over", allgather_swing_2_blocks_c);
   CHECK_STR(algorithm, "swing_2_blocks_dtype_over", allgather_swing_2_blocks_dtype);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allgather");

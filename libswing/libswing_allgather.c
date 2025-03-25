@@ -705,6 +705,221 @@ err_hndl:
   return err;
 }
 
+int allgather_swing_2_blocks_b(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+  int mask, my_first, recv_index, send_index;
+  int send_count, recv_count, extra_send, extra_recv, extra_tag;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  /*
+   * Current implementation only handles power-of-two number of processes.
+   */
+  steps = log_2(size);
+  if(!is_power_of_two(size) || steps < 1) {
+    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  /* Initialization step:
+     - if send buffer is not MPI_IN_PLACE, copy send buffer to block  of
+     receive buffer
+  */
+  if(MPI_IN_PLACE != sbuf) {
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+
+  /* Communication step.
+   *  At every step i, rank r:
+   *  - communication peer is calculated by pi(rank, step, size)
+   *  - if the step is even, even ranks send the next `mask` blocks and
+   *  odd ranks send the previous `mask` blocks.
+   *  - if the step is odd, even ranks send the previous `mask` blocks and
+   *  odd ranks send the next `mask` blocks.
+   */
+  mask = 0x1;
+  my_first = rank;
+  extra_tag = 1;
+  for(int step = 0; step < steps; step++) {
+    MPI_Request req;
+    remote = pi(rank, step, size);
+    send_index = my_first;
+
+    // Calculate the send and receive indexes by alternating send/recv direction.
+    if ((step & 1) == (rank & 1)) {
+        recv_index = (send_index + mask + size) % size;
+    } else {
+        recv_index = (send_index - mask + size) % size;
+        my_first = recv_index;
+    }
+
+    // Control if the previously calculated indexes imply out of bound
+    // send/recv. If so, split the communication with an extra send/recv.
+    extra_recv = (recv_index + mask > size) ? ((recv_index + mask) - size) : 0;
+    recv_count = mask - extra_recv;
+
+    extra_send = (send_index + mask > size) ? ((send_index + mask) - size) : 0;
+    send_count = mask - extra_send;
+
+    // warparound communication
+    if (extra_recv != 0){
+      tmprecv = (char*)rbuf;
+      err = MPI_Irecv(tmprecv, extra_recv * rcount, rdtype, remote, extra_tag, comm, &req);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+    // Simple case: no wrap-around
+    tmpsend = (char*)rbuf + (ptrdiff_t)send_index * (ptrdiff_t)rcount * rext;
+    tmprecv = (char*)rbuf + (ptrdiff_t)recv_index * (ptrdiff_t)rcount * rext;
+
+    err = MPI_Sendrecv(tmpsend, send_count * rcount, rdtype, remote, 0, 
+                       tmprecv, recv_count * rcount, rdtype, remote, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+    if (extra_send != 0){
+      tmpsend = (char*)rbuf;
+      err = MPI_Send(tmpsend, extra_send * rcount, rdtype, remote, extra_tag, comm);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+
+    if (extra_recv != 0) {
+      err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+
+    mask <<= 1;
+  }
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line;  // silence compiler warning
+  return err;
+}
+
+int allgather_swing_2_blocks_c(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+  int mask, my_first, recv_index, send_index;
+  int send_count, recv_count, extra_send, extra_recv, extra_tag;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  /*
+   * Current implementation only handles power-of-two number of processes.
+   */
+  steps = log_2(size);
+  if(!is_power_of_two(size) || steps < 1) {
+    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  /* Initialization step:
+     - if send buffer is not MPI_IN_PLACE, copy send buffer to block  of
+     receive buffer
+  */
+  if(MPI_IN_PLACE != sbuf) {
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+
+  /* Communication step.
+   *  At every step i, rank r:
+   *  - communication peer is calculated by pi(rank, step, size)
+   *  - if the step is even, even ranks send the next `mask` blocks and
+   *  odd ranks send the previous `mask` blocks.
+   *  - if the step is odd, even ranks send the previous `mask` blocks and
+   *  odd ranks send the next `mask` blocks.
+   */
+  mask = 0x1;
+  my_first = rank;
+  extra_tag = 1;
+  for(int step = 0; step < steps; step++) {
+    MPI_Request req[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+    remote = pi(rank, step, size);
+    send_index = my_first;
+
+    // Calculate the send and receive indexes by alternating send/recv direction.
+    if ((step & 1) == (rank & 1)) {
+        recv_index = (send_index + mask + size) % size;
+    } else {
+        recv_index = (send_index - mask + size) % size;
+        my_first = recv_index;
+    }
+
+    // Control if the previously calculated indexes imply out of bound
+    // send/recv. If so, split the communication with an extra send/recv.
+    extra_recv = (recv_index + mask > size) ? ((recv_index + mask) - size) : 0;
+    recv_count = mask - extra_recv;
+
+    extra_send = (send_index + mask > size) ? ((send_index + mask) - size) : 0;
+    send_count = mask - extra_send;
+
+    // warparound communication
+    if (extra_recv != 0){
+      tmprecv = (char*)rbuf;
+      err = MPI_Irecv(tmprecv, extra_recv * rcount, rdtype, remote, extra_tag, comm, &req[0]);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+    if (extra_send != 0){
+      tmpsend = (char*)rbuf;
+      err = MPI_Isend(tmpsend, extra_send * rcount, rdtype, remote, extra_tag, comm, &req[1]);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+
+    // Simple case: no wrap-around
+    tmpsend = (char*)rbuf + (ptrdiff_t)send_index * (ptrdiff_t)rcount * rext;
+    tmprecv = (char*)rbuf + (ptrdiff_t)recv_index * (ptrdiff_t)rcount * rext;
+
+    err = MPI_Sendrecv(tmpsend, send_count * rcount, rdtype, remote, 0, 
+                       tmprecv, recv_count * rcount, rdtype, remote, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    
+    if (extra_recv != 0) {
+      err = MPI_Wait(&req[0], MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+    if (extra_send != 0) {
+      err = MPI_Wait(&req[1], MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+
+    mask <<= 1;
+  }
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line;  // silence compiler warning
+  return err;
+}
 
 int allgather_swing_2_blocks_dtype(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)

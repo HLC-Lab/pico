@@ -28,6 +28,8 @@ int allgather_swing_send_static(ALLGATHER_ARGS);
 int allgather_swing_permute_remap(ALLGATHER_ARGS);
 int allgather_swing_send_remap(ALLGATHER_ARGS);
 int allgather_swing_2_blocks(ALLGATHER_ARGS);
+int allgather_swing_2_blocks_b(ALLGATHER_ARGS);
+int allgather_swing_2_blocks_c(ALLGATHER_ARGS);
 int allgather_swing_2_blocks_dtype(ALLGATHER_ARGS);
 
 int bcast_scatter_allgather(BCAST_ARGS);

@@ -4,8 +4,7 @@
   "MPI_Op": "MPI_SUM",
   "tags": {
     "include": [
-      "internal",
-      "external"
+      "test"
     ],
     "exclude": [
       "can_crash",
