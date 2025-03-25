@@ -920,3 +920,348 @@ cleanup_and_return:
   return err;
 }
 
+int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, size_t count,
+                                        MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
+  int size, rank, dest, steps, step, err = MPI_SUCCESS, inbi, num_phases;
+  int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
+  size_t w_size, segsize;
+  uint32_t vrank, vdest;
+  char *tmp_send = NULL, *tmp_recv = NULL;
+  char *inbuf[2] = {NULL, NULL}, *inbuf_free[2] = {NULL, NULL};
+  ptrdiff_t lb, extent, true_extent, gap = 0, inbuf_size;
+  MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  // Does not support non-power-of-two or negative sizes
+  steps = log_2(size);
+  segsize = count / size;
+  if( !is_power_of_two(size) || steps == -1 || segsize == 0 || count % size != 0) {
+    return MPI_ERR_ARG;
+  }
+
+  // Allocate temporary buffer for send/recv and reduce operations
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+
+  inbuf_size = true_extent + extent * segsize;
+  inbuf_free[0] = (char *)malloc(inbuf_size);
+  inbuf_free[1] = (char *)malloc(inbuf_size);
+  if(NULL == inbuf_free[0] || NULL == inbuf_free[1]) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup_and_return;
+  }
+  inbuf[0] = inbuf_free[0] - gap;
+  inbuf[1] = inbuf_free[1] - gap;
+
+  // Copy into receive_buffer content of send_buffer to not produce
+  // side effects on send_buffer
+  if(send_buf != MPI_IN_PLACE) {
+    err = copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+  }
+
+  r_index = malloc(sizeof(*r_index) * steps);
+  s_index = malloc(sizeof(*s_index) * steps);
+  r_count = malloc(sizeof(*r_count) * steps);
+  s_count = malloc(sizeof(*s_count) * steps);
+  if(NULL == r_index || NULL == s_index || NULL == r_count || NULL == s_count) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup_and_return;
+  }
+
+  w_size = count;
+  s_index[0] = r_index[0] = 0;
+  vrank = remap_rank((uint32_t) size, (uint32_t) rank);
+
+  // Reduce-Scatter phase
+  for(step = 0; step < steps; step++) {
+    dest = pi(rank, step, size);
+    vdest = remap_rank((uint32_t) size, (uint32_t) dest);
+
+    if(vrank < vdest) {
+      r_count[step] = w_size / 2;
+      s_count[step] = w_size - r_count[step];
+      s_index[step] = r_index[step] + r_count[step];
+    } else {
+      s_count[step] = w_size / 2;
+      r_count[step] = w_size - s_count[step];
+      r_index[step] = s_index[step] + s_count[step];
+    }
+
+    num_phases = (r_count[step] > s_count[step]) ?
+                    (int) (r_count[step] / segsize) :
+                    (int) (s_count[step] / segsize);
+
+    inbi = 0;
+    err = MPI_Irecv(inbuf[inbi], segsize, dtype, dest, 0, comm, &reqs[inbi]);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+    tmp_send = (char *)recv_buf + s_index[step] * extent;
+    err = MPI_Send(tmp_send, segsize, dtype, dest, 0, comm);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+    tmp_recv = (char *)recv_buf + r_index[step] * extent;
+
+    for(int phase = 0; phase < num_phases - 1; phase++){
+      char *tmp_recv_phase = tmp_recv + (ptrdiff_t)(phase * segsize * extent);
+      char *tmp_send_phase = tmp_send + (ptrdiff_t)((phase + 1) * segsize * extent);
+      inbi = inbi ^ 0x1;
+
+      err = MPI_Irecv(inbuf[inbi], segsize, dtype, dest, 0, comm, &reqs[inbi]);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+      err = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+      err = MPI_Reduce_local(inbuf[inbi ^ 0x1], tmp_recv_phase, segsize, dtype, op);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+      err = MPI_Send(tmp_send_phase, segsize, dtype, dest, 0, comm);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+    }
+
+    err = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+    tmp_recv += (ptrdiff_t)((num_phases - 1) * segsize * extent);
+    err = MPI_Reduce_local(inbuf[inbi], tmp_recv, segsize, dtype, op);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+    if(step + 1 < steps) {
+      r_index[step + 1] = r_index[step];
+      s_index[step + 1] = r_index[step];
+      w_size = r_count[step];
+    }
+  }
+
+  #ifdef DEBUG
+  for(int i = 0; i < size; i++) {
+    if(rank == i) {
+      if(rank == 0) fprintf(stderr,"======================\n");
+      fprintf(stderr, "Rank %d: ", rank);
+      for(int j = 0; j < count; j++) {
+        fprintf(stderr, "%d ", ((int *)recv_buf)[j]);
+      }
+      fprintf(stderr, "\n");
+    }
+    MPI_Barrier(comm);
+  }
+  #endif
+
+  // Allgather phase
+  for(step = steps - 1; step >= 0; step--) {
+    dest = pi(rank, step, size);
+
+    tmp_send = (char *)recv_buf + r_index[step] * extent;
+    tmp_recv = (char *)recv_buf + s_index[step] * extent;
+    err = MPI_Sendrecv(tmp_send, r_count[step], dtype, dest, 0,
+                       tmp_recv, s_count[step], dtype, dest, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+  }
+
+  #ifdef DEBUG
+  for(int i = 0; i < size; i++) {
+    if(rank == i) {
+      if(rank == 0) fprintf(stderr,"======================\n");
+      fprintf(stderr, "Rank %d: ", rank);
+      for(int j = 0; j < count; j++) {
+        fprintf(stderr, "%d ", ((int *)recv_buf)[j]);
+      }
+      fprintf(stderr, "\n");
+    }
+    MPI_Barrier(comm);
+  }
+  #endif
+
+  free(inbuf_free[0]);
+  free(inbuf_free[1]);
+  free(r_index);
+  free(s_index);
+  free(r_count);
+  free(s_count);
+  return MPI_SUCCESS;
+
+cleanup_and_return:
+  if(NULL != inbuf_free[0]) free(inbuf_free[0]);
+  if(NULL != inbuf_free[1]) free(inbuf_free[1]);
+  if(NULL != r_index)       free(r_index);
+  if(NULL != s_index)       free(s_index);
+  if(NULL != r_count)       free(r_count);
+  if(NULL != s_count)       free(s_count);
+  return err;
+}
+
+// NOTE: Not fully implemented
+//
+// int allreduce_swing_bdw_segmented(const void *send_buf, void *recv_buf, size_t count, MPI_Datatype dtype,
+//                                   MPI_Op op, MPI_Comm comm, uint32_t segsize)
+// { 
+//   int size, rank, dest, steps;
+//   int k, inbi, split_rank;
+//   size_t small_block_count, large_block_count, max_seg_count;
+//   ptrdiff_t lb, extent, gap;
+//   char *tmp_send = NULL, *tmp_recv = NULL, *tmp_buf[2] = {NULL, NULL};
+//   MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+//   MPI_Comm_size(comm, &size);
+//   MPI_Comm_rank(comm, &rank);
+//
+//   steps = log_2(size);
+//   if(!is_power_of_two(size) || steps == -1) {
+//     return MPI_ERR_ARG;
+//   }
+//
+//   COLL_BASE_COMPUTE_BLOCKCOUNT(count, size, split_rank, large_block_count, small_block_count);
+//
+//   int typelng;
+//   size_t seg_count = large_block_count;
+//   MPI_Type_size(dtype, &typelng);
+//   COLL_BASE_COMPUTED_SEGCOUNT(segsize, typelng, seg_count);
+//
+//   int num_phases = (int) (large_block_count / seg_count);
+//   if ((large_block_count % seg_count) != 0) num_phases++;
+//
+//   COLL_BASE_COMPUTE_BLOCKCOUNT(large_block_count, num_phases, inbi, max_seg_count, k);
+//   MPI_Type_get_extent(dtype, &lb, &extent);
+//   ptrdiff_t max_real_segsize = datatype_span(dtype, max_seg_count, &gap);
+//
+//   /* Allocate and initialize temporary buffers */
+//   tmp_buf[0] = (char *) malloc(max_real_segsize);
+//   tmp_buf[1] = (char *) malloc(max_real_segsize);
+//
+//   // Copy into receive_buffer content of send_buffer to not produce side effects on send_buffer
+//   if (send_buf != MPI_IN_PLACE) {
+//     copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
+//   }
+//   
+//   int *s_bitmap = NULL, *r_bitmap = NULL;
+//   int bitmap_offset = 0;
+//   s_bitmap = (int *) calloc(size * steps, sizeof(int));
+//   r_bitmap = (int *) calloc(size * steps, sizeof(int));
+//
+//   int step, s_ind, r_ind, s_split_seg, r_split_seg, seg_ind;
+//   size_t s_block_count, r_block_count;
+//   size_t s_large_seg_count, s_small_seg_count, r_large_seg_count, r_small_seg_count;
+//   size_t r_count, s_count, prev_r_count;
+//   ptrdiff_t s_block_offset, r_block_offset, r_seg_offset, s_seg_offset;
+//   // Reduce-Scatter phase
+//   for (step = 0; step < steps; step++) {
+//     dest = pi(rank, step, size);
+//     
+//     get_indexes(rank, step, steps, size, s_bitmap + bitmap_offset);
+//     get_indexes(dest, step, steps, size, r_bitmap + bitmap_offset);
+//
+//     s_ind = 0;
+//     r_ind = 0;
+//     while (s_ind < size && r_ind < size) {
+//       // Navigate send and recv bitmap to find first block to send and recv
+//       while (s_ind < size && s_bitmap[s_ind + bitmap_offset] != 1) { s_ind++;}
+//       while (r_ind < size && r_bitmap[r_ind + bitmap_offset] != 1) { r_ind++;}
+//       
+//       // Scatter reduce the block
+//       if (r_ind < size && s_ind < size) {
+//         inbi = 0;
+//         
+//         // For each one of send block and recv block calculate:
+//         // - block_count: number of elements in the block
+//         // - large_seg_count, small_seg_count: number of elements in big and small segments
+//         // - split_seg: indicates the first of the small segments
+//         s_block_count = (s_ind < split_rank) ? large_block_count : small_block_count;
+//         r_block_count = (r_ind < split_rank) ? large_block_count : small_block_count;
+//         COLL_BASE_COMPUTE_BLOCKCOUNT(s_block_count, num_phases, s_split_seg, s_large_seg_count, s_small_seg_count);
+//         COLL_BASE_COMPUTE_BLOCKCOUNT(r_block_count, num_phases, r_split_seg, r_large_seg_count, r_small_seg_count);
+//
+//         // Calculate the offset of the send and recv block wrt buffer (in bytes)
+//         s_block_offset = (s_ind < split_rank) ? ((ptrdiff_t) s_ind * (ptrdiff_t) large_block_count) * extent :
+//                           ((ptrdiff_t) s_ind * (ptrdiff_t) small_block_count + split_rank) * extent;
+//         r_block_offset = (r_ind < split_rank) ? ((ptrdiff_t) r_ind * (ptrdiff_t) large_block_count) * extent : 
+//                           ((ptrdiff_t) r_ind * (ptrdiff_t) small_block_count + split_rank) * extent;
+//
+//         // Post an irecv for the first segment
+//         MPI_Irecv(tmp_buf[inbi], r_large_seg_count, dtype, dest, 0, comm, &reqs[inbi]);
+//         
+//         // Send the first segment
+//         tmp_send = (char *)recv_buf + s_block_offset;
+//         MPI_Send(tmp_send, s_large_seg_count, dtype, dest, 0, comm);
+//         
+//         for(seg_ind = 1; seg_ind < num_phases; seg_ind++){
+//           inbi = inbi ^ 0x1;
+//           
+//           // Post an irecv for the current segment (i.e. seg[seg_ind])
+//           r_count = (seg_ind < r_split_seg) ? r_large_seg_count: r_small_seg_count;
+//           MPI_Irecv(tmp_buf[inbi], r_count, dtype, dest, 0, comm, &reqs[inbi]);
+//
+//           // Wait for the arrival of the previous block
+//           MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
+//           
+//           // Calculate the offset of the recv segment wrt the start of the block (in bytes) and the number of elements of the previous recv
+//           r_seg_offset = (seg_ind - 1 < r_split_seg) ? ((ptrdiff_t) (seg_ind - 1) * (ptrdiff_t) r_large_seg_count) * extent :
+//                                                        (((ptrdiff_t) (seg_ind - 1) * (ptrdiff_t) r_small_seg_count) + (ptrdiff_t) r_split_seg) * extent;
+//           tmp_recv = (char *) recv_buf + (r_block_offset + r_seg_offset);
+//           prev_r_count = ((seg_ind - 1) < r_split_seg) ? r_large_seg_count : r_small_seg_count;
+//
+//           // Reduce the previous block
+//           MPI_Reduce_local(tmp_buf[inbi ^ 0x1], tmp_recv, prev_r_count, dtype, op);
+//
+//           // Calculate offset and count of the current block and send it
+//           s_seg_offset = (seg_ind < s_split_seg) ? ((ptrdiff_t) seg_ind * (ptrdiff_t) s_large_seg_count) * extent :
+//                                                    (((ptrdiff_t) seg_ind * (ptrdiff_t) s_small_seg_count) + (ptrdiff_t) s_split_seg) * extent;
+//           tmp_send += s_seg_offset;
+//           s_count = (seg_ind < s_split_seg) ? s_large_seg_count: s_small_seg_count;
+//           MPI_Send(tmp_send, s_count, dtype, dest, 0, comm);
+//         }
+//         // Wait for the last segment to arrive
+//         MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
+//
+//         // Reduce the last segment
+//         r_seg_offset = (((ptrdiff_t) (num_phases - 1) * (ptrdiff_t) r_small_seg_count) + (ptrdiff_t) r_split_seg) * extent;
+//         tmp_recv = (char*) recv_buf + (r_block_offset + r_seg_offset);
+//         MPI_Reduce_local(tmp_buf[inbi], tmp_recv, r_small_seg_count, dtype, op);
+//       }
+//       s_ind++;
+//       r_ind++;
+//     }
+//     bitmap_offset += size;
+//   }
+//   
+//   
+//   // Allgather phase
+//   MPI_Datatype s_ind_dtype = MPI_DATATYPE_NULL, r_ind_dtype = MPI_DATATYPE_NULL;
+//   int *block_len, *disp;
+//   block_len = (int *)malloc(size * sizeof(int));
+//   disp = (int *)malloc(size * sizeof(int));
+//   bitmap_offset -= size;
+//   size_t w_size = 1;
+//   for(step = steps - 1; step >= 0; step--) {
+//     dest = pi(rank, step, size);
+//
+//     libswing_indexed_datatype(&s_ind_dtype, s_bitmap + bitmap_offset, size, w_size,
+//                               small_block_count, split_rank, dtype, block_len, disp);
+//     libswing_indexed_datatype(&r_ind_dtype, r_bitmap + bitmap_offset, size, w_size,
+//                               small_block_count, split_rank, dtype, block_len, disp);
+//
+//     MPI_Sendrecv(recv_buf, 1, r_ind_dtype, dest, 0, recv_buf, 1, s_ind_dtype, dest, 0, comm, MPI_STATUS_IGNORE);
+//
+//     MPI_Type_free(&s_ind_dtype);
+//     s_ind_dtype = MPI_DATATYPE_NULL;
+//     MPI_Type_free(&r_ind_dtype);
+//     r_ind_dtype = MPI_DATATYPE_NULL;
+//
+//     w_size <<= 1;
+//     bitmap_offset -= size;
+//   }
+//  
+//   free(s_bitmap);
+//   free(r_bitmap);
+//
+//   free(block_len);
+//   free(disp);
+//
+//   free(tmp_buf[0]);
+//   free(tmp_buf[1]);
+//
+//   return MPI_SUCCESS;
+// }
+

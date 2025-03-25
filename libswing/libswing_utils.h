@@ -14,6 +14,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <assert.h>
+#include <stddef.h>
 
 #ifdef DEBUG
 #define SWING_DEBUG_PRINT(fmt, ...) \
@@ -134,7 +135,7 @@ static inline int pi(int rank, int step, int comm_sz) {
 
 
 
-static inline void get_indexes_aux(int rank, int step, const int n_steps, const int adj_size, unsigned char *bitmap){
+static inline void get_indexes_aux(int rank, int step, const int n_steps, const int adj_size, int *bitmap){
   if (step >= n_steps) return;
 
   int peer;
@@ -147,7 +148,7 @@ static inline void get_indexes_aux(int rank, int step, const int n_steps, const 
 }
 
 
-static inline void get_indexes(int rank, int step, const int n_steps, const int adj_size, unsigned char *bitmap){
+static inline void get_indexes(int rank, int step, const int n_steps, const int adj_size, int *bitmap){
   if (step >= n_steps) return;
   
   int peer = pi(rank, step, adj_size);
@@ -565,6 +566,145 @@ static inline uint32_t inverse_rank(uint32_t num_ranks, uint32_t rank){
     return reverse(rank) >> (32 - num_bits);
 }
 
+// NOTE: Commented since at the moment not used in the code
+//
+// /**
+//  * This macro gives a generic way to compute the best count of
+//  * the segment (i.e. the number of complete datatypes that
+//  * can fit in the specified SEGSIZE). Beware, when this macro
+//  * is called, the SEGCOUNT should be initialized to the count as
+//  * expected by the collective call.
+//  */
+// #define COLL_BASE_COMPUTED_SEGCOUNT(SEGSIZE, TYPELNG, SEGCOUNT)        \
+//     if( ((SEGSIZE) >= (TYPELNG)) &&                                     \
+//         ((SEGSIZE) < ((TYPELNG) * (SEGCOUNT))) ) {                      \
+//         size_t residual;                                                \
+//         (SEGCOUNT) = (int)((SEGSIZE) / (TYPELNG));                      \
+//         residual = (SEGSIZE) - (SEGCOUNT) * (TYPELNG);                  \
+//         if( residual > ((TYPELNG) >> 1) )                               \
+//             (SEGCOUNT)++;                                               \
+//     }                                                                   \
+//
+//
+// typedef enum{
+//   LIBSWING_DOUBLING = 0,
+//   LIBSWING_HALVING
+// }swing_direction_t;
+//
+//
+// static inline int build_tree(int *tree, int root, int rank, int size, int *recv_step, swing_direction_t direction) {
+//   int step, dest, idx = 0;
+//   int steps = log_2(size);
+//   char *received = NULL;
+//
+//   *recv_step = -1;
+//   received = calloc(size, sizeof(char));
+//   if (received == NULL) {
+//     return -1;
+//   }
+//
+//   received[root] = 1;
+//   tree[idx++] = root;
+//
+//   for (step = 0; step < steps; step++) {
+//     for (int proc = 0; proc < size; proc++) {
+//       if (!received[proc]) continue;
+//
+//       dest = (direction == LIBSWING_DOUBLING) ? pi(proc, step, size) : pi(proc, steps - step - 1, size);
+//       received[dest] = 1;
+//       tree[idx++] = dest;
+//       if (dest == rank) {
+//         *recv_step = step;
+//       }
+//     }
+//   }
+//
+//   free(received);
+//   return 0;
+// }
+//
+//
+// static inline int build_both_trees(int *tree, int *halv_tree, int root, int rank, int size,
+//                                    int *recv_step, int *halv_recv_step, int *pos, int *halv_pos) {
+//   int step, dest, idx = 0, halv_idx = 0;
+//   int steps = log_2(size);
+//   char *received = NULL, *received_halv = NULL;
+//
+//   received = calloc(size, sizeof(char));
+//   received_halv = calloc(size, sizeof(char));
+//   if (received == NULL || received_halv == NULL) {
+//     return -1;
+//   }
+//
+//   *recv_step = -1;
+//   *halv_recv_step = -1;
+//   *pos = 0;
+//   *halv_pos = 0;
+//   received[root] = 1;
+//   received_halv[root] = 1;
+//   tree[idx++] = root;
+//   halv_tree[halv_idx++] = root;
+//
+//   for (step = 0; step < steps; step++) {
+//     // swing doubling tree
+//     for (int proc = 0; proc < size; proc++) {
+//       if (!received[proc]) continue;
+//
+//       dest = pi(proc, step, size);
+//       if(received[dest]) continue;
+//
+//       received[dest] = 1;
+//       tree[idx++] = dest;
+//       if (dest == rank) {
+//         *recv_step = step;
+//         *pos = idx - 1;
+//       }
+//     }
+//     // swing halving tree
+//     for (int proc = 0; proc < size; proc++) {
+//       if (!received_halv[proc]) continue;
+//
+//       dest = pi(proc, steps - step - 1, size);
+//       if(received_halv[dest]) continue;
+//
+//       received_halv[dest] = 1;
+//       halv_tree[halv_idx++] = dest;
+//       if (dest == rank) {
+//         *halv_recv_step = step;
+//         *halv_pos = halv_idx - 1;
+//       }
+//     }
+//   }
+//
+//   free(received);
+//   free(received_halv);
+//
+//   return 0;
+// }
+//
+//
+// static inline int libswing_indexed_datatype(MPI_Datatype *new_dtype, const int *bitmap, int adj_size, int w_size,
+//                                              const size_t small_block_count, const int split_rank,
+//                                              MPI_Datatype old_dtype, int *block_len, int *disp){
+//   int index = 0, disp_counter = 0;
+//   for (int i = 0; i < adj_size; i++){
+//     if (bitmap[i] != 0){
+//       block_len[index] =  i < split_rank ? (int) (small_block_count + 1) : (int) small_block_count;
+//       disp[index] = disp_counter;
+//       index++;
+//     }
+//     disp_counter += i < split_rank ? (int) (small_block_count + 1): (int) small_block_count;
+//   }
+//
+//   if (index != w_size){
+//     return MPI_ERR_UNKNOWN;
+//   }
+//
+//   MPI_Type_indexed(w_size, block_len, disp, old_dtype, new_dtype);
+//   MPI_Type_commit(new_dtype);
+//
+//   return MPI_SUCCESS;
+// }
 
 #endif // LIBSWING_UTILS_H
 

@@ -899,6 +899,8 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
 }
 
 
+// NOTE: Not fully implemented
+//
 // int reduce_scatter_swing_dtypes(const void *sbuf, void *rbuf, const int rcounts[],
 //                                     MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 // {

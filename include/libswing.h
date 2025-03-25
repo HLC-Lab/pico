@@ -18,8 +18,9 @@ int allreduce_rabenseifner(ALLREDUCE_ARGS);
 int allreduce_swing_lat(ALLREDUCE_ARGS);
 int allreduce_swing_bdw_static(ALLREDUCE_ARGS);
 int allreduce_swing_bdw_remap(ALLREDUCE_ARGS);
+int allreduce_swing_bdw_remap_segmented(ALLREDUCE_ARGS);
 
-int allgather_k_bruck(ALLGATHER_ARGS, int radix);
+int allgather_k_bruck(ALLGATHER_ARGS);
 int allgather_recursivedoubling(ALLGATHER_ARGS);
 int allgather_ring(ALLGATHER_ARGS);
 int allgather_swing_permute_static(ALLGATHER_ARGS);
@@ -33,7 +34,7 @@ int bcast_scatter_allgather(BCAST_ARGS);
 int bcast_swing_lat(BCAST_ARGS);
 int bcast_swing_lat_reversed(BCAST_ARGS);
 int bcast_swing_bdw_static(BCAST_ARGS);
-// int bcast_swing_bdw_static_reversed(BCAST_ARGS);
+int bcast_swing_bdw_static_reversed(BCAST_ARGS);
 
 int reduce_scatter_recursivehalving(REDUCE_SCATTER_ARGS);
 int reduce_scatter_recursive_distance_doubling(REDUCE_SCATTER_ARGS);

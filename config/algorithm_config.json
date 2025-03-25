@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.8",
+    "schema_version": "2.6.9",
     "created": "2024-01-30",
-    "last_modified": "2024-03-19",
+    "last_modified": "2024-03-25",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -665,6 +665,41 @@
           "remap",
           "external"
         ]
+      },
+      "swing_bdw_remap_segmented_over": {
+        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing_bdw_remap_segmented",
+          "swing",
+          "bandwidth_optimal",
+          "remap",
+          "external"
+        ]
       }
     },
     "ALLGATHER": {
@@ -674,6 +709,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "auto",
         "tags": [
           "default",
@@ -686,6 +732,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "brucks",
         "tags": [
           "brucks",
@@ -697,6 +754,17 @@
         "library": {
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "k_brucks",
         "tags": [
           "k_brucks",
@@ -709,6 +777,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "nb",
         "tags": [
           "nb",
@@ -722,6 +801,15 @@
           "mpich": "4.3.0"
         },
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -766,6 +854,17 @@
         "library": {
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "recexch_doubling",
         "tags": [
           "recexch_doubling",
@@ -789,6 +888,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 0,
         "tags": [
           "default",
@@ -801,6 +911,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 1,
         "tags": [
           "linear",
@@ -815,6 +936,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 2,
         "additional_parameters": {
           "radix": {
@@ -842,6 +974,15 @@
         "dynamic_rule": 3,
         "constraints": [
           {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
             "key": "comm_sz",
             "conditions": [
               {
@@ -864,6 +1005,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 4,
         "tags": [
           "ring",
@@ -879,6 +1031,15 @@
         },
         "dynamic_rule": 5,
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -904,6 +1065,15 @@
         "dynamic_rule": 6,
         "constraints": [
           {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
             "key": "comm_sz",
             "conditions": [
               {
@@ -923,6 +1093,17 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "auto",
         "dynamic_rule": 0,
         "additional_parameters": {
@@ -935,7 +1116,6 @@
         "tags": [
           "k_bruck",
           "cuda",
-          "can_crash",
           "additional_parameter",
           "external"
         ]
@@ -1691,6 +1871,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "auto",
         "tags": [
           "default",
@@ -1703,6 +1894,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "nb",
         "tags": [
           "non_blocking",
@@ -1716,6 +1918,15 @@
           "mpich": "4.3.0"
         },
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -1738,6 +1949,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "pairwise",
         "tags": [
           "pairwise",
@@ -1750,6 +1972,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "recursive_doubling",
         "tags": [
           "recursive_doubling",
@@ -1762,6 +1995,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "recursive_halving",
         "tags": [
           "recursive_halving",
@@ -1774,6 +2018,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 0,
         "tags": [
           "default",
@@ -1786,6 +2041,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 1,
         "tags": [
           "non_overlapping",
@@ -1800,6 +2066,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 2,
         "tags": [
           "recursive_halving",
@@ -1814,6 +2091,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 3,
         "tags": [
           "ring",
@@ -1827,6 +2115,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 4,
         "tags": [
           "butterfly",
@@ -1841,6 +2140,15 @@
           "libswing": "1.0.0"
         },
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -1863,6 +2171,17 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
@@ -1877,6 +2196,17 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
@@ -1890,6 +2220,17 @@
         "library": {
           "libswing": "1.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
@@ -1905,6 +2246,15 @@
           "libswing": "1.0.0"
         },
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [

@@ -145,7 +145,7 @@ def generate_lineplot(data: pd.DataFrame, system, collective, nnodes, datatype, 
     plt.savefig(full_name, dpi=300)
     plt.close()
 
-def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, std_threshold: float = 0.35):
+def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, std_threshold: float = 0.5):
     # Get the sorted list of unique algorithm names
     sorted_algos = sorted(data['algo_name'].unique().tolist(), key=sort_key)
 
@@ -317,6 +317,10 @@ def main():
     parser.add_argument("--algorithm", required=False, help="Algorithm to graph, defaults to all the presents")
     parser.add_argument("--collective", required=False, help="Collective type to graph, defaults to all the presents")
     parser.add_argument("--filter-by", required=False, help="Filter algorithms name by substrings (e.g swing,ompi,mpich)")
+    parser.add_argument("--filter-out", required=False, help="Filter out algorithms name by substrings (e.g swing,ompi,mpich)")
+    parser.add_argument("--min-dim", required=False, help="Minimum array dimension to consider")
+    parser.add_argument("--max-dim", required=False, help="Maximum array dimension to consider")
+    parser.add_argument("--normalize-by", required=False, help="Algorithm to normalize the data by (default is the default algorithm for the MPI library)")
     args = parser.parse_args()
 
     if not os.path.isfile(args.summary_file):
@@ -345,6 +349,13 @@ def main():
     if args.filter_by is not None:
         filter_by = [filt.strip() for filt in args.filter_by.split(',')]
         df = df[df["algo_name"].str.contains('|'.join(filter_by), case=False, na=False)]
+    if args.filter_out is not None:
+        filter_out = [filt.strip() for filt in args.filter_out.split(',')]
+        df = df[~df["algo_name"].str.contains('|'.join(filter_out), case=False, na=False)]
+    if args.min_dim is not None:
+        df = df[df["buffer_size"] >= int(args.min_dim)]
+    if args.max_dim is not None:
+        df = df[df["buffer_size"] <= int(args.max_dim)]
 
     # Control if the dataframe is not empty at this point
     if df.empty:
@@ -358,7 +369,7 @@ def main():
     for datatype, group in df.groupby('datatype'):
         for collective, subgroup in group.groupby('collective_type'):
             generate_lineplot(subgroup, system_name, collective, nnodes, datatype, timestamp);
-            normalized_data = normalize_dataset(subgroup, mpi_lib)
+            normalized_data = normalize_dataset(subgroup, mpi_lib, args.normalize_by)
             generate_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp)
             generate_cut_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp)
 

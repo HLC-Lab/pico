@@ -80,11 +80,10 @@ err_hndl:
 }
 
 int allgather_k_bruck(const void *sbuf, size_t scount, MPI_Datatype sdtype,
-                      void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm,
-                      int radix)
+                      void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, dst, src, err = MPI_SUCCESS;
-  int recvcount, distance;
+  int recvcount, distance, radix = 2;
   ptrdiff_t rlb, rextent;
   ptrdiff_t rsize, rgap = 0;
   MPI_Request *reqs = NULL;

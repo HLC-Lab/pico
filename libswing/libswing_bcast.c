@@ -560,15 +560,18 @@ cleanup_and_return:
 }
 
 
-// int bcast_swing_bdw_static_reversed(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+// NOTE: Not fully implemented
+//
+// int bcast_swing_bdw_static_reversed(void *buf, size_t count, MPI_Datatype dtype,
+//                                     int root, MPI_Comm comm)
 // {
-//   int size, rank, step, steps, recv_step = -1;
-//   int dtype_size, line, err = MPI_SUCCESS;
-//   int dest, rdest, sdest, w_size, split_rank;
-//   size_t small_blocks, big_blocks, r_count = 0, s_count = 0;
-//   ptrdiff_t r_offset = 0, s_offset = 0, lb, extent;
-//   const int *s_bitmap, *r_bitmap;
-//   char *received = NULL;
+//   int size, rank, vrank, dest, pos, inv_pos;
+//   int step, steps, recv_step, inv_recv_step;
+//   int dtype_size, line = -1, err = MPI_SUCCESS;
+//   int *tree = NULL, *inv_tree = NULL;
+//   int request_count = 0;
+//   ptrdiff_t lb, extent;
+//   MPI_Request requests[SWING_MAX_STEPS];
 //   MPI_Comm_size(comm, &size);
 //   MPI_Comm_rank(comm, &rank);
 //
@@ -579,7 +582,7 @@ cleanup_and_return:
 //   // Trivial case
 //   if(size < 2 || dtype_size == 0)
 //     return MPI_SUCCESS;
-//   
+//
 //   // Check if count is less than the number of processes
 //   if(count < (size_t)size) {
 //     line = __LINE__;
@@ -602,137 +605,71 @@ cleanup_and_return:
 //     goto cleanup_and_return;
 //   }
 //
-//   // Use an auxiliary array to record visited node in order
-//   // to calculate at which step node is gonna receive the message.
-//   received = calloc(size, sizeof(char));
-//   if(received == NULL) {
+//   tree = calloc(size, sizeof(int));
+//   inv_tree = calloc(size, sizeof(int));
+//   if(tree == NULL || inv_tree == NULL) {
 //     line = __LINE__;
 //     err = MPI_ERR_NO_MEM;
 //     goto cleanup_and_return;
 //   }
-//   received[root] = 1;
-//   for(step = 0; step < steps && !received[rank]; step++) {
-//     for(int proc = 0; proc < size; proc++) {
-//       if(!received[proc]) continue;
 //
-//       dest = pi(proc, steps - step - 1, size);
-//       received[dest] = 1;
-//       if(dest == rank) {
-//         recv_step = step;
-//         break;
-//       }
-//     }
-//   }
-//   
-//   // Compute the size of each block, dividing in small and big blocks
-//   // where:
-//   // - small_blocks = count / size
-//   // - big_blocks = count / size + count % size
-//   // - split_rank = count % size
-//   COLL_BASE_COMPUTE_BLOCKCOUNT(count, size, split_rank,
-//                                big_blocks, small_blocks);
-//
-//   
-//   // Gets rearranged contiguous bitmaps from "libswing_utils_bitmaps.c"
-//   if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
+//   if(build_both_trees(tree, inv_tree, root, rank, size,
+//                       &recv_step, &inv_recv_step, &pos, &inv_pos) != 0) {
 //     line = __LINE__;
 //     err = MPI_ERR_UNKNOWN;
 //     goto cleanup_and_return;
 //   }
 //
-//   /* Scatter phase.
-//    *
-//    * At each step s:
-//    * - if rank r has the data it sends `w_size` blocks to dest = pi(r, s)
-//    * - if rank r does not have the data:
-//    *   - if recv_step ==s, it receives the data from the parent
-//    *   - otherwise it does nothing in this iteration
-//    */
-//   w_size = size >> 1;
-//   for(step = 0; step < steps; step++) {
-//     // If I don't have the data and I am scheduled to receive it, wait for it.
-//     if(rank != root && recv_step == step) {
+//   vrank = remap_rank((uint32_t) size, (uint32_t) tree[inv_pos]);
+//
+//   size_t scatter_count = (count + size - 1) / size; /* ceil(count / size) */
+//   size_t recv_count, send_count;
+//   ptrdiff_t my_first = 0, my_last = count;
+//   int mask = size >> 1;
+//
+//   for(step = 0; step < steps; step++){
+//     if(rank != root && inv_recv_step == step){
 //       dest = pi(rank, steps - step - 1, size);
-//       r_count = (r_bitmap[step] + w_size <= split_rank) ?
-//                   (size_t)w_size * big_blocks :
-//                     (r_bitmap[step] >= split_rank) ?
-//                       (size_t)w_size * small_blocks :
-//                       (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
-//       r_offset = (r_bitmap[step] <= split_rank) ?
-//                   (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-//                   (ptrdiff_t)(r_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-//       err = MPI_Recv((char*)buf + r_offset, r_count, dtype, dest, 0, comm, MPI_STATUS_IGNORE);
+//
+//       my_first = scatter_count * vrank;
+//       my_last = my_first + scatter_count * mask;
+//       if(my_last > count) {
+//         my_last = count;
+//       }
+//       recv_count = my_last - my_first;
+//
+//       err = MPI_Recv((char *)buf + my_first * extent, recv_count, dtype, dest, 0, comm, MPI_STATUS_IGNORE);
 //       if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
 //     }
 //
-//     // If I already have the message, send the data.
-//     if(recv_step < step) {
+//     if(inv_recv_step < step){
 //       dest = pi(rank, steps - step - 1, size);
-//       s_count = (s_bitmap[step] + w_size <= split_rank) ?
-//                   (size_t)w_size * big_blocks :
-//                     (s_bitmap[step] >= split_rank) ?
-//                       (size_t)w_size * small_blocks :
-//                       (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
-//       s_offset = (s_bitmap[step] <= split_rank) ?
-//                   (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-//                   (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-//       err = MPI_Send((char *)buf + s_offset, s_count, dtype, dest, 0, comm);
+//
+//       send_count = scatter_count * mask;
+//       my_last = my_first + send_count;
+//
+//       if(my_last + send_count > count) {
+//         send_count = count - my_last;
+//       }
+//       err = MPI_Isend((char *)buf + my_last * extent, send_count, dtype, dest, 0, comm, &requests[request_count++]);
 //       if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
 //     }
-//     w_size >>= 1;
+//     mask >>= 1;
 //   }
 //
-//   /* Allgather phase.
-//    *
-//    * At each step s, each rank r:
-//    * - if `dest=pi(r, s)` has not the blocks that r has, it sends `w_size` blocks to dest,
-//    * - if r does not have the blocks that `dest=pi(r, s)` has, it recv `w_size` blocks from dest.
-//    *
-//    * To know if r has the data of dest and viceversa, recv_step is used:
-//    * - if recv_step == s, r has the data of dest
-//    * - if recv_step < s, r does not have the data of dest
-//    * in all other cases r and dest do a complete sendrecv of `w_size` blocks.
-//    */
-//   w_size = 0x1;
-//   for(step = steps - 1; step >= 0; step--) {
-//     dest = pi(rank, steps - step - 1, size);
-//     rdest = (recv_step < step) ? MPI_PROC_NULL : dest;
-//     sdest = (recv_step == step) ? MPI_PROC_NULL : dest;
+//   err = MPI_Waitall(request_count, requests, MPI_STATUSES_IGNORE);
+//   if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
 //
-//     r_count = (s_bitmap[step] + w_size <= split_rank) ?
-//                 (size_t)w_size * big_blocks :
-//                   (s_bitmap[step] >= split_rank) ?
-//                     (size_t)w_size * small_blocks :
-//                     (size_t)w_size * small_blocks + (size_t)(split_rank - s_bitmap[step]);
-//     r_offset = (s_bitmap[step] <= split_rank) ?
-//                 (ptrdiff_t) s_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-//                 (ptrdiff_t)(s_bitmap[step] * (int) small_blocks + split_rank) * (ptrdiff_t) extent;
-//
-//     s_count = (r_bitmap[step] + w_size <= split_rank) ?
-//                 (size_t)w_size * big_blocks :
-//                   (r_bitmap[step] >= split_rank) ?
-//                     (size_t)w_size * small_blocks :
-//                     (size_t)w_size * small_blocks + (size_t)(split_rank - r_bitmap[step]);
-//     s_offset = (r_bitmap[step] <= split_rank) ?
-//                 (ptrdiff_t) r_bitmap[step] * (ptrdiff_t)(big_blocks * extent) :
-//                 (ptrdiff_t)(r_bitmap[step] * (int)small_blocks + split_rank) * (ptrdiff_t) extent;
-//     
-//     err = MPI_Sendrecv((char *) buf + s_offset, s_count, dtype, sdest, 0,
-//                  (char *) buf + r_offset, r_count, dtype, rdest, 0,
-//                  comm, MPI_STATUS_IGNORE);
-//     if(MPI_SUCCESS != err) { line = __LINE__; goto cleanup_and_return; }
-//     
-//     w_size <<= 1;
-//   }
-//
-//   free(received);
+//   free(tree);
+//   free(inv_tree);
 //
 //   return MPI_SUCCESS;
 //
 // cleanup_and_return:
 //   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
 //   (void) line; // silence compiler warning
-//   if(NULL!= received)     free(received);
+//   if(NULL!= tree)     free(tree);
+//   if(NULL!= inv_tree) free(inv_tree);
 //
 //   return err;
 // }

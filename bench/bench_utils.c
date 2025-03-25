@@ -64,6 +64,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_lat_over", allreduce_swing_lat);
   CHECK_STR(algorithm, "swing_bdw_static_over", allreduce_swing_bdw_static);
   CHECK_STR(algorithm, "swing_bdw_remap_over", allreduce_swing_bdw_remap);
+  CHECK_STR(algorithm, "swing_bdw_remap_segmented_over", allreduce_swing_bdw_remap_segmented);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;
@@ -78,7 +79,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
 * defauls to the internal allgather function.
 */
 static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
-  // if(strcmp(algorithm, "K_BRUCK_OVER") == 0 ) return allgather_k_bruck;
+  CHECK_STR(algorithm, "k_bruck_over", allgather_k_bruck);
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "swing_permute_static_over", allgather_swing_permute_static);
@@ -105,7 +106,7 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_lat_over", bcast_swing_lat);
   CHECK_STR(algorithm, "swing_lat_reversed_over", bcast_swing_lat_reversed);
   CHECK_STR(algorithm, "swing_bdw_static_over", bcast_swing_bdw_static);
-//  CHECK_STR(algorithm, "swing_bdw_static_reversed_over", bcast_swing_bdw_static_reversed);
+  // CHECK_STR(algorithm, "swing_bdw_static_reversed_over", bcast_swing_bdw_static_reversed);
 
   BENCH_DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
@@ -229,6 +230,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
   switch (test_routine.collective){
     case ALLREDUCE:
       PMPI_Allreduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, comm);
+      // print_buffers(sbuf, rbuf, rbuf_gt, count, count, dtype, comm, 0);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
     case ALLGATHER:
