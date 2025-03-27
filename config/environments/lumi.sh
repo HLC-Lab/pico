@@ -2,7 +2,7 @@
 export SWINGCC=cc
 export RUN=srun
 export RUNFLAGS=""
-export SWING_DIR=$HOME/Swing_Test
+export SWING_DIR=/scratch/project_465000997/Swing_Test
 
 # Account/partition specific variables
 export PARTITION=standard-g
