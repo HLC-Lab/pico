@@ -15,7 +15,7 @@ export SEPARATOR="==============================================================
 export DEFAULT_COMPILE_ONLY="no"
 export DEFAULT_TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEFAULT_TYPES="int32"
-export DEFAULT_SIZES="8,64,512,4096,32768,262144,262144,16777216,134217728"
+export DEFAULT_SIZES="8,64,512,4096,32768,262144,2097152,16777216,134217728"
 export DEFAULT_SEGMENT_SIZES="0,16384,131072,1048576"
 export DEFAULT_COLLECTIVES="allreduce,allgather,bcast,reduce_scatter"
 export DEFAULT_TEST_TIME="01:00:00"
@@ -694,7 +694,7 @@ run_all_tests() {
 
         for size in ${SIZES//,/ }; do
             if [[ $size -lt $MPI_TASKS && " ${SKIP} " =~ " ${algo} " ]]; then
-                echo "Skipping algorithm $algo for size=$size < N_NODES=$MPI_TASKS"
+                echo "Skipping algorithm $algo for size=$size < MPI_TASKS=$MPI_TASKS"
                 continue
             fi
 

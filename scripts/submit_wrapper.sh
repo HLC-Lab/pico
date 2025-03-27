@@ -77,7 +77,7 @@ else
         PARAMS+=" --gpus-per-node $MAX_GPU_TEST"
     fi
 
-    [[ -n "$FORCE_TASKS" ]] && PARAMS+=" --ntasks-per-node $TASK_PER_NODE" || PARAMS+=" --ntasks $FORCE_TASKS"
+    [[ -z "$FORCE_TASKS" ]] && PARAMS+=" --ntasks-per-node $TASK_PER_NODE" || PARAMS+=" --ntasks $FORCE_TASKS"
 
     [[ -n "$GRES" ]] && PARAMS+=" --gres=$GRES"
 
