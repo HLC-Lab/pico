@@ -91,3 +91,5 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_03_16___15_34_44,0,32,1,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
 2025_03_27___19_15_25,0,16,1,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
 2025_03_27___19_15_25,1,16,1,ALLGATHER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
+2025_03_28___00_20_34,0,37,56,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,Test 2048 tasks on lumi
+2025_03_28___00_20_34,1,37,56,ALLGATHER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,Test 2048 tasks on lumi
