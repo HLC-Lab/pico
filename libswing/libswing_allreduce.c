@@ -923,9 +923,10 @@ cleanup_and_return:
 
 int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, size_t count,
                                         MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
-  int size, rank, dest, steps, step, err = MPI_SUCCESS, inbi, num_phases;
+  int size, rank, dest, steps, step, err = MPI_SUCCESS;
   int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
-  size_t w_size, segsize;
+  int phase_scount, phase_rcount, num_phases, inbi;
+  size_t w_size, segsize, segcount;
   uint32_t vrank, vdest;
   char *tmp_send = NULL, *tmp_recv = NULL;
   char *inbuf[2] = {NULL, NULL}, *inbuf_free[2] = {NULL, NULL};
@@ -937,18 +938,25 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
 
   // Does not support non-power-of-two or negative sizes
   steps = log_2(size);
+  if(!is_power_of_two(size) || steps == -1) {
+    return MPI_ERR_ARG;
+  }
+
   segsize = swing_allreduce_segsize;
-  if (segsize == 0) segsize = count / size;
 
   // Allocate temporary buffer for send/recv and reduce operations
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
 
-
-  if( !is_power_of_two(size) || steps == -1 || segsize == 0 || count % size != 0 || count % (segsize * extent) != 0) {
-    return MPI_ERR_ARG;
+  // Number of elements in a segment
+  segcount = segsize / extent;
+  if (segsize == 0) {
+    segcount = count / size;
+    segsize = segcount * extent;
   }
-  inbuf_size = true_extent + extent * segsize;
+
+  inbuf_size = (segcount < (count >> 1)) ?
+                  true_extent + extent * segcount : true_extent + extent * (count >> 1);
   inbuf_free[0] = (char *)malloc(inbuf_size);
   inbuf_free[1] = (char *)malloc(inbuf_size);
   if(NULL == inbuf_free[0] || NULL == inbuf_free[1]) {
@@ -965,20 +973,19 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
 
-  r_index = malloc(sizeof(*r_index) * steps);
-  s_index = malloc(sizeof(*s_index) * steps);
-  r_count = malloc(sizeof(*r_count) * steps);
-  s_count = malloc(sizeof(*s_count) * steps);
+  r_index = (int *) malloc(sizeof(*r_index) * steps);
+  s_index = (int *) malloc(sizeof(*s_index) * steps);
+  r_count = (int *) malloc(sizeof(*r_count) * steps);
+  s_count = (int *) malloc(sizeof(*s_count) * steps);
   if(NULL == r_index || NULL == s_index || NULL == r_count || NULL == s_count) {
     err = MPI_ERR_NO_MEM;
     goto cleanup_and_return;
   }
 
+  // Reduce-Scatter phase
   w_size = count;
   s_index[0] = r_index[0] = 0;
   vrank = remap_rank((uint32_t) size, (uint32_t) rank);
-
-  // Reduce-Scatter phase
   for(step = 0; step < steps; step++) {
     dest = pi(rank, step, size);
     vdest = remap_rank((uint32_t) size, (uint32_t) dest);
@@ -994,42 +1001,47 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
     }
 
     num_phases = (r_count[step] > s_count[step]) ?
-                    (int) (r_count[step] / segsize) :
-                    (int) (s_count[step] / segsize);
+                    (int) (r_count[step] / segcount) :
+                    (int) (s_count[step] / segcount);
+
+    phase_scount = (s_count[step] > segcount) ? segcount : s_count[step];
+    phase_rcount = (r_count[step] > segcount) ? segcount : r_count[step];
 
     inbi = 0;
-    err = MPI_Irecv(inbuf[inbi], segsize, dtype, dest, 0, comm, &reqs[inbi]);
+    err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
     tmp_send = (char *)recv_buf + s_index[step] * extent;
-    err = MPI_Send(tmp_send, segsize, dtype, dest, 0, comm);
+    err = MPI_Send(tmp_send, phase_scount, dtype, dest, 0, comm);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
     tmp_recv = (char *)recv_buf + r_index[step] * extent;
 
     for(int phase = 0; phase < num_phases - 1; phase++){
-      char *tmp_recv_phase = tmp_recv + (ptrdiff_t)(phase * segsize * extent);
-      char *tmp_send_phase = tmp_send + (ptrdiff_t)((phase + 1) * segsize * extent);
+      char *tmp_recv_phase = tmp_recv + (ptrdiff_t)(phase * phase_rcount * extent);
+      char *tmp_send_phase = tmp_send + (ptrdiff_t)((phase + 1) * phase_scount * extent);
       inbi = inbi ^ 0x1;
 
-      err = MPI_Irecv(inbuf[inbi], segsize, dtype, dest, 0, comm, &reqs[inbi]);
+      err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
       err = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
-      err = MPI_Reduce_local(inbuf[inbi ^ 0x1], tmp_recv_phase, segsize, dtype, op);
+      err = MPI_Reduce_local(inbuf[inbi ^ 0x1], tmp_recv_phase, phase_rcount, dtype, op);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
-      err = MPI_Send(tmp_send_phase, segsize, dtype, dest, 0, comm);
+      err = MPI_Send(tmp_send_phase, phase_scount, dtype, dest, 0, comm);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
     }
 
     err = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
-    tmp_recv += (ptrdiff_t)((num_phases - 1) * segsize * extent);
-    err = MPI_Reduce_local(inbuf[inbi], tmp_recv, segsize, dtype, op);
+    if(num_phases != 0){
+      tmp_recv += (ptrdiff_t)((num_phases - 1) * phase_rcount * extent);
+    }
+    err = MPI_Reduce_local(inbuf[inbi], tmp_recv, phase_rcount, dtype, op);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
     if(step + 1 < steps) {
@@ -1038,20 +1050,6 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
       w_size = r_count[step];
     }
   }
-
-  #ifdef DEBUG
-  for(int i = 0; i < size; i++) {
-    if(rank == i) {
-      if(rank == 0) fprintf(stderr,"======================\n");
-      fprintf(stderr, "Rank %d: ", rank);
-      for(int j = 0; j < count; j++) {
-        fprintf(stderr, "%d ", ((int *)recv_buf)[j]);
-      }
-      fprintf(stderr, "\n");
-    }
-    MPI_Barrier(comm);
-  }
-  #endif
 
   // Allgather phase
   for(step = steps - 1; step >= 0; step--) {
@@ -1064,20 +1062,6 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
-
-  #ifdef DEBUG
-  for(int i = 0; i < size; i++) {
-    if(rank == i) {
-      if(rank == 0) fprintf(stderr,"======================\n");
-      fprintf(stderr, "Rank %d: ", rank);
-      for(int j = 0; j < count; j++) {
-        fprintf(stderr, "%d ", ((int *)recv_buf)[j]);
-      }
-      fprintf(stderr, "\n");
-    }
-    MPI_Barrier(comm);
-  }
-  #endif
 
   free(inbuf_free[0]);
   free(inbuf_free[1]);

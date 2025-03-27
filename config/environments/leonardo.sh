@@ -1,7 +1,6 @@
 # Variables always needed
 export SWINGCC=mpicc
 export RUN=srun
-export RUNFLAGS=""
 export SWING_DIR=$HOME/Swing_Test
 
 # Account/partition specific variables

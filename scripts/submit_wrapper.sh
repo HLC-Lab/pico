@@ -21,7 +21,6 @@ export INTERACTIVE=$DEFAULT_INTERACTIVE
 export SHOW_MPICH_ENV=$DEFAULT_SHOW_MPICH_ENV
 export NOTES=$DEFAULT_NOTES
 export TASK_PER_NODE=$DEFAULT_TASK_PER_NODE
-export OVERCOMMIT=$DEFAULT_OVERCOMMIT
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
@@ -78,7 +77,7 @@ else
         PARAMS+=" --gpus-per-node $MAX_GPU_TEST"
     fi
 
-    PARAMS+=" --ntasks-per-node $TASK_PER_NODE"
+    [[ -n "$FORCE_TASKS" ]] && PARAMS+=" --ntasks-per-node $TASK_PER_NODE" || PARAMS+=" --ntasks $FORCE_TASKS"
 
     [[ -n "$GRES" ]] && PARAMS+=" --gres=$GRES"
 

@@ -21,7 +21,6 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
-
   // Get test arguments
 #ifndef DEBUG
   const char *outputdir = NULL, *data_dir = NULL, *output_level = NULL;
@@ -34,20 +33,12 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 #endif // DEBUG
+
   if(get_command_line_arguments(argc, argv, &count, &iter, &algorithm, &type_string) == -1 ||
       get_routine (&test_routine, algorithm) == -1 ||
       get_data_type(type_string, &dtype, &type_size) == -1 ){
     line = __LINE__;
     goto err_hndl;
-  }
-
-  // NOTE: Temporary fix for the segmented allreduce
-  if(swing_allreduce_segsize != 0 ){
-    if(swing_allreduce_segsize % type_size != 0 || count % (swing_allreduce_segsize/type_size) != 0) {
-      if(rank == 0) printf("Segsize not compatible, skipping\n");
-      MPI_Finalize();
-      return EXIT_SUCCESS;
-    }
   }
 
   // Allocate memory for the buffers based on the collective type
@@ -67,23 +58,21 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-  
-#ifndef DEBUG
-  // Randomly generate the sbuf
-  if(rand_sbuf_generator(sbuf, dtype, count, comm, test_routine) != 0){
-    line = __LINE__;
-    goto err_hndl;
-  }
-#else
+
+#ifdef DEBUG
   // Initialize the sbuf with a sequence of powers of 10
   // WARNING: Only int32, int64 and int supported
   if(debug_sbuf_generator(sbuf, dtype, count, comm, test_routine) != 0){
     line = __LINE__;
     goto err_hndl;
   }
+#else
+  // Randomly generate the sbuf
+  if(rand_sbuf_generator(sbuf, dtype, count, comm, test_routine) != 0){
+    line = __LINE__;
+    goto err_hndl;
+  }
 #endif // DEBUG
-
-
 
 #ifdef CUDA_AWARE
   void *d_sbuf = NULL, *d_rbuf = NULL;
@@ -98,7 +87,7 @@ int main(int argc, char *argv[]) {
   sbuf = d_sbuf;
   rbuf = d_rbuf;
 #endif
-  
+
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
   if(test_loop(test_routine, sbuf, rbuf, count, dtype, comm, iter, times) != 0){
@@ -121,7 +110,7 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 
-  #ifndef DEBUG
+#ifndef DEBUG
   // Gather all process times to rank 0 and find the highest execution time of each iteration
   PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
   PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
@@ -180,7 +169,7 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-  #endif // DEBUG
+#endif // DEBUG
 
   // Clean up
   free(sbuf);

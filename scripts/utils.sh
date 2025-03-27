@@ -13,7 +13,6 @@ export SEPARATOR="==============================================================
 # Default values
 ###############################################################################
 export DEFAULT_COMPILE_ONLY="no"
-export DEFAULT_OVERCOMMIT="no"
 export DEFAULT_TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEFAULT_TYPES="int32"
 export DEFAULT_SIZES="8,64,512,4096,32768,262144,262144,16777216,134217728"
@@ -85,6 +84,8 @@ Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]
 Options:
 --location          Location (required)
 --nodes             Number of nodes (required if not in --compile-only)
+--ntasks            Total number of tasks. Will override tasks per node and
+                    does not allow for --cuda option.
 --compile-only      Compile only.
                     [default: "${DEFAULT_COMPILE_ONLY}"]
 --output-dir        Output dir of test.
@@ -130,13 +131,6 @@ Options:
                     It differs from debug mode as it will not compile and run code,
                     apart from python scripts to check the configuration and update dynamic rules.
                     [default: "${DEFAULT_DRY_RUN}"]
---overcommit        Enable srun overcommit. If yes, gpu related options will be ignored.
-                    Also if set to yes, a value of --force-tasks is needed.
-                    Moreover a value of `CPU_NODE_PARTITION` is needed in the location configuration.
-                    [default: "${DEFAULT_OVERCOMMIT}"]
---force-tasks       Number of tasks to force in srun.
-                    Needed if --overcommit is set to yes.
-                    [default: ""]
 --interactive       Interactive mode (use salloc instead of sbatch).
                     [default: "${DEFAULT_INTERACTIVE}"]
 --show-mpich-env    Show MPICH environment variables.
@@ -181,6 +175,10 @@ parse_cli_args() {
                 ;;
             --nodes)
                 export N_NODES="$2"
+                shift 2
+                ;;
+            --ntasks)
+                export FORCE_TASKS="$2"
                 shift 2
                 ;;
             --output-dir)
@@ -248,16 +246,6 @@ parse_cli_args() {
                 export DRY_RUN="$2"
                 shift 2
                 ;;
-            --overcommit)
-                check_arg "$1" "$2"
-                export OVERCOMMIT="$2"
-                shift 2
-                ;;
-            --force-tasks)
-                check_arg "$1" "$2"
-                export FORCE_TASKS="$2"
-                shift 2
-                ;;
             --interactive)
                 check_arg "$1" "$2"
                 export INTERACTIVE="$2"
@@ -311,23 +299,6 @@ validate_args() {
       return 1
     fi
 
-    check_yes_no "$OVERCOMMIT" "--overcommit" || return 1
-    if [[ "$OVERCOMMIT" == "yes" ]]; then
-      warning "Overcommit mode enabled. GPU related options will be ignored."
-      export CUDA="False"
-      if [[ -z "$FORCE_TASKS" || ! "$FORCE_TASKS" =~ ^[0-9]+$ ]]; then
-        error "--force-tasks is required if --overcommit is 'yes'."
-        usage
-        return 1
-      fi
-
-      if [[ -z "$CPU_NODE_PARTITION" || ! "$CPU_NODE_PARTITION" =~ ^[0-9]+$ ]]; then
-        error "'CPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
-        return 1
-      fi
-      export TASK_PER_NODE=$CPU_NODE_PARTITION
-      export RUNFLAGS="--overcommit $RUNFLAGS"
-    fi
 
     if [[ "$COMPILE_ONLY" == "yes" ]]; then
         success "Compile only mode. Skipping validation."
@@ -346,6 +317,16 @@ validate_args() {
         error "--time must be in the format 'HH:MM:SS' with minutes and seconds between 00 and 59."
         usage
         return 1
+    fi
+
+    if [[ -n "$FORCE_TASKS" ]]; then
+        if [[ ! "$FORCE_TASKS" =~ ^[0-9]+$ || "$FORCE_TASKS" -lt "$N_NODES" ]]; then
+            error "--ntasks must be a numeric value bigger than --nodes."
+            usage
+            return 1
+        fi
+        warning "--ntasks set, ignoring --cuda."
+        export CUDA="False"
     fi
 
     check_yes_no "$COMPRESS" "--compress" || return 1
@@ -435,7 +416,7 @@ validate_args() {
     else 
         export GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
     fi
-    [[ -z "$FORCE_TASKS" ]] && export TASK_PER_NODE=$task_per_node
+    export TASK_PER_NODE=$task_per_node
     export MAX_GPU_TEST=$max_gpu_per_node
 
     [[ "$SHOW_MPICH_ENV" == "yes" && "$DEBUG_MODE" == "yes" && "$MPI_LIB" == "CRAY_MPICH" ]] && export MPICH_ENV_DISPLAY=1
@@ -593,7 +574,7 @@ print_sanity_checks() {
     echo "  • Debug Mode:            $DEBUG_MODE"
     echo "  • Number of Nodes:       $N_NODES"
     echo "  • Total MPI tasks:       $MPI_TASKS"
-    echo "  • Task per Node:         $CURRENT_TASK_PER_NODE"
+    [[ -z "$FORCE_TASKS" ]] && echo "  • Task per Node:         $CURRENT_TASK_PER_NODE"
 
     inform "Output Settings:"
     echo "  • Output Level:          $OUTPUT_LEVEL"
@@ -652,7 +633,7 @@ run_bench() {
     local iter=$(get_iterations $size)
     local command="$RUN $RUNFLAGS -n $MPI_TASKS $BENCH_EXEC $size $iter $algo $type"
 
-    [[ "$DEBUG_MODE" == "yes" ]] && inform "DEBUG: $COLLECTIVE_TYPE -> $MPI_TASKS processes ($N_NODES nodes), $size array size, $type datatype ($algo)"
+    [[ "$DEBUG_MODE" == "yes" ]] && inform "DEBUG: $COLLECTIVE_TYPE -> $MPI_TASKS processes ($N_NODES nodes), $size array size, $type datatype ($algo)" && [[ "$SEGMENTED" == "yes" ]] && echo "Segment size: $SEGSIZE"
 
     if [[ "$DRY_RUN" == "yes" ]]; then
         inform "Would run: $command"
@@ -721,7 +702,7 @@ run_all_tests() {
                 for type in ${TYPES//,/ }; do
                     for segment_size in ${SEGMENT_SIZES//,/ }; do
                         export SEGSIZE=$segment_size
-                        [[ "$size" -gt "$segment_size" || "$segment_size" == "0" ]] && run_bench $size $algo $type
+                        run_bench $size $algo $type
                     done
                 done
             else
