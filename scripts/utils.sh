@@ -13,9 +13,11 @@ export SEPARATOR="==============================================================
 # Default values
 ###############################################################################
 export DEFAULT_COMPILE_ONLY="no"
+export DEFAULT_OVERCOMMIT="no"
 export DEFAULT_TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEFAULT_TYPES="int32"
 export DEFAULT_SIZES="8,64,512,4096,32768,262144,262144,16777216,134217728"
+export DEFAULT_SEGMENT_SIZES="0,16384,131072,1048576"
 export DEFAULT_COLLECTIVES="allreduce,allgather,bcast,reduce_scatter"
 export DEFAULT_TEST_TIME="01:00:00"
 export DEFAULT_OUTPUT_LEVEL="summarized"
@@ -128,6 +130,13 @@ Options:
                     It differs from debug mode as it will not compile and run code,
                     apart from python scripts to check the configuration and update dynamic rules.
                     [default: "${DEFAULT_DRY_RUN}"]
+--overcommit        Enable srun overcommit. If yes, gpu related options will be ignored.
+                    Also if set to yes, a value of --force-tasks is needed.
+                    Moreover a value of `CPU_NODE_PARTITION` is needed in the location configuration.
+                    [default: "${DEFAULT_OVERCOMMIT}"]
+--force-tasks       Number of tasks to force in srun.
+                    Needed if --overcommit is set to yes.
+                    [default: ""]
 --interactive       Interactive mode (use salloc instead of sbatch).
                     [default: "${DEFAULT_INTERACTIVE}"]
 --show-mpich-env    Show MPICH environment variables.
@@ -239,6 +248,16 @@ parse_cli_args() {
                 export DRY_RUN="$2"
                 shift 2
                 ;;
+            --overcommit)
+                check_arg "$1" "$2"
+                export OVERCOMMIT="$2"
+                shift 2
+                ;;
+            --force-tasks)
+                check_arg "$1" "$2"
+                export FORCE_TASKS="$2"
+                shift 2
+                ;;
             --interactive)
                 check_arg "$1" "$2"
                 export INTERACTIVE="$2"
@@ -290,6 +309,24 @@ validate_args() {
       error "--cuda must be either 'True' or 'False'."
       usage
       return 1
+    fi
+
+    check_yes_no "$OVERCOMMIT" "--overcommit" || return 1
+    if [[ "$OVERCOMMIT" == "yes" ]]; then
+      warning "Overcommit mode enabled. GPU related options will be ignored."
+      export CUDA="False"
+      if [[ -z "$FORCE_TASKS" || ! "$FORCE_TASKS" =~ ^[0-9]+$ ]]; then
+        error "--force-tasks is required if --overcommit is 'yes'."
+        usage
+        return 1
+      fi
+
+      if [[ -z "$CPU_NODE_PARTITION" || ! "$CPU_NODE_PARTITION" =~ ^[0-9]+$ ]]; then
+        error "'CPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
+        return 1
+      fi
+      export TASK_PER_NODE=$CPU_NODE_PARTITION
+      export RUNFLAGS="--overcommit $RUNFLAGS"
     fi
 
     if [[ "$COMPILE_ONLY" == "yes" ]]; then
@@ -398,7 +435,7 @@ validate_args() {
     else 
         export GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
     fi
-    export TASK_PER_NODE=$task_per_node
+    [[ -z "$FORCE_TASKS" ]] && export TASK_PER_NODE=$task_per_node
     export MAX_GPU_TEST=$max_gpu_per_node
 
     [[ "$SHOW_MPICH_ENV" == "yes" && "$DEBUG_MODE" == "yes" && "$MPI_LIB" == "CRAY_MPICH" ]] && export MPICH_ENV_DISPLAY=1
@@ -623,7 +660,10 @@ run_bench() {
         if [[ "$DEBUG_MODE" == "yes" ]]; then
             $command
         else
-            $command || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; cleanup; }
+            # WARN: Removed panic mode for full cluster run
+            #
+            # $command || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; cleanup; }
+            $command
         fi
     fi
 }
@@ -666,6 +706,9 @@ run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
         update_algorithm $algo $i
+        export SEGMENTED=${IS_SEGMENTED[$i]}
+        inform "Segmented: $SEGMENTED"
+
         [[ "$DEBUG_MODE" == "no" ]] && inform "BENCH: $COLLECTIVE_TYPE -> $MPI_TASKS processes ($N_NODES nodes)"
 
         for size in ${SIZES//,/ }; do
@@ -674,9 +717,18 @@ run_all_tests() {
                 continue
             fi
 
-            for type in ${TYPES//,/ }; do
-                run_bench $size $algo $type
-            done
+            if [[ "$SEGMENTED" == "yes" ]]; then
+                for type in ${TYPES//,/ }; do
+                    for segment_size in ${SEGMENT_SIZES//,/ }; do
+                        export SEGSIZE=$segment_size
+                        [[ "$size" -gt "$segment_size" || "$segment_size" == "0" ]] && run_bench $size $algo $type
+                    done
+                done
+            else
+                for type in ${TYPES//,/ }; do
+                    run_bench $size $algo $type
+                done
+            fi
         done
         ((i++))
     done

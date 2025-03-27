@@ -122,6 +122,7 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
     
     matching_algorithms = []
     skip_algorithms = []
+    is_segmented = []
     cvars = []
     
     if collective not in algorithm_config["collective"]:
@@ -151,16 +152,24 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
 
         # Tag based filtering
         if not any(tag in algo_data["tags"] for tag in include_tags):
+            print(f"Excluding {algo_name} due to tag not found.")
             continue
         if any(tag in algo_data["tags"] for tag in exclude_tags):
+            print(f"Excluding {algo_name} due to tag exclusion.")
             continue
 
         # Add to matching (and skip if skip-constraints are not met)
         if "constraints" in algo_data and check_skip(algo_data["constraints"]):
             skip_algorithms.append(algo_name)
-        matching_algorithms.append(algo_name)
         if mpi_type.lower() in require_cvars:
             cvars.append(algo_data["cvar"])
+
+        matching_algorithms.append(algo_name)
+
+        if "is_segmented" in algo_data["tags"]:
+            is_segmented.append("yes")
+        else:
+            is_segmented.append("no")
 
     if not matching_algorithms:
         print(f"{__file__}: no allowed algorithms found for TEST_CONFIG_FILE.", file=sys.stderr)
@@ -170,11 +179,11 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
         print(f"{__file__}: no cvars found for MPI_LIB={mpi_type}.", file=sys.stderr)
         sys.exit(1)
 
-    return matching_algorithms, skip_algorithms, cvars
+    return matching_algorithms, skip_algorithms, is_segmented, cvars
 
 
 
-def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
+def export_environment_variables(matching_algorithms, skip_algorithms, is_segmented, cvars,
                                  test_config, output_file: str | os.PathLike) -> None:
     """Export environment variables for the shell script."""
     collective = test_config["collective"]
@@ -185,6 +194,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
     libswing_version = test_config.get("libswing_version", "")
     algo_names = " ".join(matching_algorithms)
     skip_names = " ".join(skip_algorithms)
+    segmented = " ".join(is_segmented)
     cvars_str = " ".join(cvars) if cvars else ""
 
     # Write the environment variables to a shell script that will be sourced
@@ -195,6 +205,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, cvars,
             f.write(f"export SKIP='{skip_names}'\n")
             f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
             f.write(f"export MPI_OP='{mpi_op}'\n")
+            f.write(f"export IS_SEGMENTED=({segmented})\n")
             if cvars_str:
                 f.write(f"export CVARS=({cvars_str})\n")
     except IOError as e:
@@ -236,11 +247,11 @@ def main():
 
 
     # Get matching algorithms
-    matching_algorithms, skip_algorithms, cvars = get_matching_algorithms(
+    matching_algorithms, skip_algorithms, is_segmented, cvars = get_matching_algorithms(
         algorithm_config, test_config, number_of_nodes, mpi_type, mpi_version, cuda)
 
     # Write environment variables to a shell script to be sourced
-    export_environment_variables(matching_algorithms, skip_algorithms, cvars, test_config, output_file)
+    export_environment_variables(matching_algorithms, skip_algorithms, is_segmented, cvars, test_config, output_file)
     
 
 if __name__ == "__main__":

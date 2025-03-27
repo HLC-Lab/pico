@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.9",
+    "schema_version": "2.6.10",
     "created": "2024-01-30",
-    "last_modified": "2024-03-25",
+    "last_modified": "2024-03-27",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -585,8 +585,6 @@
           "swing_lat",
           "swing",
           "latency_optimal",
-          "small_sizes",
-          "medium_sizes",
           "external"
         ]
       },
@@ -626,8 +624,6 @@
           "swing",
           "bandwidth_optimal",
           "static",
-          "medium_sizes",
-          "large_sizes",
           "external"
         ]
       },
@@ -696,6 +692,7 @@
         "tags": [
           "swing_bdw_remap_segmented",
           "swing",
+          "is_segmented",
           "bandwidth_optimal",
           "remap",
           "external"
@@ -1177,6 +1174,63 @@
           "external"
         ]
       },
+      "sparbit_over": {
+        "desc": "Libswing external sparse bit algorithm. Comm_sz must be greater or equal to count.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "sparbit",
+          "external"
+        ]
+      },
+      "swing_block_by_block_over": {
+        "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing_block_by_block",
+          "block_by_block",
+          "swing",
+          "external"
+        ]
+      },
       "swing_permute_static_over": {
         "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
@@ -1211,8 +1265,8 @@
         "tags": [
           "swing_static",
           "swing",
-          "medium_sizes",
-          "large_sizes",
+          "permute",
+          "static",
           "external"
         ]
       },
@@ -1250,6 +1304,7 @@
         "tags": [
           "swing_static",
           "swing",
+          "static",
           "external"
         ]
       },
@@ -1286,12 +1341,13 @@
         ],
         "tags": [
           "swing_remap",
+          "permute",
           "swing",
           "external"
         ]
       },
       "swing_send_remap_over": {
-        "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+        "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
         "library": {
           "libswing": "1.0.0"
         },
@@ -1304,10 +1360,6 @@
               {
                 "operator": "is_power_of_two",
                 "value": true
-              },
-              {
-                "operator": "<=",
-                "value": 256
               }
             ]
           },
@@ -1355,75 +1407,6 @@
           }
         ],
         "tags": [
-          "test",
-          "swing",
-          "cuda",
-          "external"
-        ]
-      },
-      "swing_2_blocks_b_over": {
-        "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
-        "library": {
-          "libswing": "1.0.0"
-        },
-        "cvar": "auto",
-        "dynamic_rule": 0,
-        "constraints": [
-          {
-            "key": "comm_sz",
-            "conditions": [
-              {
-                "operator": "is_power_of_two",
-                "value": true
-              }
-            ]
-          },
-          {
-            "key": "count",
-            "conditions": [
-              {
-                "operator": ">=",
-                "value": "comm_sz"
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "test",
-          "swing",
-          "cuda",
-          "external"
-        ]
-      },
-      "swing_2_blocks_c_over": {
-        "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
-        "library": {
-          "libswing": "1.0.0"
-        },
-        "cvar": "auto",
-        "dynamic_rule": 0,
-        "constraints": [
-          {
-            "key": "comm_sz",
-            "conditions": [
-              {
-                "operator": "is_power_of_two",
-                "value": true
-              }
-            ]
-          },
-          {
-            "key": "count",
-            "conditions": [
-              {
-                "operator": ">=",
-                "value": "comm_sz"
-              }
-            ]
-          }
-        ],
-        "tags": [
-          "test",
           "swing",
           "cuda",
           "external"
@@ -1458,6 +1441,8 @@
         ],
         "tags": [
           "swing",
+          "dtype",
+          "static",
           "cuda",
           "external"
         ]

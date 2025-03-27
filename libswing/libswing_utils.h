@@ -36,7 +36,6 @@
 #define COPY_BUFF_DIFF_DT(...) copy_buffer_different_dt(__VA_ARGS__)
 #endif
 
-
 static int rhos[SWING_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
 
@@ -566,6 +565,17 @@ static inline uint32_t inverse_rank(uint32_t num_ranks, uint32_t rank){
     return reverse(rank) >> (32 - num_bits);
 }
 
+static inline uint32_t get_sender_aux(uint32_t num_ranks, uint32_t rank, uint32_t root){
+  uint32_t remap = remap_rank(num_ranks, rank);
+
+  if (remap == root)  return rank;
+  else                return get_sender_aux(num_ranks, remap, root);
+}
+
+static inline uint32_t get_sender_rec(uint32_t num_ranks, uint32_t rank){
+  return get_sender_aux(num_ranks, rank, rank);
+}
+
 // NOTE: Commented since at the moment not used in the code
 //
 // /**
@@ -575,15 +585,15 @@ static inline uint32_t inverse_rank(uint32_t num_ranks, uint32_t rank){
 //  * is called, the SEGCOUNT should be initialized to the count as
 //  * expected by the collective call.
 //  */
-// #define COLL_BASE_COMPUTED_SEGCOUNT(SEGSIZE, TYPELNG, SEGCOUNT)        \
-//     if( ((SEGSIZE) >= (TYPELNG)) &&                                     \
-//         ((SEGSIZE) < ((TYPELNG) * (SEGCOUNT))) ) {                      \
-//         size_t residual;                                                \
-//         (SEGCOUNT) = (int)((SEGSIZE) / (TYPELNG));                      \
-//         residual = (SEGSIZE) - (SEGCOUNT) * (TYPELNG);                  \
-//         if( residual > ((TYPELNG) >> 1) )                               \
-//             (SEGCOUNT)++;                                               \
-//     }                                                                   \
+// define COLL_BASE_COMPUTED_SEGCOUNT(SEGSIZE, TYPELNG, SEGCOUNT)
+//     if( ((SEGSIZE) >= (TYPELNG)) &&
+//         ((SEGSIZE) < ((TYPELNG) * (SEGCOUNT))) ) {
+//         size_t residual;
+//         (SEGCOUNT) = (int)((SEGSIZE) / (TYPELNG));
+//         residual = (SEGSIZE) - (SEGCOUNT) * (TYPELNG);
+//         if( residual > ((TYPELNG) >> 1) )
+//             (SEGCOUNT)++;
+//     }
 //
 //
 // typedef enum{

@@ -1,12 +1,14 @@
 # Variables always needed
 export SWINGCC=mpicc
 export RUN=srun
+export RUNFLAGS=""
 export SWING_DIR=$HOME/Swing_Test
 
 # Account/partition specific variables
 export PARTITION=boost_usr_prod
 if [[ "$PARTITION" == "boost_usr_prod" ]]; then
     export GPU_NODE_PARTITION=4
+    export CPU_NODE_PARTITION=32
 
     if [[ "$N_NODES" -gt 64 ]]; then
         export QOS='boost_qos_bprod'
@@ -16,9 +18,11 @@ if [[ "$PARTITION" == "boost_usr_prod" ]]; then
 
     [[ "$N_NODES" == 2 && "$DEBUG_MODE" == "yes" ]] && export QOS='boost_qos_dbg'
 fi
-export ACCOUNT=IscrC_ASCEND
+# export ACCOUNT=IscrC_ASCEND
+# export ACCOUNT=IscrC_SWING
 
 export UCX_IB_SL=1
+# export UCX_MAX_RNDV_RAILS=4
 export MODULES="python/3.11.6--gcc--8.5.0"
 
 [[ "$CUDA" == "True" ]] && export MODULES="cuda/12.1,$MODULES"

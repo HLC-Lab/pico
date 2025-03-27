@@ -41,6 +41,15 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 
+  // NOTE: Temporary fix for the segmented allreduce
+  if(swing_allreduce_segsize != 0 ){
+    if(swing_allreduce_segsize % type_size != 0 || count % (swing_allreduce_segsize/type_size) != 0) {
+      if(rank == 0) printf("Segsize not compatible, skipping\n");
+      MPI_Finalize();
+      return EXIT_SUCCESS;
+    }
+  }
+
   // Allocate memory for the buffers based on the collective type
   if(test_routine.allocator(&sbuf, &rbuf, &rbuf_gt, count, type_size, comm) != 0){
     line = __LINE__;
@@ -118,16 +127,26 @@ int main(int argc, char *argv[]) {
   PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
 
   if (rank == 0) {
-    printf("--------------------------------------------------------------------------------------------\n");
-    printf("   %-30s\n    Last Iter Time: %15" PRId64"ns     %10ld elements of %s dtype\t%6d iter\n", algorithm, (int64_t) (highest[iter-1] * 1e9), count, type_string, iter);
+    if (swing_allreduce_segsize != 0) {
+      printf("-------------------------------------------------------------------------------------------------------------------\n");
+      printf("   %-30s\n    Last Iter Time: %15" PRId64"ns     %10ld elements of %s dtype\t%6d iter\t%8ld segsize\n", algorithm, (int64_t) (highest[iter-1] * 1e9), count, type_string, iter, swing_allreduce_segsize);
+    } else {
+      printf("-----------------------------------------------------------------------------------------------\n");
+      printf("   %-30s\n    Last Iter Time: %15" PRId64"ns     %10ld elements of %s dtype\t%6d iter\n", algorithm, (int64_t) (highest[iter-1] * 1e9), count, type_string, iter);
+    }
   }
   
   // Save results to a .csv file inside `/data/` subdirectory. Bash script `run_test_suite.sh`
   // is responsible to create the `/data/` subdir.
   if(rank == 0){
     char data_filename[128], data_fullpath[BENCH_MAX_PATH_LENGTH];
-    snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
-             count, algorithm, type_string);
+    if(swing_allreduce_segsize != 0){
+      snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%ld_%s.csv",
+               count, algorithm, swing_allreduce_segsize, type_string);
+    } else {
+      snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
+               count, algorithm, type_string);
+    }
     if(concatenate_path(data_dir, data_filename, data_fullpath) == -1) {
       line = __LINE__;
       goto err_hndl;

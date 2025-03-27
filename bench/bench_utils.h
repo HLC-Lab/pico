@@ -47,6 +47,7 @@
 #define BENCH_HEADER_LUMI "MPI_Rank,allocation,xname\n"
 #define BENCH_HEADER_DEFAULT "MPI_Rank,allocation\n"
 
+extern size_t swing_allreduce_segsize;
 
 //-----------------------------------------------------------------------------------------------
 //                        ENUM FOR COLLECTIVE SELECTION

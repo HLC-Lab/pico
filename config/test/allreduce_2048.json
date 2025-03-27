@@ -1,15 +1,17 @@
 {
   "libswing_version": "1.0.0",
-  "collective": "ALLGATHER",
+  "collective": "ALLREDUCE",
   "MPI_Op": "MPI_SUM",
   "tags": {
     "include": [
       "internal",
-      "external"
+      "swing"
     ],
     "exclude": [
+      "smp",
       "can_crash",
-      "suboptimal"
+      "suboptimal",
+      "static"
     ]
   },
   "specific": {

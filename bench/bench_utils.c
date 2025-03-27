@@ -82,13 +82,13 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "k_bruck_over", allgather_k_bruck);
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
+  CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
+  CHECK_STR(algorithm, "swing_block_by_block_over", allgather_swing_block_by_block);
   CHECK_STR(algorithm, "swing_permute_static_over", allgather_swing_permute_static);
   CHECK_STR(algorithm, "swing_send_static_over", allgather_swing_send_static);
   CHECK_STR(algorithm, "swing_permute_remap_over", allgather_swing_permute_remap);
   CHECK_STR(algorithm, "swing_send_remap_over", allgather_swing_send_remap);
   CHECK_STR(algorithm, "swing_2_blocks_over", allgather_swing_2_blocks);
-  CHECK_STR(algorithm, "swing_2_blocks_b_over", allgather_swing_2_blocks_b);
-  CHECK_STR(algorithm, "swing_2_blocks_c_over", allgather_swing_2_blocks_c);
   CHECK_STR(algorithm, "swing_2_blocks_dtype_over", allgather_swing_2_blocks_dtype);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allgather");
@@ -136,7 +136,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
 
 
 int get_routine(test_routine_t *test_routine, const char *algorithm) {
-  const char *coll_str = NULL;
+  const char *coll_str = NULL, *is_segmented, *segsize = NULL;
 
   // Get the collective type from the environment variable
   coll_str = getenv("COLLECTIVE_TYPE");
@@ -178,7 +178,16 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
     default :
       fprintf(stderr, "Error! Invalid collective type. Aborting...");
       return -1;
+  }
+
+  is_segmented = getenv("SEGMENTED");
+  if(strcmp(is_segmented, "yes") == 0) { 
+    segsize = getenv("SEGSIZE");
+    if(segsize == NULL) {
+      return -1;
     }
+    swing_allreduce_segsize = (size_t) strtoll(segsize, NULL, 10);
+  }
 
   return 0;
 }

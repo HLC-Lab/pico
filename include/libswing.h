@@ -12,6 +12,8 @@
 #define REDUCE_SCATTER_ARGS   const void *sbuf, void *rbuf, const int rcounts[], \
                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm
 
+extern size_t swing_allreduce_segsize;
+
 int allreduce_recursivedoubling(ALLREDUCE_ARGS);
 int allreduce_ring(ALLREDUCE_ARGS);
 int allreduce_rabenseifner(ALLREDUCE_ARGS);
@@ -23,20 +25,20 @@ int allreduce_swing_bdw_remap_segmented(ALLREDUCE_ARGS);
 int allgather_k_bruck(ALLGATHER_ARGS);
 int allgather_recursivedoubling(ALLGATHER_ARGS);
 int allgather_ring(ALLGATHER_ARGS);
+int allgather_sparbit(ALLGATHER_ARGS);
+int allgather_swing_block_by_block(ALLGATHER_ARGS);
 int allgather_swing_permute_static(ALLGATHER_ARGS);
 int allgather_swing_send_static(ALLGATHER_ARGS);
 int allgather_swing_permute_remap(ALLGATHER_ARGS);
 int allgather_swing_send_remap(ALLGATHER_ARGS);
 int allgather_swing_2_blocks(ALLGATHER_ARGS);
-int allgather_swing_2_blocks_b(ALLGATHER_ARGS);
-int allgather_swing_2_blocks_c(ALLGATHER_ARGS);
 int allgather_swing_2_blocks_dtype(ALLGATHER_ARGS);
 
 int bcast_scatter_allgather(BCAST_ARGS);
 int bcast_swing_lat(BCAST_ARGS);
 int bcast_swing_lat_reversed(BCAST_ARGS);
 int bcast_swing_bdw_static(BCAST_ARGS);
-int bcast_swing_bdw_static_reversed(BCAST_ARGS);
+// int bcast_swing_bdw_static_reversed(BCAST_ARGS);
 
 int reduce_scatter_recursivehalving(REDUCE_SCATTER_ARGS);
 int reduce_scatter_recursive_distance_doubling(REDUCE_SCATTER_ARGS);

@@ -7,6 +7,7 @@
 #include "libswing_utils.h"
 #include "libswing_utils_bitmaps.h"
 
+size_t swing_allreduce_segsize = 0;
 
 int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
                                 MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
@@ -936,15 +937,17 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
 
   // Does not support non-power-of-two or negative sizes
   steps = log_2(size);
-  segsize = count / size;
-  if( !is_power_of_two(size) || steps == -1 || segsize == 0 || count % size != 0) {
-    return MPI_ERR_ARG;
-  }
+  segsize = swing_allreduce_segsize;
+  if (segsize == 0) segsize = count / size;
 
   // Allocate temporary buffer for send/recv and reduce operations
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
 
+
+  if( !is_power_of_two(size) || steps == -1 || segsize == 0 || count % size != 0 || count % (segsize * extent) != 0) {
+    return MPI_ERR_ARG;
+  }
   inbuf_size = true_extent + extent * segsize;
   inbuf_free[0] = (char *)malloc(inbuf_size);
   inbuf_free[1] = (char *)malloc(inbuf_size);

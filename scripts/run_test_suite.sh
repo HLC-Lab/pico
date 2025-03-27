@@ -17,6 +17,7 @@ for config in ${TEST_CONFIG_FILES[@]//,/ }; do
             export CURRENT_TASK_PER_NODE=$gpu
             export BENCH_EXEC=$BENCH_EXEC_CUDA
         fi
+        [[ -n "$FORCE_TASKS" ]] && export MPI_TASKS=$FORCE_TASKS
         export TEST_CONFIG=${config}
         export TEST_ENV="${TEST_CONFIG}_env.sh"
         python3 $SWING_DIR/config/parse_test.py || exit 1

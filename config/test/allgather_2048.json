@@ -5,9 +5,14 @@
   "tags": {
     "include": [
       "internal",
-      "external"
+      "swing",
+      "sparbit",
+      "k_bruck"
     ],
     "exclude": [
+      "static",
+      "dtype",
+      "permute",
       "can_crash",
       "suboptimal"
     ]
