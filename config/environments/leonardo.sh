@@ -5,13 +5,13 @@ export SWING_DIR=$HOME/Swing_Test
 
 # Account/partition specific variables
 export PARTITION=boost_usr_prod
-export ACCOUNT=IscrC_ASCEND
+# export ACCOUNT=IscrC_ASCEND
 if [[ "$PARTITION" == "boost_usr_prod" ]]; then
     export GPU_NODE_PARTITION=4
     export CPU_NODE_PARTITION=32
 
     if [[ "$N_NODES" -gt 256 ]]; then
-        # export ACCOUNT=IscrB_SWING
+        export ACCOUNT=IscrB_SWING
         export QOS=''
         # export QOS_TASKS_PER_NODE=32
         # export QOS_GRES='gpu:4'
