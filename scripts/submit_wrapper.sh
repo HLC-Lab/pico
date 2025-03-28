@@ -81,6 +81,7 @@ else
     [[ -n "$GRES" ]] && PARAMS+=" --gres=$GRES"
     [[ -n "$EXCLUDE_NODES" ]] && PARAMS+=" --exclude $EXCLUDE_NODES" 
 
+    PARAMS+=" --reservation=s_int_lped_boost"
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS
     else
