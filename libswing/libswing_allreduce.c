@@ -942,19 +942,17 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
     return MPI_ERR_ARG;
   }
 
-  segsize = swing_allreduce_segsize;
-
-  // Allocate temporary buffer for send/recv and reduce operations
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
 
-  // Number of elements in a segment
-  segcount = segsize / extent;
+  segsize = swing_allreduce_segsize;
+  segcount = segsize / extent;      // Number of elements in a segment
   if (segsize == 0) {
     segcount = count / size;
     segsize = segcount * extent;
   }
 
+  // Allocate temporary buffer for send/recv and reduce operations
   inbuf_size = (segcount < (count >> 1)) ?
                   true_extent + extent * segcount : true_extent + extent * (count >> 1);
   inbuf_free[0] = (char *)malloc(inbuf_size);

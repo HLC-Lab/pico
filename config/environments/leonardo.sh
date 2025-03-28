@@ -5,11 +5,17 @@ export SWING_DIR=$HOME/Swing_Test
 
 # Account/partition specific variables
 export PARTITION=boost_usr_prod
+export ACCOUNT=IscrC_ASCEND
 if [[ "$PARTITION" == "boost_usr_prod" ]]; then
     export GPU_NODE_PARTITION=4
     export CPU_NODE_PARTITION=32
 
-    if [[ "$N_NODES" -gt 64 ]]; then
+    if [[ "$N_NODES" -gt 256 ]]; then
+        # export ACCOUNT=IscrC_SWING
+        export QOS=''
+        # export QOS_TASKS_PER_NODE=32
+        # export QOS_GRES='gpu:4'
+    elif [[ "$N_NODES" -gt 64 ]]; then
         export QOS='boost_qos_bprod'
         export QOS_TASKS_PER_NODE=32 # necessary for the qos
         export QOS_GRES='gpu:4'
@@ -17,8 +23,6 @@ if [[ "$PARTITION" == "boost_usr_prod" ]]; then
 
     [[ "$N_NODES" == 2 && "$DEBUG_MODE" == "yes" ]] && export QOS='boost_qos_dbg'
 fi
-# export ACCOUNT=IscrC_ASCEND
-# export ACCOUNT=IscrC_SWING
 
 export UCX_IB_SL=1
 # export UCX_MAX_RNDV_RAILS=4
