@@ -12,7 +12,7 @@ if [[ "$PARTITION" == "boost_usr_prod" ]]; then
 
     if [[ "$N_NODES" -gt 256 ]]; then
         export ACCOUNT=IscrB_SWING
-        export QOS=''
+        export QOS='qos_special'
         # export QOS_TASKS_PER_NODE=32
         # export QOS_GRES='gpu:4'
     elif [[ "$N_NODES" -gt 64 ]]; then
