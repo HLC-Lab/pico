@@ -77,9 +77,9 @@ else
         PARAMS+=" --gpus-per-node $MAX_GPU_TEST"
     fi
 
-    [[ -z "$FORCE_TASKS" ]] && PARAMS+=" --ntasks-per-node $TASK_PER_NODE" || PARAMS+=" --ntasks $FORCE_TASKS"
-
+    [[ -n "$FORCE_TASKS" ]] && PARAMS+=" --ntasks $FORCE_TASKS" || PARAMS+=" --ntasks-per-node $TASK_PER_NODE"
     [[ -n "$GRES" ]] && PARAMS+=" --gres=$GRES"
+    [[ -n "$EXCLUDE_NODES" ]] && PARAMS+=" --exclude $EXCLUDE_NODES" 
 
     if [[ "$INTERACTIVE" == "yes" ]]; then
         salloc $PARAMS

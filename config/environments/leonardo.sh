@@ -24,6 +24,8 @@ if [[ "$PARTITION" == "boost_usr_prod" ]]; then
     [[ "$N_NODES" == 2 && "$DEBUG_MODE" == "yes" ]] && export QOS='boost_qos_dbg'
 fi
 
+export EXCLUDE_NODES='lrdn0031,lrdn0032,lrdn0033,lrdn0034,lrdn0035,lrdn0036,lrdn0037,lrdn0038,lrdn0043,lrdn0044,lrdn0045,lrdn0046,lrdn0051,lrdn0052,lrdn0053,lrdn0054,lrdn0055,lrdn0056,lrdn0057,lrdn0058,lrdn0060,lrdn0139,lrdn0156,lrdn0201,lrdn0216,lrdn0304,lrdn0393,lrdn0393,lrdn0938,lrdn0952,lrdn1338,lrdn1450,lrdn1641,lrdn1653,lrdn1743,lrdn1809,lrdn1810,lrdn1811,lrdn1812,lrdn1817,lrdn1818,lrdn1819,lrdn1820,lrdn1829,lrdn1830,lrdn2257,lrdn2364'
+
 export UCX_IB_SL=1
 # export UCX_MAX_RNDV_RAILS=4
 export MODULES="python/3.11.6--gcc--8.5.0"
