@@ -1,4 +1,4 @@
-3        # Number of collectives
+7        # Number of collectives
 0        # Collective ID = ALLGATHER
 1        # Number of comm sizes
 2        # Comm size
@@ -17,7 +17,25 @@
 1        # Number of message sizes
 0 0 0 0 # Algorithm
 
+9        # Collective ID = GATHER
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+
+11       # Collective ID = REDUCE
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+
 12       # Collective ID = REDUCE_SCATTER
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+
+15       # Collective ID = SCATTER
 1        # Number of comm sizes
 2        # Comm size
 1        # Number of message sizes

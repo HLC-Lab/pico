@@ -1,18 +1,13 @@
 {
   "libswing_version": "1.0.0",
-  "collective": "ALLGATHER",
+  "collective": "GATHER",
   "MPI_Op": "MPI_SUM",
   "tags": {
     "include": [
       "internal",
-      "swing",
-      "sparbit",
-      "k_bruck"
+      "external"
     ],
     "exclude": [
-      "static",
-      "dtype",
-      "permute",
       "can_crash",
       "suboptimal"
     ]

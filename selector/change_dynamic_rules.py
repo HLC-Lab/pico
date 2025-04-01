@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 
@@ -44,8 +45,9 @@ def modify_dynamic_rule(rule_file: str | os.PathLike, collective_type: str, new_
     with open(rule_file, 'r') as txt_file:
         lines = txt_file.readlines()
 
+    pattern = r'\b' + re.escape(collective_type) + r'\b'
     for i, line in enumerate(lines):
-        if collective_type in line:
+        if re.search(pattern, line):
             if i + 4 < len(lines):  # Ensure we don't go out of bounds
                 lines[i+4] = f"0 {new_rule} 0 0 # Algorithm\n"
                 with open(rule_file, 'w') as txt_file:

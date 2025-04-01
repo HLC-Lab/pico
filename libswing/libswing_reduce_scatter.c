@@ -898,6 +898,271 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
   return err;
 }
 
+int reduce_scatter_swing_send_remap(const void *sendbuf, void *recvbuf, const int recvcounts[], MPI_Datatype dt, MPI_Op op, MPI_Comm comm){
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+
+  int count = 0;
+  int* displs = (int*) malloc(size*sizeof(int));
+  int* step_to_send = (int*) malloc(size*sizeof(int));
+  for(int i = 0; i < size; i++){
+    displs[i] = count;
+    count += recvcounts[i];
+  }
+
+  void* tmpbuf = malloc(count*dtsize);
+  void* resbuf = malloc(count*dtsize);
+  if(NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+  memcpy(resbuf, sendbuf, count*dtsize);
+
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  int remapped_rank = remap_rank(size, rank);
+  while(mask < size){
+    int partner;
+    if(rank % 2 == 0){
+        partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    }else{
+        partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    }
+
+    // For sure I need to send my (remapped) partner's data
+    // the actual start block however must be aligned to 
+    // the power of two
+    int send_block_first = remap_rank(size, partner) & block_first_mask;
+    int send_block_last = send_block_first + inverse_mask - 1;
+    int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
+    // Something similar for the block to recv.
+    // I receive my block, but aligned to the power of two
+    int recv_block_first = remapped_rank & block_first_mask;
+    int recv_block_last = recv_block_first + inverse_mask - 1;
+    int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
+    err = MPI_Sendrecv((char*) resbuf + displs[send_block_first]*dtsize, send_count, dt, partner, 0,
+                 (char*) tmpbuf + displs[recv_block_first]*dtsize, recv_count, dt, partner, 0, comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { goto err_hndl; }
+    err = MPI_Reduce_local((char*) tmpbuf + displs[recv_block_first]*dtsize, (char*) resbuf + displs[recv_block_first]*dtsize, recv_count, dt, op);
+    if(MPI_SUCCESS != err) { goto err_hndl; }
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+  }
+  
+  // Final send
+  // Whom I have been remapped to? I.e., who is going to send me my data? Just do a recv from any
+  MPI_Status status;
+  MPI_Sendrecv((char*) resbuf + displs[remapped_rank]*dtsize, recvcounts[remapped_rank], dt, remapped_rank , 0,
+               (char*) recvbuf                              , recvcounts[rank]         , dt, MPI_ANY_SOURCE, 0, 
+               comm, &status);
+
+  free(tmpbuf);
+  free(resbuf);
+  free(displs);
+  free(step_to_send);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != displs) free(displs);
+  if (NULL != step_to_send) free(step_to_send);
+  if (NULL != tmpbuf) free(tmpbuf);
+  if (NULL != resbuf) free(resbuf);
+  return err;
+}
+
+int reduce_scatter_swing_permute_remap(const void *sendbuf, void *recvbuf, const int recvcounts[], MPI_Datatype dt, MPI_Op op, MPI_Comm comm){
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+  int count = 0;
+  int* displs = (int*) malloc(size*sizeof(int));
+  int* step_to_send = (int*) malloc(size*sizeof(int));
+  for(int i = 0; i < size; i++){
+    displs[i] = count;
+    count += recvcounts[i];
+  }
+
+  void* tmpbuf = malloc(count*dtsize);
+  void* resbuf = malloc(count*dtsize);
+  if(NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  // Permute memcpy
+  for(int i = 0; i < size; i++){
+    int remapped_rank = remap_rank(size, i);
+    memcpy((char*) resbuf + displs[remapped_rank]*dtsize, (char*) sendbuf + displs[i]*dtsize, recvcounts[i]*dtsize);
+  }
+
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  int remapped_rank = remap_rank(size, rank);
+  while(mask < size){
+    int partner;
+    if(rank % 2 == 0){
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    }else{
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    }
+
+    // For sure I need to send my (remapped) partner's data
+    // the actual start block however must be aligned to 
+    // the power of two
+    int send_block_first = remap_rank(size, partner) & block_first_mask;
+    int send_block_last = send_block_first + inverse_mask - 1;
+    int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
+    // Something similar for the block to recv.
+    // I receive my block, but aligned to the power of two
+    int recv_block_first = remapped_rank & block_first_mask;
+    int recv_block_last = recv_block_first + inverse_mask - 1;
+    int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
+    
+    err = MPI_Sendrecv((char*) resbuf + displs[send_block_first]*dtsize, send_count, dt, partner, 0,
+                 (char*) tmpbuf + displs[recv_block_first]*dtsize, recv_count, dt, partner, 0, comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { goto err_hndl; }
+    err = MPI_Reduce_local((char*) tmpbuf + displs[recv_block_first]*dtsize, (char*) resbuf + displs[recv_block_first]*dtsize, recv_count, dt, op);
+    if(MPI_SUCCESS != err) { goto err_hndl; }
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+  }
+
+  // Final memcpy
+  memcpy(recvbuf, (char*) resbuf + displs[remapped_rank]*dtsize, recvcounts[rank]*dtsize);
+
+  free(tmpbuf);
+  free(resbuf);
+  free(displs);
+  free(step_to_send);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != displs) free(displs);
+  if (NULL != step_to_send) free(step_to_send);
+  if (NULL != tmpbuf) free(tmpbuf);
+  if (NULL != resbuf) free(resbuf);
+  return err;
+}
+
+
+int reduce_scatter_swing_block_by_block(const void *sendbuf, void *recvbuf, const int recvcounts[], MPI_Datatype dt, MPI_Op op, MPI_Comm comm){
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+  int count = 0;
+  int* displs = (int*) malloc(size*sizeof(int));
+  int* step_to_send = (int*) malloc(size*sizeof(int));
+  int* inverse_remapping = (int*) malloc(size*sizeof(int));
+  for(int i = 0; i < size; i++){
+  displs[i] = count;
+  count += recvcounts[i];
+  inverse_remapping[remap_rank(size, i)] = i;
+  }
+  
+  void* tmpbuf = malloc(count*dtsize);
+  void* resbuf = malloc(count*dtsize);
+
+  if(NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping) {
+  err = MPI_ERR_NO_MEM;
+  goto err_hndl;
+  }
+  memcpy(resbuf, sendbuf, count*dtsize);
+  
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  int remapped_rank = remap_rank(size, rank);
+  MPI_Request* reqs = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
+  while(mask < size){
+    int partner;
+    if(rank % 2 == 0){
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    }else{
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    }   
+
+    // For sure I need to send my (remapped) partner's data
+    // the actual start block however must be aligned to 
+    // the power of two
+    int send_block_first = remap_rank(size, partner) & block_first_mask;
+    int send_block_last = send_block_first + inverse_mask - 1;
+    int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
+    // Something similar for the block to recv.
+    // I receive my block, but aligned to the power of two
+    int recv_block_first = remapped_rank & block_first_mask;
+    int recv_block_last = recv_block_first + inverse_mask - 1;
+    int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
+
+    int next_req = 0;
+    for(size_t block = recv_block_first; block <= recv_block_last; block++){
+      if(mask << 1 >= size){
+        // Last step, receiving in recvbuf
+        err = MPI_Irecv((char*) recvbuf, recvcounts[inverse_remapping[block]], dt, partner, 0,
+              comm, &reqs[next_req]);
+      }else{
+        err = MPI_Irecv((char*) tmpbuf + displs[inverse_remapping[block]]*dtsize, recvcounts[inverse_remapping[block]], dt, partner, 0,
+              comm, &reqs[next_req]);
+      }
+      if(MPI_SUCCESS != err) { goto err_hndl; }
+      ++next_req;
+    }
+
+    for(size_t block = send_block_first; block <= send_block_last; block++){
+      err = MPI_Isend((char*) resbuf + displs[inverse_remapping[block]]*dtsize, recvcounts[inverse_remapping[block]], dt, partner, 0,
+            comm, &reqs[next_req]);
+      if(MPI_SUCCESS != err) { goto err_hndl; }
+      ++next_req;
+    }
+
+    int w_req = 0;
+    for(size_t block = recv_block_first; block <= recv_block_last; block++){
+      err = MPI_Wait(&reqs[w_req], MPI_STATUS_IGNORE);
+      if(MPI_SUCCESS != err) { goto err_hndl; }
+      if(mask << 1 >= size){
+        // Last step, received in recvbuf, aggregating from resbuf
+        err = MPI_Reduce_local((char*) resbuf + displs[inverse_remapping[block]]*dtsize, (char*) recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+      }else{
+        err = MPI_Reduce_local((char*) tmpbuf + displs[inverse_remapping[block]]*dtsize, (char*) resbuf + displs[inverse_remapping[block]]*dtsize, recvcounts[inverse_remapping[block]], dt, op);
+      }
+      if(MPI_SUCCESS != err) { goto err_hndl; }
+      ++w_req;
+    }
+    err = MPI_Waitall(next_req - w_req, &reqs[w_req], MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { goto err_hndl; }
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+  }
+
+  free(reqs);
+  free(tmpbuf);
+  free(resbuf);
+  free(inverse_remapping);
+  free(step_to_send);
+  free(displs);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != reqs) free(reqs);
+  if (NULL != displs) free(displs);
+  if (NULL != step_to_send) free(step_to_send);
+  if (NULL != inverse_remapping) free(inverse_remapping);
+  if (NULL != tmpbuf) free(tmpbuf);
+  if (NULL != resbuf) free(resbuf);
+  return err;
+}
+
 
 // NOTE: Not fully implemented
 //

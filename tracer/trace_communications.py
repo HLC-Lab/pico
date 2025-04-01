@@ -173,7 +173,7 @@ def main():
     allocation = load_allocation(args.alloc)
     node_to_cell = load_topology(args.map)
     rank_to_cell = map_rank_to_cell(allocation, node_to_cell)
-    info = info_rank_to_cell(allocation, node_to_cell)
+    # info = info_rank_to_cell(allocation, node_to_cell)
     comm_pattern = load_communication_pattern(args.comm).get(args.coll, {})
 
     count = count_inter_cell_bytes(comm_pattern, rank_to_cell)
@@ -192,9 +192,9 @@ def main():
 
     print("\n`n` denotes the size of the send buffer")
 
-    print(f"\n\ninfo allocation")
-    for el in info.items():
-        print(f"switch {el[0]:<4}: {el[1]}")
+    # print(f"\n\ninfo allocation")
+    # for el in info.items():
+    #     print(f"switch {el[0]:<4}: {el[1]}")
 
 if __name__ == "__main__":
     main()
