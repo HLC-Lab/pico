@@ -1,0 +1,20 @@
+{
+  "libswing_version": "1.0.0",
+  "collective": "REDUCE",
+  "MPI_Op": "MPI_SUM",
+  "tags": {
+    "include": [
+      "internal",
+      "external"
+    ],
+    "exclude": [
+      "smp",
+      "can_crash",
+      "suboptimal"
+    ]
+  },
+  "specific": {
+    "include": [],
+    "exclude": []
+  }
+}

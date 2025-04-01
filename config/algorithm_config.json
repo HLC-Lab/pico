@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.10",
+    "schema_version": "2.6.11",
     "created": "2024-01-30",
-    "last_modified": "2024-03-27",
+    "last_modified": "2024-04-01",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -1916,6 +1916,335 @@
           "static",
           "external"
         ]
+      },
+      "swing_bdw_remap_over": {
+        "desc": "Libswing external swing bandwidth optimal algorithm. This algorithm is a combination of a swing scatter and a swing allgather.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_bdw_remap",
+          "remap",
+          "swing",
+          "bandwidth_optimal",
+          "external"
+        ]
+      }
+    },
+    "GATHER": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm. It consists in the root receiving messages from all other processes.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree based algorithm.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 2,
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "linear_synch_ompi": {
+        "desc": "Open MPI linear synchronous algorithm. It consists in the root receiving messages from all other processes, but synchronizing messages by having them segmented by `segsize`. It can crash for big tests",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 3,
+        "tags": [
+          "linear",
+          "synchronous",
+          "internal"
+        ]
+      },
+      "swing_over": {
+        "desc": "Libswing external swing algorithm. It uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing",
+          "external"
+        ]
+      }
+    },
+    "REDUCE": {
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "internal"
+        ]
+      },
+      "chain_ompi": {
+        "desc": "Open MPI chain algorithm.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 2,
+        "tags": [
+          "chain",
+          "internal"
+        ]
+      },
+      "pipeline_ompi": {
+        "desc": "Open MPI pipeline algorithm.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 3,
+        "tags": [
+          "pipeline",
+          "internal"
+        ]
+      },
+      "binary_ompi": {
+        "desc": "Open MPI binary tree reduce.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 4,
+        "tags": [
+          "split_binary",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree reduce.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 5,
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "in_order_ompi": {
+        "desc": "Open MPI in order reduce.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 6,
+        "tags": [
+          "in_order",
+          "internal"
+        ]
+      },
+      "rabenseifner_ompi": {
+        "desc": "Open MPI Rabenseifner reduce.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "dynamic_rule": 7,
+        "tags": [
+          "rabenseifner",
+          "internal"
+        ]
+      },
+      "swing_lat_over": {
+        "desc": "Libswing external swing latency optimal algorithm.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_lat",
+          "swing",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "swing_bdw_over": {
+        "desc": "Libswing external swing bandwidth optimal algorithm.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_bdw",
+          "swing",
+          "bandwidth_optimal",
+          "external"
+        ]
       }
     },
     "REDUCE_SCATTER": {
@@ -2330,6 +2659,234 @@
           "static",
           "medium_sizes",
           "large_sizes",
+          "external"
+        ]
+      },
+      "swing_send_remap_over": {
+        "desc": "Libswing external swing remap send algorithm. Works only with power of 2 processes.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing",
+          "remap",
+          "send",
+          "external"
+        ]
+      },
+      "swing_permute_remap_over": {
+        "desc": "Libswing external swing remap memcpy algorithm. Works only with power of 2 processes.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing",
+          "remap",
+          "memcpy",
+          "external"
+        ]
+      },
+      "swing_block_by_block_over": {
+        "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing",
+          "block_by_block",
+          "external"
+        ]
+      }
+    },
+    "SCATTER": {
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree based algorithm.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 2,
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "linear_nb_ompi": {
+        "desc": "Open MPI linear nb algorithm.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 3,
+        "tags": [
+          "linear",
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "swing_over": {
+        "desc": "Libswing external swing algorithm.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing",
           "external"
         ]
       }

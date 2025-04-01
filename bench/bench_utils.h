@@ -63,7 +63,10 @@ typedef enum{
   ALLREDUCE = 0,
   ALLGATHER,
   BCAST,
+  GATHER,
+  REDUCE,
   REDUCE_SCATTER,
+  SCATTER,
   COLL_UNKNOWN
 }coll_t;
 
@@ -84,7 +87,10 @@ typedef int (*allocator_func_ptr)(ALLOCATOR_ARGS);
 int allreduce_allocator(ALLOCATOR_ARGS);
 int allgather_allocator(ALLOCATOR_ARGS);
 int bcast_allocator(ALLOCATOR_ARGS);
+int gather_allocator(ALLOCATOR_ARGS);
+int reduce_allocator(ALLOCATOR_ARGS);
 int reduce_scatter_allocator(ALLOCATOR_ARGS);
+int scatter_allocator(ALLOCATOR_ARGS);
 
 //-----------------------------------------------------------------------------------------------
 //                               FUNCTION POINTER AND WRAPPER
@@ -93,7 +99,10 @@ int reduce_scatter_allocator(ALLOCATOR_ARGS);
 typedef int (*allreduce_func_ptr)(ALLREDUCE_ARGS);
 typedef int (*allgather_func_ptr)(ALLGATHER_ARGS);
 typedef int (*bcast_func_ptr)(BCAST_ARGS);
+typedef int (*gather_func_ptr)(GATHER_ARGS);
+typedef int (*reduce_func_ptr)(REDUCE_ARGS);
 typedef int (*reduce_scatter_func_ptr)(REDUCE_SCATTER_ARGS);
+typedef int (*scatter_func_ptr)(SCATTER_ARGS);
 
 static inline int allreduce_wrapper(ALLREDUCE_ARGS){
     return MPI_Allreduce(sbuf, rbuf, (int)count, dtype, op, comm);
@@ -103,6 +112,15 @@ static inline int allgather_wrapper(ALLGATHER_ARGS){
 }
 static inline int bcast_wrapper(BCAST_ARGS){
     return MPI_Bcast(buf, (int)count, dtype, root, comm);
+}
+static inline int gather_wrapper(GATHER_ARGS){
+    return MPI_Gather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, root, comm);
+}
+static inline int reduce_wrapper(REDUCE_ARGS){
+    return MPI_Reduce(sbuf, rbuf, (int)count, dtype, op, root, comm);
+}
+static inline int scatter_wrapper(SCATTER_ARGS){
+    return MPI_Scatter(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, root, comm);
 }
 
 
@@ -130,7 +148,10 @@ typedef struct {
     allreduce_func_ptr allreduce;
     allgather_func_ptr allgather;
     bcast_func_ptr bcast;
+    gather_func_ptr gather;
+    reduce_func_ptr reduce;
     reduce_scatter_func_ptr reduce_scatter;
+    scatter_func_ptr scatter;
   } function;
 } test_routine_t;
 
@@ -256,7 +277,10 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, \
 DEFINE_TEST_LOOP(allreduce, ALLREDUCE_ARGS, allreduce(sbuf, rbuf, count, dtype, MPI_SUM, comm))
 DEFINE_TEST_LOOP(allgather, ALLGATHER_ARGS, allgather(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
 DEFINE_TEST_LOOP(bcast, BCAST_ARGS, bcast(buf, count, dtype, 0, comm))
+DEFINE_TEST_LOOP(gather, GATHER_ARGS, gather(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
+DEFINE_TEST_LOOP(reduce, REDUCE_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm))
 DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_ARGS, reduce_scatter(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm))
+DEFINE_TEST_LOOP(scatter, SCATTER_ARGS, scatter(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
 
 //-----------------------------------------------------------------------------------------------
 //                                   GROUND TRUTH CHECK FUNCTIONS

@@ -503,7 +503,15 @@ static uint32_t binary_to_negabinary(int32_t bin) {
     return (mask + bin) ^ mask;
 }
 
+static int32_t negabinary_to_binary(uint32_t neg) {
+    const uint32_t mask = 0xAAAAAAAA;
+    return (mask ^ neg) - mask;
+}
 
+static inline int mod(int a, int b){
+    int r = a % b;
+    return r < 0 ? r + b : r;
+}
 static inline int in_range(int x, uint32_t nbits){
     return x >= smallest_negabinary[nbits] && x <= largest_negabinary[nbits];
 }

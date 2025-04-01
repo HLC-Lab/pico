@@ -172,9 +172,9 @@ int main(int argc, char *argv[]) {
 #endif // DEBUG
 
   // Clean up
-  free(sbuf);
-  if(NULL != rbuf) free(rbuf); // rbuf can be NULL if the test routine does not use it (e.g. Bcast)
-  free(rbuf_gt);
+  if(NULL != sbuf)    free(sbuf);
+  if(NULL != rbuf)    free(rbuf);
+  if(NULL != rbuf_gt) free(rbuf_gt);
   free(times);
 
   if(rank == 0) {
