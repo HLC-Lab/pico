@@ -19,6 +19,7 @@
 static inline coll_t get_collective_from_string(const char *coll_str) {
   CHECK_STR(coll_str, "ALLREDUCE", ALLREDUCE);
   CHECK_STR(coll_str, "ALLGATHER", ALLGATHER);
+  CHECK_STR(coll_str, "ALLTOALL", ALLTOALL);
   CHECK_STR(coll_str, "BCAST", BCAST);
   CHECK_STR(coll_str, "GATHER", GATHER);
   CHECK_STR(coll_str, "REDUCE", REDUCE);
@@ -43,6 +44,8 @@ static inline allocator_func_ptr get_allocator(coll_t collective) {
       return allreduce_allocator;
     case ALLGATHER:
       return allgather_allocator;
+    case ALLTOALL:
+      return alltoall_allocator;
     case BCAST:
       return bcast_allocator;
     case GATHER:
@@ -102,6 +105,21 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
 
   BENCH_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
+}
+
+/**
+* @brief Select and returns the appropriate alltoall function based
+* on the algorithm. It returns the default alltoall function if the
+* algorithm is internal.
+*
+* WARNING: It does not check if the algorithm is supported and always
+* defauls to the internal alltoall function.
+*/
+static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
+  CHECK_STR(algorithm, "swing_over", alltoall_swing);
+
+  BENCH_DEBUG_PRINT_STR("MPI_Alltoall");
+  return alltoall_wrapper;
 }
 
 /**
@@ -228,6 +246,9 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
     case ALLGATHER:
       test_routine->function.allgather = get_allgather_function(algorithm);
       break;
+    case ALLTOALL:
+      test_routine->function.alltoall = get_alltoall_function(algorithm);
+      break;
     case BCAST:
       test_routine->function.bcast = get_bcast_function(algorithm);
       break;
@@ -278,6 +299,11 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                           rbuf, count / (size_t) comm_sz, dtype,
                           comm, iter, times, test_routine);
       break;
+    case ALLTOALL:
+      ret = alltoall_test_loop(sbuf, count / (size_t) comm_sz, dtype,
+                               rbuf, count / (size_t) comm_sz, dtype,
+                               comm, iter, times, test_routine);
+    break;
     case BCAST:
       ret = bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
                             test_routine);
@@ -327,6 +353,11 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       PMPI_Allgather(sbuf, count / (size_t) comm_sz, dtype, \
                  rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      break;
+    case ALLTOALL:
+      PMPI_Alltoall(sbuf, count / (size_t) comm_sz, dtype, \
+             rbuf_gt, count / (size_t) comm_sz, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       break;
     case BCAST:
       if(rank == 0) {
@@ -611,10 +642,11 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
       && rank != 0) {
     return 0;
   }
-  // If generating sendbuf for an ALLGATHER, the number of element is
-  // count / comm_sz
+
   size_t real_sbuf_count =
-    (test_routine.collective == ALLGATHER || test_routine.collective == GATHER) ?
+    (test_routine.collective == ALLGATHER ||
+     test_routine.collective == GATHER    ||
+     test_routine.collective == ALLTOALL) ?
                                         count / (size_t) comm_sz : count;
 
   for(size_t i = 0; i < real_sbuf_count; i++) {
@@ -821,10 +853,11 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
       && rank != 0) {
     return 0;
   }
-  // If generating sendbuf for an ALLGATHER, the number of element is
-  // count / comm_sz
+
   size_t real_sbuf_count =
-    (test_routine.collective == ALLGATHER || test_routine.collective == GATHER) ?
+    (test_routine.collective == ALLGATHER ||
+     test_routine.collective == GATHER    ||
+     test_routine.collective == ALLTOALL) ?
                                         count / (size_t) comm_sz : count;
 
   for(int i=0; i< real_sbuf_count; i++){

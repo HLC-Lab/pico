@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.11",
+    "schema_version": "2.6.12",
     "created": "2024-01-30",
-    "last_modified": "2024-04-01",
+    "last_modified": "2024-04-02",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -1448,6 +1448,201 @@
         ]
       }
     },
+    "ALLTOALL": {
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "ignore",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Launches all non-blocking send/recv pairs and wait for them to complete.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "pairwise_ompi": {
+        "desc": "For comm size P, implemented as P rounds of blocking MPI_Sendrecv",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 2,
+        "tags": [
+          "pairwise",
+          "blocking",
+          "internal"
+        ]
+      },
+      "modified_bruck_ompi": {
+        "desc": "An algorithm exploiting network packet quantization to achieve O(log) time complexity. Typically best for very small message sizes.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 3,
+        "tags": [
+          "modified_bruck",
+          "log_time",
+          "internal"
+        ]
+      },
+      "linear_sync_ompi": {
+        "desc": "Keep N non-blocking MPI_Isend/Irecv pairs in flight at all times. N is set by the coll_tuned_alltoall_max_requests MCA variable.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 4,
+        "tags": [
+          "linear_sync",
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "two_proc_ompi": {
+        "desc": "An implementation tailored for alltoall between 2 ranks, otherwise it is not used.",
+        "library": {
+          "ompi": "4.1.6",
+          "ompi_swing": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 2
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 5,
+        "tags": [
+          "two_proc",
+          "small_rank",
+          "internal"
+        ]
+      },
+      "swing_over": {
+        "desc": "Libswing external alltoall algorithm. This algorithm is used for small to medium messages",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing",
+          "external"
+        ]
+      }
+    },
     "BCAST": {
       "default_mpich": {
         "desc": "MPICH default algorithm selection",
@@ -1969,6 +2164,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "auto",
         "tags": [
           "default",
@@ -1981,6 +2187,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "binomial",
         "tags": [
           "binomial",
@@ -1993,6 +2210,17 @@
           "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "cvar": "nb",
         "tags": [
           "non_blocking",
@@ -2005,6 +2233,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 0,
         "tags": [
           "default",
@@ -2017,6 +2256,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 1,
         "tags": [
           "linear",
@@ -2029,6 +2279,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 2,
         "tags": [
           "binomial",
@@ -2041,6 +2302,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 3,
         "tags": [
           "linear",
@@ -2054,6 +2326,15 @@
           "libswing": "1.0.0"
         },
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -2172,6 +2453,17 @@
           "ompi": "4.1.6",
           "ompi_swing": "5.0.0"
         },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
         "dynamic_rule": 7,
         "tags": [
           "rabenseifner",
@@ -2218,6 +2510,15 @@
           "libswing": "1.0.0"
         },
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [
@@ -2864,6 +3165,15 @@
           "libswing": "1.0.0"
         },
         "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
           {
             "key": "comm_sz",
             "conditions": [

@@ -8,6 +8,8 @@
                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm
 #define ALLGATHER_ARGS        const void *sbuf, size_t scount, MPI_Datatype sdtype, \
                               void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm
+#define ALLTOALL_ARGS         const void *sbuf, size_t scount, MPI_Datatype sdtype, \
+                              void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm
 #define BCAST_ARGS            void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm
 #define GATHER_ARGS           const void *sbuf, size_t scount, MPI_Datatype sdtype, \
                               void *rbuf, size_t rcount, MPI_Datatype rdtype, int root, MPI_Comm comm
@@ -39,6 +41,8 @@ int allgather_swing_permute_remap(ALLGATHER_ARGS);
 int allgather_swing_send_remap(ALLGATHER_ARGS);
 int allgather_swing_2_blocks(ALLGATHER_ARGS);
 int allgather_swing_2_blocks_dtype(ALLGATHER_ARGS);
+
+int alltoall_swing(ALLTOALL_ARGS);
 
 int bcast_scatter_allgather(BCAST_ARGS);
 int bcast_swing_lat(BCAST_ARGS);

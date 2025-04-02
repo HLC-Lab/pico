@@ -1,4 +1,4 @@
-7        # Number of collectives
+8        # Number of collectives
 0        # Collective ID = ALLGATHER
 1        # Number of comm sizes
 2        # Comm size
@@ -6,6 +6,12 @@
 0 0 0 0 # Algorithm
 
 2        # Collective ID = ALLREDUCE
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 0 0 0 # Algorithm
+
+3        # Collective ID = ALLTOALL
 1        # Number of comm sizes
 2        # Comm size
 1        # Number of message sizes
