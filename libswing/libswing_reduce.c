@@ -185,3 +185,139 @@ err_hndl:
   }
   return err;
 }
+
+
+
+int reduce_swing_bdw_i(const void *sendbuf, void *recvbuf, size_t count, MPI_Datatype dt, MPI_Op op, int root, MPI_Comm comm){
+  assert(root == 0); // TODO: Generalize
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+  int* displs = (int*) malloc(size*sizeof(int));
+  int* recvcounts = (int*) malloc(size*sizeof(int));
+  int count_per_rank = count / size;
+  int rem = count % size;
+  for(int i = 0; i < size; i++){
+    displs[i] = count_per_rank*i + (i < rem ? i : rem);
+    recvcounts[i] = count_per_rank + (i < rem ? 1 : 0);
+  }
+  
+  void* tmpbuf = malloc(count*dtsize);
+  void* resbuf;
+  
+  if(rank == root){
+    resbuf = recvbuf;
+  }else{
+    resbuf = malloc(count*dtsize);
+  }
+  memcpy(resbuf, sendbuf, count*dtsize);
+
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  int vrank = (rank % 2) ? rank : -rank;
+  int remapped_rank = remap_rank(size, rank);
+  
+  /***** Reduce_scatter *****/
+  while(mask < size){
+    int partner;
+    if(rank % 2 == 0){
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    }else{
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    }
+
+    // For sure I need to send my (remapped) partner's data
+    // the actual start block however must be aligned to 
+    // the power of two
+    int send_block_first = remap_rank(size, partner) & block_first_mask;
+    int send_block_last = send_block_first + inverse_mask - 1;
+    int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
+    // Something similar for the block to recv.
+    // I receive my block, but aligned to the power of two
+    int recv_block_first = remapped_rank & block_first_mask;
+    int recv_block_last = recv_block_first + inverse_mask - 1;
+    int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
+
+    MPI_Request reqs[2];
+    err = MPI_Irecv((char*) tmpbuf + displs[recv_block_first]*dtsize, recv_count, dt, 
+                     partner, 0, comm, &reqs[0]);
+    if (err != MPI_SUCCESS) { goto err_hndl; }
+    err = MPI_Isend((char*) resbuf + displs[send_block_first]*dtsize, send_count, dt, 
+                     partner, 0, comm, &reqs[1]);
+    if (err != MPI_SUCCESS) { goto err_hndl; }
+    err = MPI_Waitall(2, reqs, MPI_STATUSES_IGNORE);
+    if (err != MPI_SUCCESS) { goto err_hndl; }
+
+    err = MPI_Reduce_local((char*) tmpbuf + displs[recv_block_first]*dtsize, (char*) resbuf + displs[recv_block_first]*dtsize, recv_count, dt, op);
+    if (err != MPI_SUCCESS) { goto err_hndl; }
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+  }
+
+  /***** Gather *****/
+  mask >>= 1;
+  inverse_mask = 0x1;
+  block_first_mask = ~0x0;
+  int receiving_mask;
+  // I send in the step corresponding to the position (starting from right)
+  // of the first 1 in my remapped rank -- this indicates the step when the data reaches me in a scatter
+  receiving_mask = 0x1 << (ffs(remapped_rank) - 1); // ffs starts counting from 1, thus -1
+  
+  while(mask > 0){
+    int partner;
+    if(rank % 2 == 0){
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    }else{
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    }
+
+    // Only the one with 0 in the i-th bit starting from the left (i is the step) survives
+    if(inverse_mask & receiving_mask){
+      int send_block_first = remapped_rank & block_first_mask;
+      int send_block_last = send_block_first + inverse_mask - 1;
+      int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];    
+      MPI_Request req;
+      err = MPI_Isend((char*) resbuf + displs[send_block_first]*dtsize, send_count, dt, 
+                      partner, 0, comm, &req);
+      if (err != MPI_SUCCESS) { goto err_hndl; }
+      err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+      if (err != MPI_SUCCESS) { goto err_hndl; }
+      break;
+    }else{
+      // Something similar for the block to recv.
+      // I receive my partner's block, but aligned to the power of two
+      int recv_block_first = remap_rank(size, partner) & block_first_mask;
+      int recv_block_last = recv_block_first + inverse_mask - 1;
+      int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
+      MPI_Request req;
+      err = MPI_Irecv((char*) resbuf + displs[recv_block_first]*dtsize, recv_count, dt, 
+                      partner, 0, comm, &req);
+      if (err != MPI_SUCCESS) { goto err_hndl; }
+      err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+      if (err != MPI_SUCCESS) { goto err_hndl; }
+    }
+
+    mask >>= 1;
+    inverse_mask <<= 1;
+    block_first_mask <<= 1;
+  }
+
+  free(tmpbuf);
+  if(rank != root){
+    free(resbuf);
+  }
+  free(displs);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if(tmpbuf != NULL) free(tmpbuf);
+  if(displs != NULL) free(displs);
+  if (rank != root){
+    if (resbuf != NULL) free(resbuf);
+  }
+  return err;
+}
