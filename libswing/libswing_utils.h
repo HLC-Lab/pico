@@ -584,6 +584,36 @@ static inline uint32_t get_sender_rec(uint32_t num_ranks, uint32_t rank){
   return get_sender_aux(num_ranks, rank, rank);
 }
 
+// Function to calculate a Mersenne number (2^n - 1)
+static inline uint32_t mersenne(int n) {
+    return (1UL << (n + 1)) - 1;
+}
+
+// Function to decompose a number into the XOR of Mersenne numbers
+static inline int decompose_xor_mersenne(uint32_t num) {
+    int remapped = 0;
+    while (num > 0) {
+        int k = 0;
+        uint32_t temp = num;
+
+        // Find the highest set bit (position k)
+        while (temp > 1) {
+            temp >>= 1;
+            k++;
+        }
+
+        uint32_t m = mersenne(k);
+
+        remapped ^= (0x1 << k); // Set the k-th bit in the remapped number
+
+        num ^= m; // XOR the Mersenne number with the remaining number
+        if(num == 0){
+          break;
+        }
+    }
+    return remapped;
+}
+
 // NOTE: Commented since at the moment not used in the code
 //
 // /**

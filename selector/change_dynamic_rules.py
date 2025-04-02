@@ -30,7 +30,7 @@ def find_dynamic_rule(algorithm_config_file: str | os.PathLike, collective_type:
     if dynamic_rule == -1:
         print (f"{__file__}: algorithm {algorithm} not found for collective type {collective_type}.", file=sys.stderr)
         sys.exit(1)
-    
+
     return dynamic_rule
 
 

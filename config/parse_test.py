@@ -12,7 +12,7 @@ test_config_schema = {
     "type": "object",
     "properties": {
         "libswing_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
-        "collective": {"type": "string", "enum": ["ALLREDUCE", "ALLGATHER", "BCAST", "GATHER", "REDUCE", "REDUCE_SCATTER", "SCATTER"]},
+        "collective": {"type": "string", "enum": ["ALLREDUCE", "ALLTOALL", "ALLGATHER", "BCAST", "GATHER", "REDUCE", "REDUCE_SCATTER", "SCATTER"]},
         "MPI_Op": {"type": "string"},
         "tags": {
             "type": "object",

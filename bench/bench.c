@@ -8,7 +8,7 @@
 #include "libswing.h"
 
 int main(int argc, char *argv[]) {
-  MPI_Init(NULL, NULL);
+  MPI_Init(&argc, &argv);
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Datatype dtype;
   int rank, comm_sz, line, iter;

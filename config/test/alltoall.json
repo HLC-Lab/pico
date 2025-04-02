@@ -1,0 +1,16 @@
+{
+  "libswing_version": "1.0.0",
+  "collective": "ALLTOALL",
+  "MPI_Op": "MPI_SUM",
+  "tags": {
+    "include": [
+      "internal",
+      "external"
+    ],
+    "exclude": []
+  },
+  "specific": {
+    "include": [],
+    "exclude": []
+  }
+}
