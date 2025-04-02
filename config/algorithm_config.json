@@ -2155,6 +2155,50 @@
           "bandwidth_optimal",
           "external"
         ]
+      },
+      "swing_bdw_remap_i_over": {
+        "desc": "Libswing external swing bandwidth optimal algorithm. This algorithm is a combination of a swing scatter and a swing allgather.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_bdw_remap",
+          "remap",
+          "swing",
+          "bandwidth_optimal",
+          "external"
+        ]
       }
     },
     "GATHER": {
@@ -2505,6 +2549,49 @@
         ]
       },
       "swing_bdw_over": {
+        "desc": "Libswing external swing bandwidth optimal algorithm.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_bdw",
+          "swing",
+          "bandwidth_optimal",
+          "external"
+        ]
+      },
+      "swing_bdw_i_over": {
         "desc": "Libswing external swing bandwidth optimal algorithm.",
         "library": {
           "libswing": "1.0.0"
