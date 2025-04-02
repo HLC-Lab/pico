@@ -27,3 +27,10 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_03_28___17_42_08,1,1024,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
 2025_03_28___18_19_43,0,512,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
 2025_03_28___18_19_43,1,512,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_04_01___18_15_01,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,New big test with all collectives
+2025_04_01___18_15_01,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
+2025_04_01___18_15_01,2,128,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
+2025_04_01___18_15_01,3,128,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
+2025_04_01___18_15_01,4,128,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,New big test with all collectives
+2025_04_01___18_15_01,5,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,New big test with all collectives
+2025_04_01___18_15_01,6,128,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
