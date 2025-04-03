@@ -20,7 +20,7 @@ int gather_swing(const void *sendbuf, size_t sendcount, MPI_Datatype dt, void *r
     if (recvbuf == NULL) { err = MPI_ERR_NO_MEM; goto err_hndl; }
   }
 
-  memcpy((char*) recvbuf + rank*recvcount*dtsize, sendbuf, recvcount*dtsize);
+  memcpy((char*) recvbuf + rank * recvcount * dtsize, sendbuf, recvcount * dtsize);
 
   // I have the blocks in range [min_block_resident, max_block_resident]
   size_t min_block_resident = rank, max_block_resident = rank;
@@ -40,7 +40,7 @@ int gather_swing(const void *sendbuf, size_t sendcount, MPI_Datatype dt, void *r
     if(!equal_lsbs || ((mask << 1) >= size && (rank != root))){
       if(max_block_resident >= min_block_resident){
         // Single send
-        MPI_Send((char*) recvbuf + min_block_resident*recvcount*dtsize, recvcount*(max_block_resident - min_block_resident + 1), dt, partner, 0, comm);
+        err = MPI_Send((char*) recvbuf + min_block_resident*recvcount*dtsize, recvcount*(max_block_resident - min_block_resident + 1), dt, partner, 0, comm);
         if (err != MPI_SUCCESS) { goto err_hndl; }
       }else{
         // Wrapped send

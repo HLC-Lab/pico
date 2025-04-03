@@ -589,27 +589,12 @@ static inline uint32_t mersenne(int n) {
     return (1UL << (n + 1)) - 1;
 }
 
-// Function to decompose a number into the XOR of Mersenne numbers
-static inline int decompose_xor_mersenne(uint32_t num) {
+static inline int remap_distance_doubling(uint32_t num) {
     int remapped = 0;
     while (num > 0) {
-        int k = 0;
-        uint32_t temp = num;
-
-        // Find the highest set bit (position k)
-        while (temp > 1) {
-            temp >>= 1;
-            k++;
-        }
-
-        uint32_t m = mersenne(k);
-
+        int k = 31 - __builtin_clz(num); // Find the position of the highest set bit
         remapped ^= (0x1 << k); // Set the k-th bit in the remapped number
-
-        num ^= m; // XOR the Mersenne number with the remaining number
-        if(num == 0){
-          break;
-        }
+        num ^= mersenne(k); // XOR the Mersenne number with the remaining number
     }
     return remapped;
 }
