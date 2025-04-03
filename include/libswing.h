@@ -47,16 +47,15 @@ int alltoall_swing(ALLTOALL_ARGS);
 int bcast_scatter_allgather(BCAST_ARGS);
 int bcast_swing_lat(BCAST_ARGS);
 int bcast_swing_lat_reversed(BCAST_ARGS);
+int bcast_swing_lat_new(BCAST_ARGS);
 int bcast_swing_bdw_static(BCAST_ARGS);
 int bcast_swing_bdw_remap(BCAST_ARGS);
-int bcast_swing_bdw_remap_i(BCAST_ARGS);
 // int bcast_swing_bdw_static_reversed(BCAST_ARGS);
 
 int gather_swing(GATHER_ARGS);
 
 int reduce_swing_lat(REDUCE_ARGS);
 int reduce_swing_bdw(REDUCE_ARGS);
-int reduce_swing_bdw_i(REDUCE_ARGS);
 
 int reduce_scatter_recursivehalving(REDUCE_SCATTER_ARGS);
 int reduce_scatter_recursive_distance_doubling(REDUCE_SCATTER_ARGS);

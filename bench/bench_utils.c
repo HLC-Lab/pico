@@ -134,10 +134,10 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
   CHECK_STR(algorithm, "swing_lat_over", bcast_swing_lat);
   CHECK_STR(algorithm, "swing_lat_reversed_over", bcast_swing_lat_reversed);
+  CHECK_STR(algorithm, "swing_lat_new_over", bcast_swing_lat_new);
   CHECK_STR(algorithm, "swing_bdw_static_over", bcast_swing_bdw_static);
   // CHECK_STR(algorithm, "swing_bdw_static_reversed_over", bcast_swing_bdw_static_reversed);
   CHECK_STR(algorithm, "swing_bdw_remap_over", bcast_swing_bdw_remap);
-  CHECK_STR(algorithm, "swing_bdw_remap_i_over", bcast_swing_bdw_remap_i);
 
   BENCH_DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
@@ -171,7 +171,6 @@ static inline gather_func_ptr get_gather_function(const char *algorithm) {
 static inline reduce_func_ptr get_reduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_lat_over", reduce_swing_lat);
   CHECK_STR(algorithm, "swing_bdw_over", reduce_swing_bdw);
-  CHECK_STR(algorithm, "swing_bdw_i_over", reduce_swing_bdw_i);
 
   BENCH_DEBUG_PRINT_STR("MPI_Reduce");
   return reduce_wrapper;
