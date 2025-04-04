@@ -42,3 +42,11 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_04_02___20_02_52,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
 2025_04_02___20_02_52,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
 2025_04_02___20_02_52,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_04_04___00_19_08,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,"Improvements in most collectives, hopefully last test"
+2025_04_04___00_19_08,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
+2025_04_04___00_19_08,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
+2025_04_04___00_19_08,3,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
+2025_04_04___00_19_08,4,256,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
+2025_04_04___00_19_08,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,"Improvements in most collectives, hopefully last test"
+2025_04_04___00_19_08,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,"Improvements in most collectives, hopefully last test"
+2025_04_04___00_19_08,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
