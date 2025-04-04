@@ -403,7 +403,7 @@ int bcast_swing_lat_new(void *buf, size_t count, MPI_Datatype dtype, int root, M
 int bcast_swing_lat_i_new(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS, btnb_vrank;
-  int vrank, mask, recvd, req_count = 0;
+  int vrank, mask, recvd, req_count = 0, steps;
   MPI_Request *requests;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
@@ -412,10 +412,11 @@ int bcast_swing_lat_i_new(void *buf, size_t count, MPI_Datatype dtype, int root,
   if(!is_power_of_two(size)) return MPI_ERR_SIZE;
 
   vrank = mod(rank - root, size); // mod computes math modulo rather than reminder
-  mask = 0x1 << (int) (log_2(size) - 1);
+  steps = log_2(size);
+  mask = 0x1 << (int) (steps - 1);
   recvd = (root == rank);
   btnb_vrank = binary_to_negabinary(vrank);
-  requests = malloc(size * sizeof(MPI_Request));
+  requests = (MPI_Request *) malloc(steps * sizeof(MPI_Request));
   if(requests == NULL) return MPI_ERR_NO_MEM;
   while(mask > 0){
     int partner = btnb_vrank ^ ((mask << 1) - 1);
