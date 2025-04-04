@@ -21,7 +21,7 @@
 1        # Number of comm sizes
 2        # Comm size
 1        # Number of message sizes
-0 0 0 0 # Algorithm
+0 4 0 0 # Algorithm
 
 9        # Collective ID = GATHER
 1        # Number of comm sizes

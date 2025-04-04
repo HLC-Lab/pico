@@ -30,6 +30,7 @@ export DEFAULT_NOTES=""
 export DEFAULT_CUDA="False"
 export DEFAULT_GPU_PER_NODE="0"
 export DEFAULT_TASK_PER_NODE=1
+export DEFAULT_USE_NEW_TEST_LOOP="no"
 
 ###############################################################################
 # Utility functions for logging
@@ -261,6 +262,11 @@ parse_cli_args() {
                 export NOTES="$2"
                 shift 2
                 ;;
+            --new-test-loop)
+                check_arg "$1" "$2"
+                export USE_NEW_TEST_LOOP="$2"
+                shift 2
+                ;;
             --help)
                 usage
                 exit 0
@@ -334,6 +340,7 @@ validate_args() {
     check_yes_no "$DRY_RUN" "--dry-run" || return 1
     check_yes_no "$INTERACTIVE" "--interactive" || return 1
     check_yes_no "$SHOW_MPICH_ENV" "--show-mpich-env" || return 1
+    check_yes_no "$USE_NEW_TEST_LOOP" "--new-test-loop" || return 1
 
     [[ "$DRY_RUN" == "yes" ]] && warning "DRY RUN MODE: Commands will be printed but not executed"
 

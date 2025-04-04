@@ -6,6 +6,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
 #include "bench_utils.h"
 
@@ -288,48 +289,85 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
               MPI_Datatype dtype, MPI_Comm comm, int iter, double *times){
   int rank, comm_sz, ret, *rcounts = NULL;
+  bool use_new_loop = false;
+  const char *use_new = getenv("USE_NEW_TEST_LOOP");
+  if (NULL != use_new && strcmp(use_new, "yes") == 0){
+    use_new_loop = true;
+    BENCH_DEBUG_PRINT_STR("Using new test loop");
+  }
+
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
+  size_t local_count = count / (size_t) comm_sz; /**< Rank count for collectives with distributed data */
+
   switch (test_routine.collective){
     case ALLREDUCE:
-      ret = allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, comm, iter,
-                          times, test_routine);
+      ret = use_new_loop ?
+        allreduce_new_test_loop(sbuf, rbuf, count, dtype, MPI_SUM,
+                                comm, iter, times, test_routine) :
+        allreduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM,
+                            comm, iter, times, test_routine);
       break;
     case ALLGATHER:
-      ret = allgather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
-                          rbuf, count / (size_t) comm_sz, dtype,
-                          comm, iter, times, test_routine);
+      ret = use_new_loop ?
+        allgather_new_test_loop(sbuf, local_count, dtype,
+                                rbuf, local_count, dtype,
+                                comm, iter, times, test_routine) :
+        allgather_test_loop(sbuf, local_count, dtype,
+                            rbuf, local_count, dtype,
+                            comm, iter, times, test_routine);
       break;
     case ALLTOALL:
-      ret = alltoall_test_loop(sbuf, count / (size_t) comm_sz, dtype,
-                               rbuf, count / (size_t) comm_sz, dtype,
-                               comm, iter, times, test_routine);
+      ret = use_new_loop ?
+        alltoall_new_test_loop(sbuf, local_count, dtype,
+                               rbuf, local_count, dtype,
+                               comm, iter, times, test_routine) :
+        alltoall_test_loop(sbuf, local_count, dtype,
+                           rbuf, local_count, dtype,
+                           comm, iter, times, test_routine);
     break;
     case BCAST:
-      ret = bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
-                            test_routine);
+      ret = use_new_loop ?
+        bcast_new_test_loop(sbuf, count, dtype, 0, comm, iter, times,
+                            test_routine) :
+        bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
+                        test_routine);
       break;
     case GATHER:
-      ret = gather_test_loop(sbuf, count / (size_t) comm_sz, dtype,
-                             rbuf, count / (size_t) comm_sz, dtype, 0, comm,
-                             iter, times, test_routine);
+      ret = use_new_loop ?
+        gather_new_test_loop(sbuf, local_count, dtype,
+                             rbuf, local_count, dtype, 0, comm,
+                             iter, times, test_routine) :
+        gather_test_loop(sbuf, local_count, dtype,
+                         rbuf, local_count, dtype, 0, comm,
+                         iter, times, test_routine);
       break;
     case REDUCE:
-      ret = reduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm,
+      ret = use_new_loop ?
+        reduce_new_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm,
+                             iter, times, test_routine) :
+        reduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm,
                              iter, times, test_routine);
       break;
     case REDUCE_SCATTER:
-      // for translations of reduce_scatter, we must do a cudaMemcpy!!!!
       rcounts = (int *)malloc(comm_sz * sizeof(int));
-      for(int i = 0; i < comm_sz; i++) { rcounts[i] = count / comm_sz; }
-      ret = reduce_scatter_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm, iter,
-        times, test_routine);
-      free(rcounts);  
+      for(int i = 0; i < comm_sz; i++) { rcounts[i] = local_count; }
+      ret = use_new_loop ?
+        reduce_scatter_new_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm,
+                                    iter, times, test_routine) :
+        reduce_scatter_test_loop(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm,
+                                iter, times, test_routine);
+      free(rcounts);
       break;
     case SCATTER:
-      ret = scatter_test_loop(sbuf, count / (size_t) comm_sz, dtype, rbuf, count / (size_t) comm_sz, dtype,
-                              0, comm, iter, times, test_routine);
+      ret = use_new_loop ?
+        scatter_new_test_loop(sbuf, local_count, dtype,
+                              rbuf, local_count, dtype,
+                              0, comm, iter, times, test_routine) :
+        scatter_test_loop(sbuf, local_count, dtype,
+                          rbuf, local_count, dtype,
+                          0, comm, iter, times, test_routine);
       break;
     default:
       fprintf(stderr, "still not implemented, aborting...");
@@ -338,6 +376,21 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
   return ret;
 }
 
+void loop_broadcast(double *value, MPI_Comm comm) {
+  int rank, size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  if (rank == 0) {
+    for (int i = 0; i < size; i++) {
+      if (i != 0) {
+        MPI_Send(value, 1, MPI_DOUBLE, i, 0, comm);
+      }
+    }
+  } else {
+    MPI_Recv(value, 1, MPI_DOUBLE, 0, 0, comm, MPI_STATUS_IGNORE);
+  }
+}
 
 int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
                        void *rbuf_gt, size_t count, MPI_Datatype dtype, MPI_Comm comm){
