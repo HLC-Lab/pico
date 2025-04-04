@@ -21,6 +21,7 @@ export INTERACTIVE=$DEFAULT_INTERACTIVE
 export SHOW_MPICH_ENV=$DEFAULT_SHOW_MPICH_ENV
 export NOTES=$DEFAULT_NOTES
 export TASK_PER_NODE=$DEFAULT_TASK_PER_NODE
+export USE_NEW_TEST_LOOP=$DEFAULT_USE_NEW_TEST_LOOP
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
