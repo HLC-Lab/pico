@@ -48,6 +48,7 @@ int bcast_scatter_allgather(BCAST_ARGS);
 int bcast_swing_lat(BCAST_ARGS);
 int bcast_swing_lat_reversed(BCAST_ARGS);
 int bcast_swing_lat_new(BCAST_ARGS);
+int bcast_swing_lat_i_new(BCAST_ARGS);
 int bcast_swing_bdw_static(BCAST_ARGS);
 int bcast_swing_bdw_remap(BCAST_ARGS);
 // int bcast_swing_bdw_static_reversed(BCAST_ARGS);

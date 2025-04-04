@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.12",
+    "schema_version": "2.6.13",
     "created": "2024-01-30",
-    "last_modified": "2024-04-02",
+    "last_modified": "2024-04-04",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -1787,6 +1787,7 @@
         "tags": [
           "chain",
           "segmented",
+          "suboptimal",
           "additional_parameter",
           "internal"
         ]
@@ -1809,6 +1810,7 @@
         "tags": [
           "pipeline",
           "segmented",
+          "suboptimal",
           "additional_parameter",
           "internal"
         ]
@@ -2084,6 +2086,31 @@
         "dynamic_rule": 0,
         "tags": [
           "swing_lat_new",
+          "swing",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "swing_lat_i_new_over": {
+        "desc": "New libswing external swing latency optimal algorithm with isend.",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing_lat_i_new",
           "swing",
           "latency_optimal",
           "external"
@@ -2421,6 +2448,7 @@
         "dynamic_rule": 2,
         "tags": [
           "chain",
+          "suboptimal",
           "internal"
         ]
       },
@@ -2433,6 +2461,7 @@
         "dynamic_rule": 3,
         "tags": [
           "pipeline",
+          "suboptimal",
           "internal"
         ]
       },
