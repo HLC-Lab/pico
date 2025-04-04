@@ -19,7 +19,7 @@ if [[ "$PARTITION" == "boost_usr_prod" ]]; then
     [[ "$N_NODES" == 2 && "$DEBUG_MODE" == "yes" ]] && export QOS='boost_qos_dbg'
 fi
 
-# export EXCLUDE_NODES='lrdn[1291-3456]'
+export EXCLUDE_NODES='lrdn[1291-3456]'
 
 export UCX_IB_SL=1
 # export UCX_MAX_RNDV_RAILS=4
