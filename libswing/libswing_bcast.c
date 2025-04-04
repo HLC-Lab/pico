@@ -367,7 +367,7 @@ cleanup_and_return:
 
 int bcast_swing_lat_new(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
-  int size, rank, dtsize, err = MPI_SUCCESS;
+  int size, rank, dtsize, err = MPI_SUCCESS, btnb_vrank;
   int vrank, mask, recvd;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
@@ -378,11 +378,12 @@ int bcast_swing_lat_new(void *buf, size_t count, MPI_Datatype dtype, int root, M
   vrank = mod(rank - root, size); // mod computes math modulo rather than reminder
   mask = 0x1 << (int) (log_2(size) - 1);
   recvd = (root == rank);
+  btnb_vrank = binary_to_negabinary(vrank);
   while(mask > 0){
-    int partner = binary_to_negabinary(vrank) ^ ((mask << 1) - 1);
+    int partner = btnb_vrank ^ ((mask << 1) - 1);
     partner = mod(negabinary_to_binary(partner) + root, size);
     int mask_lsbs = (mask << 1) - 1; // Mask with num_steps - step + 1 LSBs set to 1
-    int lsbs = binary_to_negabinary(vrank) & mask_lsbs; // Extract k LSBs
+    int lsbs = btnb_vrank & mask_lsbs; // Extract k LSBs
     int equal_lsbs = (lsbs == 0 || lsbs == mask_lsbs);
 
     if(recvd){
@@ -397,6 +398,51 @@ int bcast_swing_lat_new(void *buf, size_t count, MPI_Datatype dtype, int root, M
   }
 
   return MPI_SUCCESS;
+}
+
+int bcast_swing_lat_i_new(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+{
+  int size, rank, dtsize, err = MPI_SUCCESS, btnb_vrank;
+  int vrank, mask, recvd, req_count = 0;
+  MPI_Request *requests;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dtype, &dtsize);
+
+  if(!is_power_of_two(size)) return MPI_ERR_SIZE;
+
+  vrank = mod(rank - root, size); // mod computes math modulo rather than reminder
+  mask = 0x1 << (int) (log_2(size) - 1);
+  recvd = (root == rank);
+  btnb_vrank = binary_to_negabinary(vrank);
+  requests = malloc(size * sizeof(MPI_Request));
+  if(requests == NULL) return MPI_ERR_NO_MEM;
+  while(mask > 0){
+    int partner = btnb_vrank ^ ((mask << 1) - 1);
+    partner = mod(negabinary_to_binary(partner) + root, size);
+    int mask_lsbs = (mask << 1) - 1; // Mask with num_steps - step + 1 LSBs set to 1
+    int lsbs = btnb_vrank & mask_lsbs; // Extract k LSBs
+    int equal_lsbs = (lsbs == 0 || lsbs == mask_lsbs);
+
+    if(recvd){
+      err = MPI_Isend(buf, count, dtype, partner, 0, comm, &requests[req_count++]);
+      if(MPI_SUCCESS != err) { goto err_hndl; }
+    }else if(equal_lsbs){
+      err = MPI_Recv(buf, count, dtype, partner, 0, comm, MPI_STATUS_IGNORE);
+      if(MPI_SUCCESS != err) { goto err_hndl; }
+      recvd = 1;
+    }
+    mask >>= 1;
+  }
+
+  MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
+
+  free(requests);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != requests) free(requests);
+  return err;
 }
 
  /*
