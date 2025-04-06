@@ -290,46 +290,6 @@ DEFINE_TEST_LOOP(reduce, REDUCE_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, 
 DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_ARGS, reduce_scatter(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm))
 DEFINE_TEST_LOOP(scatter, SCATTER_ARGS, scatter(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
 
-void loop_broadcast(double *value, MPI_Comm comm);
-
-#define DEFINE_NEW_TEST_LOOP(OP_NAME, ARGS, COLLECTIVE)                  \
-static inline int OP_NAME##_new_test_loop(ARGS, int iter, double *times, \
-                                          test_routine_t test_routine) { \
-  int ret = MPI_SUCCESS;                                                 \
-  int rank;\
-  MPI_Comm_rank(comm,&rank);\
-  double loop_time, start_time, end_time;                                           \
-  MPI_Barrier(comm);                                                     \
-  for(int i = 0; i < iter; i++) {                                        \
-    start_time = MPI_Wtime();                                            \
-    loop_time = MPI_Wtime() + 0.001;                                    \
-    bcast_swing_lat_new(&loop_time, 1, MPI_DOUBLE, 1, comm);             \
-    while (loop_time > start_time) {                                     \
-      start_time = MPI_Wtime();                                          \
-    }                                                                    \
-    ret = test_routine.function.COLLECTIVE;                              \
-    end_time = MPI_Wtime();                                              \
-    times[i] = end_time - start_time;                                    \
-    if(BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                             \
-      fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...");        \
-      return ret;                                                        \
-    }                                                                    \
-/*     fprintf(stderr, "(%d)rank %d st: %e lt: %e\n", i, rank, start_time, loop_time);                             \ */ \
-    MPI_Barrier(comm);                                                   \
-  }                                                                      \
-  return ret;                                                            \
-}
-
-DEFINE_NEW_TEST_LOOP(allreduce, ALLREDUCE_ARGS, allreduce(sbuf, rbuf, count, dtype, MPI_SUM, comm))
-DEFINE_NEW_TEST_LOOP(allgather, ALLGATHER_ARGS, allgather(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
-DEFINE_NEW_TEST_LOOP(alltoall, ALLTOALL_ARGS, alltoall(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
-DEFINE_NEW_TEST_LOOP(bcast, BCAST_ARGS, bcast(buf, count, dtype, 0, comm))
-DEFINE_NEW_TEST_LOOP(gather, GATHER_ARGS, gather(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
-DEFINE_NEW_TEST_LOOP(reduce, REDUCE_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm))
-DEFINE_NEW_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_ARGS, reduce_scatter(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm))
-DEFINE_NEW_TEST_LOOP(scatter, SCATTER_ARGS, scatter(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
-
-
 
 //-----------------------------------------------------------------------------------------------
 //                                   GROUND TRUTH CHECK FUNCTIONS

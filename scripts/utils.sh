@@ -30,7 +30,8 @@ export DEFAULT_NOTES=""
 export DEFAULT_CUDA="False"
 export DEFAULT_GPU_PER_NODE="0"
 export DEFAULT_TASK_PER_NODE=1
-export DEFAULT_USE_NEW_TEST_LOOP="no"
+export DEFAULT_JOB_DEP=""
+export DEFAULT_OTHER_PARAMS=""
 
 ###############################################################################
 # Utility functions for logging
@@ -132,6 +133,12 @@ Options:
                     It differs from debug mode as it will not compile and run code,
                     apart from python scripts to check the configuration and update dynamic rules.
                     [default: "${DEFAULT_DRY_RUN}"]
+--job-dep           Colon separated list of Slurm job dependencies. It is set to `afterany`.
+                    If set, the job will be submitted after the specified job(s) finish.
+                    This is useful for chaining jobs together.
+                    [default: "${DEFAULT_JOB_DEP}"]
+--other-params      Other parameters to pass to the job submission command.
+                    [default: "${DEFAULT_OTHER_PARAMS}"]
 --interactive       Interactive mode (use salloc instead of sbatch).
                     [default: "${DEFAULT_INTERACTIVE}"]
 --show-mpich-env    Show MPICH environment variables.
@@ -257,14 +264,19 @@ parse_cli_args() {
                 export SHOW_MPICH_ENV="$2"
                 shift 2
                 ;;
+            --job-dep)
+                check_arg "$1" "$2"
+                export JOB_DEP="$2"
+                shift 2
+                ;;
+            --other-params)
+                check_arg "$1" "$2"
+                export OTHER_PARAMS="$2"
+                shift 2
+                ;;
             --notes)
                 check_arg "$1" "$2"
                 export NOTES="$2"
-                shift 2
-                ;;
-            --new-test-loop)
-                check_arg "$1" "$2"
-                export USE_NEW_TEST_LOOP="$2"
                 shift 2
                 ;;
             --help)
@@ -323,6 +335,14 @@ validate_args() {
         error "--time must be in the format 'HH:MM:SS' with minutes and seconds between 00 and 59."
         usage
         return 1
+    else
+        for dep in ${JOB_DEP//:/ }; do
+            if [[ ! "$dep" =~ ^[0-9]+$ ]]; then
+                error "--job-dep must be a colon-separated list of numeric values."
+                usage
+                return 1
+            fi
+        done
     fi
 
     if [[ -n "$FORCE_TASKS" ]]; then
@@ -340,7 +360,6 @@ validate_args() {
     check_yes_no "$DRY_RUN" "--dry-run" || return 1
     check_yes_no "$INTERACTIVE" "--interactive" || return 1
     check_yes_no "$SHOW_MPICH_ENV" "--show-mpich-env" || return 1
-    check_yes_no "$USE_NEW_TEST_LOOP" "--new-test-loop" || return 1
 
     [[ "$DRY_RUN" == "yes" ]] && warning "DRY RUN MODE: Commands will be printed but not executed"
 

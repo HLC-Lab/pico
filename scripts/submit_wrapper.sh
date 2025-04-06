@@ -21,7 +21,8 @@ export INTERACTIVE=$DEFAULT_INTERACTIVE
 export SHOW_MPICH_ENV=$DEFAULT_SHOW_MPICH_ENV
 export NOTES=$DEFAULT_NOTES
 export TASK_PER_NODE=$DEFAULT_TASK_PER_NODE
-export USE_NEW_TEST_LOOP=$DEFAULT_USE_NEW_TEST_LOOP
+export JOB_DEP=$DEFAULT_JOB_DEP
+export OTHER_PARAMS=$DEFAULT_OTHER_PARAMS
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
@@ -81,15 +82,23 @@ else
     [[ -n "$FORCE_TASKS" ]] && PARAMS+=" --ntasks $FORCE_TASKS" || PARAMS+=" --ntasks-per-node $TASK_PER_NODE"
     [[ -n "$GRES" ]] && PARAMS+=" --gres=$GRES"
     [[ -n "$EXCLUDE_NODES" ]] && PARAMS+=" --exclude $EXCLUDE_NODES" 
+    [[ -n "$JOB_DEP" ]] && PARAMS+=" --dependency=afterany:$JOB_DEP"
+    [[ -n "$OTHER_PARAMS" ]] && PARAMS+=" $OTHER_PARAMS"
 
     # PARAMS+=" --reservation=s_int_lped_boost -H"
+
     if [[ "$INTERACTIVE" == "yes" ]]; then
+        inform "Submitting job with parameters: $PARAMS"
         salloc $PARAMS
     else
         if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
-            sbatch $PARAMS --exclusive --output="$OUTPUT_DIR/slurm_%j.out" --error="$OUTPUT_DIR/slurm_%j.err" "$SWING_DIR/scripts/run_test_suite.sh"
+            PARAMS+=" --exclusive --output=$OUTPUT_DIR/slurm_%j.out --error=$OUTPUT_DIR/slurm_%j.err"
+            inform "Submitting job with parameters: $PARAMS"
+            sbatch $PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
         else
-            sbatch $PARAMS --output="debug_%j.out" "$SWING_DIR/scripts/run_test_suite.sh"
+            PARAMS+=" --output=debug_%j.out"
+            inform "Submitting job with parameters: $PARAMS"
+            sbatch $PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
         fi
     fi
 fi
