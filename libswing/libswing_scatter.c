@@ -16,7 +16,7 @@ int scatter_swing(const void *sendbuf, size_t sendcount, MPI_Datatype dt,
   int vrank, halving_direction, mask, recvd = 0, is_leaf = 0;
   int sbuf_offset, vrank_nb;
   size_t min_resident_block, max_resident_block;
-  char *tmpbuf = NULL, *sbuf, *rbuf;
+  char *tmpbuf = NULL, *sbuf = NULL, *rbuf = NULL;
 
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
@@ -42,11 +42,11 @@ int scatter_swing(const void *sendbuf, size_t sendcount, MPI_Datatype dt,
   // Odd ranks subtracted 2^0, 2^2, 2^4, ... from min_resident_block
   //      and added 2^1, 2^3, 2^5, ... to max_resident_block
   if(rank % 2 == 0){    
-    max_resident_block = mod(rank + 0x55555555 & ((0x1 << (int) log_2(size)) - 1), size);
-    min_resident_block = mod(rank - 0xAAAAAAAA & ((0x1 << (int) log_2(size)) - 1), size);
+    max_resident_block = mod((rank + 0x55555555) & ((0x1 << (int) log_2(size)) - 1), size);
+    min_resident_block = mod((rank - 0xAAAAAAAA) & ((0x1 << (int) log_2(size)) - 1), size);
   }else{
-    min_resident_block = mod(rank - 0x55555555 & ((0x1 << (int) log_2(size)) - 1), size);
-    max_resident_block = mod(rank + 0xAAAAAAAA & ((0x1 << (int) log_2(size)) - 1), size);    
+    min_resident_block = mod((rank - 0x55555555) & ((0x1 << (int) log_2(size)) - 1), size);
+    max_resident_block = mod((rank + 0xAAAAAAAA) & ((0x1 << (int) log_2(size)) - 1), size);    
   }
 
   mask = 0x1 << (int) (log_2(size) - 1);
