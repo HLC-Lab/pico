@@ -35,6 +35,7 @@ int allgather_recursivedoubling(ALLGATHER_ARGS);
 int allgather_ring(ALLGATHER_ARGS);
 int allgather_sparbit(ALLGATHER_ARGS);
 int allgather_swing_block_by_block(ALLGATHER_ARGS);
+int allgather_swing_block_by_block_any_even(ALLGATHER_ARGS);
 int allgather_swing_permute_static(ALLGATHER_ARGS);
 int allgather_swing_send_static(ALLGATHER_ARGS);
 int allgather_swing_permute_remap(ALLGATHER_ARGS);
@@ -66,6 +67,7 @@ int reduce_scatter_swing_static(REDUCE_SCATTER_ARGS);
 int reduce_scatter_swing_send_remap(REDUCE_SCATTER_ARGS);
 int reduce_scatter_swing_permute_remap(REDUCE_SCATTER_ARGS);
 int reduce_scatter_swing_block_by_block(REDUCE_SCATTER_ARGS);
+int reduce_scatter_swing_block_by_block_any_even(REDUCE_SCATTER_ARGS);
 
 int scatter_swing(SCATTER_ARGS);
 

@@ -1231,6 +1231,40 @@
           "external"
         ]
       },
+      "swing_block_by_block_over_any_even": {
+        "desc": "Libswing external swing block by block algorithm. Works for any number of even processes",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing_block_by_block",
+          "block_by_block",
+          "swing",
+          "external"
+        ]
+      },      
       "swing_permute_static_over": {
         "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
@@ -3105,6 +3139,39 @@
             "conditions": [
               {
                 "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "swing",
+          "block_by_block",
+          "external"
+        ]
+      },
+      "swing_block_by_block_any_even": {
+        "desc": "Libswing external swing block by block algorithm. Works only any even processes",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
                 "value": true
               }
             ]
