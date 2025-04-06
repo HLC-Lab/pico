@@ -257,7 +257,15 @@ static inline ptrdiff_t datatype_span(MPI_Datatype dtype, size_t count, ptrdiff_
 
 
 /**
+ * @brief Returns if the given value is a power of two.
+ */
+static inline int is_power_of_two(int value) {
+    return (value & (value - 1)) == 0;
+}
+
+/**
  * @brief Returns log_2(value). Value must be a positive integer.
+ *        If value is not a power of two, returns ceil(log2(value)).
  *
  * @param value The **POSITIVE** integer value to return its log_2.
  *
@@ -267,15 +275,11 @@ static inline int log_2(int value) {
   if(SWING_UNLIKELY(1 > value)) {
     return -1;
   }
-  return sizeof(int)*8 - 1 - __builtin_clz(value);
-}
-
-
-/**
- * @brief Returns if the given value is a power of two.
- */
-static inline int is_power_of_two(int value) {
-    return (value & (value - 1)) == 0;
+  int log = sizeof(int)*8 - 1 - __builtin_clz(value); 
+  if (!is_power_of_two(value)) {
+    log += 1;
+  }
+  return log;
 }
 
 
@@ -598,6 +602,46 @@ static inline int remap_distance_doubling(uint32_t num) {
     }
     return remapped;
 }
+
+static inline uint32_t nb_to_nu(uint32_t nb, uint32_t size){
+  return reverse(nb ^ (nb >> 1)) >> (32 - log_2(size));
+}
+
+static inline uint32_t get_nu(uint32_t rank, uint32_t size){
+  uint32_t nba = UINT32_MAX, nbb = UINT32_MAX;
+  size_t num_bits = log_2(size);
+  if(rank % 2){
+      if(in_range(rank, num_bits)){
+          nba = binary_to_negabinary(rank);
+      }
+      if(in_range(rank - size, num_bits)){
+          nbb = binary_to_negabinary(rank - size);
+      }
+  }else{
+      if(in_range(-rank, num_bits)){
+          nba = binary_to_negabinary(-rank);
+      }
+      if(in_range(-rank + size, num_bits)){
+          nbb = binary_to_negabinary(-rank + size);
+      }
+  }
+  assert(nba != UINT32_MAX || nbb != UINT32_MAX);
+
+  if(nba == UINT32_MAX && nbb != UINT32_MAX){
+      return nb_to_nu(nbb, size);
+  }else if(nba != UINT32_MAX && nbb == UINT32_MAX){
+      return nb_to_nu(nba, size);
+  }else{ // Check MSB
+      int nu_a = nb_to_nu(nba, size);
+      int nu_b = nb_to_nu(nbb, size);
+      if(nu_a < nu_b){
+          return nu_a;
+      }else{
+          return nu_b;
+      }
+  }
+}
+
 
 // NOTE: Commented since at the moment not used in the code
 //

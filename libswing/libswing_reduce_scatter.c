@@ -1071,6 +1071,7 @@ int reduce_scatter_swing_block_by_block(const void *sendbuf, void *recvbuf, cons
   
   void* tmpbuf = malloc(count*dtsize);
   void* resbuf = malloc(count*dtsize);
+  MPI_Request* reqs = NULL;
 
   if(NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping) {
   err = MPI_ERR_NO_MEM;
@@ -1081,8 +1082,8 @@ int reduce_scatter_swing_block_by_block(const void *sendbuf, void *recvbuf, cons
   int mask = 0x1;
   int inverse_mask = 0x1 << (int) (log_2(size) - 1);
   int block_first_mask = ~(inverse_mask - 1);
-  int remapped_rank = remap_rank(size, rank);
-  MPI_Request* reqs = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
+  int remapped_rank = remap_rank(size, rank);  
+  reqs = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
   while(mask < size){
     int partner;
     if(rank % 2 == 0){
@@ -1096,12 +1097,10 @@ int reduce_scatter_swing_block_by_block(const void *sendbuf, void *recvbuf, cons
     // the power of two
     int send_block_first = remap_rank(size, partner) & block_first_mask;
     int send_block_last = send_block_first + inverse_mask - 1;
-    int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
     // Something similar for the block to recv.
     // I receive my block, but aligned to the power of two
     int recv_block_first = remapped_rank & block_first_mask;
     int recv_block_last = recv_block_first + inverse_mask - 1;
-    int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
 
     int next_req = 0;
     for(size_t block = recv_block_first; block <= recv_block_last; block++){
@@ -1158,6 +1157,132 @@ err_hndl:
   if (NULL != displs) free(displs);
   if (NULL != step_to_send) free(step_to_send);
   if (NULL != inverse_remapping) free(inverse_remapping);
+  if (NULL != tmpbuf) free(tmpbuf);
+  if (NULL != resbuf) free(resbuf);
+  return err;
+}
+
+int reduce_scatter_swing_block_by_block_any_even(const void *sendbuf, void *recvbuf, const int recvcounts[], MPI_Datatype dt, MPI_Op op, MPI_Comm comm){
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+  int count = 0;
+  int* displs = (int*) malloc(size*sizeof(int));
+  for(int i = 0; i < size; i++){
+    displs[i] = count;
+    count += recvcounts[i];    
+  }
+  
+  void* tmpbuf = malloc(count*dtsize);
+  void* resbuf = malloc(count*dtsize);
+  memcpy(resbuf, sendbuf, count*dtsize);
+  
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  MPI_Request* reqs_s = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
+  MPI_Request* reqs_r = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
+  int* blocks_to_recv = (int*) malloc(size*sizeof(int));
+  int next_req_s = 0, next_req_r = 0;
+  int reverse_step = log_2(size) - 1;
+  int last_recv_done = 0;
+  while(mask < size){
+    int partner;
+    if(rank % 2 == 0){
+        partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    }else{
+        partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    }   
+
+    next_req_r = 0;
+    next_req_s = 0;
+
+    // We start from 1 because 0 never sends block 0
+    for(size_t block = 1; block < size; block++){
+        // Get the position of the highest set bit using clz
+        // That gives us the first at which block departs from 0
+        int k = 31 - __builtin_clz(get_nu(block, size));
+        // Check if this must be sent
+        if(k == reverse_step){
+            // 0 would send this block
+            size_t block_to_send, block_to_recv;
+            if(rank % 2 == 0){
+                // I am even, thus I need to shift by rank position to the right
+                block_to_send = mod(block + rank, size);
+                // What to receive? What my partner is sending
+                // Since I am even, my partner is odd, thus I need to mirror it and then shift
+                block_to_recv = mod(partner - block, size);
+            }else{
+                // I am odd, thus I need to mirror it
+                block_to_send = mod(rank - block, size);
+                // What to receive? What my partner is sending
+                // Since I am odd, my partner is even, thus I need to mirror it and then shift   
+                block_to_recv = mod(block + partner, size);
+            }
+
+            if(block_to_send != rank){
+                err = MPI_Isend((char*) resbuf + displs[block_to_send]*dtsize, recvcounts[block_to_send], dt, partner, 0,
+                           comm, &reqs_s[next_req_s]);
+                if(MPI_SUCCESS != err) { goto err_hndl; }
+                ++next_req_s;
+            }
+
+            if(block_to_recv != partner){
+                blocks_to_recv[next_req_r] = block_to_recv;
+                if(mask << 1 >= size){
+                    // Last step, receiving in recvbuf                       
+                    err = MPI_Irecv((char*) recvbuf, recvcounts[block_to_recv], dt, partner, 0,
+                            comm, &reqs_r[next_req_r]);       
+                    if(MPI_SUCCESS != err) { goto err_hndl; }
+                    last_recv_done = 1;                             
+                }else{
+                    err = MPI_Irecv((char*) tmpbuf + displs[block_to_recv]*dtsize, recvcounts[block_to_recv], dt, partner, 0,
+                            comm, &reqs_r[next_req_r]);                
+                    if(MPI_SUCCESS != err) { goto err_hndl; }
+                }                            
+                ++next_req_r;
+            }
+        }        
+    }
+
+    for(size_t block = 0; block < next_req_r; block++){
+        err = MPI_Wait(&reqs_r[block], MPI_STATUS_IGNORE);
+        if(MPI_SUCCESS != err) { goto err_hndl; }
+        if(mask << 1 >= size){
+            // Last step, received in recvbuf, aggregating from resbuf
+            err = MPI_Reduce_local((char*) resbuf + displs[blocks_to_recv[block]]*dtsize, (char*) recvbuf                                      , recvcounts[blocks_to_recv[block]], dt, op);
+            if(MPI_SUCCESS != err) { goto err_hndl; }
+        }else{
+            err = MPI_Reduce_local((char*) tmpbuf + displs[blocks_to_recv[block]]*dtsize, (char*) resbuf + displs[blocks_to_recv[block]]*dtsize, recvcounts[blocks_to_recv[block]], dt, op);
+            if(MPI_SUCCESS != err) { goto err_hndl; }
+        }
+    }
+    err = MPI_Waitall(next_req_s, reqs_s, MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { goto err_hndl; }
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+    reverse_step--;
+  }
+  if(!last_recv_done){
+    memcpy(recvbuf, (char*) resbuf + displs[rank]*dtsize, recvcounts[rank]*dtsize);
+  }
+
+  free(blocks_to_recv);
+  free(reqs_s);
+  free(reqs_r);
+  free(displs);
+  free(tmpbuf);
+  free(resbuf);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != blocks_to_recv) free(blocks_to_recv);
+  if (NULL != reqs_s) free(reqs_s);
+  if (NULL != reqs_r) free(reqs_r);
+  if (NULL != displs) free(displs);
   if (NULL != tmpbuf) free(tmpbuf);
   if (NULL != resbuf) free(resbuf);
   return err;

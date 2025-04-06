@@ -95,7 +95,8 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "k_bruck_over", allgather_k_bruck);
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
-  CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
+  CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);  
+  CHECK_STR(algorithm, "swing_block_by_block_over_any_even", allgather_swing_block_by_block_any_even);
   CHECK_STR(algorithm, "swing_block_by_block_over", allgather_swing_block_by_block);
   CHECK_STR(algorithm, "swing_permute_static_over", allgather_swing_permute_static);
   CHECK_STR(algorithm, "swing_send_static_over", allgather_swing_send_static);
@@ -193,8 +194,9 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "butterfly_over", reduce_scatter_butterfly);
   CHECK_STR(algorithm, "swing_static_over", reduce_scatter_swing_static);
   CHECK_STR(algorithm, "swing_send_remap_over", reduce_scatter_swing_send_remap);
-  CHECK_STR(algorithm, "swing_permute_remap_over", reduce_scatter_swing_permute_remap);
+  CHECK_STR(algorithm, "swing_permute_remap_over", reduce_scatter_swing_permute_remap);  
   CHECK_STR(algorithm, "swing_block_by_block_over", reduce_scatter_swing_block_by_block);
+  CHECK_STR(algorithm, "swing_block_by_block_any_even", reduce_scatter_swing_block_by_block_any_even);
 
   BENCH_DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;
