@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.13",
+    "schema_version": "2.6.14",
     "created": "2024-01-30",
-    "last_modified": "2024-04-04",
+    "last_modified": "2024-04-07",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -1265,7 +1265,7 @@
           "swing",
           "external"
         ]
-      },      
+      },
       "swing_permute_static_over": {
         "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
@@ -1484,6 +1484,171 @@
       }
     },
     "ALLTOALL": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "brucks_mpich": {
+        "desc": "MPICH Brucks algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "brucks",
+        "tags": [
+          "brucks",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH nonblocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "nb",
+        "tags": [
+          "nb",
+          "internal"
+        ]
+      },
+      "pairwise_mpich": {
+        "desc": "MPICH pairwise exchange algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "pairwise",
+        "tags": [
+          "pairwise",
+          "internal"
+        ]
+      },
+      "pairwise_sendrecv_replace_mpich": {
+        "desc": "MPICH pairwise sendrecv_replace algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "pairwise_sendrecv_replace",
+        "tags": [
+          "pairwise_sendrecv_replace",
+          "internal"
+        ]
+      },
+      "scattered_mpich": {
+        "desc": "MPICH scattered algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "scattered",
+        "tags": [
+          "scattered",
+          "internal"
+        ]
+      },
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
@@ -2450,6 +2615,65 @@
       }
     },
     "REDUCE": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "rabenseifner_mpich": {
+        "desc": "MPICH Rabenseifner algorithm. Internally is called reduce_scatter_gather",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "reduce_scatter_gather",
+        "tags": [
+          "rabenseifner",
+          "internal"
+        ]
+      },
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
@@ -3188,6 +3412,75 @@
       }
     },
     "SCATTER": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {

@@ -680,40 +680,40 @@ export -f run_bench
 # Function to update/select algorithm
 ###############################################################################
 update_algorithm() {
-    local algo=$1
-    local cvar_indx=$2
-    if [[ "$MPI_LIB" == "OMPI_SWING" || "$MPI_LIB" == "OMPI" ]]; then
-        success "Updating dynamic rule file for algorithm $algo..."
-        python3 $ALGO_CHANGE_SCRIPT $algo || cleanup
-        export OMPI_MCA_coll_tuned_dynamic_rules_filename=${DYNAMIC_RULE_FILE}
-    elif [[ $MPI_LIB == "MPICH" || $MPI_LIB == "CRAY_MPICH" ]]; then
-        local cvar=${CVARS[$cvar_indx]}
-        [[ $MPI_LIB == "CRAY_MPICH" ]] && warning "CRAY_MPICH may not support algorithm selection via CVARs. Results may vary."
-        export MPICH_COLL_OPT_OFF=1
-        export MPICH_SHARED_MEM_COLL_OPT=0
-        export MPICH_ALLREDUCE_DEVICE_COLLECTIVE=0
+    local algo="$1"
+    local cvar_indx="$2"
+    case "$MPI_LIB" in
+        "OMPI_SWING" | "OMPI")
+            success "Updating dynamic rule file for algorithm $algo..."
+            python3 "$ALGO_CHANGE_SCRIPT" "$algo" || cleanup
+            export OMPI_MCA_coll_tuned_dynamic_rules_filename="${DYNAMIC_RULE_FILE}"
+            ;;
+        "MPICH")
+            local cvar="${CVARS[$cvar_indx]}"
+            export MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM="$cvar"
+            success "Setting MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
+            ;;
+        "CRAY_MPICH")
+            local cvar="${CVARS[$cvar_indx]}"
+            export MPICH_COLL_OPT_OFF=1
+            export MPICH_SHARED_MEM_COLL_OPT=0
+            export MPICH_${COLLECTIVE_TYPE}_DEVICE_COLLECTIVE=0
 
-	if [[ $cvar == "reduce_scatter_allgather" ]]; then
-	       	export MPICH_OFI_CXI_COUNTER_REPORT=0
-		export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=1
-	else
-		export MPICH_OFI_CXI_COUNTER_REPORT=1
-		export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=0
-	fi
-        # FIX: CRAY_MPICH does not support algo selection
-        #
-        # Disable optimized collectives for MPICH that can override algorithm selection
-        #     export MPICH_ALLREDUCE_NO_SMP=1
-        #     if [[ "$cvar" == "auto" ]]; then
-        #         export MPICH_COLL_OPT_OFF=0
-        #         export MPICH_SHARED_MEM_COLL_OPT=0
-        #     else 
-        #         export MPICH_COLL_OPT_OFF=1
-        #         export MPICH_SHARED_MEM_COLL_OPT=1
-        #     fi
-        success "Setting 'MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
-        export MPICH_ALLREDUCE_INTRA_ALGORITHM=$cvar
-    fi
+            if [[ "$cvar" == "reduce_scatter_allgather" ]]; then
+                export MPICH_OFI_CXI_COUNTER_REPORT=0
+                export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=1
+            else
+                export MPICH_OFI_CXI_COUNTER_REPORT=1
+                export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=0
+            fi
+            success "Setting MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
+            export MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM="$cvar"
+            ;;
+        *)
+            echo "Error: Unsupported MPI_LIB value: $MPI_LIB" >&2
+            return 1
+            ;;
+    esac
 }
 export -f update_algorithm
 
@@ -723,7 +723,7 @@ export -f update_algorithm
 run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
-        update_algorithm $algo $i
+        update_algorithm $algo $i || { error "Failed to update algorithm $algo" ; cleanup; }
         export SEGMENTED=${IS_SEGMENTED[$i]}
         inform "Segmented: $SEGMENTED"
 
