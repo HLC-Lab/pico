@@ -690,14 +690,17 @@ update_algorithm() {
             ;;
         "MPICH")
             local cvar="${CVARS[$cvar_indx]}"
-            export MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM="$cvar"
+            local var_name="MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"
+            export $var_name="$cvar"
             success "Setting MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
             ;;
         "CRAY_MPICH")
             local cvar="${CVARS[$cvar_indx]}"
+            local var_name="MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"
+            local var_name_2="MPICH_${COLLECTIVE_TYPE}_DEVICE_COLLECTIVE"
             export MPICH_COLL_OPT_OFF=1
             export MPICH_SHARED_MEM_COLL_OPT=0
-            export MPICH_${COLLECTIVE_TYPE}_DEVICE_COLLECTIVE=0
+            export $var_name_2="0"
 
             if [[ "$cvar" == "reduce_scatter_allgather" ]]; then
                 export MPICH_OFI_CXI_COUNTER_REPORT=0
@@ -706,8 +709,8 @@ update_algorithm() {
                 export MPICH_OFI_CXI_COUNTER_REPORT=1
                 export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=0
             fi
+            export $var_name="$cvar"
             success "Setting MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
-            export MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM="$cvar"
             ;;
         *)
             echo "Error: Unsupported MPI_LIB value: $MPI_LIB" >&2
