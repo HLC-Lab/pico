@@ -702,7 +702,7 @@ update_algorithm() {
             export MPICH_SHARED_MEM_COLL_OPT=0
             export "${var_name_2}"="0"
 
-            if [[ "$cvar" == "reduce_scatter_allgather" ]]; then
+            if [[ "$cvar" == "reduce_scatter_allgather"  || "$cvar" == "reduce_scatter_gather" ]]; then
                 export MPICH_OFI_CXI_COUNTER_REPORT=0
                 export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=1
             else
