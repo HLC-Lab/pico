@@ -105,6 +105,7 @@
       "rabenseifner_mpich": {
         "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code. It works only with count >= comm_sz.",
         "library": {
+          "cray_mpich": "8.0.0",
           "mpich": "4.3.0"
         },
         "constraints": [

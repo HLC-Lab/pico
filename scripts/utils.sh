@@ -692,6 +692,14 @@ update_algorithm() {
         export MPICH_COLL_OPT_OFF=1
         export MPICH_SHARED_MEM_COLL_OPT=0
         export MPICH_ALLREDUCE_DEVICE_COLLECTIVE=0
+
+	if [[ $cvar == "reduce_scatter_allgather" ]]; then
+	       	export MPICH_OFI_CXI_COUNTER_REPORT=0
+		export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=1
+	else
+		export MPICH_OFI_CXI_COUNTER_REPORT=1
+		export MPICH_OFI_SKIP_NIC_SIMMETRY_TEST=0
+	fi
         # FIX: CRAY_MPICH does not support algo selection
         #
         # Disable optimized collectives for MPICH that can override algorithm selection
@@ -704,7 +712,7 @@ update_algorithm() {
         #         export MPICH_SHARED_MEM_COLL_OPT=1
         #     fi
         success "Setting 'MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
-        export "MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
+        export MPICH_ALLREDUCE_INTRA_ALGORITHM=$cvar
     fi
 }
 export -f update_algorithm
