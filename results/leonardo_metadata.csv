@@ -59,3 +59,12 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_04_05___23_20_55,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
 2025_04_05___23_20_55,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
 2025_04_05___23_20_55,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_04_06___13_13_36,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,UCX_IB_SL=0 test
+2025_04_06___13_24_12,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
+2025_04_06___13_24_12,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_04_06___13_24_12,2,128,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_04_06___13_24_12,3,128,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_04_06___13_24_12,4,128,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+2025_04_06___13_24_12,5,128,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
+2025_04_06___13_24_12,6,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
+2025_04_06___13_24_12,7,128,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null

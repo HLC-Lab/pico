@@ -1,4 +1,4 @@
-8        # Number of collectives
+9        # Number of collectives
 0        # Collective ID = ALLGATHER
 1        # Number of comm sizes
 2        # Comm size
@@ -17,11 +17,17 @@
 1        # Number of message sizes
 0 0 0 0 # Algorithm
 
+6        # Collective ID = BARRIER
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 3 0 0 # Algorithm
+
 7        # Collective ID = BCAST
 1        # Number of comm sizes
 2        # Comm size
 1        # Number of message sizes
-0 4 0 0 # Algorithm
+0 0 0 0 # Algorithm
 
 9        # Collective ID = GATHER
 1        # Number of comm sizes
