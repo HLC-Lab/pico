@@ -689,6 +689,9 @@ update_algorithm() {
     elif [[ $MPI_LIB == "MPICH" || $MPI_LIB == "CRAY_MPICH" ]]; then
         local cvar=${CVARS[$cvar_indx]}
         [[ $MPI_LIB == "CRAY_MPICH" ]] && warning "CRAY_MPICH may not support algorithm selection via CVARs. Results may vary."
+        export MPICH_COLL_OPT_OFF=1
+        export MPICH_SHARED_MEM_COLL_OPT=0
+        export MPICH_ALLREDUCE_DEVICE_COLLECTIVE=0
         # FIX: CRAY_MPICH does not support algo selection
         #
         # Disable optimized collectives for MPICH that can override algorithm selection
@@ -700,8 +703,8 @@ update_algorithm() {
         #         export MPICH_COLL_OPT_OFF=1
         #         export MPICH_SHARED_MEM_COLL_OPT=1
         #     fi
-        success "Setting 'MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
-        export "MPIR_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
+        success "Setting 'MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar' for algorithm $algo..."
+        export "MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"=$cvar
     fi
 }
 export -f update_algorithm
