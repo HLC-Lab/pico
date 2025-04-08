@@ -25,7 +25,7 @@ export DEFAULT_DELETE="no"
 export DEFAULT_DEBUG_MODE="no"
 export DEFAULT_DRY_RUN="no"
 export DEFAULT_INTERACTIVE="no"
-export DEFAULT_SHOW_MPICH_ENV="no"
+export DEFAULT_SHOW_ENV="no"
 export DEFAULT_NOTES=""
 export DEFAULT_CUDA="False"
 export DEFAULT_GPU_PER_NODE="0"
@@ -141,10 +141,10 @@ Options:
                     [default: "${DEFAULT_OTHER_PARAMS}"]
 --interactive       Interactive mode (use salloc instead of sbatch).
                     [default: "${DEFAULT_INTERACTIVE}"]
---show-mpich-env    Show MPICH environment variables.
+--show-env          Show environment variables.
                     Will only apply if --debug is 'yes' and MPI_LIB is either MPICH or CRAY_MPICH.
                     Otherwise it won't have any effect.
-                    [default: "${DEFAULT_SHOW_MPICH_ENV}"]
+                    [default: "${DEFAULT_SHOW_ENV}"]
 --notes             Notes for metadata entry.
                     [default: "${DEFAULT_NOTES}"]
 --help              Show short help message
@@ -259,9 +259,9 @@ parse_cli_args() {
                 export INTERACTIVE="$2"
                 shift 2
                 ;;
-            --show-mpich-env)
+            --show-env)
                 check_arg "$1" "$2"
-                export SHOW_MPICH_ENV="$2"
+                export SHOW_ENV="$2"
                 shift 2
                 ;;
             --job-dep)
@@ -359,7 +359,7 @@ validate_args() {
     check_yes_no "$DELETE" "--delete" || return 1
     check_yes_no "$DRY_RUN" "--dry-run" || return 1
     check_yes_no "$INTERACTIVE" "--interactive" || return 1
-    check_yes_no "$SHOW_MPICH_ENV" "--show-mpich-env" || return 1
+    check_yes_no "$SHOW_ENV" "--show-env" || return 1
 
     [[ "$DRY_RUN" == "yes" ]] && warning "DRY RUN MODE: Commands will be printed but not executed"
 
@@ -444,8 +444,6 @@ validate_args() {
     fi
     export TASK_PER_NODE=$task_per_node
     export MAX_GPU_TEST=$max_gpu_per_node
-
-    [[ "$SHOW_MPICH_ENV" == "yes" && "$DEBUG_MODE" == "yes" && "$MPI_LIB" == "CRAY_MPICH" ]] && export MPICH_ENV_DISPLAY=1
 
     return 0
 }

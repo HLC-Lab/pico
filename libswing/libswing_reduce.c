@@ -183,7 +183,7 @@ int reduce_swing_bdw(const void *sendbuf, void *recvbuf, size_t count,
     }else{
       // Something similar for the block to recv.
       // I receive my partner's block, but aligned to the power of two
-      err = MPI_Recv(resbuf + sindex[step] * dtsize, sindex[step], dt, partner, steps + step, comm, MPI_STATUS_IGNORE);
+      err = MPI_Recv(resbuf + sindex[step] * dtsize, scount[step], dt, partner, steps + step, comm, MPI_STATUS_IGNORE);
       if(err != MPI_SUCCESS) { goto err_hndl; }
     }
 

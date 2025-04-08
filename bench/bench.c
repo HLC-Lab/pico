@@ -113,7 +113,8 @@ int main(int argc, char *argv[]) {
 #ifndef DEBUG
   // Gather all process times to rank 0 and find the highest execution time of each iteration
   PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
-  PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
+  // Use custom reduce since you can have iter < comm_sz (it can crash for rabenseifner type reduce)
+  reduce_swing_lat(times, highest, (size_t) iter, MPI_DOUBLE, MPI_MAX, 0, comm);
 
   if (rank == 0) {
     if (swing_allreduce_segsize != 0) {
@@ -181,6 +182,8 @@ int main(int argc, char *argv[]) {
     free(all_times);
     free(highest);
   }
+
+  MPI_Barrier(comm);
 
   MPI_Finalize();
 
