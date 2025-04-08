@@ -111,7 +111,7 @@ def normalize_dataset(data: pd.DataFrame, mpi_lib : str, base : str | None = Non
 
     return data
 
-def generate_lineplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp):
+def generate_lineplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, mpi_tasks):
     """
     Create line plots with logarithmic scale on both axis.
     """
@@ -124,7 +124,10 @@ def generate_lineplot(data: pd.DataFrame, system, collective, nnodes, datatype, 
         if isinstance(sorted_group, pd.DataFrame): # silence warning with isinstance
             plt.plot(sorted_group['buffer_size'], sorted_group['mean'], label=algo, marker='*', markersize=5, linewidth=1)
 
-    plt.title(f'{system}, {collective.lower()}, {nnodes} nodes', fontsize=18)
+    if (nnodes == mpi_tasks):
+        plt.title(f'{system}, {collective.lower()}, {nnodes} nodes', fontsize=18)
+    else:
+        plt.title(f'{system}, {collective.lower()}, {nnodes} nodes ({mpi_tasks} tasks)', fontsize=18)
     plt.xlabel('Array Size (Bytes)', fontsize=15)
     plt.ylabel('Mean Execution Time (ns)', fontsize=15)
     plt.xscale('log')
@@ -145,7 +148,7 @@ def generate_lineplot(data: pd.DataFrame, system, collective, nnodes, datatype, 
     plt.savefig(full_name, dpi=300)
     plt.close()
 
-def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, std_threshold: float = 0.5):
+def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, mpi_tasks, std_threshold: float = 0.5):
     # Get the sorted list of unique algorithm names
     sorted_algos = sorted(data['algo_name'].unique().tolist(), key=sort_key)
 
@@ -184,7 +187,10 @@ def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, t
             ncols = 3
         ax.legend(handles, labels, ncol=ncols,loc='upper left', fontsize=9)
 
-    plt.title(f'{system}, {collective.lower()}, {nnodes} nodes', fontsize=18)
+    if (nnodes == mpi_tasks):
+        plt.title(f'{system}, {collective.lower()}, {nnodes} nodes', fontsize=18)
+    else:
+        plt.title(f'{system}, {collective.lower()}, {nnodes} nodes ({mpi_tasks} tasks)', fontsize=18)
     plt.xlabel('Message Size', fontsize=15)
     plt.ylabel('Normalized Execution Time', fontsize=15)
     plt.grid(True, which='both', linestyle='-', linewidth=0.5, axis='y')
@@ -196,7 +202,8 @@ def generate_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, t
     plt.savefig(full_name, dpi=300)
     plt.close()
 
-def generate_cut_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, std_threshold : float = 0.5) :
+
+def generate_cut_barplot(data: pd.DataFrame, system, collective, nnodes, datatype, timestamp, mpi_tasks, std_threshold : float = 0.5) :
     # Compute the sorted order of algorithm names
     sorted_algos = sorted(data['algo_name'].unique().tolist(), key=sort_key)
 
@@ -275,7 +282,10 @@ def generate_cut_barplot(data: pd.DataFrame, system, collective, nnodes, datatyp
     ax_bot.set_xlabel('Buffer Size', fontsize=15)
     ax_bot.set_ylabel('Normalized Mean Execution Time', fontsize=15)
     ax_top.set_ylabel('')
-    fig.suptitle(f'{system}, {collective.lower()}, {nnodes} nodes ({datatype})', fontsize=18)
+    if (nnodes == mpi_tasks):
+        fig.suptitle(f'{system}, {collective.lower()}, {nnodes} nodes ({datatype})', fontsize=18)
+    else:
+        fig.suptitle(f'{system}, {collective.lower()}, {nnodes} nodes ({datatype}, {mpi_tasks} tasks)', fontsize=18)
 
     ax_bot.set_xticks(ax_bot.get_xticks()) # Silence warning on unbound number of ticks
     new_labels = []
@@ -334,9 +344,10 @@ def main():
     timestamp = df['timestamp'].iloc[0]
     mpi_lib = df['mpi_lib'].iloc[0]
     nnodes = df['nnodes'].iloc[0]
+    mpi_tasks = nnodes * df['tasks_per_node'].iloc[0]
 
     drop_cols = ['array_dim','nnodes','system','timestamp','test_id','MPI_Op',
-                 'CUDA','notes','mpi_lib','mpi_lib_version','libswing_version']
+                 'CUDA','notes','mpi_lib','mpi_lib_version','libswing_version', 'tasks_per_node']
     df.drop(columns=drop_cols, inplace=True)
 
     if args.collective is not None:
@@ -368,10 +379,10 @@ def main():
 
     for datatype, group in df.groupby('datatype'):
         for collective, subgroup in group.groupby('collective_type'):
-            generate_lineplot(subgroup, system_name, collective, nnodes, datatype, timestamp);
+            generate_lineplot(subgroup, system_name, collective, nnodes, datatype, timestamp, mpi_tasks);
             normalized_data = normalize_dataset(subgroup, mpi_lib, args.normalize_by)
-            generate_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp)
-            generate_cut_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp)
+            generate_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp, mpi_tasks)
+            generate_cut_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp, mpi_tasks)
 
 if __name__ == "__main__":
     main()

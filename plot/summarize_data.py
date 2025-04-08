@@ -140,6 +140,7 @@ def aggregate_results(results_dir: os.PathLike, metadata: pd.DataFrame, target_t
                     'min': stats['min'],
                     'max': stats['max'],
                     'nnodes': meta_row['nnodes'],
+                    'tasks_per_node': meta_row['tasks_per_node'],
                     'n_iter': stats['n_iter'],
                     'percentile_10': stats['percentile_10'],
                     'percentile_25': stats['percentile_25'],
