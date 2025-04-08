@@ -709,6 +709,7 @@ update_algorithm() {
             fi
             export "${var_name}"="$cvar"
             success "Setting MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
+            [[ $algo == "default_mpich" ]] && export MPICH_COLL_OPT_OFF=0 && export MPICH_SHARED_MEM_COLL_OPT=1 && export "${var_name_2}"="1"
             ;;
         *)
             echo "Error: Unsupported MPI_LIB value: $MPI_LIB" >&2
