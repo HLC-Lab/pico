@@ -121,3 +121,11 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_04_08___15_24_09,5,8,4,REDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
 2025_04_08___15_24_09,6,8,4,REDUCE_SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
 2025_04_08___15_24_09,7,8,4,SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
+2025_04_08___16_27_38,0,64,4,ALLREDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
+2025_04_08___16_27_38,1,64,4,ALLGATHER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
+2025_04_08___16_27_38,2,64,4,ALLTOALL,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
+2025_04_08___16_27_38,3,64,4,BCAST,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
+2025_04_08___16_27_38,4,64,4,GATHER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
+2025_04_08___16_27_38,5,64,4,REDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
+2025_04_08___16_27_38,6,64,4,REDUCE_SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
+2025_04_08___16_27_38,7,64,4,SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
