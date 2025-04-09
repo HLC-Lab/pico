@@ -5,6 +5,14 @@ import seaborn as sns
 import numpy as np
 import subprocess
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import rcParams
+import matplotlib
+
+matplotlib.rc('pdf', fonttype=42) # To avoid issues with camera-ready submission
+sns.set_style("whitegrid")
+rcParams['figure.figsize'] = 12,6.75
+big_font_size = 16
+small_font_size = 14
 
 binomials = {}
 binomials[("OMPI", "4.1.6", "1.0.0", "allreduce")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "rabenseifner_ompi", "rabenseifner_over"]
@@ -103,7 +111,7 @@ def get_best_binomial(df, args):
     best_binomial = df[bin_mask].loc[
         df[bin_mask].groupby(group_keys)["mean"].idxmin()
     ].copy()
-    best_binomial["algo_name"] = "best_other"
+    best_binomial["algo_name"] = "best_binomial"
     return best_binomial
 
 def get_best_swing(df):
@@ -131,6 +139,37 @@ def get_best_other(df):
     best_other["algo_name"] = "best_other"    
     return best_other
 
+def get_heatmap_data(df, base):
+    # Generate plot
+    # Keep only best_swing and best_other
+    best_df = df[df["algo_name"].isin(["best_swing", base])]
+
+    # Pivot to get one column per algo_name
+    pivot = best_df.pivot_table(
+        index=["buffer_size", "Nodes"],
+        columns="algo_name",
+        values="bandwidth_mean"
+    ).reset_index()
+
+    # Compute ratio
+    pivot["bandwidth_ratio"] = pivot["best_swing"] / pivot[base]
+
+    # Pivot for heatmap with sizes on the x-axis
+    heatmap_data = pivot.pivot(
+        index="Nodes",
+        columns="buffer_size",
+        values="bandwidth_ratio"
+    )
+    
+    # Pivot again for heatmap (Nodes as rows, buffer_size as columns)
+    heatmap_data = pivot.pivot(
+        index="Nodes",
+        columns="buffer_size",
+        values="bandwidth_ratio"
+    )
+
+    return heatmap_data
+
 def main():
     parser = argparse.ArgumentParser(description="Generate graphs")
     parser.add_argument("--system", type=str, help="System name")
@@ -139,7 +178,7 @@ def main():
     parser.add_argument("--collective", type=str, help="Collective")    
     parser.add_argument("--notes", type=str, help="Notes")   
     parser.add_argument("--exclude", type=str, help="Algos to exclude", default=None)   
-    parser.add_argument("--vs", type=str, help="Compare against this algo_name [all|binomial]", required=True, default="all")
+    parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
     args = parser.parse_args()
 
     df = get_summaries_df(args)
@@ -156,72 +195,120 @@ def main():
         df = df[~df["algo_name"].str.contains(args.exclude, case=False)]
 
     best_swing = get_best_swing(df)
-    if args.vs == "all":
-        best_other = get_best_other(df)
-    else:
-        best_other = get_best_binomial(df, args)
+    best_other = get_best_other(df)
+    best_binomial = get_best_binomial(df, args)
     # Combine everything
-    augmented_df = pd.concat([df, best_swing, best_other], ignore_index=True)
+    augmented_df = pd.concat([df, best_swing, best_other, best_binomial], ignore_index=True)
 
     # Combine back
     for m in ["mean", "median"]:
         augmented_df["bandwidth_" + m] = ((augmented_df["buffer_size"]*8.0)/(1000.0*1000*1000)) / (augmented_df[m].astype(float) / (1000.0*1000*1000))
 
-    # Generate plot
-    # Keep only best_swing and best_other
-    best_df = augmented_df[augmented_df["algo_name"].isin(["best_swing", "best_other"])]
-
-    # Pivot to get one column per algo_name
-    pivot = best_df.pivot_table(
-        index=["buffer_size", "Nodes"],
-        columns="algo_name",
-        values="bandwidth_mean"
-    ).reset_index()
-
-    # Compute ratio
-    pivot["bandwidth_ratio"] = pivot["best_swing"] / pivot["best_other"]
-
-    # Pivot for heatmap with sizes on the x-axis
-    heatmap_data = pivot.pivot(
-        index="Nodes",
-        columns="buffer_size",
-        values="bandwidth_ratio"
-    )
-    
-    # Pivot again for heatmap (Nodes as rows, buffer_size as columns)
-    heatmap_data = pivot.pivot(
-        index="Nodes",
-        columns="buffer_size",
-        values="bandwidth_ratio"
-    )
+    if args.base == "all":
+        heatmap_data_primary = get_heatmap_data(augmented_df, "best_other")
+        heatmap_data_secondary = get_heatmap_data(augmented_df, "best_binomial")
+    else:
+        heatmap_data_primary = get_heatmap_data(augmented_df, "best_binomial")
+        heatmap_data_secondary = get_heatmap_data(augmented_df, "best_other")
 
     red_green = LinearSegmentedColormap.from_list("RedGreen", ["darkred", "white", "darkgreen"])
     #red_green = "RdYlGn"
-    plt.figure(figsize=(12, 6))
+    plt.figure()
+
+    # Create the structure
     sns.heatmap(
-        heatmap_data,
+        heatmap_data_primary,
+        annot=False,
+        cmap=red_green,
+        center=1.0,
+        mask=heatmap_data_primary.isna(),
+        cbar=True
+    )
+    
+    # Plot the secondary first, so that the colors of the primary will overwrite them
+    # Create the heatmap for the secondary values
+    ax_secondary = sns.heatmap(
+        heatmap_data_secondary,
         annot=True,
+        annot_kws={'va':'top', 'size': str(small_font_size)}, # Attention, on heatmaps the coordinate system is inverted and thus 'top' actually goes to the bottom of the cell
         fmt=".2f",
         cmap=red_green,
         center=1.0,
-        cbar_kws={"label": "Bandwidth Ratio (best_swing / best_other)"},
-        mask=heatmap_data.isna()
+        #cbar_kws={"label": "Speedup"},
+        mask=heatmap_data_secondary.isna(),
+        cbar=False
     )
+    # Manually adjust vertical spacing (moving the annotations)
+    vertical_spacing = 0.05 
+    for text in ax_secondary.texts:
+        # Get current y position and modify it
+        x, y = text.get_position()  # Get the (x, y) position of the annotation
+        text.set_position((x, y + vertical_spacing))  # Add vertical spacing    
+    
+    # Create the heatmap for the primary values
+    ax_primary = sns.heatmap(
+        heatmap_data_primary,
+        annot=True,
+        annot_kws={'va':'bottom', 'weight':'bold', 'size': str(big_font_size)}, # Attention, on heatmaps the coordinate system is inverted and thus 'bottom' actually goes to the top of the cell
+        fmt=".2f",
+        cmap=red_green,
+        center=1.0,
+        #cbar_kws={"label": "Speedup"},
+        mask=heatmap_data_primary.isna(),
+        cbar=False
+    )
+
+    # Get the text annotations (this includes both secondary and primary annotations)
+    annotations = ax_primary.texts
+
+    # Number of annotations in the secondary heatmap
+    num_secondary = int(len(annotations) / 2)
+
+    # Separate the annotations into primary and secondary
+    secondary_annotations = annotations[:num_secondary]
+    primary_annotations = annotations[num_secondary:]
+
+    # Manually adjust vertical spacing (moving the annotations)
+    vertical_spacing = 0.05 
+    i = 0
+    for text in primary_annotations:
+        # Get current y position and modify it
+        x, y = text.get_position()  # Get the (x, y) position of the annotation
+        text.set_position((x, y - vertical_spacing))  # Add vertical spacing   
+
+    # Now get the color of the primary text annotations, and use them for the secondary annotations
+    # Just take the colors of the annotation texts of the primary heatmap
+    text_colors = [text.get_color() for text in primary_annotations]
+    
+    # Set the color of the secondary annotations to the same as the primary ones
+    for i, text in enumerate(secondary_annotations):
+        text.set_color(text_colors[i])
+
+
     # For each column use the corresponding buffer_size_hr rather than buffer_size as labels
     # Get all the column names, sort them (numerically), and the apply to each of them the human_readable_size function
     # to get the human-readable size
     # Then set the x-ticks labels to these human-readable sizes
     # Get heatmap_data.columns and convert to a list of int
-    buffer_sizes = heatmap_data.columns.astype(int).tolist()
+    buffer_sizes = heatmap_data_primary.columns.astype(int).tolist()
     buffer_sizes.sort()
     buffer_sizes = [human_readable_size(int(x)) for x in buffer_sizes]
     # Use buffer_sizes as labels
-    plt.xticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes, rotation=45)
+    plt.xticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes)
 
-    plt.title("Bandwidth Ratio: best_swing vs best_other")
-    plt.xlabel("Vector Size")
-    plt.ylabel('')
+    if args.base == "all":
+        plt.title("Speedup of Bine Trees/Butterflies over Best Overall Algorithm (top) and over Best Binomial Tree/Butterfly Algorithm (bottom)")
+    else:
+        plt.title("Speedup of Bine Trees/Butterflies over Best Binomial Tree/Butterfly (top) and over Best Overall Algorithm (bottom)")
+    plt.xlabel("Vector Size", fontsize=big_font_size)
+    plt.ylabel("# Nodes", fontsize=big_font_size)
+    plt.xticks(fontsize=small_font_size)
+    plt.yticks(fontsize=small_font_size)
     plt.tight_layout()
+
+    # Increase font size for xlabel and cbar
+
+
 
     # Make dir if it does not exist
     outdir = "plot/" + args.system + "/" + args.collective + "/"
