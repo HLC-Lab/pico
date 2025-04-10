@@ -500,7 +500,9 @@ activate_virtualenv() {
         success "Virtual environment 'swing_venv' created and activated."
     fi
 
-    pip install --upgrade pip > /dev/null || { error "Failed to upgrade pip." ; return 1; }
+    if [[ "$LOCATION" != "mare_nostrum" ]]; then
+        pip install --upgrade pip > /dev/null || { error "Failed to upgrade pip." ; return 1; }
+    fi
 
     local required_python_packages="jsonschema packaging numpy pandas"
     echo "Checking for packages: $required_python_packages"

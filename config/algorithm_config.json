@@ -1,8 +1,8 @@
 {
   "config_metadata": {
-    "schema_version": "2.6.14",
+    "schema_version": "2.6.15",
     "created": "2024-01-30",
-    "last_modified": "2024-04-07",
+    "last_modified": "2024-04-10",
     "authors": [
       "Saverio Pasqualoni"
     ],
@@ -150,7 +150,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 0,
@@ -162,7 +162,7 @@
       "linear_ompi": {
         "desc": "Open MPI linear algorithm from `basic` module, consists in a Reduce to rank 0 followed by a Bcast. Both Reduce and Bcast are the one from the `basic` module. This algorithm is used for small messages. It can crash for big tests",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 1,
@@ -176,7 +176,7 @@
       "non_overlapping_ompi": {
         "desc": "Open MPI non-overlapping algorithm, consists in a Reduce to rank 0 followed by a Bcast. Utilizes default Reduce and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 2,
@@ -190,7 +190,7 @@
       "recursive_doubling_ompi": {
         "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 3,
@@ -204,7 +204,7 @@
       "ring_ompi": {
         "desc": "Open MPI ring algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 4,
@@ -228,7 +228,7 @@
       "ring_segmented_ompi": {
         "desc": "Open MPI ring segmented algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 5,
@@ -264,7 +264,7 @@
       "rabenseifner_ompi": {
         "desc": "Open MPI Rabenseifner algorithm. Not to be used if `count`<`comm_sz`. Not to be used if `op` is not commutative. If used on not commutative `op` defaults to `OMPI_LINEAR`. This algorithm is used for medium to large messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 6,
@@ -883,7 +883,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -906,7 +906,7 @@
       "linear_ompi": {
         "desc": " Open MPI linear algorithm, consists in a Gather to rank 0 of the whole message followed by a Bcast. Utilizes default Gather and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -931,7 +931,7 @@
       "k_bruck_ompi": {
         "desc": "Open MPI K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -966,7 +966,7 @@
       "recursive_doubling_ompi": {
         "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. When invoked on non power of 2 processes, it will fallback to k_bruck with `radix=2`",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 3,
@@ -1000,7 +1000,7 @@
       "ring_ompi": {
         "desc": "Open MPI ring algorithm. This algorithm is used for large messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -1024,7 +1024,7 @@
       "neighbor_ompi": {
         "desc": "Open MPI neighbor exchange algorithm. This algorithm is used for large messages. Works only for even number of processes. When invoked on odd number of processes, it will fallback to ring",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 5,
@@ -1057,7 +1057,7 @@
       "two_proc_ompi": {
         "desc": "Open MPI two processes algorithm. Works only for 2 processes",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 6,
@@ -1477,7 +1477,6 @@
         "tags": [
           "swing",
           "dtype",
-          "static",
           "cuda",
           "external"
         ]
@@ -1652,7 +1651,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -1675,7 +1674,7 @@
       "linear_ompi": {
         "desc": "Launches all non-blocking send/recv pairs and wait for them to complete.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -1699,7 +1698,7 @@
       "pairwise_ompi": {
         "desc": "For comm size P, implemented as P rounds of blocking MPI_Sendrecv",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -1732,7 +1731,7 @@
       "modified_bruck_ompi": {
         "desc": "An algorithm exploiting network packet quantization to achieve O(log) time complexity. Typically best for very small message sizes.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -1756,7 +1755,7 @@
       "linear_sync_ompi": {
         "desc": "Keep N non-blocking MPI_Isend/Irecv pairs in flight at all times. N is set by the coll_tuned_alltoall_max_requests MCA variable.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -1780,7 +1779,7 @@
       "two_proc_ompi": {
         "desc": "An implementation tailored for alltoall between 2 ranks, otherwise it is not used.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -1941,7 +1940,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 0,
@@ -1953,7 +1952,7 @@
       "linear_ompi": {
         "desc": "Open MPI linear algorithm, consists in root performing comm_sz - 1 send operations, one to each other process. All other processes perform a single receive operation. It can crash for big tests",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 1,
@@ -1966,7 +1965,7 @@
       "chain_ompi": {
         "desc": "Open MPI chain algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process of a chain topology. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_chain` is responsible for the segmentation and the check/creation of the chain topology.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "additional_parameters": {
@@ -1995,7 +1994,7 @@
       "pipeline_ompi": {
         "desc": "Open MPI pipeline algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process into a pipeline. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_pipeline` is responsible for the segmentation and the check/creation of the pipelined topology.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "additional_parameters": {
@@ -2018,7 +2017,7 @@
       "split_binary_ompi": {
         "desc": "Open MPI split‐binary tree broadcast. It divides the overall message into two halves and then uses a binary‐tree–based dissemination within each half, followed by a final exchange to “stitch” the two halves together where every process finds its pair in the other branch of the tree. Uses the additional parameter `segsize` to further segment the communications. If message is to small it will fallback to `chain_ompi`.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "additional_parameters": {
@@ -2040,7 +2039,7 @@
       "binary_ompi": {
         "desc": "Open MPI binary tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binary tree topology and for the segmentation of the message.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "additional_parameters": {
@@ -2062,7 +2061,7 @@
       "binomial_ompi": {
         "desc": "Open MPI binomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binomial tree topology and for the segmentation of the message.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "additional_parameters": {
@@ -2084,7 +2083,7 @@
       "knomial_ompi": {
         "desc": "Open MPI k-nomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the k-nomial tree topology and for the segmentation of the message. It requires an additional parameter `radix`.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "additional_parameters": {
@@ -2111,7 +2110,7 @@
       "scatter_allgather_ompi": {
         "desc": "Open MPI scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -2144,7 +2143,7 @@
       "scatter_allgather_ring_ompi": {
         "desc": "Open MPI scatter allgather ring algorithm. It consists of a binomial tree scatter followed by a ring allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -2482,7 +2481,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -2505,7 +2504,7 @@
       "linear_ompi": {
         "desc": "Open MPI linear algorithm. It consists in the root receiving messages from all other processes.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -2528,7 +2527,7 @@
       "binomial_ompi": {
         "desc": "Open MPI binomial tree based algorithm.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -2551,7 +2550,7 @@
       "linear_synch_ompi": {
         "desc": "Open MPI linear synchronous algorithm. It consists in the root receiving messages from all other processes, but synchronizing messages by having them segmented by `segsize`. It can crash for big tests",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -2677,7 +2676,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 0,
@@ -2689,7 +2688,7 @@
       "linear_ompi": {
         "desc": "Open MPI linear algorithm.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 1,
@@ -2701,7 +2700,7 @@
       "chain_ompi": {
         "desc": "Open MPI chain algorithm.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 2,
@@ -2714,7 +2713,7 @@
       "pipeline_ompi": {
         "desc": "Open MPI pipeline algorithm.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 3,
@@ -2727,7 +2726,7 @@
       "binary_ompi": {
         "desc": "Open MPI binary tree reduce.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 4,
@@ -2739,7 +2738,7 @@
       "binomial_ompi": {
         "desc": "Open MPI binomial tree reduce.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 5,
@@ -2751,7 +2750,7 @@
       "in_order_ompi": {
         "desc": "Open MPI in order reduce.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "dynamic_rule": 6,
@@ -2763,7 +2762,7 @@
       "rabenseifner_ompi": {
         "desc": "Open MPI Rabenseifner reduce.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3012,7 +3011,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3035,7 +3034,7 @@
       "non_overlapping_ompi": {
         "desc": "Open MPI non-overlapping algorithm. Consists in a Reduce to rank 0 followed by a Scatterv. Utilizes default Reduce and Scatterv algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3060,7 +3059,7 @@
       "recursive_halving_ompi": {
         "desc": "Open MPI recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3085,7 +3084,7 @@
       "ring_ompi": {
         "desc": "Open MPI ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3109,7 +3108,7 @@
       "butterfly_ompi": {
         "desc": "Open MPI butterfly algorithm. This algorithm is used for small messages",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3484,7 +3483,7 @@
       "default_ompi": {
         "desc": "Open MPI default algorithm selection",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3507,7 +3506,7 @@
       "linear_ompi": {
         "desc": "Open MPI linear algorithm.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3530,7 +3529,7 @@
       "binomial_ompi": {
         "desc": "Open MPI binomial tree based algorithm.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [
@@ -3553,7 +3552,7 @@
       "linear_nb_ompi": {
         "desc": "Open MPI linear nb algorithm.",
         "library": {
-          "ompi": "4.1.6",
+          "ompi": "4.1.5",
           "ompi_swing": "5.0.0"
         },
         "constraints": [

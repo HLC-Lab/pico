@@ -1,0 +1,9 @@
+timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,libswing_version,CUDA,output_level,MPI_Op,notes
+2025_04_10___17_40_37,0,4,1,ALLREDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,1,4,1,ALLGATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,2,4,1,ALLTOALL,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,3,4,1,BCAST,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,4,4,1,GATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,5,4,1,REDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,6,4,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,7,4,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
