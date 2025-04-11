@@ -7,14 +7,21 @@ import subprocess
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import rcParams
 import matplotlib
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 matplotlib.rc('pdf', fonttype=42) # To avoid issues with camera-ready submission
-sns.set_style("whitegrid")
-rcParams['figure.figsize'] = 12,6.75
-big_font_size = 16
-small_font_size = 14
+#rcParams['figure.figsize'] = 12,6.75
+rcParams['figure.figsize'] = 6.75,6.75
+big_font_size = 18
+small_font_size = 15
+fmt=".1f"
+
+metrics = ["mean", "median", "percentile_90"]
 
 binomials = {}
+##################################
+# Leonardo's binomial algorithms #
+##################################
 binomials[("OMPI", "4.1.6", "1.0.0", "allreduce")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "rabenseifner_ompi", "rabenseifner_over"]
 binomials[("OMPI", "4.1.6", "1.0.0", "allgather")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "k_bruck_over", "sparbit_over"]
 binomials[("OMPI", "4.1.6", "1.0.0", "alltoall")]       = ["modified_bruck_ompi"]
@@ -24,7 +31,41 @@ binomials[("OMPI", "4.1.6", "1.0.0", "reduce")]         = ["binomial_ompi", "rab
 binomials[("OMPI", "4.1.6", "1.0.0", "reduce_scatter")] = ["recursive_distance_doubling_over", "recursive_halving_ompi", "recursive_halving_over"]
 binomials[("OMPI", "4.1.6", "1.0.0", "scatter")]        = ["binomial_ompi"]
 
+########################################
+# Mare Nostrum 5's binomial algorithms #
+########################################
+binomials[("OMPI", "4.1.5", "1.0.0", "allreduce")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "rabenseifner_ompi", "rabenseifner_over"]
+binomials[("OMPI", "4.1.5", "1.0.0", "allgather")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "k_bruck_over", "sparbit_over"]
+binomials[("OMPI", "4.1.5", "1.0.0", "alltoall")]       = ["modified_bruck_ompi"]
+binomials[("OMPI", "4.1.5", "1.0.0", "bcast")]          = ["binomial_ompi", "scatter_allgather_ompi", "scatter_allgather_over", "scatter_allgather_ring_ompi"]
+binomials[("OMPI", "4.1.5", "1.0.0", "gather")]         = ["binomial_ompi"]
+binomials[("OMPI", "4.1.5", "1.0.0", "reduce")]         = ["binomial_ompi", "rabenseifner_ompi"]
+binomials[("OMPI", "4.1.5", "1.0.0", "reduce_scatter")] = ["recursive_distance_doubling_over", "recursive_halving_ompi", "recursive_halving_over"]
+binomials[("OMPI", "4.1.5", "1.0.0", "scatter")]        = ["binomial_ompi"]
 
+##############################
+# LUMI's binomial algorithms #
+##############################
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "allreduce")]      = ["rabenseifner_mpich", "rabenseifner_over", "recursive_doubling_mpich", "recursive_doubling_over"]
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "allgather")]      = ["brucks_mpich", "recursive_doubling_mpich", "recursive_doubling_over", "sparbit_over"]
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "alltoall")]       = ["brucks_mpich"]
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "bcast")]          = ["binomial_mpich", "scatter_allgather_over", "scatter_recursive_doubling_allgather_mpich"]
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "gather")]         = ["binomial_mpich"]
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "reduce")]         = ["binomial_mpich", "rabenseifner_mpich"]
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "reduce_scatter")] = ["recursive_distance_doubling_mpich", "recursive_halving_mpich", "recursive_halving_over"]
+binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "scatter")]        = ["binomial_mpich"]
+
+################################
+# Fugaku's binomial algorithms #
+################################
+binomials[("FJMPI", "x.x.x", "4.0.1", "allreduce")]      = ["default-recursive_doubling"]
+binomials[("FJMPI", "x.x.x", "4.0.1", "reduce_scatter")] = ["default-recursive-halving"]
+binomials[("FJMPI", "x.x.x", "4.0.1", "allgather")]      = ["default-bruck", "default-recursive-doubling"]
+binomials[("FJMPI", "x.x.x", "4.0.1", "bcast")]          = ["default-binomial"]
+binomials[("FJMPI", "x.x.x", "4.0.1", "alltoall")]       = ["default-modified-bruck"]
+binomials[("FJMPI", "x.x.x", "4.0.1", "scatter")]        = ["default-binomial"]
+binomials[("FJMPI", "x.x.x", "4.0.1", "gather")]         = ["default-binomial"]
+binomials[("FJMPI", "x.x.x", "4.0.1", "reduce")]         = ["default-binomial"]
 
 def human_readable_size(num_bytes):
     for unit in ['B', 'KiB', 'MiB', 'GiB', 'TiB']:
@@ -40,13 +81,19 @@ def get_summaries(args):
         print(f"Metadata file {metadata_file} not found. Exiting.", file=sys.stderr)
         sys.exit(1)
     metadata = pd.read_csv(metadata_file)
-    nnodes = [int(n) for n in str(args.nnodes).split(",")]
+    nnodes = [n for n in str(args.nnodes).split(",")]
     summaries = {} # Contain the folder for each node count
     # Search all the entries we might need
     for nodes in nnodes:
-        filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & (metadata["nnodes"].astype(int) == nodes) & (metadata["tasks_per_node"].astype(int) == args.tasks_per_node)]
+        if "tasks_per_node" in metadata.columns:
+            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
+                                        (metadata["nnodes"].astype(str) == str(nodes)) & \
+                                        (metadata["tasks_per_node"].astype(int) == args.tasks_per_node)]
+        else:
+            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
+                                        (metadata["nnodes"].astype(str) == str(nodes))]            
         if args.notes:
-            filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str == args.notes)]
+            filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == args.notes.strip())]
         else:
             # Keep only those without notes
             filtered_metadata = filtered_metadata[filtered_metadata["notes"].isnull()]
@@ -68,7 +115,7 @@ def get_summaries_df(args):
     for nodes, summary in summaries.items():
         # Create the summary, by calling the summarize_data.py script
         # Check if the summary already exists
-        if not os.path.exists(summary + "/aggregated_results_summary.csv"):        
+        if not os.path.exists(summary + "/aggregated_results_summary.csv") or True:        
             subprocess.run([
                 "python3",
                 "./plot/summarize_data.py",
@@ -101,7 +148,6 @@ def get_best_binomial(df, args):
     if bin is None:
         print(f"No binomial algorithms found for {mpi_lib} {mpi_lib_version} {libswing_version} {args.collective.lower()}. Exiting.", file=sys.stderr)
         sys.exit(1)
-    
     # Find the best algorithm for each buffer_size and "Nodes" among those in bin
     # Create masks
     bin_mask = df["algo_name"].str.lower().isin(bin)
@@ -109,24 +155,24 @@ def get_best_binomial(df, args):
     group_keys = ["buffer_size", "Nodes"]
     # Find best binomial per group
     best_binomial = df[bin_mask].loc[
-        df[bin_mask].groupby(group_keys)["mean"].idxmin()
+        df[bin_mask].groupby(group_keys)[args.metric].idxmin()
     ].copy()
     best_binomial["algo_name"] = "best_binomial"
     return best_binomial
 
-def get_best_swing(df):
+def get_best_swing(df, args):
     # Create masks
     swing_mask = df["algo_name"].str.lower().str.startswith("swing")
     # Grouping keys
     group_keys = ["buffer_size", "Nodes"]
     # Find best swing per group
     best_swing = df[swing_mask].loc[
-        df[swing_mask].groupby(group_keys)["mean"].idxmin()
+        df[swing_mask].groupby(group_keys)[args.metric].idxmin()
     ].copy()
     best_swing["algo_name"] = "best_swing"    
     return best_swing
 
-def get_best_other(df):
+def get_best_other(df, args):
     # Create masks
     swing_mask = df["algo_name"].str.lower().str.startswith("swing")
     non_swing_mask = ~swing_mask
@@ -134,12 +180,12 @@ def get_best_other(df):
     group_keys = ["buffer_size", "Nodes"]
     # Find best non-swing per group
     best_other = df[non_swing_mask].loc[
-        df[non_swing_mask].groupby(group_keys)["mean"].idxmin()
+        df[non_swing_mask].groupby(group_keys)[args.metric].idxmin()
     ].copy()
     best_other["algo_name"] = "best_other"    
     return best_other
 
-def get_heatmap_data(df, base):
+def get_heatmap_data(df, base, args):
     # Generate plot
     # Keep only best_swing and best_other
     best_df = df[df["algo_name"].isin(["best_swing", base])]
@@ -156,17 +202,21 @@ def get_heatmap_data(df, base):
 
     # Pivot for heatmap with sizes on the x-axis
     heatmap_data = pivot.pivot(
-        index="Nodes",
-        columns="buffer_size",
+        columns="Nodes",
+        index="buffer_size",
         values="bandwidth_ratio"
     )
     
     # Pivot again for heatmap (Nodes as rows, buffer_size as columns)
     heatmap_data = pivot.pivot(
-        index="Nodes",
-        columns="buffer_size",
+        columns="Nodes",
+        index="buffer_size",
         values="bandwidth_ratio"
     )
+
+    # Reorder rows
+    #heatmap_data = heatmap_data.loc[args.nnodes.split(",")]        
+    heatmap_data = heatmap_data[args.nnodes.split(",")]
 
     return heatmap_data
 
@@ -178,13 +228,15 @@ def main():
     parser.add_argument("--collective", type=str, help="Collective")    
     parser.add_argument("--notes", type=str, help="Notes")   
     parser.add_argument("--exclude", type=str, help="Algos to exclude", default=None)   
+    parser.add_argument("--metric", type=str, help="Metric to consider [mean|median|percentile_90]", default="mean")   
     parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
+    parser.add_argument("--y_no", help="Does not show ticks and labels on y-axis", action="store_true")
     args = parser.parse_args()
 
     df = get_summaries_df(args)
           
     # Drop the columns I do not need
-    df = df[["buffer_size", "Nodes", "algo_name", "mean", "median"]]
+    df = df[["buffer_size", "Nodes", "algo_name", "mean", "median", "percentile_90"]]
 
     # If system name is "fugaku", drop all the algo_name starting with uppercase "RECDOUB"
     if args.system == "fugaku":
@@ -193,68 +245,83 @@ def main():
     if args.exclude:
         # Drop those with "segmented" and "block" in the name
         df = df[~df["algo_name"].str.contains(args.exclude, case=False)]
+    
+    df = df[~df["algo_name"].str.contains("default_mpich", case=False)]
 
-    best_swing = get_best_swing(df)
-    best_other = get_best_other(df)
+    best_swing = get_best_swing(df, args)
+    best_other = get_best_other(df, args)
     best_binomial = get_best_binomial(df, args)
     # Combine everything
     augmented_df = pd.concat([df, best_swing, best_other, best_binomial], ignore_index=True)
 
-    # Combine back
-    for m in ["mean", "median"]:
+    # Compute the bandwidth for each metric
+    for m in metrics:
         augmented_df["bandwidth_" + m] = ((augmented_df["buffer_size"]*8.0)/(1000.0*1000*1000)) / (augmented_df[m].astype(float) / (1000.0*1000*1000))
 
     if args.base == "all":
-        heatmap_data_primary = get_heatmap_data(augmented_df, "best_other")
-        heatmap_data_secondary = get_heatmap_data(augmented_df, "best_binomial")
+        heatmap_data_primary = get_heatmap_data(augmented_df, "best_other", args)
+        heatmap_data_secondary = get_heatmap_data(augmented_df, "best_binomial", args)
     else:
-        heatmap_data_primary = get_heatmap_data(augmented_df, "best_binomial")
-        heatmap_data_secondary = get_heatmap_data(augmented_df, "best_other")
+        heatmap_data_primary = get_heatmap_data(augmented_df, "best_binomial", args)
+        heatmap_data_secondary = get_heatmap_data(augmented_df, "best_other", args)
 
     red_green = LinearSegmentedColormap.from_list("RedGreen", ["darkred", "white", "darkgreen"])
     #red_green = "RdYlGn"
-    plt.figure()
+    fig = plt.figure()
 
     # Create the structure
-    sns.heatmap(
+    ax = sns.heatmap(
         heatmap_data_primary,
         annot=False,
         cmap=red_green,
+        cbar_kws={"orientation": "horizontal", "location" : "top", "aspect": 40},
         center=1.0,
         mask=heatmap_data_primary.isna(),
+        linewidths=0.1, 
+        linecolor="white",        
         cbar=True
     )
-    
+
+    # Get the colorbar and set the font size
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=small_font_size)  # Adjust font size of ticks
+
+
     # Plot the secondary first, so that the colors of the primary will overwrite them
     # Create the heatmap for the secondary values
     ax_secondary = sns.heatmap(
         heatmap_data_secondary,
         annot=True,
         annot_kws={'va':'top', 'size': str(small_font_size)}, # Attention, on heatmaps the coordinate system is inverted and thus 'top' actually goes to the bottom of the cell
-        fmt=".2f",
-        cmap=red_green,
+        fmt=fmt,
+        cmap=None, # I do not draw the colors of the secondary at all, since they are overwritten by the primary
         center=1.0,
         #cbar_kws={"label": "Speedup"},
         mask=heatmap_data_secondary.isna(),
+        linewidths=0.1, 
+        linecolor="white",
         cbar=False
     )
-    # Manually adjust vertical spacing (moving the annotations)
-    vertical_spacing = 0.05 
-    for text in ax_secondary.texts:
-        # Get current y position and modify it
-        x, y = text.get_position()  # Get the (x, y) position of the annotation
-        text.set_position((x, y + vertical_spacing))  # Add vertical spacing    
+
+    ## Manually adjust vertical spacing (moving the annotations)
+    #vertical_spacing = 0.05 
+    #for text in ax_secondary.texts:
+    #    # Get current y position and modify it
+    #    x, y = text.get_position()  # Get the (x, y) position of the annotation
+    #    text.set_position((x, y + vertical_spacing))  # Add vertical spacing    
     
     # Create the heatmap for the primary values
     ax_primary = sns.heatmap(
         heatmap_data_primary,
         annot=True,
         annot_kws={'va':'bottom', 'weight':'bold', 'size': str(big_font_size)}, # Attention, on heatmaps the coordinate system is inverted and thus 'bottom' actually goes to the top of the cell
-        fmt=".2f",
+        fmt=fmt,
         cmap=red_green,
         center=1.0,
         #cbar_kws={"label": "Speedup"},
         mask=heatmap_data_primary.isna(),
+        linewidths=0, 
+        linecolor="white",
         cbar=False
     )
 
@@ -269,12 +336,20 @@ def main():
     primary_annotations = annotations[num_secondary:]
 
     # Manually adjust vertical spacing (moving the annotations)
-    vertical_spacing = 0.05 
+    #vertical_spacing = 0.04 
+    #i = 0
+    #for text in primary_annotations:
+    #    # Get current y position and modify it
+    #    x, y = text.get_position()  # Get the (x, y) position of the annotation
+    #    text.set_position((x, y - vertical_spacing))  # Add vertical spacing   
+
+    # Manually adjust vertical spacing (moving the annotations)
+    vertical_spacing = 0.08
     i = 0
-    for text in primary_annotations:
+    for text in secondary_annotations:
         # Get current y position and modify it
         x, y = text.get_position()  # Get the (x, y) position of the annotation
-        text.set_position((x, y - vertical_spacing))  # Add vertical spacing   
+        text.set_position((x, y + vertical_spacing))  # Add vertical spacing   
 
     # Now get the color of the primary text annotations, and use them for the secondary annotations
     # Just take the colors of the annotation texts of the primary heatmap
@@ -285,25 +360,35 @@ def main():
         text.set_color(text_colors[i])
 
 
-    # For each column use the corresponding buffer_size_hr rather than buffer_size as labels
-    # Get all the column names, sort them (numerically), and the apply to each of them the human_readable_size function
+    # Now, add custom annotations where the placeholder value exists
+    for i in range(heatmap_data_primary.shape[0]):
+        for j in range(heatmap_data_primary.shape[1]):
+            if np.isnan(heatmap_data_primary.iloc[i, j]): 
+                plt.text(j + 0.5, i + 0.5, "N/A", ha='center', va='center', color='black', fontsize=big_font_size, weight='bold')        
+
+    # For each ror use the corresponding buffer_size_hr rather than buffer_size as labels
+    # Get all the row names, sort them (numerically), and the apply to each of them the human_readable_size function
     # to get the human-readable size
     # Then set the x-ticks labels to these human-readable sizes
-    # Get heatmap_data.columns and convert to a list of int
-    buffer_sizes = heatmap_data_primary.columns.astype(int).tolist()
+    # Get heatmap_data.rows and convert to a list of int
+    buffer_sizes = heatmap_data_primary.index.astype(int).tolist()
     buffer_sizes.sort()
     buffer_sizes = [human_readable_size(int(x)) for x in buffer_sizes]
     # Use buffer_sizes as labels
-    plt.xticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes)
+    plt.yticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes)
 
-    if args.base == "all":
-        plt.title("Speedup of Bine Trees/Butterflies over Best Overall Algorithm (top) and over Best Binomial Tree/Butterfly Algorithm (bottom)")
-    else:
-        plt.title("Speedup of Bine Trees/Butterflies over Best Binomial Tree/Butterfly (top) and over Best Overall Algorithm (bottom)")
-    plt.xlabel("Vector Size", fontsize=big_font_size)
-    plt.ylabel("# Nodes", fontsize=big_font_size)
+    #if args.base == "all":
+    #    plt.title("Bine Trees/Butterflies Speedup over Best Overall Algorithm (top) and over Best Binomial Tree/Butterfly Algorithm (bottom)")
+    #else:
+    #    plt.title("Bine Trees/Butterflies Speedup over Best Binomial Tree/Butterfly (top) and over Best Overall Algorithm (bottom)")
+    plt.ylabel("Vector Size", fontsize=big_font_size)
+    plt.xlabel("# Nodes", fontsize=big_font_size)
     plt.xticks(fontsize=small_font_size)
     plt.yticks(fontsize=small_font_size)
+    if args.y_no:
+        plt.yticks([])
+        plt.ylabel("")        
+
     plt.tight_layout()
 
     # Increase font size for xlabel and cbar
@@ -311,12 +396,12 @@ def main():
 
 
     # Make dir if it does not exist
-    outdir = "plot/" + args.system + "/" + args.collective + "/"
+    outdir = "plot/" + args.system + "_hm/" + args.collective + "/"
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
     # in outfile name we should save all the infos in args
-    # Convert args to a string with param name and param value (except nnodes)
+    # Convert args to a string with param name and param value
     args_str = "_".join([f"{k}_{v}" for k, v in vars(args).items() \
                         if k != "nnodes" and k != "system" and k != "collective" and (k != "notes" or v != None) and (k != "exclude" or v != None)])
     outfile = outdir + "/" + args_str + ".pdf"
