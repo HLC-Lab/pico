@@ -193,3 +193,5 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_04_10___18_47_49,5,512,1,REDUCE,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
 2025_04_10___18_47_49,6,512,1,REDUCE_SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,MPI_SUM,null
 2025_04_10___18_47_49,7,512,1,SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,summarized,null,null
+2025_04_11___18_18_15,0,100,1,ALLGATHER,CRAY_MPICH,8.1.29,1.0.0,false,all,null,null
+2025_04_11___18_18_15,1,100,1,REDUCE_SCATTER,CRAY_MPICH,8.1.29,1.0.0,false,all,MPI_SUM,null
