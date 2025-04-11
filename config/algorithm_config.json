@@ -625,6 +625,7 @@
           "swing",
           "bandwidth_optimal",
           "static",
+          "suboptimal",
           "external"
         ]
       },
@@ -1302,6 +1303,7 @@
           "swing",
           "permute",
           "static",
+          "suboptimal",
           "external"
         ]
       },
@@ -1340,6 +1342,7 @@
           "swing_static",
           "swing",
           "static",
+          "suboptimal",
           "external"
         ]
       },
@@ -2359,6 +2362,7 @@
           "swing_bdw_static",
           "swing",
           "bandwidth_optimal",
+          "suboptimal",
           "static",
           "external"
         ]
@@ -3270,6 +3274,7 @@
         "tags": [
           "swing",
           "static",
+          "suboptimal",
           "medium_sizes",
           "large_sizes",
           "external"
