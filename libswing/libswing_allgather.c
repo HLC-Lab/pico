@@ -493,13 +493,15 @@ int allgather_swing_block_by_block_any_even(const void *sendbuf, size_t sendcoun
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(recvtype, &dtsize);
+  MPI_Request *requests = NULL;
   memcpy((char*) recvbuf + sendcount * rank * dtsize, sendbuf, sendcount * dtsize);
 
   int inverse_mask = 0x1 << (int) (log_2(size) - 1);
   int step = 0;
 
+  requests = (MPI_Request *) malloc(2 * size * sizeof(MPI_Request));
   while(inverse_mask > 0){
-    int partner;
+    int partner, req_count = 0;
     if(rank % 2 == 0){
       partner = mod(rank + negabinary_to_binary((inverse_mask << 1) - 1), size); 
     }else{
@@ -533,18 +535,23 @@ int allgather_swing_block_by_block_any_even(const void *sendbuf, size_t sendcoun
         int partner_send = (block_to_send != partner) ? partner : MPI_PROC_NULL;
         int partner_recv = (block_to_recv != rank)  ? partner : MPI_PROC_NULL;
 
-        err = MPI_Sendrecv((char*) recvbuf + block_to_send*sendcount*dtsize, sendcount, sendtype, partner_send, 0,
-                          (char*) recvbuf + block_to_recv*recvcount*dtsize, recvcount, recvtype, partner_recv, 0,
-                          comm, MPI_STATUS_IGNORE);
+        err = MPI_Isend((char*) recvbuf + block_to_send*sendcount*dtsize, sendcount, sendtype, partner_send, 0, comm, &requests[req_count++]);
+        if(MPI_SUCCESS != err) { goto err_hndl; }
+
+        err = MPI_Irecv((char*) recvbuf + block_to_recv*recvcount*dtsize, recvcount, recvtype, partner_recv, 0, comm, &requests[req_count++]);
         if(MPI_SUCCESS != err) { goto err_hndl; }
       }
     }
+    err = MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
     inverse_mask >>= 1;
     step++;
   }
 
+  free(requests);
   return MPI_SUCCESS;
+
 err_hndl:
+  if (requests != NULL) free(requests);
   return err;
 }
 
