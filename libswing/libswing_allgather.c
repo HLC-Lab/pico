@@ -485,69 +485,73 @@ err_hndl:
 
 
 int allgather_swing_block_by_block_any_even(const void *sendbuf, size_t sendcount, MPI_Datatype sendtype,
-                           void* recvbuf, size_t recvcount, MPI_Datatype recvtype, MPI_Comm comm){
-    assert(sendcount == recvcount); // TODO: Implement the case where sendcount != recvcount
-    assert(sendtype == recvtype); // TODO: Implement the case where sendtype != recvtype
-    int size, rank, dtsize, err = MPI_SUCCESS;
-    MPI_Comm_size(comm, &size);
-    MPI_Comm_rank(comm, &rank);
-    MPI_Type_size(recvtype, &dtsize);
-    memcpy((char*) recvbuf + sendcount*rank*dtsize, sendbuf, sendcount*dtsize);  
-    
-    int mask = 0x1;
-    int inverse_mask = 0x1 << (int) (log_2(size) - 1);
-    int block_first_mask = ~(inverse_mask - 1);
-    int step = 0;
-    while(inverse_mask > 0){
-      int partner;
-      if(rank % 2 == 0){
-          partner = mod(rank + negabinary_to_binary((inverse_mask << 1) - 1), size); 
-      }else{
-          partner = mod(rank - negabinary_to_binary((inverse_mask << 1) - 1), size); 
-      }   
-    
-      // We start from 1 because 0 never sends block 0
-      for(size_t block = 1; block < size; block++){
-          // Get the position of the highest set bit using clz
-          // That gives us the first at which block departs from 0
-          int k = 31 - __builtin_clz(get_nu(block, size));
-          //int k = __builtin_ctz(get_nu(block, size));
-          // Check if this must be sent (recvd in allgather)
-          if(k == step || block == 0){
-              // 0 would send this block
-              size_t block_to_send, block_to_recv;
-              // I invert what to send and what to receive wrt reduce-scatter
-              if(rank % 2 == 0){
-                  // I am even, thus I need to shift by rank position to the right
-                  block_to_recv = mod(block + rank, size);
-                  // What to receive? What my partner is sending
-                  // Since I am even, my partner is odd, thus I need to mirror it and then shift
-                  block_to_send = mod(partner - block, size);
-              }else{
-                  // I am odd, thus I need to mirror it
-                  block_to_recv = mod(rank - block, size);
-                  // What to receive? What my partner is sending
-                  // Since I am odd, my partner is even, thus I need to mirror it and then shift   
-                  block_to_send = mod(block + partner, size);
-              }
+                                            void* recvbuf, size_t recvcount, MPI_Datatype recvtype, MPI_Comm comm)
+{
+  assert(sendcount == recvcount); // TODO: Implement the case where sendcount != recvcount
+  assert(sendtype == recvtype); // TODO: Implement the case where sendtype != recvtype
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(recvtype, &dtsize);
+  MPI_Request *requests = NULL;
+  memcpy((char*) recvbuf + sendcount * rank * dtsize, sendbuf, sendcount * dtsize);
 
-              int partner_send = (block_to_send != partner) ? partner : MPI_PROC_NULL;
-              int partner_recv = (block_to_recv != rank)    ? partner : MPI_PROC_NULL;
+  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int step = 0;
 
-              err = MPI_Sendrecv((char*) recvbuf + block_to_send*sendcount*dtsize, sendcount, sendtype, partner_send, 0,
-                           (char*) recvbuf + block_to_recv*recvcount*dtsize, recvcount, recvtype, partner_recv, 0,
-                           comm, MPI_STATUS_IGNORE);
-              if(MPI_SUCCESS != err) { goto err_hndl; }
-          }        
-      }
-    
-      mask <<= 1;
-      inverse_mask >>= 1;
-      block_first_mask >>= 1;
-      step++;
+  requests = (MPI_Request *) malloc(2 * size * sizeof(MPI_Request));
+  while(inverse_mask > 0){
+    int partner, req_count = 0;
+    if(rank % 2 == 0){
+      partner = mod(rank + negabinary_to_binary((inverse_mask << 1) - 1), size); 
+    }else{
+      partner = mod(rank - negabinary_to_binary((inverse_mask << 1) - 1), size); 
     }
-    return MPI_SUCCESS;
+    // We start from 1 because 0 never sends block 0
+    for(size_t block = 1; block < size; block++){
+      // Get the position of the highest set bit using clz
+      // That gives us the first at which block departs from 0
+      int k = 31 - __builtin_clz(get_nu(block, size));
+      //int k = __builtin_ctz(get_nu(block, size));
+      // Check if this must be sent (recvd in allgather)
+      if(k == step || block == 0){
+        // 0 would send this block
+        size_t block_to_send, block_to_recv;
+        // I invert what to send and what to receive wrt reduce-scatter
+        if(rank % 2 == 0){
+          // I am even, thus I need to shift by rank position to the right
+          block_to_recv = mod(block + rank, size);
+          // What to receive? What my partner is sending
+          // Since I am even, my partner is odd, thus I need to mirror it and then shift
+          block_to_send = mod(partner - block, size);
+        }else{
+          // I am odd, thus I need to mirror it
+          block_to_recv = mod(rank - block, size);
+          // What to receive? What my partner is sending
+          // Since I am odd, my partner is even, thus I need to mirror it and then shift   
+          block_to_send = mod(block + partner, size);
+        }
+
+        int partner_send = (block_to_send != partner) ? partner : MPI_PROC_NULL;
+        int partner_recv = (block_to_recv != rank)  ? partner : MPI_PROC_NULL;
+
+        err = MPI_Isend((char*) recvbuf + block_to_send*sendcount*dtsize, sendcount, sendtype, partner_send, 0, comm, &requests[req_count++]);
+        if(MPI_SUCCESS != err) { goto err_hndl; }
+
+        err = MPI_Irecv((char*) recvbuf + block_to_recv*recvcount*dtsize, recvcount, recvtype, partner_recv, 0, comm, &requests[req_count++]);
+        if(MPI_SUCCESS != err) { goto err_hndl; }
+      }
+    }
+    err = MPI_Waitall(req_count, requests, MPI_STATUSES_IGNORE);
+    inverse_mask >>= 1;
+    step++;
+  }
+
+  free(requests);
+  return MPI_SUCCESS;
+
 err_hndl:
+  if (requests != NULL) free(requests);
   return err;
 }
 
