@@ -25,10 +25,17 @@ def process_benchmark_file(file_path, warmup_ratio=0.2):
     """
     # print(f"Processing file: {file_path}")
     df = pd.read_csv(file_path)
+
+    if "fugaku" in file_path:
+        # Discard last line
+        df = df.iloc[:-1]
+        # Warmup already done before printing data
+        warmup_ratio = 0.0
+    
     warmup_count = int(len(df) * warmup_ratio)
     df = df.iloc[warmup_count:]
 
-    highest = df['highest'].values
+    highest = df['highest'].values.astype(np.float64)
     n_iter = len(highest)
 
     mean = np.mean(highest)

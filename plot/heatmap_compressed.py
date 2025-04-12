@@ -75,25 +75,26 @@ def human_readable_size(num_bytes):
     return f"{int(num_bytes)} PiB"
 
 def get_summaries(args):
-    # Read metadata file
-    metadata_file = f"results/" + args.system + "_metadata.csv"
-    if not os.path.exists(metadata_file):
-        print(f"Metadata file {metadata_file} not found. Exiting.", file=sys.stderr)
-        sys.exit(1)
-    metadata = pd.read_csv(metadata_file)
-    nnodes = [n for n in str(args.nnodes).split(",")]
+    systems = [s for s in str(args.systems).split(",")]
     summaries = {} # Contain the folder for each node count
+    i = 0
     # Search all the entries we might need
-    for nodes in nnodes:
+    for system in systems:
+        # Read metadata file
+        metadata_file = f"results/" + system + "_metadata.csv"
+        if not os.path.exists(metadata_file):
+            print(f"Metadata file {metadata_file} not found. Exiting.", file=sys.stderr)
+            sys.exit(1)
+        metadata = pd.read_csv(metadata_file)
+       
         if "tasks_per_node" in metadata.columns:
             filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
-                                        (metadata["nnodes"].astype(str) == str(nodes)) & \
                                         (metadata["tasks_per_node"].astype(int) == args.tasks_per_node)]
         else:
-            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
-                                        (metadata["nnodes"].astype(str) == str(nodes))]            
-        if args.notes:
-            filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == args.notes.strip())]
+            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower())]            
+        
+        if args.notes and args.notes.strip().split(",")[i] != "null":
+            filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == args.notes.strip().split(",")[i])]
         else:
             # Keep only those without notes
             filtered_metadata = filtered_metadata[filtered_metadata["notes"].isnull()]
@@ -103,16 +104,32 @@ def get_summaries(args):
             sys.exit(1)
     
         # Among the remaining ones, keep only tha last one
+        # Get unique nnodes
+
+        n = args.nnodes.split(",")[i]
+        if "x" in str(n):
+            # If there are multiple nodes, keep only the first one
+            n = int(np.prod(n.split("x")))
+        else:
+            n = int(n)        
+        print(f"Using {n} nodes for {system}")
+        # Keep only the entry with nnodes equal to n
+        filtered_metadata = filtered_metadata[filtered_metadata["nnodes"].astype(int) == n]
+        # Keep only the last entry
         filtered_metadata = filtered_metadata.iloc[-1]
-        #summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/" + str(filtered_metadata["test_id"]) + "/aggregated_result_summary.csv"
-        summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/"
+        # Check if anything remained
+        if filtered_metadata.empty:
+            print(f"Metadata file {metadata_file} does not contain the requested data. Exiting.", file=sys.stderr)
+            sys.exit(1)
+        i += 1
+        summaries[system] = "results/" + system + "/" + filtered_metadata["timestamp"] + "/"
     return summaries
 
 def get_summaries_df(args):
     summaries = get_summaries(args)
     df = pd.DataFrame()
     # Loop over the summaries
-    for nodes, summary in summaries.items():
+    for system, summary in summaries.items():
         # Create the summary, by calling the summarize_data.py script
         # Check if the summary already exists
         if not os.path.exists(summary + "/aggregated_results_summary.csv") or True:        
@@ -130,41 +147,45 @@ def get_summaries_df(args):
         s = s[s["collective_type"].str.lower() == args.collective.lower()]      
         # Drop the rows where buffer_size is equal to 4 (we do not have them for all results :( )  
         s = s[s["buffer_size"] != 4]
-        s["Nodes"] = nodes
+        s["System"] = system
         # Append s to df
         df = pd.concat([df, s], ignore_index=True)
     return df
 
 def get_best_binomial(df, args):
-    # Get metadata
-    meta = pd.read_csv("results/" + args.system + "_metadata.csv")
-    # We assume that mpi_lib, mpi_lib_version, and libswing_version
-    # are the same for all entries, so just read them for the last entry
-    mpi_lib = meta["mpi_lib"].iloc[-1]
-    mpi_lib_version = meta["mpi_lib_version"].iloc[-1]
-    libswing_version = meta["libswing_version"].iloc[-1]
+    best_binomial = pd.DataFrame()
+    for system in args.systems.split(","):
+        # Get metadata
+        meta = pd.read_csv("results/" + system + "_metadata.csv")
+        # We assume that mpi_lib, mpi_lib_version, and libswing_version
+        # are the same for all entries, so just read them for the last entry
+        mpi_lib = meta["mpi_lib"].iloc[-1]
+        mpi_lib_version = meta["mpi_lib_version"].iloc[-1]
+        libswing_version = meta["libswing_version"].iloc[-1]
 
-    bin = binomials.get((mpi_lib, mpi_lib_version, libswing_version, args.collective.lower()))
-    if bin is None:
-        print(f"No binomial algorithms found for {mpi_lib} {mpi_lib_version} {libswing_version} {args.collective.lower()}. Exiting.", file=sys.stderr)
-        sys.exit(1)
-    # Find the best algorithm for each buffer_size and "Nodes" among those in bin
-    # Create masks
-    bin_mask = df["algo_name"].str.lower().isin(bin)
-    # Grouping keys
-    group_keys = ["buffer_size", "Nodes"]
-    # Find best binomial per group
-    best_binomial = df[bin_mask].loc[
-        df[bin_mask].groupby(group_keys)[args.metric].idxmin()
-    ].copy()
-    best_binomial["algo_name"] = "best_binomial"
+        bin = binomials.get((mpi_lib, mpi_lib_version, libswing_version, args.collective.lower()))
+        if bin is None:
+            print(f"No binomial algorithms found for {mpi_lib} {mpi_lib_version} {libswing_version} {args.collective.lower()}. Exiting.", file=sys.stderr)
+            sys.exit(1)
+        # Find the best algorithm for each buffer_size and "System" among those in bin
+        # Create masks
+        bin_mask = df["algo_name"].str.lower().isin(bin)
+        # Grouping keys
+        group_keys = ["buffer_size", "System"]
+        # Find best binomial per group
+        tmp_best_binomial = df[bin_mask].loc[
+            df[bin_mask].groupby(group_keys)[args.metric].idxmin()
+        ].copy()
+        tmp_best_binomial["algo_name"] = "best_binomial"
+        # Add to the best_binomial dataframe
+        best_binomial = pd.concat([best_binomial, tmp_best_binomial], ignore_index=True)
     return best_binomial
 
 def get_best_swing(df, args):
     # Create masks
     swing_mask = df["algo_name"].str.lower().str.startswith("swing")
     # Grouping keys
-    group_keys = ["buffer_size", "Nodes"]
+    group_keys = ["buffer_size", "System"]
     # Find best swing per group
     best_swing = df[swing_mask].loc[
         df[swing_mask].groupby(group_keys)[args.metric].idxmin()
@@ -177,7 +198,7 @@ def get_best_other(df, args):
     swing_mask = df["algo_name"].str.lower().str.startswith("swing")
     non_swing_mask = ~swing_mask
     # Grouping keys
-    group_keys = ["buffer_size", "Nodes"]
+    group_keys = ["buffer_size", "System"]
     # Find best non-swing per group
     best_other = df[non_swing_mask].loc[
         df[non_swing_mask].groupby(group_keys)[args.metric].idxmin()
@@ -192,7 +213,7 @@ def get_heatmap_data(df, base, args):
 
     # Pivot to get one column per algo_name
     pivot = best_df.pivot_table(
-        index=["buffer_size", "Nodes"],
+        index=["buffer_size", "System"],
         columns="algo_name",
         values="bandwidth_mean"
     ).reset_index()
@@ -202,28 +223,35 @@ def get_heatmap_data(df, base, args):
 
     # Pivot for heatmap with sizes on the x-axis
     heatmap_data = pivot.pivot(
-        columns="Nodes",
+        columns="System",
         index="buffer_size",
         values="bandwidth_ratio"
     )
     
     # Pivot again for heatmap (Nodes as rows, buffer_size as columns)
     heatmap_data = pivot.pivot(
-        columns="Nodes",
+        columns="System",
         index="buffer_size",
         values="bandwidth_ratio"
     )
 
     # Reorder rows
     #heatmap_data = heatmap_data.loc[args.nnodes.split(",")]        
-    heatmap_data = heatmap_data[args.nnodes.split(",")]
+    heatmap_data = heatmap_data[args.systems.split(",")]
 
     return heatmap_data
 
+system_name_hr = {
+    "leonardo": "Leonardo",
+    "mare_nostrum": "Mare Nostrum 5",
+    "lumi": "LUMI",
+    "fugaku": "Fugaku",
+}
+
 def main():
     parser = argparse.ArgumentParser(description="Generate graphs")
-    parser.add_argument("--system", type=str, help="System name")
-    parser.add_argument("--nnodes", type=str, help="Number of nodes (comma separated)")
+    parser.add_argument("--systems", type=str, help="Buffer size (comma separated)")
+    parser.add_argument("--nnodes", type=str, help="Nodes on each system (comma separated)")
     parser.add_argument("--tasks_per_node", type=int, help="Tasks per node", default=1)
     parser.add_argument("--collective", type=str, help="Collective")    
     parser.add_argument("--notes", type=str, help="Notes")   
@@ -236,12 +264,10 @@ def main():
     df = get_summaries_df(args)
           
     # Drop the columns I do not need
-    df = df[["buffer_size", "Nodes", "algo_name", "mean", "median", "percentile_90"]]
+    df = df[["buffer_size", "System", "algo_name", "mean", "median", "percentile_90"]]
 
-    # If system name is "fugaku", drop all the algo_name starting with uppercase "RECDOUB"
-    if args.system == "fugaku":
-        df = df[~df["algo_name"].str.startswith("RECDOUB")]
 
+    df = df[~df["algo_name"].str.startswith("RECDOUB")]
     if args.exclude:
         # Drop those with "segmented" and "block" in the name
         df = df[~df["algo_name"].str.contains(args.exclude, case=False)]
@@ -382,9 +408,27 @@ def main():
     #else:
     #    plt.title("Bine Trees/Butterflies Speedup over Best Binomial Tree/Butterfly (top) and over Best Overall Algorithm (bottom)")
     plt.ylabel("Vector Size", fontsize=big_font_size)
-    plt.xlabel("# Nodes", fontsize=big_font_size)
-    plt.xticks(fontsize=small_font_size)
+    plt.xlabel("")
     plt.yticks(fontsize=small_font_size)
+    # For the x-ticks, use the system names in systems_name_hr
+    # Get the system names and convert to a list
+    systems = heatmap_data_primary.columns.tolist()
+    systems_hr = []
+    for s in systems:
+        # Find s position in args.systems
+        pos = args.systems.split(",").index(s)
+        # Get the corresponding nnodes
+        n = args.nnodes.split(",")[pos]
+        if "x" in str(n):
+            n = int(np.prod(n.split("x")))
+        else:
+            n = int(n)
+        systems_hr.append(system_name_hr[s] + "\n(" + str(n) + " nodes)")
+
+        
+    # Use systems_hr as labels
+    plt.xticks(ticks=np.arange(len(systems)) + 0.5, labels=systems_hr, fontsize=small_font_size)
+
     if args.y_no:
         plt.yticks([])
         plt.ylabel("")        
@@ -396,14 +440,14 @@ def main():
 
 
     # Make dir if it does not exist
-    outdir = "plot/" + args.system + "_hm_old/" + args.collective + "/"
+    outdir = "plot/hm_compr/" + args.collective + "/"
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
     # in outfile name we should save all the infos in args
     # Convert args to a string with param name and param value
-    args_str = "_".join([f"{k}_{v}" for k, v in vars(args).items() \
-                        if k != "nnodes" and k != "system" and k != "collective" and (k != "notes" or v != None) and (k != "exclude" or v != None)])
+    args_str = "_".join([f"{v}" for k, v in vars(args).items() \
+                        if k  == "nnodes"])
     outfile = outdir + "/" + args_str + ".pdf"
     # Save as PDF
     plt.savefig(outfile, bbox_inches="tight")

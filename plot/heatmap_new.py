@@ -14,61 +14,13 @@ matplotlib.rc('pdf', fonttype=42) # To avoid issues with camera-ready submission
 rcParams['figure.figsize'] = 6.75,6.75
 big_font_size = 18
 small_font_size = 15
-fmt=".1f"
+fmt=".2f"
 sbrn_palette = sns.color_palette("deep")# ["#A6C8FF", "#75D1D1", "#8EC6FF", "#FFBC9A", "#C8A6FF", "#F2AFA1", "#A6F0A6"]
 sota_palette = [sbrn_palette[i] for i in range(len(sbrn_palette)) if sbrn_palette[i] != sns.xkcd_rgb['red']]
 
 
 metrics = ["mean", "median", "percentile_90"]
 
-binomials = {}
-##################################
-# Leonardo's binomial algorithms #
-##################################
-binomials[("OMPI", "4.1.6", "1.0.0", "allreduce")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "rabenseifner_ompi", "rabenseifner_over"]
-binomials[("OMPI", "4.1.6", "1.0.0", "allgather")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "k_bruck_over", "sparbit_over"]
-binomials[("OMPI", "4.1.6", "1.0.0", "alltoall")]       = ["modified_bruck_ompi"]
-binomials[("OMPI", "4.1.6", "1.0.0", "bcast")]          = ["binomial_ompi", "scatter_allgather_ompi", "scatter_allgather_over", "scatter_allgather_ring_ompi"]
-binomials[("OMPI", "4.1.6", "1.0.0", "gather")]         = ["binomial_ompi"]
-binomials[("OMPI", "4.1.6", "1.0.0", "reduce")]         = ["binomial_ompi", "rabenseifner_ompi"]
-binomials[("OMPI", "4.1.6", "1.0.0", "reduce_scatter")] = ["recursive_distance_doubling_over", "recursive_halving_ompi", "recursive_halving_over"]
-binomials[("OMPI", "4.1.6", "1.0.0", "scatter")]        = ["binomial_ompi"]
-
-########################################
-# Mare Nostrum 5's binomial algorithms #
-########################################
-binomials[("OMPI", "4.1.5", "1.0.0", "allreduce")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "rabenseifner_ompi", "rabenseifner_over"]
-binomials[("OMPI", "4.1.5", "1.0.0", "allgather")]      = ["recursive_doubling_ompi", "recursive_doubling_over", "k_bruck_over", "sparbit_over"]
-binomials[("OMPI", "4.1.5", "1.0.0", "alltoall")]       = ["modified_bruck_ompi"]
-binomials[("OMPI", "4.1.5", "1.0.0", "bcast")]          = ["binomial_ompi", "scatter_allgather_ompi", "scatter_allgather_over", "scatter_allgather_ring_ompi"]
-binomials[("OMPI", "4.1.5", "1.0.0", "gather")]         = ["binomial_ompi"]
-binomials[("OMPI", "4.1.5", "1.0.0", "reduce")]         = ["binomial_ompi", "rabenseifner_ompi"]
-binomials[("OMPI", "4.1.5", "1.0.0", "reduce_scatter")] = ["recursive_distance_doubling_over", "recursive_halving_ompi", "recursive_halving_over"]
-binomials[("OMPI", "4.1.5", "1.0.0", "scatter")]        = ["binomial_ompi"]
-
-##############################
-# LUMI's binomial algorithms #
-##############################
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "allreduce")]      = ["rabenseifner_mpich", "rabenseifner_over", "recursive_doubling_mpich", "recursive_doubling_over"]
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "allgather")]      = ["brucks_mpich", "recursive_doubling_mpich", "recursive_doubling_over", "sparbit_over"]
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "alltoall")]       = ["brucks_mpich"]
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "bcast")]          = ["binomial_mpich", "scatter_allgather_over", "scatter_recursive_doubling_allgather_mpich"]
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "gather")]         = ["binomial_mpich"]
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "reduce")]         = ["binomial_mpich", "rabenseifner_mpich"]
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "reduce_scatter")] = ["recursive_distance_doubling_mpich", "recursive_halving_mpich", "recursive_halving_over"]
-binomials[("CRAY_MPICH", "8.1.29", "1.0.0", "scatter")]        = ["binomial_mpich"]
-
-################################
-# Fugaku's binomial algorithms #
-################################
-binomials[("FJMPI", "x.x.x", "4.0.1", "allreduce")]      = ["default-recursive_doubling"]
-binomials[("FJMPI", "x.x.x", "4.0.1", "reduce_scatter")] = ["default-recursive-halving"]
-binomials[("FJMPI", "x.x.x", "4.0.1", "allgather")]      = ["default-bruck", "default-recursive-doubling"]
-binomials[("FJMPI", "x.x.x", "4.0.1", "bcast")]          = ["default-binomial"]
-binomials[("FJMPI", "x.x.x", "4.0.1", "alltoall")]       = ["default-modified-bruck"]
-binomials[("FJMPI", "x.x.x", "4.0.1", "scatter")]        = ["default-binomial"]
-binomials[("FJMPI", "x.x.x", "4.0.1", "gather")]         = ["default-binomial"]
-binomials[("FJMPI", "x.x.x", "4.0.1", "reduce")]         = ["default-binomial"]
 
 def human_readable_size(num_bytes):
     for unit in ['B', 'KiB', 'MiB', 'GiB', 'TiB']:
@@ -125,8 +77,7 @@ def get_summaries_df(args):
                 "--result-dir",
                 summary
             ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL)
+            stdout=subprocess.DEVNULL)
 
         s = pd.read_csv(summary + "/aggregated_results_summary.csv")        
         # Filter by collective type
@@ -138,153 +89,183 @@ def get_summaries_df(args):
         df = pd.concat([df, s], ignore_index=True)
     return df
 
-def get_best_binomial(df, args):
-    # Get metadata
-    meta = pd.read_csv("results/" + args.system + "_metadata.csv")
-    # We assume that mpi_lib, mpi_lib_version, and libswing_version
-    # are the same for all entries, so just read them for the last entry
-    mpi_lib = meta["mpi_lib"].iloc[-1]
-    mpi_lib_version = meta["mpi_lib_version"].iloc[-1]
-    libswing_version = meta["libswing_version"].iloc[-1]
-
-    bin = binomials.get((mpi_lib, mpi_lib_version, libswing_version, args.collective.lower()))
-    if bin is None:
-        print(f"No binomial algorithms found for {mpi_lib} {mpi_lib_version} {libswing_version} {args.collective.lower()}. Exiting.", file=sys.stderr)
-        sys.exit(1)
-    # Find the best algorithm for each buffer_size and "Nodes" among those in bin
-    # Create masks
-    bin_mask = df["algo_name"].str.lower().isin(bin)
-    # Grouping keys
-    group_keys = ["buffer_size", "Nodes"]
-    # Find best binomial per group
-    best_binomial = df[bin_mask].loc[
-        df[bin_mask].groupby(group_keys)[args.metric].idxmin()
-    ].copy()
-    best_binomial["algo_name"] = "best_binomial"
-    return best_binomial
-
-def get_best_swing(df, args):
-    # Create masks
-    swing_mask = df["algo_name"].str.lower().str.startswith("swing")
-    # Grouping keys
-    group_keys = ["buffer_size", "Nodes"]
-    # Find best swing per group
-    best_swing = df[swing_mask].loc[
-        df[swing_mask].groupby(group_keys)[args.metric].idxmin()
-    ].copy()
-    best_swing["algo_name"] = "best_swing"    
-    return best_swing
-
-def get_best_other(df, args):
-    # Create masks
-    swing_mask = df["algo_name"].str.lower().str.startswith("swing")
-    non_swing_mask = ~swing_mask
-    # Grouping keys
-    group_keys = ["buffer_size", "Nodes"]
-    # Find best non-swing per group
-    best_other = df[non_swing_mask].loc[
-        df[non_swing_mask].groupby(group_keys)[args.metric].idxmin()
-    ].copy()
-    best_other["algo_name"] = "best_other"    
-    return best_other
-
-def get_heatmap_data(df, base, args):
-    # Generate plot
-    # Keep only best_swing and best_other
-    best_df = df[df["algo_name"].isin(["best_swing", base])]
-
-    # Pivot to get one column per algo_name
-    pivot = best_df.pivot_table(
-        index=["buffer_size", "Nodes"],
-        columns="algo_name",
-        values="bandwidth_mean"
-    ).reset_index()
-
-    # Compute ratio
-    pivot["bandwidth_ratio"] = pivot["best_swing"] / pivot[base]
-
-    # Pivot for heatmap with sizes on the x-axis
-    heatmap_data = pivot.pivot(
-        columns="Nodes",
-        index="buffer_size",
-        values="bandwidth_ratio"
-    )
-    
-    # Pivot again for heatmap (Nodes as rows, buffer_size as columns)
-    heatmap_data = pivot.pivot(
-        columns="Nodes",
-        index="buffer_size",
-        values="bandwidth_ratio"
-    )
-
-    # Reorder rows
-    #heatmap_data = heatmap_data.loc[args.nnodes.split(",")]        
-    heatmap_data = heatmap_data[args.nnodes.split(",")]
-
-    return heatmap_data
-
-
 def algo_name_to_family(algo_name, system):
+    if algo_name.lower().startswith("swing"):
+        return "Bine"    
     if system == "fugaku":
-        if algo_name.lower().startswith("swing"):
-            return "Bine"
-        elif algo_name.lower().startswith("default"):
-            if "recursive-doubling" in algo_name.lower():
-                return "Binomial"
-            elif "recursive-halving" in algo_name.lower():
-                return "Binomial"
-            elif "torus" in algo_name.lower():
-                return "Ring" # Bucket-like
-            elif "bruck" in algo_name.lower():
-                return "Bruck"
-            elif "default-default" == algo_name.lower():
-                return "Default"
-            elif "neighbor" in algo_name.lower():
-                return "Neighbor"
-            elif "ring" in algo_name.lower():
-                return "Ring"
-            elif "linear" in algo_name.lower():
-                return "Linear"
-            elif "gtbc" in algo_name.lower():
-                return "GTBC"
-        elif algo_name.lower().startswith("ring"):
+        if "recursive-doubling" in algo_name.lower():
+            return "Binomial"
+        elif "recursive_doubling" in algo_name.lower():
+            return "Binomial"
+        elif "nonoverlap" in algo_name.lower():
+            return "Non Overlapping"
+        elif "non-overlap" in algo_name.lower():
+            return "Non Overlapping"
+        elif "blacc" in algo_name.lower():
+            return "Blacc"
+        elif "doublespread" in algo_name.lower():
+            return "Double Spread"
+        elif "recursive-halving" in algo_name.lower():
+            return "Binomial"
+        elif "torus" in algo_name.lower():
+            return "Ring" # Bucket-like
+        elif "bruck" in algo_name.lower():
+            return "Bruck"
+        elif "default-default" == algo_name.lower():
+            return "Default"
+        elif "neighbor" in algo_name.lower():
+            return "Neighbor"
+        elif "ring" in algo_name.lower():
             return "Ring"
+        elif "linear" in algo_name.lower():
+            return "Linear"
+        elif "gtbc" in algo_name.lower():
+            return "GTBC"
+        elif "trix" in algo_name.lower():
+            return "Trix"
+        elif "rdbc" in algo_name.lower():
+            return "RDBC"
+        elif "pairwise" in algo_name.lower():
+            return "Pairwise"
+        elif "knomial" in algo_name.lower():
+            return "Knomial"
+        elif "trinaryx" in algo_name.lower():
+            return "Trix"
+        elif "split-binary" in algo_name.lower():
+            return "Binary"
+        elif "binomial" in algo_name.lower():
+            return "Binomial"
+        elif "bruck" in algo_name.lower():
+            return "Bruck"
+        elif "binary" in algo_name.lower():
+            return "Binary"            
+        elif "bintree" in algo_name.lower():
+            return "Binary"
+        elif "crp" in algo_name.lower():
+            return "CRP"
+        elif "use-bcast" in algo_name.lower():
+            return "Use Bcast"
+        elif "simple" in algo_name.lower():
+            return "Simple"
+        elif "pipeline" in algo_name.lower():
+            return "Pipeline"
+        elif "chain" in algo_name.lower():
+            return "Chain"
+    elif system == "leonardo" or system == "mare_nostrum":
+        if "default_ompi" == algo_name.lower():
+            return "Default"
+        elif "recursive_doubling" in algo_name.lower():
+            return "Binomial"
+        elif "ring" in algo_name.lower():
+            return "Ring"
+        elif "rabenseifner" in algo_name.lower():
+            return "Binomial"
+        elif "binary" in algo_name.lower():
+            return "Binary"
+        elif "binomial" in algo_name.lower():
+            return "Binomial"
+        elif "in_order" in algo_name.lower():
+            return "In Order"
+        elif "bruck" in algo_name.lower():
+            return "Bruck"
+        elif "knomial" in algo_name.lower():
+            return "Knomial"
+        elif "neighbor" in algo_name.lower():
+            return "Neighbor"
+        elif "linear" in algo_name.lower():
+            return "Linear"
+        elif "pairwise" in algo_name.lower():
+            return "Pairwise"
+        elif "recursive" in algo_name.lower():
+            return "Binomial"
+        elif "scatter_allgather" in algo_name.lower():
+            return "Binomial"
+        elif "sparbit" in algo_name.lower():
+            return "Binomial"
+    elif system == "lumi":
+        if "binomial_mpich" in algo_name.lower():
+            return "Binomial"
+        elif "default_mpich" in algo_name.lower():
+            return "Default"
+        elif "recursive_doubling" in algo_name.lower():
+            return "Binomial"
+        elif "ring" in algo_name.lower():
+            return "Ring"
+        elif "rabenseifner" in algo_name.lower():
+            return "Binomial"
+        elif "binary" in algo_name.lower():
+            return "Binary"
+        elif "binomial" in algo_name.lower():
+            return "Binomial"
+        elif "recursive_halving" in algo_name.lower():
+            return "Binomial"
+        elif "non_blocking" in algo_name.lower():
+            return "Non Blocking"        
+        elif "non_commutativ" in algo_name.lower():
+            return "Non Commutative"
+        elif "bruck" in algo_name.lower():
+            return "Bruck"
+        elif "scatter_allgather" in algo_name.lower():
+            return "Binomial"
+        elif "knomial" in algo_name.lower():
+            return "Knomial"
+        elif "distance_doubling" in algo_name.lower():
+            return "Binomial"
+        elif "neighbor" in algo_name.lower():
+            return "Neighbor"
+        elif "scattered_mpich" in algo_name.lower():
+            return "Scattered"
+        elif "pairwise" in algo_name.lower():
+            return "Pairwise"
+        elif "sparbit" in algo_name.lower():
+            return "Binomial"
+
     # error
     raise ValueError(f"Unknown algorithm {algo_name} for system {system}")
     
 
-def augment_df(df):
+def augment_df(df, metric):
     # Step 1: Create an empty list to hold the new rows
     new_data = []
 
     # For each (buffer_size, nodes) group the data so that for eacha algo_family we only keep the entry with the highest bandwidth_mean
-    df = df.loc[df.groupby(['buffer_size', 'Nodes', 'algo_family'])['bandwidth_mean'].idxmax()]
+    df = df.loc[df.groupby(['buffer_size', 'Nodes', 'algo_family'])['bandwidth_' + metric].idxmax()]
 
     # Step 2: Group by 'buffer_size' and 'Nodes'
     for (buffer_size, nodes), group in df.groupby(['buffer_size', 'Nodes']):        
         # Step 3: Get the best algorithm
-        best_algo_row = group.loc[group['bandwidth_mean'].idxmax()]
+        best_algo_row = group.loc[group['bandwidth_' + metric].idxmax()]
         best_algo = best_algo_row['algo_family']
         
         # Step 4: Get the second best algorithm (excluding the best one)
-        second_best_algo_row = group.loc[group[group['algo_family'] != best_algo]['bandwidth_mean'].idxmax()]
+        tmp = group[group['algo_family'] != best_algo]['bandwidth_' + metric]
+        if tmp.empty:
+            print(f"Warning: No second best algorithm found for buffer_size {buffer_size} and nodes {nodes}. Skipping.", file=sys.stderr)
+            continue
+        second_best_algo_row = group.loc[tmp.idxmax()]
         second_best_algo = second_best_algo_row['algo_family']
 
         # Get Bine bandwidth_mean for this group
         bine_row = group.loc[group['algo_family'] == "Bine"]
-        bine_bandwidth_mean = bine_row['bandwidth_mean'].values[0]
+        if bine_row.empty:
+            print(f"Warning: No Bine algorithm found for buffer_size {buffer_size} and nodes {nodes}. Skipping.", file=sys.stderr)
+            continue
+        
+        bine_bandwidth_mean = bine_row['bandwidth_' + metric].values[0]
 
         #print(f"Buffer size: {buffer_size}, Nodes: {nodes}, Best algo: {best_algo}, Second best algo: {second_best_algo}")
         #print(group)
 
-        ratio = bine_bandwidth_mean / best_algo_row['bandwidth_mean']
+        ratio = bine_bandwidth_mean / best_algo_row['bandwidth_' + metric]
         # Truncate to 1 decimal place
         ratio = round(ratio, 1)
         
-        if best_algo == "Bine" or ratio >= 1.0:
-            cell = best_algo_row['bandwidth_mean'] / second_best_algo_row['bandwidth_mean']            
+        if best_algo == "Bine":
+            cell = best_algo_row['bandwidth_' + metric] / second_best_algo_row['bandwidth_' + metric]  
+        elif ratio >= 1.0:
+            cell = ratio         
         else:
-            #print(f"Losign by {best_algo_row['bandwidth_mean'] / second_best_algo_row['bandwidth_mean']}")
+            #print(f"Losign on {buffer_size},{nodes} vs {best_algo} by {bine_bandwidth_mean / best_algo_row['bandwidth_' + metric]}")
             cell = best_algo
         
         # Step 6: Append the data for this group (including old columns)
@@ -292,7 +273,7 @@ def augment_df(df):
             'buffer_size': buffer_size,
             'Nodes': nodes,
             #'algo_family': best_algo,
-            #'bandwidth_mean': best_algo_row['bandwidth_mean'],
+            #'bandwidth_' + metric: best_algo_row['bandwidth_' + metric],
             'cell': cell,
         })
 
@@ -321,6 +302,30 @@ def family_name_to_letter_color(family_name):
         return ("L", sota_palette[5])
     elif family_name == "GTBC":
         return ("G", sota_palette[6])
+    elif family_name == "Pairwise":
+        return ("P", sota_palette[6])
+    elif family_name == "In Order":
+        return ("I", sota_palette[6])
+    elif family_name == "Knomial":
+        return ("O", sota_palette[6])    
+    elif family_name == "Binary":
+        return ("Y", sota_palette[6])    
+    elif family_name == "Non Blocking":
+        return ("B", sota_palette[6])    
+    elif family_name == "Non Commutative":
+        return ("C", sota_palette[6])
+    elif family_name == "Scattered":
+        return ("S", sota_palette[6])
+    elif family_name == "Trix":
+        return ("X", sota_palette[6])
+    elif family_name == "Use Bcast":
+        return ("U", sota_palette[6])
+    elif family_name == "Simple":
+        return ("M", sota_palette[6])
+    elif family_name == "Blacc":
+        return ("A", sota_palette[6])
+    elif family_name == "CRP":
+        return ("Z", sota_palette[6])
     else:
         # error
         raise ValueError(f"Unknown algorithm family {family_name}")
@@ -337,6 +342,9 @@ def main():
     parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
     parser.add_argument("--y_no", help="Does not show ticks and labels on y-axis", action="store_true")
     args = parser.parse_args()
+
+    print("Called with args:")
+    print(args)
 
     df = get_summaries_df(args)
           
@@ -367,9 +375,8 @@ def main():
     pd.set_option('display.max_rows', None)
 
     df = algo_to_family(df, args)
-    df = augment_df(df)
-    print(df)
-
+    df = augment_df(df,args.metric)
+    #print(df)
 
     # We need to separate numerical and string cells
     # Step 1: Create the 'numeric' version of the DataFrame, where strings are NaN
@@ -396,6 +403,7 @@ def main():
     ax = sns.heatmap(heatmap_data_numeric, 
                     annot=True, 
                     cmap=red_green, 
+                    fmt=fmt,
                     center=1, 
                     cbar=True, 
                     #square=True,
