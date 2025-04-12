@@ -79,17 +79,6 @@ def load_topology(filename, location):
                     continue
     return node_to_cell
 
-def preprocess_expression(expr_str):
-    """
-    Preprocess the expression string:
-      - Replace caret (^) with exponentiation (**)
-      - Replace textual operators (e.g. 'xor', 'mod') with valid Python operators.
-    """
-    expr_str = expr_str.replace("^", "**")
-    expr_str = expr_str.replace("mod", "%")
-    expr_str = expr_str.replace("xor", "^")
-
-    return expr_str
 
 def apply_substitutions(s, subs):
     for key, value in subs.items():
@@ -133,9 +122,9 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
 
         phases = alg_data.get("phases", [])
         for phase in phases:
-            steps_expr        = preprocess_expression(phase.get("steps"))
-            send_to_expr      = preprocess_expression(phase.get("send_to"))
-            message_size_expr = preprocess_expression(phase.get("message_size"))
+            steps_expr        = phase.get("steps")
+            send_to_expr      = phase.get("send_to")
+            message_size_expr = phase.get("message_size")
 
             steps = int(eval(steps_expr.replace(num_ranks_sym, str(num_ranks))))
             for step in range(steps):
