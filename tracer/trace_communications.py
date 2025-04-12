@@ -86,24 +86,26 @@ def apply_substitutions(s, subs):
     return s
 
 
-def rho(step) -> int:
-    return (1 - ((-2)**(step+1))) // 3
+rhos = [1, -1, 3, -5, 11, -21, 43, -85, 171, -341, 683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525]
 
 def fi(rank, step, num_ranks)-> int:
     if rank % 2 == 0:
-        return (rank + rho(step)) % num_ranks
+        return (rank + rhos[step]) % num_ranks
     else:
-        return (rank - rho(step) + num_ranks) % num_ranks
+        return (rank - rhos[step] + num_ranks) % num_ranks
+
 
 def count_inter_cell_bytes(comm_pattern, rank_to_cell):
     """
     Iterates over the communication pattern and sums the bytes for communications 
-    that cross cell boundaries.
-    
-    Assumes that the communication pattern JSON has been instantiated with concrete values.
+    that cross cell boundaries using precompiled expressions and a globals dict
+    with function fi exposed to the eval environment.
     """
     final_count = {}
     num_ranks = len(rank_to_cell)
+
+    # Globals to expose to the eval expressions.
+    eval_globals = {"fi": fi}
 
     # Iterate over each algorithm defined under ALLREDUCE.
     for algorithm, alg_data in comm_pattern.items():
@@ -112,10 +114,10 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
         parameters = alg_data.get("parameters", {})
 
         try:
-            num_ranks_sym = parameters["num_ranks"]
-            rank_sym      = parameters["rank"]
-            step_sym      = parameters["step"]
-            num_steps_sym = parameters["num_steps"]
+            num_ranks_sym   = parameters["num_ranks"]
+            rank_sym        = parameters["rank"]
+            step_sym        = parameters["step"]
+            num_steps_sym   = parameters["num_steps"]
             buffer_size_sym = parameters["buffer_size"]
         except KeyError as e:
             raise ValueError(f"Missing required parameter: {e}")
@@ -126,20 +128,28 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
             send_to_expr      = phase.get("send_to")
             message_size_expr = phase.get("message_size")
 
-            steps = int(eval(steps_expr.replace(num_ranks_sym, str(num_ranks))))
+            # Evaluate steps expression once (substituting num_ranks_sym)
+            steps_eval_expr = steps_expr.replace(num_ranks_sym, str(num_ranks))
+            steps = int(eval(steps_eval_expr))
+
+            # Precompile expressions for message_size and send_to
+            message_size_code = compile(message_size_expr, "<string>", "eval")
+            send_to_code      = compile(send_to_expr, "<string>", "eval")
+
             for step in range(steps):
-                substitutions = {
+                # Build base substitutions that change per step.
+                base_subs = {
                     buffer_size_sym: 1,
                     step_sym: step,
                     num_ranks_sym: num_ranks,
                     num_steps_sym: steps
                 }
-
-                message_size = apply_substitutions(message_size_expr, substitutions)
-                message_size = eval(message_size)
+                # Evaluate message_size once per step using precompiled code
+                message_size = eval(message_size_code, eval_globals, base_subs)
                 for rank in range(num_ranks):
-                    substitutions[rank_sym] = rank
-                    send_to = int(eval(apply_substitutions(send_to_expr, substitutions)))
+                    subs = dict(base_subs)
+                    subs[rank_sym] = rank
+                    send_to = int(eval(send_to_code, eval_globals, subs))
 
                     if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
                         external_bytes += message_size
@@ -149,6 +159,7 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
         final_count[algorithm] = (internal_bytes, external_bytes)
 
     return final_count
+
 
 def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments."""
@@ -163,6 +174,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--save", action='store_true', help="Save the results to a CSV file")
     parser.add_argument("--out", help="Output CSV file name")
     return parser.parse_args()
+
 
 def save_to_csv(rows, alloc_file: str, out_file: str = "") -> None:
     """Save the analysis results to a CSV file."""
@@ -179,6 +191,7 @@ def save_to_csv(rows, alloc_file: str, out_file: str = "") -> None:
         print(f"Results saved to {output_file}")
     except IOError as e:
         print(f"Failed to write CSV file: {e}", file=sys.stderr)
+
 
 def main():
     args = parse_arguments()
