@@ -38,13 +38,16 @@ def map_rank_to_cell(allocation, node_to_cell, location):
         if location == "leonardo":
             node_id = re.search(r'lrdn(\d+)',hostname)
         elif location == "lumi":
-            node_id = re.search(r'x(\d{4})',hostname)
+            node_id = re.search(r'x(\d+)',hostname)
         elif location == "mare_nostrum":
             node_id = re.search(r'as(\d{2})', hostname)
 
         if node_id is not None:
             node_id = int(node_id.group(1))
-            cell = node_to_cell.get(node_id)
+            if location == "leonardo":
+                cell = node_to_cell.get(node_id)
+            else:
+                cell = node_id
             rank_to_cell[rank] = cell
         else:
             print(f"{__file__}:Node ID not found for rank {rank} and hostname {hostname}", file=sys.stderr)
@@ -201,6 +204,7 @@ def main():
         print(f"Allocation file not found: {args.alloc}", file=sys.stderr)
         return 1
 
+    print(args.location)
     allocation = load_allocation(args.alloc, args.location)
     node_to_cell = load_topology(args.map, args.location)
     rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location)
