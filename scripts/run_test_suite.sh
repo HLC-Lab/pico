@@ -45,6 +45,7 @@ if [[ $LOCATION != "local" ]]; then
     squeue -j $SLURM_JOB_ID
 fi
 
+[[ $LOCATION == "leonardo" ]] && python $SWING_DIR/tracer/trace_communications.py --alloc "$OUTPUT_DIR/alloc.csv" --map "$SWING_DIR/tracer/maps/$LOCATION.txt" --save
 ###################################################################################
 #              COMPRESS THE RESULTS AND DELETE THE OUTPUT DIR IF REQUESTED        #
 ###################################################################################

@@ -2,6 +2,7 @@ import json
 import csv
 import re
 import sys
+import os
 import argparse
 from math import log
 
@@ -56,6 +57,14 @@ def map_rank_to_cell(allocation, node_to_cell):
     return rank_to_cell
 
 def load_topology(filename):
+    if "leonardo.txt" in filename:
+        return load_topology_leonardo(filename)
+    if "lumi.txt" in filename:
+        return load_topology_lumi(filename)
+    if "mare_nostrum.txt" in filename:
+        return load_topology_mare(filename)
+
+def load_topology_leonardo(filename):
     """
     Reads a topology map file and returns a mapping from node id to cell id.
     Expected format in each line: "NODE 0001 RACK 1 CELL 1 ROW 1 ...".
@@ -74,6 +83,16 @@ def load_topology(filename):
                 except (ValueError, IndexError):
                     continue
     return node_to_cell
+
+def load_topology_lumi(filename):
+# TODO: Implement the topology loading for Lumi
+# This is a placeholder function.
+    return {}
+
+def load_topology_mare(filename):
+# TODO: Implement the topology loading for Mare Nostrum
+# This is a placeholder function.
+    return {}
 
 def preprocess_expression(expr_str):
     """
@@ -122,6 +141,7 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
             num_ranks_sym = parameters["num_ranks"]
             rank_sym      = parameters["rank"]
             step_sym      = parameters["step"]
+            num_steps_sym = parameters["num_steps"]
             buffer_size_sym = parameters["buffer_size"]
         except KeyError as e:
             raise ValueError(f"Missing required parameter: {e}")
@@ -138,10 +158,12 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
                 substitutions = {
                     buffer_size_sym: 1,
                     step_sym: step,
-                    num_ranks_sym: num_ranks
+                    num_ranks_sym: num_ranks,
+                    num_steps_sym: steps
                 }
 
-                message_size = eval(apply_substitutions(message_size_expr, substitutions))
+                message_size = apply_substitutions(message_size_expr, substitutions)
+                message_size = eval(message_size)
                 for rank in range(num_ranks):
                     substitutions[rank_sym] = rank
                     send_to = int(eval(apply_substitutions(send_to_expr, substitutions)))
@@ -159,42 +181,81 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
 
 
         final_count[algorithm] = (internal_bytes/2, external_bytes/2)
-    
     return final_count
 
-def main():
-    parser = argparse.ArgumentParser(description="Analyze inter-cell communication in collective operations.")
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Analyze inter-cell communication in collective operations."
+    )
     parser.add_argument("--map", default='tracer/maps/leonardo.txt', help="Path to the topology map file")
     parser.add_argument("--comm", default='tracer/algo_patterns.json', help="Path to the instantiated communication pattern JSON file")
-    parser.add_argument("--coll", default="ALLREDUCE", help="Collective operation to analyze")
+    parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,REDUCE_SCATTER", help="Collective operation to analyze (comma-separated)")
     parser.add_argument("--alloc", required=True, help="Path to the allocation CSV file")
-    args = parser.parse_args()
+    parser.add_argument("--save", action='store_true', help="Save the results to a CSV file")
+    parser.add_argument("--out", help="Output CSV file name")
+    return parser.parse_args()
+
+def save_to_csv(rows, alloc_file: str, out_file: str = "") -> None:
+    """Save the analysis results to a CSV file."""
+    if out_file:
+        output_file = out_file if out_file.endswith(".csv") else out_file + ".csv"
+    else:
+        output_file = f"{os.path.dirname(alloc_file)}/traced_{os.path.basename(alloc_file)}"
+    try:
+        with open(output_file, "w", newline='') as csvfile:
+            fieldnames = ["COLLECTIVE", "ALGORITHM", "INTERNAL", "EXTERNAL", "TOTAL"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        print(f"Results saved to {output_file}")
+    except IOError as e:
+        print(f"Failed to write CSV file: {e}", file=sys.stderr)
+
+def main():
+    args = parse_arguments()
+
+    if not os.path.isfile(args.alloc):
+        print(f"Allocation file not found: {args.alloc}", file=sys.stderr)
+        return 1
 
     allocation = load_allocation(args.alloc)
     node_to_cell = load_topology(args.map)
     rank_to_cell = map_rank_to_cell(allocation, node_to_cell)
-    # info = info_rank_to_cell(allocation, node_to_cell)
-    comm_pattern = load_communication_pattern(args.comm).get(args.coll, {})
 
-    count = count_inter_cell_bytes(comm_pattern, rank_to_cell)
+    rows = []
 
-    print("-" * 40)
-    print(f"\t\t{args.coll.lower()}")
-    print("-" * 40)
+    collectives = args.coll.split(",")
+    for coll in collectives:
+        coll_comm_pattern = load_communication_pattern(args.comm).get(coll, {})
 
-    for algorithm, (internal, external) in count.items():
-        total = internal + external
-        print(f"{'Algorithm:':<20}{algorithm}")
-        print(f"{'Internal bytes:':<20}{internal} n bytes")
-        print(f"{'External bytes:':<20}{external} n bytes")
-        print(f"{'Total bytes:':<20}{total} n bytes")
-        print("-" * 40)  # Separator between entries
+        count = count_inter_cell_bytes(coll_comm_pattern, rank_to_cell)
 
-    print("\n`n` denotes the size of the send buffer")
+        print("\n\n" + "=" * 40)
+        print(f"\t{coll.lower()}")
+        print("=" * 40)
 
-    # print(f"\n\ninfo allocation")
-    # for el in info.items():
-    #     print(f"switch {el[0]:<4}: {el[1]}")
+        for algorithm, (internal, external) in count.items():
+            total = internal + external
+            print(f"{'Algorithm:':<20}{algorithm}")
+            print(f"{'Internal bytes:':<20}{internal} n bytes")
+            print(f"{'External bytes:':<20}{external} n bytes")
+            print(f"{'Total bytes:':<20}{total} n bytes")
+            print("-" * 40)  # Separator between entries
+            if args.save:
+                rows.append({
+                    "COLLECTIVE": coll.lower(),
+                    "ALGORITHM": algorithm,
+                    "INTERNAL": internal,
+                    "EXTERNAL": external,
+                    "TOTAL": total
+                })
+
+    print("\n`n` denotes the size of the send buffer\n\n")
+
+    if args.save:
+        save_to_csv(rows, args.alloc, args.out)
+
 
 if __name__ == "__main__":
     main()
