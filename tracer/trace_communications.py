@@ -11,7 +11,7 @@ def load_communication_pattern(filename):
         pattern = json.load(f)
     return pattern
 
-def load_allocation(filename):
+def load_allocation(filename, location):
     """
     Reads a CSV file mapping MPI_Rank to hostname.
     Expected CSV header: MPI_Rank,allocation
@@ -21,32 +21,27 @@ def load_allocation(filename):
         reader = csv.DictReader(csvfile)
         for row in reader:
             rank = int(row['MPI_Rank'])
-            hostname = row['allocation']
+            if location != "lumi":
+                hostname = row['allocation']
+            else:
+                hostname = row['xname']
             allocation[rank] = hostname
     return allocation
 
-def info_rank_to_cell(allocation, node_to_cell):
+def map_rank_to_cell(allocation, node_to_cell, location):
     """
     Maps each MPI rank to a cell based on its hostname and the node-to-cell mapping.
     """
     rank_to_cell = {}
     for rank, hostname in allocation.items():
-        node_id = re.search(r'lrdn(\d+)',hostname)
-        if node_id is not None:
-            node_id = int(node_id.group(1))
-            cell = node_to_cell.get(node_id)
-            if cell not in rank_to_cell:
-                rank_to_cell[cell] = []
-            rank_to_cell[cell].append({rank:node_id})
-    return rank_to_cell
+        node_id = None
+        if location == "leonardo":
+            node_id = re.search(r'lrdn(\d+)',hostname)
+        elif location == "lumi":
+            node_id = re.search(r'x(\d{4})',hostname)
+        elif location == "mare_nostrum":
+            node_id = re.search(r'as(\d{2})', hostname)
 
-def map_rank_to_cell(allocation, node_to_cell):
-    """
-    Maps each MPI rank to a cell based on its hostname and the node-to-cell mapping.
-    """
-    rank_to_cell = {}
-    for rank, hostname in allocation.items():
-        node_id = re.search(r'lrdn(\d+)',hostname)
         if node_id is not None:
             node_id = int(node_id.group(1))
             cell = node_to_cell.get(node_id)
@@ -56,19 +51,15 @@ def map_rank_to_cell(allocation, node_to_cell):
 
     return rank_to_cell
 
-def load_topology(filename):
-    if "leonardo.txt" in filename:
-        return load_topology_leonardo(filename)
-    if "lumi.txt" in filename:
-        return load_topology_lumi(filename)
-    if "mare_nostrum.txt" in filename:
-        return load_topology_mare(filename)
 
-def load_topology_leonardo(filename):
+def load_topology(filename, location):
     """
     Reads a topology map file and returns a mapping from node id to cell id.
     Expected format in each line: "NODE 0001 RACK 1 CELL 1 ROW 1 ...".
     """
+    if location != "leonardo":
+        return {}
+
     node_to_cell = {}
     with open(filename, 'r') as f:
         for line in f:
@@ -83,16 +74,6 @@ def load_topology_leonardo(filename):
                 except (ValueError, IndexError):
                     continue
     return node_to_cell
-
-def load_topology_lumi(filename):
-# TODO: Implement the topology loading for Lumi
-# This is a placeholder function.
-    return {}
-
-def load_topology_mare(filename):
-# TODO: Implement the topology loading for Mare Nostrum
-# This is a placeholder function.
-    return {}
 
 def preprocess_expression(expr_str):
     """
@@ -188,10 +169,11 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Analyze inter-cell communication in collective operations."
     )
+    parser.add_argument("--location", required=True, help="Location of the system (e.g., 'leonardo', 'lumi')")
+    parser.add_argument("--alloc", required=True, help="Path to the allocation CSV file")
     parser.add_argument("--map", default='tracer/maps/leonardo.txt', help="Path to the topology map file")
     parser.add_argument("--comm", default='tracer/algo_patterns.json', help="Path to the instantiated communication pattern JSON file")
     parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,REDUCE_SCATTER", help="Collective operation to analyze (comma-separated)")
-    parser.add_argument("--alloc", required=True, help="Path to the allocation CSV file")
     parser.add_argument("--save", action='store_true', help="Save the results to a CSV file")
     parser.add_argument("--out", help="Output CSV file name")
     return parser.parse_args()
@@ -219,9 +201,9 @@ def main():
         print(f"Allocation file not found: {args.alloc}", file=sys.stderr)
         return 1
 
-    allocation = load_allocation(args.alloc)
-    node_to_cell = load_topology(args.map)
-    rank_to_cell = map_rank_to_cell(allocation, node_to_cell)
+    allocation = load_allocation(args.alloc, args.location)
+    node_to_cell = load_topology(args.map, args.location)
+    rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location)
 
     rows = []
 
