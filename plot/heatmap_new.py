@@ -270,12 +270,21 @@ def augment_df(df):
         second_best_algo_row = group.loc[group[group['algo_family'] != best_algo]['bandwidth_mean'].idxmax()]
         second_best_algo = second_best_algo_row['algo_family']
 
+        # Get Bine bandwidth_mean for this group
+        bine_row = group.loc[group['algo_family'] == "Bine"]
+        bine_bandwidth_mean = bine_row['bandwidth_mean'].values[0]
+
         #print(f"Buffer size: {buffer_size}, Nodes: {nodes}, Best algo: {best_algo}, Second best algo: {second_best_algo}")
         #print(group)
+
+        ratio = bine_bandwidth_mean / best_algo_row['bandwidth_mean']
+        # Truncate to 1 decimal place
+        ratio = round(ratio, 1)
         
-        if best_algo == "Bine":
+        if best_algo == "Bine" or ratio >= 1.0:
             cell = best_algo_row['bandwidth_mean'] / second_best_algo_row['bandwidth_mean']            
         else:
+            #print(f"Losign by {best_algo_row['bandwidth_mean'] / second_best_algo_row['bandwidth_mean']}")
             cell = best_algo
         
         # Step 6: Append the data for this group (including old columns)
@@ -390,9 +399,13 @@ def main():
                     center=1, 
                     cbar=True, 
                     #square=True,
-                    annot_kws={'size': big_font_size},
+                    annot_kws={'size': big_font_size, 'weight': 'bold'},
                     cbar_kws={"orientation": "horizontal", "location" : "top", "aspect": 40},
                     )
+
+    # Get the colorbar and set the font size
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=small_font_size)  # Adjust font size of ticks
 
     ###############
     # SET STRINGS #
@@ -403,10 +416,10 @@ def main():
             # Check if the value is a string
             if isinstance(val, str):
                 val, col = family_name_to_letter_color(val)
-                plt.text(j + 0.5, i + 0.5, val, ha='center', va='center', color=col, fontsize=big_font_size)
+                plt.text(j + 0.5, i + 0.5, val, ha='center', va='center', color=col, weight='bold', fontsize=big_font_size)
             # Check if the value is NaN (not a number)
             elif pd.isna(val):
-                plt.text(j + 0.5, i + 0.5, "N/A", ha='center', va='center', color='black', fontsize=big_font_size)
+                plt.text(j + 0.5, i + 0.5, "N/A", ha='center', va='center', color='black', weight='bold', fontsize=big_font_size)
     
     ################
     # SET BG COLOR #
@@ -430,6 +443,8 @@ def main():
 
     plt.xlabel("# Nodes", fontsize=big_font_size)
     plt.ylabel("Vector Size", fontsize=big_font_size)
+    plt.xticks(fontsize=small_font_size)
+    plt.yticks(fontsize=small_font_size)
     # Do not rotate xticklabels
     plt.xticks(rotation=0)   
 
