@@ -135,7 +135,6 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
         for phase in phases:
             steps_expr        = preprocess_expression(phase.get("steps"))
             send_to_expr      = preprocess_expression(phase.get("send_to"))
-            recv_from_expr    = preprocess_expression(phase.get("recv_from"))
             message_size_expr = preprocess_expression(phase.get("message_size"))
 
             steps = int(eval(steps_expr.replace(num_ranks_sym, str(num_ranks))))
@@ -152,20 +151,14 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
                 for rank in range(num_ranks):
                     substitutions[rank_sym] = rank
                     send_to = int(eval(apply_substitutions(send_to_expr, substitutions)))
-                    recv_from = int(eval(apply_substitutions(recv_from_expr, substitutions)))
 
                     if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
                         external_bytes += message_size
                     else:
                         internal_bytes += message_size
 
-                    if rank_to_cell.get(rank) != rank_to_cell.get(recv_from):
-                        external_bytes += message_size
-                    else:
-                        internal_bytes += message_size
+        final_count[algorithm] = (internal_bytes, external_bytes)
 
-
-        final_count[algorithm] = (internal_bytes/2, external_bytes/2)
     return final_count
 
 def parse_arguments() -> argparse.Namespace:

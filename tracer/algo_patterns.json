@@ -13,14 +13,12 @@
           "desc": "ring_reduce_scatter",
           "steps": "p - 1",
           "send_to": "(r + 1) mod p",
-          "recv_from": "(r - 1 + p) mod p",
           "message_size": "n / p"
         },
         {
           "desc": "ring_allgather",
           "steps": "p - 1",
           "send_to": "(r - 1 + p) mod p",
-          "recv_from": "(r + 1) mod p",
           "message_size": "n / p"
         }
       ],
@@ -39,7 +37,6 @@
           "desc": "recursive_doubling",
           "steps": "log(p, 2)",
           "send_to": "r xor (2 ^ s)",
-          "recv_from": "r xor (2 ^ s)",
           "message_size": "n"
         }
       ],
@@ -58,7 +55,6 @@
           "desc": "recursive_doubling_swing",
           "steps": "log(p, 2)",
           "send_to": "fi(r, s, p)",
-          "recv_from": "fi(r, s, p)",
           "message_size": "n"
         }
       ],
@@ -77,14 +73,12 @@
           "desc": "reduce_scatter",
           "steps": "log(p, 2)",
           "send_to": "r xor (2 ^ s)",
-          "recv_from": "r xor (2 ^ s)",
           "message_size": "n / (2 ^ (s + 1))"
         },
         {
           "desc": "allgather",
           "steps": "log(p, 2)",
           "send_to": "r xor (2 ^ (k - s - 1))",
-          "recv_from": "r xor (2 ^ (k - s - 1))",
           "message_size": "n / (2 ^ (k - s))"
         }
       ],
@@ -103,14 +97,12 @@
           "desc": "reduce_scatter",
           "steps": "log(p, 2)",
           "send_to": "fi(r, s, p)",
-          "recv_from": "fi(r, s, p)",
           "message_size": "n / (2 ^ (s + 1))"
         },
         {
           "desc": "allgather",
           "steps": "log(p, 2)",
           "send_to": "fi(r, (k - s - 1), p)",
-          "recv_from": "fi(r, (k - s - 1), p)",
           "message_size": "n / (2 ^ (k - s))"
         }
       ],
@@ -131,7 +123,6 @@
           "desc": "ring_reduce_scatter",
           "steps": "p - 1",
           "send_to": "(r + 1) mod p",
-          "recv_from": "(r - 1 + p) mod p",
           "message_size": "n / p"
         }
       ],
@@ -150,7 +141,6 @@
           "desc": "distance_doubling",
           "steps": "log(p, 2)",
           "send_to": "r xor (2 ^ s)",
-          "recv_from": "r xor (2 ^ s)",
           "message_size": "n / (2 ^ (s + 1))"
         }
       ],
@@ -169,7 +159,6 @@
           "desc": "distance_doubling",
           "steps": "log(p, 2)",
           "send_to": "fi(r, s, p)",
-          "recv_from": "fi(r, s, p)",
           "message_size": "n / (2 ^ (s + 1))"
         }
       ],
@@ -188,7 +177,6 @@
           "desc": "distance_halving",
           "steps": "log(p, 2)",
           "send_to": "r xor (2 ^ (k - s - 1))",
-          "recv_from": "r xor (2 ^ (k - s - 1))",
           "message_size": "n / (2 ^ (s + 1))"
         }
       ],
@@ -207,7 +195,6 @@
           "desc": "distance_doubling",
           "steps": "log(p, 2)",
           "send_to": "fi(r, (k - s - 1), p)",
-          "recv_from": "fi(r, (k - s - 1), p)",
           "message_size": "n / (2 ^ (s + 1))"
         }
       ],
@@ -228,7 +215,6 @@
           "desc": "ring_allgather",
           "steps": "p - 1",
           "send_to": "(r - 1 + p) mod p",
-          "recv_from": "(r + 1) mod p",
           "message_size": "n / p"
         }
       ],
@@ -247,7 +233,6 @@
           "desc": "distance_doubling",
           "steps": "log(p, 2)",
           "send_to": "r xor (2 ^ s)",
-          "recv_from": "r xor (2 ^ s)",
           "message_size": "n / (2 ^ (k - s))"
         }
       ],
@@ -266,7 +251,6 @@
           "desc": "distance_doubling",
           "steps": "log(p, 2)",
           "send_to": "fi(r, s, p)",
-          "recv_from": "fi(r, s, p)",
           "message_size": "n / (2 ^ (k - s))"
         }
       ],
@@ -285,7 +269,6 @@
           "desc": "distance_halving",
           "steps": "log(p, 2)",
           "send_to": "r xor (2 ^ (k - s - 1))",
-          "recv_from": "r xor (2 ^ (k - s - 1))",
           "message_size": "n / (2 ^ (k - s))"
         }
       ],
@@ -304,7 +287,6 @@
           "desc": "distance_halving",
           "steps": "log(p, 2)",
           "send_to": "fi(r, (k - s - 1), p)",
-          "recv_from": "fi(r, (k - s - 1), p)",
           "message_size": "n / (2 ^ (k - s))"
         }
       ],
