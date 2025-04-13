@@ -65,6 +65,124 @@ def get_summaries(args):
         summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/"
     return summaries
 
+def get_tracer_out(args, compute_max=False):
+    summaries = get_summaries(args)
+    if compute_max:        
+        ratio_small_v = float("+inf")
+        ratio_big_v = float("+inf")
+    else:
+        ratio_small_v = 0
+        ratio_big_v = 0   
+    samples_small = 0
+    samples_big = 0
+    # Loop over the summaries
+    for nodes, summary in summaries.items():
+        if not os.path.exists(summary + "/traced_alloc.csv"):        
+            command = [
+                "python3", "tracer/trace_communications.py",
+                "--location", args.system,
+                "--alloc", summary + "/alloc.csv",
+                "--comm", "tracer/algo_patterns.json",
+                "--save"
+            ]
+
+            subprocess.run(command, stdout=subprocess.DEVNULL)
+
+        # Add
+        t = pd.read_csv(summary + "/traced_alloc.csv")
+        # Filter by collective type
+        coll_to_search = args.collective.lower()
+        if coll_to_search == "gather":
+            coll_to_search = "scatter" # Same num bytes
+        t = t[t["COLLECTIVE"].str.lower() == coll_to_search]
+
+        small = 0
+        big = 0
+        if coll_to_search == "allreduce":
+            bine = float(t[t["ALGORITHM"] == "swing_latency"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "recursive_doubling"]["EXTERNAL"].iloc[0])
+            if bine != 0 and sota != 0:
+                small = bine / sota
+                samples_small += 1
+            bine = float(t[t["ALGORITHM"] == "swing_bandwidth"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "rabenseifner"]["EXTERNAL"].iloc[0]) 
+            if bine != 0 and sota != 0:
+                big = bine / sota
+                samples_big += 1
+        elif coll_to_search == "allgather":
+            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "distance_halving"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:    
+                big = bine / sota      
+                samples_big += 1      
+        elif coll_to_search == "reduce_scatter":
+            bine = float(t[t["ALGORITHM"] == "swing_doubling"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "distance_doubling"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                big = bine / sota
+                samples_big += 1
+        elif coll_to_search == "alltoall":
+            bine = float(t[t["ALGORITHM"] == "swing"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "bruck"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                big = bine / sota
+                samples_big += 1
+        elif coll_to_search == "bcast":
+            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                small = bine / sota
+                samples_small += 1
+            bine = float(t[t["ALGORITHM"] == "swing_bdw_doubling_halving"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "binomial_bdw_halving_doubling"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                big = bine / sota
+                samples_big += 1
+        elif coll_to_search == "reduce":
+            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                small = bine / sota
+                samples_small += 1
+            bine = float(t[t["ALGORITHM"] == "swing_bdw_halving_doubling"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "binomial_bdw_halving_doubling"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                big = bine / sota 
+                samples_big += 1           
+        elif coll_to_search == "reduce_scatter":
+            bine = float(t[t["ALGORITHM"] == "distance_doubling"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "swing_doubling"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                big = bine / sota   
+                samples_big += 1         
+        elif coll_to_search == "scatter":
+            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
+            if bine != 0 and sota != 0:
+                big = bine / sota   
+                samples_big += 1         
+
+        if compute_max:
+            if small < ratio_small_v and small != 0:
+                ratio_small_v = small
+            if big < ratio_big_v and big != 0:
+                ratio_big_v = big
+        else:
+            ratio_small_v += small
+            ratio_big_v += big    
+
+    if samples_small != 0:
+        if compute_max:
+            samples_small = 1
+        ratio_small_v /= float(samples_small)
+        ratio_small_v = 1.0 - ratio_small_v
+    if samples_big != 0:
+        if compute_max:
+            samples_big = 1
+        ratio_big_v /= float(samples_big)   
+        ratio_big_v = 1.0 - ratio_big_v
+    return (ratio_small_v, ratio_big_v)
+
 def get_summaries_df(args):
     summaries = get_summaries(args)
     df = pd.DataFrame()
@@ -81,12 +199,14 @@ def get_summaries_df(args):
             ],
             stdout=subprocess.DEVNULL)
 
+        # Read the data
         s = pd.read_csv(summary + "/aggregated_results_summary.csv")        
         # Filter by collective type
         s = s[s["collective_type"].str.lower() == args.collective.lower()]      
         # Drop the rows where buffer_size is equal to 4 (we do not have them for all results :( )  
         s = s[s["buffer_size"] != 4]
         s["Nodes"] = nodes
+
         # Append s to df
         df = pd.concat([df, s], ignore_index=True)
     return df
@@ -449,8 +569,25 @@ def main():
             coll = "RDSC"
         """
 
+        small_red, big_red = get_tracer_out(args, False)
+        small_red *= 100.0
+        big_red *= 100.0
+
+        small_red_max, big_red_max = get_tracer_out(args, True)
+        small_red_max *= 100.0
+        big_red_max *= 100.0        
+
+        red = f"{big_red:.0f}\\%/{big_red_max:.0f}\\%"
+
+        """
+        if small_red != 0:
+            red = f"{small_red:.0f}\\%/{big_red:.0f}\\%"
+        else:
+            red = f"{big_red:.0f}\\%"
+        """
+
         #print(f"{coll} & {count_gt1:.2f}\\% & {gmean_gt1:.2f}\\%/{max_gt1:.2f}\\% & {count_lt1:.2f}\\% & {gmean_lt1:.2f}\\%/{min_lt1:.2f}\\% & \\\\")
-        print(f"{coll} & {count_gt1:.0f}\\% & {gmean_gt1:.0f}\\%/{max_gt1:.0f}\\% & {count_lt1:.0f}\\% & {gmean_lt1:.0f}\\%/{min_lt1:.0f}\\% & \\\\")
+        print(f"{coll} & {count_gt1:.0f}\\% & {gmean_gt1:.0f}\\%/{max_gt1:.0f}\\% & {count_lt1:.0f}\\% & {gmean_lt1:.0f}\\%/{min_lt1:.0f}\\% & {red} \\\\")
         
     else:
         wins_sota = 100 * (df_numeric_all['cell'].notna().sum() / df_numeric_all.shape[0])

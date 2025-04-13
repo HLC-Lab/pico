@@ -348,6 +348,12 @@ def main():
     #print(args)
 
     df = get_summaries_df(args)
+
+    # Drop some collectives (check exact match)
+    collectives_to_drop = ["alltoall", "bcast", "scatter"]
+    for collective in collectives_to_drop:
+        df = df[~df["collective_type"].str.lower().str.startswith(collective)]
+    
           
 
     # Drop the columns I do not need
