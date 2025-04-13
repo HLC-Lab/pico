@@ -8,6 +8,8 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import rcParams
 import matplotlib
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy.stats import gmean
+
 
 matplotlib.rc('pdf', fonttype=42) # To avoid issues with camera-ready submission
 #rcParams['figure.figsize'] = 12,6.75
@@ -224,7 +226,7 @@ def algo_name_to_family(algo_name, system):
     raise ValueError(f"Unknown algorithm {algo_name} for system {system}")
     
 
-def augment_df(df, metric, filter_by=None):
+def augment_df(df, metric, keep_all_ratios=False, reference="Bine"):
     # Step 1: Create an empty list to hold the new rows
     new_data = []
 
@@ -246,7 +248,7 @@ def augment_df(df, metric, filter_by=None):
         second_best_algo = second_best_algo_row['algo_family']
 
         # Get Bine bandwidth_mean for this group
-        bine_row = group.loc[group['algo_family'] == "Bine"]
+        bine_row = group.loc[group['algo_family'] == reference]
         if bine_row.empty:
             print(f"Warning: No Bine algorithm found for buffer_size {buffer_size} and nodes {nodes}. Skipping.", file=sys.stderr)
             continue
@@ -260,14 +262,19 @@ def augment_df(df, metric, filter_by=None):
         # Truncate to 1 decimal place
         ratio = round(ratio, 1)
         
-        if best_algo == "Bine":
+        if best_algo == reference:
             cell = best_algo_row['bandwidth_' + metric] / second_best_algo_row['bandwidth_' + metric]  
         elif ratio >= 1.0:
             cell = ratio         
         else:
-            #print(f"Losign on {buffer_size},{nodes} vs {best_algo} by {bine_bandwidth_mean / best_algo_row['bandwidth_' + metric]} ({bine_bandwidth_mean} vs {best_algo_row['bandwidth_' + metric]})")
-            cell = best_algo
-        
+            if keep_all_ratios: # How much is bine faster/slower wrt. binomial
+                if best_algo == reference:
+                    cell = best_algo_row['bandwidth_' + metric] / second_best_algo_row['bandwidth_' + metric]  
+                else:
+                    cell = second_best_algo_row['bandwidth_' + metric] / best_algo_row['bandwidth_' + metric] 
+            else:
+                cell = best_algo
+
         # Step 6: Append the data for this group (including old columns)
         new_data.append({
             'buffer_size': buffer_size,
@@ -341,6 +348,7 @@ def main():
     parser.add_argument("--metric", type=str, help="Metric to consider [mean|median|percentile_90]", default="mean")   
     parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
     parser.add_argument("--y_no", help="Does not show ticks and labels on y-axis", action="store_true")
+    parser.add_argument("--bvb", help="Compare Bine only with Binomial", action="store_true")
     args = parser.parse_args()
 
     #print("Called with args:")
@@ -378,26 +386,84 @@ def main():
 
     df_all = df.copy()
     df_all = augment_df(df_all, args.metric)
-
-    df_bvb = df.copy()
-    df_bvb = df_bvb[df_bvb['algo_family'].isin(["Binomial", "Bine"])]
-    df_bvb = augment_df(df_bvb, args.metric)
-
     df_numeric_all = df_all.copy()
     df_numeric_all['cell'] = pd.to_numeric(df_all['cell'], errors='coerce')
+    
+    coll = args.collective.capitalize().replace("_", "")
+    if coll.lower() == "reducescatter":
+        coll = "Red.-Scat."
 
-    df_numeric_bvb = df_bvb.copy()
-    df_numeric_bvb['cell'] = pd.to_numeric(df_bvb['cell'], errors='coerce')
+    if args.bvb:
+        df_bvb = df.copy()
+        if args.collective.lower() == "alltoall":
+            filter = ["Bruck", "Bine"]        
+        else:
+            filter = ["Binomial", "Bine"]
+        df_bvb = df_bvb[df_bvb['algo_family'].isin(filter)]
+        df_bvb = augment_df(df_bvb, args.metric, True)
+        df_numeric_bvb = df_bvb.copy()
+        df_numeric_bvb['cell'] = pd.to_numeric(df_bvb['cell'], errors='coerce')
 
-    # Print the percentage of cells different from NaN, and the mean and median among the cells different from NaN
-    wins_sota = 100 * (df_numeric_all['cell'].notna().sum() / df_numeric_all.shape[0])
-    mean_impr_sota = (df_numeric_all['cell'].mean() - 1)*100.0
-    max_impr_sota = (df_numeric_all['cell'].max() - 1)*100.0
-    wins_bvb = 100 * (df_numeric_bvb['cell'].notna().sum() / df_numeric_bvb.shape[0])
-    mean_impr_bvb = (df_numeric_bvb['cell'].mean() - 1)*100.0
-    max_impr_bvb = (df_numeric_bvb['cell'].max() - 1)*100.0
-    # print (.1f) -- all on one line, and spaced with & -- plus \\ at the end
-    print(f"{wins_sota:.1f}% & {mean_impr_sota:.1f}%/{max_impr_sota:.1f}% & {wins_bvb:.1f}% & {mean_impr_bvb:.1f}%/{max_impr_bvb:.1f}% \\\\")
+        total_valid = df_numeric_bvb["cell"].notna().sum()    
+        
+        # Rows with cell > 1
+        greater_than_1 = df_numeric_bvb[df_numeric_bvb["cell"] > 1]
+        count_gt1 = (len(greater_than_1)/total_valid)*100.0
+        gmean_gt1 = gmean(greater_than_1["cell"])
+        max_gt1 = greater_than_1["cell"].max()
+        gmean_gt1 = (gmean_gt1 - 1) * 100.0
+        max_gt1 = (max_gt1 - 1) * 100.0
+
+        # Rows with cell < 1
+        less_than_1 = df_numeric_bvb[df_numeric_bvb["cell"] < 1]
+        if less_than_1["cell"].empty:
+            count_lt1 = 0.0
+            gmean_lt1 = 0.0
+            min_lt1 = 0.0
+        else:        
+            count_lt1 = (len(less_than_1)/total_valid)*100.0
+            gmean_lt1 = gmean(less_than_1["cell"])
+            min_lt1 = less_than_1["cell"].min()
+            gmean_lt1 = (gmean_lt1 - 1) * 100.0
+            min_lt1 = (min_lt1 - 1) * 100.0
+            gmean_lt1 = -gmean_lt1 
+            min_lt1 = -min_lt1
+
+        #print(f"Bine wins: {count_gt1:.2f}% ({gmean_gt1:.2f}%/{max_gt1:.2f}%) Binomial wins: {count_lt1:.2f}% ({gmean_lt1:.2f}%/{min_lt1:.2f}%)")
+        """
+        if coll.lower() == "alltoall":
+            coll = "A2A"
+        elif coll.lower() == "allgather":
+            coll = "AG"
+        elif coll.lower() == "allreduce":
+            coll = "AR"
+        elif coll.lower() == "scatter":
+            coll = "SCT"
+        elif coll.lower() == "gather":
+            coll = "GAT"
+        elif coll.lower() == "bcast":
+            coll = "BCST"
+        elif coll.lower() == "reduce":
+            coll = "RED"
+        elif coll.lower() == "reducescatter":
+            coll = "RDSC"
+        """
+
+        #print(f"{coll} & {count_gt1:.2f}\\% & {gmean_gt1:.2f}\\%/{max_gt1:.2f}\\% & {count_lt1:.2f}\\% & {gmean_lt1:.2f}\\%/{min_lt1:.2f}\\% & \\\\")
+        print(f"{coll} & {count_gt1:.0f}\\% & {gmean_gt1:.0f}\\%/{max_gt1:.0f}\\% & {count_lt1:.0f}\\% & {gmean_lt1:.0f}\\%/{min_lt1:.0f}\\% & \\\\")
+        
+    else:
+        wins_sota = 100 * (df_numeric_all['cell'].notna().sum() / df_numeric_all.shape[0])
+        mean_impr_sota = (df_numeric_all['cell'].mean() - 1)*100.0
+        median_impr_sota = (df_numeric_all['cell'].median() - 1)*100.0
+        max_impr_sota = (df_numeric_all['cell'].max() - 1)*100.0 
+        # Replace numbers < 1.0 with nan
+        #df_numeric_bvb.loc[df_numeric_bvb['cell'] < 1.0, 'cell'] = np.nan
+        #wins_bvb = 100 * (df_numeric_bvb['cell'].notna().sum() / df_numeric_bvb.shape[0])
+        #mean_impr_bvb = (df_numeric_bvb['cell'].mean() - 1)*100.0
+        #max_impr_bvb = (df_numeric_bvb['cell'].max() - 1)*100.0    
+        print(f"{coll} & {wins_sota:.0f}% & {mean_impr_sota:.0f}% & {median_impr_sota:.0f}% & {max_impr_sota:.0f}%  \\\\")
+        #print(df_numeric_all)
     
 if __name__ == "__main__":
     main()
