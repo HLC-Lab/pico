@@ -2,6 +2,7 @@ import json
 import csv
 import re
 import sys
+import os
 import argparse
 from math import log
 
@@ -10,7 +11,7 @@ def load_communication_pattern(filename):
         pattern = json.load(f)
     return pattern
 
-def load_allocation(filename):
+def load_allocation(filename, location):
     """
     Reads a CSV file mapping MPI_Rank to hostname.
     Expected CSV header: MPI_Rank,allocation
@@ -20,46 +21,49 @@ def load_allocation(filename):
         reader = csv.DictReader(csvfile)
         for row in reader:
             rank = int(row['MPI_Rank'])
-            hostname = row['allocation']
+            if location != "lumi":
+                hostname = row['allocation']
+            else:
+                hostname = row['xname']
             allocation[rank] = hostname
     return allocation
 
-def info_rank_to_cell(allocation, node_to_cell):
+def map_rank_to_cell(allocation, node_to_cell, location):
     """
     Maps each MPI rank to a cell based on its hostname and the node-to-cell mapping.
     """
-    rank_to_cell = {}
-    for rank, hostname in allocation.items():
-        node_id = re.search(r'lrdn(\d+)',hostname)
-        if node_id is not None:
-            node_id = int(node_id.group(1))
-            cell = node_to_cell.get(node_id)
-            if cell not in rank_to_cell:
-                rank_to_cell[cell] = []
-            rank_to_cell[cell].append({rank:node_id})
-    return rank_to_cell
+    patterns = {
+        "leonardo": r'lrdn(\d+)',
+        "lumi": r'x(\d+)',
+        "mare_nostrum": r'as(\d+)'
+    }
+    if location not in patterns:
+        print(f"{__file__}: Location '{location}' not supported.", file=sys.stderr)
+        sys.exit(1)
 
-def map_rank_to_cell(allocation, node_to_cell):
-    """
-    Maps each MPI rank to a cell based on its hostname and the node-to-cell mapping.
-    """
+    pattern = patterns[location]
     rank_to_cell = {}
     for rank, hostname in allocation.items():
-        node_id = re.search(r'lrdn(\d+)',hostname)
-        if node_id is not None:
-            node_id = int(node_id.group(1))
-            cell = node_to_cell.get(node_id)
+        match = re.search(pattern, hostname)
+        if match:
+            node_id = int(match.group(1))
+            cell = node_to_cell.get(node_id) if location == "leonardo" else node_id
             rank_to_cell[rank] = cell
         else:
-            print(f"{__file__}:Node ID not found for rank {rank} and hostname {hostname}", file=sys.stderr)
+            print(f"{__file__}: Node ID not found for rank {rank} and hostname {hostname}\n", file=sys.stderr)
+            sys.exit(1)
 
     return rank_to_cell
 
-def load_topology(filename):
+
+def load_topology(filename, location):
     """
     Reads a topology map file and returns a mapping from node id to cell id.
     Expected format in each line: "NODE 0001 RACK 1 CELL 1 ROW 1 ...".
     """
+    if location != "leonardo":
+        return {}
+
     node_to_cell = {}
     with open(filename, 'r') as f:
         for line in f:
@@ -75,17 +79,6 @@ def load_topology(filename):
                     continue
     return node_to_cell
 
-def preprocess_expression(expr_str):
-    """
-    Preprocess the expression string:
-      - Replace caret (^) with exponentiation (**)
-      - Replace textual operators (e.g. 'xor', 'mod') with valid Python operators.
-    """
-    expr_str = expr_str.replace("^", "**")
-    expr_str = expr_str.replace("mod", "%")
-    expr_str = expr_str.replace("xor", "^")
-
-    return expr_str
 
 def apply_substitutions(s, subs):
     for key, value in subs.items():
@@ -93,24 +86,26 @@ def apply_substitutions(s, subs):
     return s
 
 
-def rho(step) -> int:
-    return (1 - ((-2)**(step+1))) // 3
+rhos = [1, -1, 3, -5, 11, -21, 43, -85, 171, -341, 683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525]
 
 def fi(rank, step, num_ranks)-> int:
     if rank % 2 == 0:
-        return (rank + rho(step)) % num_ranks
+        return (rank + rhos[step]) % num_ranks
     else:
-        return (rank - rho(step) + num_ranks) % num_ranks
+        return (rank - rhos[step] + num_ranks) % num_ranks
+
 
 def count_inter_cell_bytes(comm_pattern, rank_to_cell):
     """
     Iterates over the communication pattern and sums the bytes for communications 
-    that cross cell boundaries.
-    
-    Assumes that the communication pattern JSON has been instantiated with concrete values.
+    that cross cell boundaries using precompiled expressions and a globals dict
+    with function fi exposed to the eval environment.
     """
     final_count = {}
     num_ranks = len(rank_to_cell)
+
+    # Globals to expose to the eval expressions.
+    eval_globals = {"fi": fi}
 
     # Iterate over each algorithm defined under ALLREDUCE.
     for algorithm, alg_data in comm_pattern.items():
@@ -119,82 +114,129 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
         parameters = alg_data.get("parameters", {})
 
         try:
-            num_ranks_sym = parameters["num_ranks"]
-            rank_sym      = parameters["rank"]
-            step_sym      = parameters["step"]
+            num_ranks_sym   = parameters["num_ranks"]
+            rank_sym        = parameters["rank"]
+            step_sym        = parameters["step"]
+            num_steps_sym   = parameters["num_steps"]
             buffer_size_sym = parameters["buffer_size"]
         except KeyError as e:
             raise ValueError(f"Missing required parameter: {e}")
 
         phases = alg_data.get("phases", [])
         for phase in phases:
-            steps_expr        = preprocess_expression(phase.get("steps"))
-            send_to_expr      = preprocess_expression(phase.get("send_to"))
-            recv_from_expr    = preprocess_expression(phase.get("recv_from"))
-            message_size_expr = preprocess_expression(phase.get("message_size"))
+            steps_expr        = phase.get("steps")
+            send_to_expr      = phase.get("send_to")
+            message_size_expr = phase.get("message_size")
 
-            steps = int(eval(steps_expr.replace(num_ranks_sym, str(num_ranks))))
+            # Evaluate steps expression once (substituting num_ranks_sym)
+            steps_eval_expr = steps_expr.replace(num_ranks_sym, str(num_ranks))
+            steps = int(eval(steps_eval_expr))
+
+            # Precompile expressions for message_size and send_to
+            message_size_code = compile(message_size_expr, "<string>", "eval")
+            send_to_code      = compile(send_to_expr, "<string>", "eval")
+
             for step in range(steps):
-                substitutions = {
+                # Build base substitutions that change per step.
+                base_subs = {
                     buffer_size_sym: 1,
                     step_sym: step,
-                    num_ranks_sym: num_ranks
+                    num_ranks_sym: num_ranks,
+                    num_steps_sym: steps
                 }
-
-                message_size = eval(apply_substitutions(message_size_expr, substitutions))
+                # Evaluate message_size once per step using precompiled code
+                message_size = eval(message_size_code, eval_globals, base_subs)
                 for rank in range(num_ranks):
-                    substitutions[rank_sym] = rank
-                    send_to = int(eval(apply_substitutions(send_to_expr, substitutions)))
-                    recv_from = int(eval(apply_substitutions(recv_from_expr, substitutions)))
+                    subs = dict(base_subs)
+                    subs[rank_sym] = rank
+                    send_to = int(eval(send_to_code, eval_globals, subs))
 
                     if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
                         external_bytes += message_size
                     else:
                         internal_bytes += message_size
 
-                    if rank_to_cell.get(rank) != rank_to_cell.get(recv_from):
-                        external_bytes += message_size
-                    else:
-                        internal_bytes += message_size
+        final_count[algorithm] = (internal_bytes, external_bytes)
 
-
-        final_count[algorithm] = (internal_bytes/2, external_bytes/2)
-    
     return final_count
 
-def main():
-    parser = argparse.ArgumentParser(description="Analyze inter-cell communication in collective operations.")
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Analyze inter-cell communication in collective operations."
+    )
+    parser.add_argument("--location", required=True, help="Location of the system (e.g., 'leonardo', 'lumi')")
+    parser.add_argument("--alloc", required=True, help="Path to the allocation CSV file")
     parser.add_argument("--map", default='tracer/maps/leonardo.txt', help="Path to the topology map file")
     parser.add_argument("--comm", default='tracer/algo_patterns.json', help="Path to the instantiated communication pattern JSON file")
-    parser.add_argument("--coll", default="ALLREDUCE", help="Collective operation to analyze")
-    parser.add_argument("--alloc", required=True, help="Path to the allocation CSV file")
-    args = parser.parse_args()
+    parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,REDUCE_SCATTER", help="Collective operation to analyze (comma-separated)")
+    parser.add_argument("--save", action='store_true', help="Save the results to a CSV file")
+    parser.add_argument("--out", help="Output CSV file name")
+    return parser.parse_args()
 
-    allocation = load_allocation(args.alloc)
-    node_to_cell = load_topology(args.map)
-    rank_to_cell = map_rank_to_cell(allocation, node_to_cell)
-    # info = info_rank_to_cell(allocation, node_to_cell)
-    comm_pattern = load_communication_pattern(args.comm).get(args.coll, {})
 
-    count = count_inter_cell_bytes(comm_pattern, rank_to_cell)
+def save_to_csv(rows, alloc_file: str, out_file: str = "") -> None:
+    """Save the analysis results to a CSV file."""
+    if out_file:
+        output_file = out_file if out_file.endswith(".csv") else out_file + ".csv"
+    else:
+        output_file = f"{os.path.dirname(alloc_file)}/traced_{os.path.basename(alloc_file)}"
+    try:
+        with open(output_file, "w", newline='') as csvfile:
+            fieldnames = ["COLLECTIVE", "ALGORITHM", "INTERNAL", "EXTERNAL", "TOTAL"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        print(f"Results saved to {output_file}")
+    except IOError as e:
+        print(f"Failed to write CSV file: {e}", file=sys.stderr)
 
-    print("-" * 40)
-    print(f"\t\t{args.coll.lower()}")
-    print("-" * 40)
 
-    for algorithm, (internal, external) in count.items():
-        total = internal + external
-        print(f"{'Algorithm:':<20}{algorithm}")
-        print(f"{'Internal bytes:':<20}{internal} n bytes")
-        print(f"{'External bytes:':<20}{external} n bytes")
-        print(f"{'Total bytes:':<20}{total} n bytes")
-        print("-" * 40)  # Separator between entries
+def main():
+    args = parse_arguments()
 
-    print("\n`n` denotes the size of the send buffer")
+    if not os.path.isfile(args.alloc):
+        print(f"Allocation file not found: {args.alloc}", file=sys.stderr)
+        return 1
 
-    # print(f"\n\ninfo allocation")
-    # for el in info.items():
-    #     print(f"switch {el[0]:<4}: {el[1]}")
+    allocation = load_allocation(args.alloc, args.location)
+    node_to_cell = load_topology(args.map, args.location)
+    rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location)
+
+    rows = []
+
+    collectives = args.coll.split(",")
+    for coll in collectives:
+        coll_comm_pattern = load_communication_pattern(args.comm).get(coll, {})
+
+        count = count_inter_cell_bytes(coll_comm_pattern, rank_to_cell)
+
+        print("\n\n" + "=" * 40)
+        print(f"\t{coll.lower()}")
+        print("=" * 40)
+
+        for algorithm, (internal, external) in count.items():
+            total = internal + external
+            print(f"{'Algorithm:':<20}{algorithm}")
+            print(f"{'Internal bytes:':<20}{internal} n bytes")
+            print(f"{'External bytes:':<20}{external} n bytes")
+            print(f"{'Total bytes:':<20}{total} n bytes")
+            print("-" * 40)  # Separator between entries
+            if args.save:
+                rows.append({
+                    "COLLECTIVE": coll.lower(),
+                    "ALGORITHM": algorithm,
+                    "INTERNAL": internal,
+                    "EXTERNAL": external,
+                    "TOTAL": total
+                })
+
+    print("\n`n` denotes the size of the send buffer\n\n")
+
+    if args.save:
+        save_to_csv(rows, args.alloc, args.out)
+
 
 if __name__ == "__main__":
     main()
