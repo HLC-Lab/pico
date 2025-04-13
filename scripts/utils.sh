@@ -670,7 +670,7 @@ run_bench() {
             # WARN: Removed panic mode for full cluster run
             #
             # $command || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; cleanup; }
-            [[ "$LOCATION" != "local" ]] && sleep 1 # To avoid step timeout due to previous srun still not finalized
+            [[ "$LOCATION" == "mare_nostrum" ]] && sleep 1  # To avoid step timeout due to previous srun still not finalized
             $command
         fi
     fi

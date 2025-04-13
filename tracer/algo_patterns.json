@@ -292,6 +292,5 @@
       ],
       "total_steps": "log(p, 2)"
     }
-  },
-  "BCAST": {}
+  }
 }

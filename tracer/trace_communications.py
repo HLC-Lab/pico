@@ -5,6 +5,7 @@ import sys
 import os
 import argparse
 from math import log
+from pprint import pprint
 
 def load_communication_pattern(filename):
     with open(filename, 'r') as f:
@@ -160,6 +161,170 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
 
     return final_count
 
+def tree_coll_lat(rank_to_cell, swing: bool, doubling: bool):
+    comm_sz = len(rank_to_cell)
+    steps = int(log(comm_sz, 2))
+    external_bytes, internal_bytes = 0, 0
+    recvd = [0] * comm_sz
+    recvd[0] = 1
+    recvd2 = [0] * comm_sz
+    recvd2[0] = 1
+
+    for step in range(steps):
+        recvd = recvd2.copy()
+        for rank in range(comm_sz):
+            if recvd[rank] == 1:
+                if swing:
+                    if doubling:
+                        send_to = fi(rank, step, comm_sz)
+                    else:
+                        send_to = fi(rank, steps - step - 1, comm_sz)
+                else:
+                    if doubling:
+                        send_to = rank ^ (1 << step)
+                    else:
+                        send_to = rank ^ (1 << (steps - step - 1))
+
+                if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
+                    external_bytes += 1
+                else:
+                    internal_bytes += 1
+
+                recvd2[send_to] = 1
+
+    return internal_bytes, external_bytes
+
+def create_recv_step_array(rank_to_cell, swing : bool, first_halving : bool):
+    comm_sz = len(rank_to_cell)
+    steps = int(log(comm_sz, 2))
+    recvd = [0] * comm_sz
+    recvd[0] = 1
+    recvd2 = [0] * comm_sz
+    recvd2[0] = 1
+
+    recv_step = [steps - 1] * comm_sz
+    recv_step[0] = 0
+
+    recv_step_aux = [steps - 1] * comm_sz
+    recv_step_aux[0] = 0
+
+    for step in range(steps):
+        recv_step = recv_step_aux.copy()
+        recvd = recvd2.copy()
+        for rank in range(comm_sz):
+            if recvd[rank] != 1:
+                continue
+            if swing:
+                if first_halving:
+                    send_to = fi(rank, steps - step - 1, comm_sz)
+                else:
+                    send_to = fi(rank, step, comm_sz)
+            else:
+                if first_halving:
+                    send_to = int(rank) ^ (1 << (steps - step - 1))
+                else:
+                    send_to = int(rank) ^ (1 << step)
+
+            recvd2[send_to] = 1
+            recv_step_aux[send_to] = step
+    recv_step[0] = -1
+
+    return recv_step
+
+def coll_bdw(rank_to_cell, swing : bool, first_halving: bool, reduce: bool):
+    comm_sz = len(rank_to_cell)
+    steps = int(log(comm_sz, 2))
+    external_bytes, internal_bytes = 0, 0
+    recv_step = create_recv_step_array(rank_to_cell, swing, first_halving)
+
+    # Scatter Phase
+    for step in range(steps):
+        message_size = 1 / (2 ** (step + 1))
+        for rank in range(comm_sz):
+            if recv_step[rank] == step:
+                if swing:
+                    if first_halving:
+                        recv_from = fi(rank, steps - step - 1, comm_sz)
+                    else:
+                        recv_from = fi(rank, step, comm_sz)
+                else:
+                    if first_halving:
+                        recv_from = int(rank) ^ (1 << (steps - step - 1))
+                    else:
+                        recv_from = int(rank) ^ (1 << step)
+
+                if rank_to_cell.get(rank) != rank_to_cell.get(recv_from):
+                    external_bytes += message_size
+                else:
+                    internal_bytes += message_size
+
+    # Gather Phase
+    for step in range(steps):
+        message_size = 1 / ( 2 ** (steps - step))
+        for rank in range(comm_sz):
+            if recv_step[rank] == steps - step - 1 and not reduce:
+                continue
+
+            if swing:
+                if first_halving:
+                    send_to = fi(rank, step, comm_sz)
+                else:
+                    send_to = fi(rank, steps - step - 1, comm_sz)
+            else:
+                if first_halving:
+                    send_to = int(rank) ^ (1 << step)
+                else:
+                    send_to = int(rank) ^ (1 << (steps - step - 1))
+
+            if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
+                external_bytes += message_size
+            else:
+                internal_bytes += message_size
+
+    return internal_bytes, external_bytes
+
+def tree_coll(rank_to_cell, swing : bool, doubling: bool, gather: bool = False):
+    comm_sz = len(rank_to_cell)
+    steps = int(log(comm_sz, 2))
+    external_bytes, internal_bytes = 0, 0
+
+    # NOTE: For gather:
+    #       - recvd is logically sent
+    #       - send_to is logically recv_from
+    #       (the actual code is the same, but the meaning is different)
+    recvd = [0] * comm_sz
+    recvd[0] = 1
+    recvd2 = [0] * comm_sz
+    recvd2[0] = 1
+
+    for step in range(steps):
+        recvd = recvd2.copy()
+
+        if gather == True:
+            message_size = 1 / (2 ** (steps - step))
+        else: # scatter
+            message_size = 1 / (2 ** (step + 1))
+
+        for rank in range(comm_sz):
+            if recvd[rank] == 1:
+                if swing:
+                    if doubling:
+                        send_to = fi(rank, step, comm_sz)
+                    else:
+                        send_to = fi(rank, steps - step - 1, comm_sz)
+                else:
+                    if doubling:
+                        send_to = int(rank) ^ (1 << step)
+                    else:
+                        send_to = int(rank) ^ (1 << (steps - step - 1))
+
+                if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
+                    external_bytes += message_size
+                else:
+                    internal_bytes += message_size
+                recvd2[send_to] = 1
+
+    return internal_bytes, external_bytes
 
 def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments."""
@@ -170,13 +335,13 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--alloc", required=True, help="Path to the allocation CSV file")
     parser.add_argument("--map", default='tracer/maps/leonardo.txt', help="Path to the topology map file")
     parser.add_argument("--comm", default='tracer/algo_patterns.json', help="Path to the instantiated communication pattern JSON file")
-    parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,REDUCE_SCATTER", help="Collective operation to analyze (comma-separated)")
+    parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,BCAST,GATHER,REDUCE,REDUCE_SCATTER,SCATTER", help="Collective operation to analyze (comma-separated)")
     parser.add_argument("--save", action='store_true', help="Save the results to a CSV file")
     parser.add_argument("--out", help="Output CSV file name")
     return parser.parse_args()
 
 
-def save_to_csv(rows, alloc_file: str, out_file: str = "") -> None:
+def save_to_csv(rows, num_ranks: int, alloc_file: str, out_file: str = "") -> None:
     """Save the analysis results to a CSV file."""
     if out_file:
         output_file = out_file if out_file.endswith(".csv") else out_file + ".csv"
@@ -188,9 +353,32 @@ def save_to_csv(rows, alloc_file: str, out_file: str = "") -> None:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
+            writer.writerow({"COLLECTIVE": "num_ranks", "ALGORITHM": num_ranks, "INTERNAL": "", "EXTERNAL": "", "TOTAL": ""})
+
         print(f"Results saved to {output_file}")
     except IOError as e:
         print(f"Failed to write CSV file: {e}", file=sys.stderr)
+
+
+def print_group_mapping(rank_to_cell) -> None:
+    """
+        Print the mapping of MPI ranks to cells.
+        The mapping is displayed in a formatted table.
+    """
+    num_of_digits = len(str(len(rank_to_cell)))
+    cell_to_rank = {}
+
+    for key, value in rank_to_cell.items():
+        cell_to_rank.setdefault(value, []).append(key)
+    print("=" * 100)
+    print("GROUP MAPPING")
+    print("-" * 100)
+    print("Cell ID -> [MPI_Ranks]")
+    print("-" * 100)
+    for cell, ranks in cell_to_rank.items():
+        formatted_ranks = " ".join(f"{rank:>{num_of_digits}}" for rank in ranks)
+        print(f"Cell {cell:>2} -> [{formatted_ranks}]")
+    print("=" * 100)
 
 
 def main():
@@ -204,13 +392,53 @@ def main():
     node_to_cell = load_topology(args.map, args.location)
     rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location)
 
+    if len(rank_to_cell) & (len(rank_to_cell) - 1) != 0:
+        print(f"Number of ranks ({len(rank_to_cell)}) is not a power of 2.", file=sys.stderr)
+        return 1
+
     rows = []
 
     collectives = args.coll.split(",")
     for coll in collectives:
-        coll_comm_pattern = load_communication_pattern(args.comm).get(coll, {})
-
-        count = count_inter_cell_bytes(coll_comm_pattern, rank_to_cell)
+        if coll == "BCAST":
+            count = {
+                "binomial_doubling": tree_coll_lat(rank_to_cell, swing=False, doubling=True),
+                "binomial_halving": tree_coll_lat(rank_to_cell, swing=False, doubling=False),
+                "swing_doubling": tree_coll_lat(rank_to_cell, swing=True, doubling=True),
+                "swing_halving": tree_coll_lat(rank_to_cell, swing=True, doubling=False),
+                "swing_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=True, first_halving=False, reduce=False),
+                "swing_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=True, first_halving=True, reduce=False),
+                "binomial_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=False, first_halving=False, reduce=False),
+                "binomial_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=False, first_halving=True, reduce=False)
+            }
+        elif coll == "REDUCE":
+            count = {
+                "binomial_doubling": tree_coll_lat(rank_to_cell, swing=False, doubling=True),
+                "binomial_halving": tree_coll_lat(rank_to_cell, swing=False, doubling=False),
+                "swing_doubling": tree_coll_lat(rank_to_cell, swing=True, doubling=True),
+                "swing_halving": tree_coll_lat(rank_to_cell, swing=True, doubling=False),
+                "swing_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=True, first_halving=False, reduce=True),
+                "swing_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=True, first_halving=True, reduce=True),
+                "binomial_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=False, first_halving=False, reduce=True),
+                "binomial_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=False, first_halving=True, reduce=True)
+            }
+        elif coll == "SCATTER":
+            count = {
+                "binomial_doubling": tree_coll(rank_to_cell, swing=False, doubling=True, gather=False),
+                "binomial_halving": tree_coll(rank_to_cell, swing=False, doubling=False, gather=False),
+                "swing_doubling": tree_coll(rank_to_cell, swing=True, doubling=True, gather=False),
+                "swing_halving": tree_coll(rank_to_cell, swing=True, doubling=False, gather=False)
+            }
+        elif coll == "GATHER":
+            count = {
+                "binomial_doubling": tree_coll(rank_to_cell, swing=False, doubling=True, gather=True),
+                "binomial_halving": tree_coll(rank_to_cell, swing=False, doubling=False, gather=True),
+                "swing_doubling": tree_coll(rank_to_cell, swing=True, doubling=True, gather=True),
+                "swing_halving": tree_coll(rank_to_cell, swing=True, doubling=False, gather=True)
+            }
+        else:
+            coll_comm_pattern = load_communication_pattern(args.comm).get(coll, {})
+            count = count_inter_cell_bytes(coll_comm_pattern, rank_to_cell)
 
         print("\n\n" + "=" * 40)
         print(f"\t{coll.lower()}")
@@ -234,8 +462,10 @@ def main():
 
     print("\n`n` denotes the size of the send buffer\n\n")
 
+    print_group_mapping(rank_to_cell);
+
     if args.save:
-        save_to_csv(rows, args.alloc, args.out)
+        save_to_csv(rows, len(rank_to_cell), args.alloc, args.out)
 
 
 if __name__ == "__main__":
