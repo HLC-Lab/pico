@@ -224,7 +224,7 @@ def algo_name_to_family(algo_name, system):
     raise ValueError(f"Unknown algorithm {algo_name} for system {system}")
     
 
-def augment_df(df, metric):
+def augment_df(df, metric, filter_by=None):
     # Step 1: Create an empty list to hold the new rows
     new_data = []
 
@@ -375,101 +375,30 @@ def main():
     pd.set_option('display.width', None)
 
     df = algo_to_family(df, args)
-    df = augment_df(df,args.metric)
-    #print(df)
 
-    # We need to separate numerical and string cells
-    # Step 1: Create the 'numeric' version of the DataFrame, where strings are NaN
-    df_numeric = df.copy()
-    df_numeric['cell'] = pd.to_numeric(df['cell'], errors='coerce')
+    df_all = df.copy()
+    df_all = augment_df(df_all, args.metric)
 
-    # Step 2: Pivot the numeric data for heatmap plotting
-    heatmap_data_numeric = df_numeric.pivot(index='buffer_size', columns='Nodes', values='cell')
-    heatmap_data_numeric = heatmap_data_numeric[args.nnodes.split(",")]    
+    df_bvb = df.copy()
+    df_bvb = df_bvb[df_bvb['algo_family'].isin(["Binomial", "Bine"])]
+    df_bvb = augment_df(df_bvb, args.metric)
 
-    # Step 3: Pivot the original data for string annotation
-    heatmap_data_string = df.pivot(index='buffer_size', columns='Nodes', values='cell')
-    heatmap_data_string = heatmap_data_string[args.nnodes.split(",")]
+    df_numeric_all = df_all.copy()
+    df_numeric_all['cell'] = pd.to_numeric(df_all['cell'], errors='coerce')
 
-    # Set up the figure and axes
-    plt.figure()
+    df_numeric_bvb = df_bvb.copy()
+    df_numeric_bvb['cell'] = pd.to_numeric(df_bvb['cell'], errors='coerce')
 
-    # Create a matrix of colors for the heatmap cells based on the content of the dataframe
-    # Create an empty matrix of the same shape as df for background colors
-    cell_colors = np.full(heatmap_data_string.shape, 'white', dtype=object)  # Default white for numbers
-
-    # Create the heatmap with numerical values for color
-    red_green = LinearSegmentedColormap.from_list("RedGreen", ["darkred", "white", "darkgreen"])
-    ax = sns.heatmap(heatmap_data_numeric, 
-                    annot=True, 
-                    cmap=red_green, 
-                    fmt=fmt,
-                    center=1, 
-                    cbar=True, 
-                    #square=True,
-                    annot_kws={'size': big_font_size, 'weight': 'bold'},
-                    cbar_kws={"orientation": "horizontal", "location" : "top", "aspect": 40},
-                    )
-
-    # Get the colorbar and set the font size
-    cbar = ax.collections[0].colorbar
-    cbar.ax.tick_params(labelsize=small_font_size)  # Adjust font size of ticks
-
-    ###############
-    # SET STRINGS #
-    ###############
-    for i in range(heatmap_data_string.shape[0]):
-        for j in range(heatmap_data_string.shape[1]):
-            val = heatmap_data_string.iloc[i, j]
-            # Check if the value is a string
-            if isinstance(val, str):
-                val, col = family_name_to_letter_color(val)
-                plt.text(j + 0.5, i + 0.5, val, ha='center', va='center', color=col, weight='bold', fontsize=big_font_size)
-            # Check if the value is NaN (not a number)
-            elif pd.isna(val):
-                plt.text(j + 0.5, i + 0.5, "N/A", ha='center', va='center', color='black', weight='bold', fontsize=big_font_size)
+    # Print the percentage of cells different from NaN, and the mean and median among the cells different from NaN
+    wins_sota = 100 * (df_numeric_all['cell'].notna().sum() / df_numeric_all.shape[0])
+    mean_impr_sota = (df_numeric_all['cell'].mean() - 1)*100.0
+    max_impr_sota = (df_numeric_all['cell'].max() - 1)*100.0
+    wins_bvb = 100 * (df_numeric_bvb['cell'].notna().sum() / df_numeric_bvb.shape[0])
+    mean_impr_bvb = (df_numeric_bvb['cell'].mean() - 1)*100.0
+    max_impr_bvb = (df_numeric_bvb['cell'].max() - 1)*100.0
+    # print (.1f) -- all on one line, and spaced with & -- plus \\ at the end
+    print(f"{wins_sota:.1f}% & {mean_impr_sota:.1f}%/{max_impr_sota:.1f}% & {wins_bvb:.1f}% & {mean_impr_bvb:.1f}%/{max_impr_bvb:.1f}% \\\\")
     
-    ################
-    # SET BG COLOR #
-    ################
-    # Loop over each cell and change the background color
-    for i in range(heatmap_data_string.shape[0]):
-        for j in range(heatmap_data_string.shape[1]):
-            if isinstance(heatmap_data_string.iloc[i, j], str):
-                ax.add_patch(plt.Rectangle((j, i), 1, 1, color='#f0f0f0', lw=0, zorder=-1))    
-
-    # For each ror use the corresponding buffer_size_hr rather than buffer_size as labels
-    # Get all the row names, sort them (numerically), and the apply to each of them the human_readable_size function
-    # to get the human-readable size
-    # Then set the x-ticks labels to these human-readable sizes
-    # Get heatmap_data.rows and convert to a list of int
-    buffer_sizes = heatmap_data_string.index.astype(int).tolist()
-    buffer_sizes.sort()
-    buffer_sizes = [human_readable_size(int(x)) for x in buffer_sizes]
-    # Use buffer_sizes as labels
-    plt.yticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes)
-
-    plt.xlabel("# Nodes", fontsize=big_font_size)
-    plt.ylabel("Vector Size", fontsize=big_font_size)
-    plt.xticks(fontsize=small_font_size)
-    plt.yticks(fontsize=small_font_size)
-    # Do not rotate xticklabels
-    plt.xticks(rotation=0)   
-
-    # Make dir if it does not exist
-    outdir = "plot/" + args.system + "_hm/" + args.collective + "/"
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
-
-    # in outfile name we should save all the infos in args
-    # Convert args to a string with param name and param value
-    args_str = "_".join([f"{k}_{v}" for k, v in vars(args).items() \
-                        if k != "nnodes" and k != "system" and k != "collective" and (k != "notes" or v != None) and (k != "exclude" or v != None)])
-    args_str = args_str.replace("|", "_")
-    outfile = outdir + "/" + args_str + ".pdf"
-    # Save as PDF
-    plt.savefig(outfile, bbox_inches="tight")
-
 if __name__ == "__main__":
     main()
 
