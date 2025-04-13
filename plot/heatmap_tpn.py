@@ -10,8 +10,8 @@ import matplotlib
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 matplotlib.rc('pdf', fonttype=42) # To avoid issues with camera-ready submission
-#rcParams['figure.figsize'] = 12,6.75
-rcParams['figure.figsize'] = 6.75,6.75
+rcParams['figure.figsize'] = 24,6.75
+#rcParams['figure.figsize'] = 6.75,6.75
 big_font_size = 18
 small_font_size = 15
 fmt=".2f"
@@ -36,23 +36,22 @@ def get_summaries(args):
         print(f"Metadata file {metadata_file} not found. Exiting.", file=sys.stderr)
         sys.exit(1)
     metadata = pd.read_csv(metadata_file)
-    nnodes = [n for n in str(args.nnodes).split(",")]
     summaries = {} # Contain the folder for each node count
     # Search all the entries we might need
-    for nodes in nnodes:
-        if "tasks_per_node" in metadata.columns:
-            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
-                                        (metadata["nnodes"].astype(str) == str(nodes)) & \
-                                        (metadata["tasks_per_node"].astype(int) == args.tasks_per_node)]
-        else:
-            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
-                                        (metadata["nnodes"].astype(str) == str(nodes))]            
+    i = 0
+    for tpn in args.tasks_per_node.split(","):
+        collective = "allreduce" # any would work
+        filtered_metadata = metadata[(metadata["collective_type"].str.lower() == collective) & \
+                                    (metadata["nnodes"].astype(str) == str(args.nnodes)) & \
+                                    (metadata["tasks_per_node"].astype(int) == int(tpn))]    
         if args.notes:
-            filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == args.notes.strip())]
+            tmp_notes = args.notes.split(",")[i].strip()
+            if tmp_notes != "null":
+                filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == tmp_notes)]
         else:
             # Keep only those without notes
             filtered_metadata = filtered_metadata[filtered_metadata["notes"].isnull()]
-            
+        
         if filtered_metadata.empty:
             print(f"Metadata file {metadata_file} does not contain the requested data. Exiting.", file=sys.stderr)
             sys.exit(1)
@@ -60,14 +59,15 @@ def get_summaries(args):
         # Among the remaining ones, keep only tha last one
         filtered_metadata = filtered_metadata.iloc[-1]
         #summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/" + str(filtered_metadata["test_id"]) + "/aggregated_result_summary.csv"
-        summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/"
+        summaries[collective + "_" + tpn] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/"
+        i += 1
     return summaries
 
 def get_summaries_df(args):
     summaries = get_summaries(args)
     df = pd.DataFrame()
     # Loop over the summaries
-    for nodes, summary in summaries.items():
+    for ctpn, summary in summaries.items():
         # Create the summary, by calling the summarize_data.py script
         # Check if the summary already exists
         if not os.path.exists(summary + "/aggregated_results_summary.csv") or True:        
@@ -78,13 +78,14 @@ def get_summaries_df(args):
                 summary
             ],
             stdout=subprocess.DEVNULL)
-
+        
         s = pd.read_csv(summary + "/aggregated_results_summary.csv")        
-        # Filter by collective type
-        s = s[s["collective_type"].str.lower() == args.collective.lower()]      
+        # Filter by node count
+        s = s[s["nnodes"].astype(str) == str(args.nnodes)]
         # Drop the rows where buffer_size is equal to 4 (we do not have them for all results :( )  
         s = s[s["buffer_size"] != 4]
-        s["Nodes"] = nodes
+        s["Collective"] = ctpn.split("_")[0]
+        s["Tasks per Node"] = ctpn.split("_")[1]
         # Append s to df
         df = pd.concat([df, s], ignore_index=True)
     return df
@@ -229,10 +230,10 @@ def augment_df(df, metric):
     new_data = []
 
     # For each (buffer_size, nodes) group the data so that for eacha algo_family we only keep the entry with the highest bandwidth_mean
-    df = df.loc[df.groupby(['buffer_size', 'Nodes', 'algo_family'])['bandwidth_' + metric].idxmax()]
+    df = df.loc[df.groupby(['buffer_size', 'collective_type', 'tasks_per_node', 'algo_family'])['bandwidth_' + metric].idxmax()]
 
-    # Step 2: Group by 'buffer_size' and 'Nodes'
-    for (buffer_size, nodes), group in df.groupby(['buffer_size', 'Nodes']):        
+    # Step 2: Group by 'buffer_size' and 'collective_type'
+    for (buffer_size, collective_type, tasks_per_node), group in df.groupby(['buffer_size', 'collective_type', 'tasks_per_node']):
         # Step 3: Get the best algorithm
         best_algo_row = group.loc[group['bandwidth_' + metric].idxmax()]
         best_algo = best_algo_row['algo_family']
@@ -240,7 +241,7 @@ def augment_df(df, metric):
         # Step 4: Get the second best algorithm (excluding the best one)
         tmp = group[group['algo_family'] != best_algo]['bandwidth_' + metric]
         if tmp.empty:
-            print(f"Warning: No second best algorithm found for buffer_size {buffer_size} and nodes {nodes}. Skipping.", file=sys.stderr)
+            print(f"Warning: No second best algorithm found for buffer_size {buffer_size} and nodes {collective_type}. Skipping.", file=sys.stderr)
             continue
         second_best_algo_row = group.loc[tmp.idxmax()]
         second_best_algo = second_best_algo_row['algo_family']
@@ -248,7 +249,7 @@ def augment_df(df, metric):
         # Get Bine bandwidth_mean for this group
         bine_row = group.loc[group['algo_family'] == "Bine"]
         if bine_row.empty:
-            print(f"Warning: No Bine algorithm found for buffer_size {buffer_size} and nodes {nodes}. Skipping.", file=sys.stderr)
+            print(f"Warning: No Bine algorithm found for buffer_size {buffer_size} and nodes {collective_type}. Skipping.", file=sys.stderr)
             continue
         
         bine_bandwidth_mean = bine_row['bandwidth_' + metric].values[0]
@@ -271,7 +272,8 @@ def augment_df(df, metric):
         # Step 6: Append the data for this group (including old columns)
         new_data.append({
             'buffer_size': buffer_size,
-            'Nodes': nodes,
+            'Tasks per Node': tasks_per_node,
+            'Collective': collective_type,
             #'algo_family': best_algo,
             #'bandwidth_' + metric: best_algo_row['bandwidth_' + metric],
             'cell': cell,
@@ -333,9 +335,8 @@ def family_name_to_letter_color(family_name):
 def main():
     parser = argparse.ArgumentParser(description="Generate graphs")
     parser.add_argument("--system", type=str, help="System name")
-    parser.add_argument("--nnodes", type=str, help="Number of nodes (comma separated)")
-    parser.add_argument("--tasks_per_node", type=int, help="Tasks per node", default=1)
-    parser.add_argument("--collective", type=str, help="Collective")    
+    parser.add_argument("--nnodes", type=str, help="Number of nodes")
+    parser.add_argument("--tasks_per_node", type=str, help="Tasks per node")
     parser.add_argument("--notes", type=str, help="Notes")   
     parser.add_argument("--exclude", type=str, help="Algos to exclude", default=None)   
     parser.add_argument("--metric", type=str, help="Metric to consider [mean|median|percentile_90]", default="mean")   
@@ -348,8 +349,9 @@ def main():
 
     df = get_summaries_df(args)
           
+
     # Drop the columns I do not need
-    df = df[["buffer_size", "Nodes", "algo_name", "mean", "median", "percentile_90"]]
+    df = df[["buffer_size", "nnodes", "collective_type", "tasks_per_node", "algo_name", "mean", "median", "percentile_90"]]
 
     # If system name is "fugaku", drop all the algo_name starting with uppercase "RECDOUB"
     if args.system == "fugaku":
@@ -384,12 +386,14 @@ def main():
     df_numeric['cell'] = pd.to_numeric(df['cell'], errors='coerce')
 
     # Step 2: Pivot the numeric data for heatmap plotting
-    heatmap_data_numeric = df_numeric.pivot(index='buffer_size', columns='Nodes', values='cell')
-    heatmap_data_numeric = heatmap_data_numeric[args.nnodes.split(",")]    
+    heatmap_data_numeric = df_numeric.pivot(index='buffer_size', columns=['Collective', 'Tasks per Node'], values='cell')
+    #heatmap_data_numeric = heatmap_data_numeric[["ALLREDUCE-1", "ALLREDUCE-4", "ALLGATHER-1", "ALLGATHER-4", "REDUCE_SCATTER-1", "REDUCE_SCATTER-4", "ALLTOALL-1", "ALLTOALL-4", "REDUCE-1", "REDUCE-4", "BCAST-1", "BCAST-4", "SCATTER-1", "SCATTER-4", "GATHER-1", "GATHER-4"]]
+    heatmap_data_numeric = heatmap_data_numeric[sorted(heatmap_data_numeric.columns)]
 
     # Step 3: Pivot the original data for string annotation
-    heatmap_data_string = df.pivot(index='buffer_size', columns='Nodes', values='cell')
-    heatmap_data_string = heatmap_data_string[args.nnodes.split(",")]
+    heatmap_data_string = df.pivot(index='buffer_size', columns=['Collective', 'Tasks per Node'], values='cell')
+    #heatmap_data_string = heatmap_data_string[["ALLREDUCE-1", "ALLREDUCE-4", "ALLGATHER-1", "ALLGATHER-4", "REDUCE_SCATTER-1", "REDUCE_SCATTER-4", "ALLTOALL-1", "ALLTOALL-4", "REDUCE-1", "REDUCE-4", "BCAST-1", "BCAST-4", "SCATTER-1", "SCATTER-4", "GATHER-1", "GATHER-4"]]
+    heatmap_data_string = heatmap_data_string[sorted(heatmap_data_string.columns)]
 
     # Set up the figure and axes
     plt.figure()
@@ -410,6 +414,11 @@ def main():
                     annot_kws={'size': big_font_size, 'weight': 'bold'},
                     cbar_kws={"orientation": "horizontal", "location" : "top", "aspect": 40},
                     )
+    
+    for i in range(heatmap_data_numeric.shape[1] + 1):
+        if i % 2 == 0:
+            ax.axvline(i, color='white', lw=20)
+
 
     # Get the colorbar and set the font size
     cbar = ax.collections[0].colorbar
@@ -449,24 +458,40 @@ def main():
     # Use buffer_sizes as labels
     plt.yticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes)
 
-    plt.xlabel("# Nodes", fontsize=big_font_size)
+    plt.xlabel("")
     plt.ylabel("Vector Size", fontsize=big_font_size)
     plt.xticks(fontsize=small_font_size)
     plt.yticks(fontsize=small_font_size)
     # Do not rotate xticklabels
     plt.xticks(rotation=0)   
 
+    # Get current xticklabels
+    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
+
+    # Create new labels, for example: append something or modify
+    new_labels = []
+    for label in xticklabels:
+        ppn = label.split("-")[-1]
+        # The rest is coll name (might have dashes within)
+        coll = "-".join(label.split("-")[:-1])
+        if coll == "REDUCE_SCATTER":
+            coll = "RED. SCAT."
+        # Lower except for the first letter
+        coll = coll.capitalize()
+        new_labels.append(f"{coll}\n(PPN={ppn})")
+
+    # Set the new labels
+    ax.set_xticklabels(new_labels)
+
+
     # Make dir if it does not exist
-    outdir = "plot/" + args.system + "_hm/" + args.collective + "/"
+    outdir = "plot/" + args.system + "_hm_tpn/"
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
     # in outfile name we should save all the infos in args
     # Convert args to a string with param name and param value
-    args_str = "_".join([f"{k}_{v}" for k, v in vars(args).items() \
-                        if k != "nnodes" and k != "system" and k != "collective" and (k != "notes" or v != None) and (k != "exclude" or v != None)])
-    args_str = args_str.replace("|", "_")
-    outfile = outdir + "/" + args_str + ".pdf"
+    outfile = outdir + "/" + args.tasks_per_node + ".pdf"
     # Save as PDF
     plt.savefig(outfile, bbox_inches="tight")
 
