@@ -283,15 +283,11 @@ def coll_bdw(rank_to_cell, swing : bool, first_halving: bool, reduce: bool):
 
     return internal_bytes, external_bytes
 
-def tree_coll(rank_to_cell, swing : bool, doubling: bool, gather: bool = False):
+def scatter(rank_to_cell, swing : bool, doubling: bool):
     comm_sz = len(rank_to_cell)
     steps = int(log(comm_sz, 2))
     external_bytes, internal_bytes = 0, 0
 
-    # NOTE: For gather:
-    #       - recvd is logically sent
-    #       - send_to is logically recv_from
-    #       (the actual code is the same, but the meaning is different)
     recvd = [0] * comm_sz
     recvd[0] = 1
     recvd2 = [0] * comm_sz
@@ -299,11 +295,7 @@ def tree_coll(rank_to_cell, swing : bool, doubling: bool, gather: bool = False):
 
     for step in range(steps):
         recvd = recvd2.copy()
-
-        if gather == True:
-            message_size = 1 / (2 ** (steps - step))
-        else: # scatter
-            message_size = 1 / (2 ** (step + 1))
+        message_size = 1 / (2 ** (step + 1))
 
         for rank in range(comm_sz):
             if recvd[rank] == 1:
@@ -335,7 +327,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--alloc", required=True, help="Path to the allocation CSV file")
     parser.add_argument("--map", default='tracer/maps/leonardo.txt', help="Path to the topology map file")
     parser.add_argument("--comm", default='tracer/algo_patterns.json', help="Path to the instantiated communication pattern JSON file")
-    parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,BCAST,GATHER,REDUCE,REDUCE_SCATTER,SCATTER", help="Collective operation to analyze (comma-separated)")
+    parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,ALLTOALL,BCAST,REDUCE,REDUCE_SCATTER,SCATTER", help="Collective operation to analyze (comma-separated)")
     parser.add_argument("--save", action='store_true', help="Save the results to a CSV file")
     parser.add_argument("--out", help="Output CSV file name")
     return parser.parse_args()
@@ -424,17 +416,10 @@ def main():
             }
         elif coll == "SCATTER":
             count = {
-                "binomial_doubling": tree_coll(rank_to_cell, swing=False, doubling=True, gather=False),
-                "binomial_halving": tree_coll(rank_to_cell, swing=False, doubling=False, gather=False),
-                "swing_doubling": tree_coll(rank_to_cell, swing=True, doubling=True, gather=False),
-                "swing_halving": tree_coll(rank_to_cell, swing=True, doubling=False, gather=False)
-            }
-        elif coll == "GATHER":
-            count = {
-                "binomial_doubling": tree_coll(rank_to_cell, swing=False, doubling=True, gather=True),
-                "binomial_halving": tree_coll(rank_to_cell, swing=False, doubling=False, gather=True),
-                "swing_doubling": tree_coll(rank_to_cell, swing=True, doubling=True, gather=True),
-                "swing_halving": tree_coll(rank_to_cell, swing=True, doubling=False, gather=True)
+                "binomial_doubling": scatter(rank_to_cell, swing=False, doubling=True),
+                "binomial_halving": scatter(rank_to_cell, swing=False, doubling=False),
+                "swing_doubling": scatter(rank_to_cell, swing=True, doubling=True),
+                "swing_halving": scatter(rank_to_cell, swing=True, doubling=False)
             }
         else:
             coll_comm_pattern = load_communication_pattern(args.comm).get(coll, {})

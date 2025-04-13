@@ -109,6 +109,42 @@
       "total_steps": "2 * log(p, 2)"
     }
   },
+  "ALLTOALL": {
+    "bruck": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "steps": "log(p, 2)",
+          "send_to": "(r + (2 ** s)) % p",
+          "message_size": "n / 2"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "swing": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "message_size": "n / 2"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    }
+  },
   "REDUCE_SCATTER": {
     "ring": {
       "parameters": {
