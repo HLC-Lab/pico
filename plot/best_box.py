@@ -13,7 +13,9 @@ from scipy.stats import gmean
 
 matplotlib.rc('pdf', fonttype=42) # To avoid issues with camera-ready submission
 #rcParams['figure.figsize'] = 12,6.75
-rcParams['figure.figsize'] = 6.75,6.75
+#rcParams['figure.figsize'] = 6.75,3.375
+rcParams['figure.figsize'] = 3.375,3.375
+sns.set_style("whitegrid")
 big_font_size = 18
 small_font_size = 15
 fmt=".2f"
@@ -31,7 +33,7 @@ def human_readable_size(num_bytes):
         num_bytes /= 1024
     return f"{int(num_bytes)} PiB"
 
-def get_summaries(args):
+def get_summaries(args, coll):
     # Read metadata file
     metadata_file = f"results/" + args.system + "_metadata.csv"
     if not os.path.exists(metadata_file):
@@ -43,11 +45,11 @@ def get_summaries(args):
     # Search all the entries we might need
     for nodes in nnodes:
         if "tasks_per_node" in metadata.columns:
-            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
+            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == coll) & \
                                         (metadata["nnodes"].astype(str) == str(nodes)) & \
                                         (metadata["tasks_per_node"].astype(int) == args.tasks_per_node)]
         else:
-            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == args.collective.lower()) & \
+            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == coll) & \
                                         (metadata["nnodes"].astype(str) == str(nodes))]            
         if args.notes:
             filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == args.notes.strip())]
@@ -56,8 +58,9 @@ def get_summaries(args):
             filtered_metadata = filtered_metadata[filtered_metadata["notes"].isnull()]
             
         if filtered_metadata.empty:
-            print(f"Metadata file {metadata_file} does not contain the requested data. Exiting.", file=sys.stderr)
-            sys.exit(1)
+            print(f"Metadata file {metadata_file} does not contain the requested data nodes {nodes} coll {coll}. Exiting.", file=sys.stderr)
+            continue
+            #sys.exit(1)
     
         # Among the remaining ones, keep only tha last one
         filtered_metadata = filtered_metadata.iloc[-1]
@@ -65,127 +68,9 @@ def get_summaries(args):
         summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/"
     return summaries
 
-def get_tracer_out(args, compute_max=False):
-    summaries = get_summaries(args)
-    if compute_max:        
-        ratio_small_v = float("+inf")
-        ratio_big_v = float("+inf")
-    else:
-        ratio_small_v = 0
-        ratio_big_v = 0   
-    samples_small = 0
-    samples_big = 0
-    # Loop over the summaries
-    for nodes, summary in summaries.items():
-        if not os.path.exists(summary + "/traced_alloc.csv"):        
-            command = [
-                "python3", "tracer/trace_communications.py",
-                "--location", args.system,
-                "--alloc", summary + "/alloc.csv",
-                "--comm", "tracer/algo_patterns.json",
-                "--save"
-            ]
 
-            subprocess.run(command, stdout=subprocess.DEVNULL)
-
-        # Add
-        t = pd.read_csv(summary + "/traced_alloc.csv")
-        # Filter by collective type
-        coll_to_search = args.collective.lower()
-        if coll_to_search == "gather":
-            coll_to_search = "scatter" # Same num bytes
-        t = t[t["COLLECTIVE"].str.lower() == coll_to_search]
-
-        small = 0
-        big = 0
-        if coll_to_search == "allreduce":
-            bine = float(t[t["ALGORITHM"] == "swing_latency"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "recursive_doubling"]["EXTERNAL"].iloc[0])
-            if bine != 0 and sota != 0:
-                small = bine / sota
-                samples_small += 1
-            bine = float(t[t["ALGORITHM"] == "swing_bandwidth"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "rabenseifner"]["EXTERNAL"].iloc[0]) 
-            if bine != 0 and sota != 0:
-                big = bine / sota
-                samples_big += 1
-        elif coll_to_search == "allgather":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "distance_halving"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:    
-                big = bine / sota      
-                samples_big += 1      
-        elif coll_to_search == "reduce_scatter":
-            bine = float(t[t["ALGORITHM"] == "swing_doubling"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "distance_doubling"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                big = bine / sota
-                samples_big += 1
-        elif coll_to_search == "alltoall":
-            bine = float(t[t["ALGORITHM"] == "swing"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "bruck"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                big = bine / sota
-                samples_big += 1
-        elif coll_to_search == "bcast":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                small = bine / sota
-                samples_small += 1
-            bine = float(t[t["ALGORITHM"] == "swing_bdw_doubling_halving"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "binomial_bdw_halving_doubling"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                big = bine / sota
-                samples_big += 1
-        elif coll_to_search == "reduce":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                small = bine / sota
-                samples_small += 1
-            bine = float(t[t["ALGORITHM"] == "swing_bdw_halving_doubling"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "binomial_bdw_halving_doubling"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                big = bine / sota 
-                samples_big += 1           
-        elif coll_to_search == "reduce_scatter":
-            bine = float(t[t["ALGORITHM"] == "distance_doubling"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "swing_doubling"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                big = bine / sota   
-                samples_big += 1         
-        elif coll_to_search == "scatter":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
-            if bine != 0 and sota != 0:
-                big = bine / sota   
-                samples_big += 1         
-
-        #print(f"nodes: {nodes} Small: {small}, Big: {big}")
-        if compute_max:
-            if small < ratio_small_v and small != 0:
-                ratio_small_v = small
-            if big < ratio_big_v and big != 0:
-                ratio_big_v = big
-        else:
-            ratio_small_v += small
-            ratio_big_v += big    
-
-    if samples_small != 0:
-        if compute_max:
-            samples_small = 1
-        ratio_small_v /= float(samples_small)
-        ratio_small_v = 1.0 - ratio_small_v
-    if samples_big != 0:
-        if compute_max:
-            samples_big = 1
-        ratio_big_v /= float(samples_big)   
-        ratio_big_v = 1.0 - ratio_big_v
-    return (ratio_small_v, ratio_big_v)
-
-def get_summaries_df(args):
-    summaries = get_summaries(args)
+def get_summaries_df(args, coll):
+    summaries = get_summaries(args, coll)
     df = pd.DataFrame()
     # Loop over the summaries
     for nodes, summary in summaries.items():
@@ -203,7 +88,7 @@ def get_summaries_df(args):
         # Read the data
         s = pd.read_csv(summary + "/aggregated_results_summary.csv")        
         # Filter by collective type
-        s = s[s["collective_type"].str.lower() == args.collective.lower()]      
+        s = s[s["collective_type"].str.lower() == coll]      
         # Drop the rows where buffer_size is equal to 4 (we do not have them for all results :( )  
         s = s[s["buffer_size"] != 4]
         s["Nodes"] = nodes
@@ -347,19 +232,21 @@ def algo_name_to_family(algo_name, system):
     raise ValueError(f"Unknown algorithm {algo_name} for system {system}")
     
 
-def augment_df(df, metric, keep_all_ratios=False, reference="Bine"):
+def augment_df(df, metric):
+    reference = "Bine"
     # Step 1: Create an empty list to hold the new rows
     new_data = []
 
     # For each (buffer_size, nodes) group the data so that for eacha algo_family we only keep the entry with the highest bandwidth_mean
     df = df.loc[df.groupby(['buffer_size', 'Nodes', 'algo_family'])['bandwidth_' + metric].idxmax()]
-
+    total_cases = 0
+    win_cases = 0
     # Step 2: Group by 'buffer_size' and 'Nodes'
     for (buffer_size, nodes), group in df.groupby(['buffer_size', 'Nodes']):        
         # Step 3: Get the best algorithm
         best_algo_row = group.loc[group['bandwidth_' + metric].idxmax()]
         best_algo = best_algo_row['algo_family']
-        
+        total_cases += 1
         # Step 4: Get the second best algorithm (excluding the best one)
         tmp = group[group['algo_family'] != best_algo]['bandwidth_' + metric]
         if tmp.empty:
@@ -385,16 +272,13 @@ def augment_df(df, metric, keep_all_ratios=False, reference="Bine"):
         
         if best_algo == reference:
             cell = best_algo_row['bandwidth_' + metric] / second_best_algo_row['bandwidth_' + metric]  
+            win_cases += 1
         elif ratio >= 1.0:
-            cell = ratio         
+            cell = ratio  
+            win_cases += 1       
         else:
-            if keep_all_ratios: # How much is bine faster/slower wrt. binomial
-                if best_algo == reference:
-                    cell = best_algo_row['bandwidth_' + metric] / second_best_algo_row['bandwidth_' + metric]  
-                else:
-                    cell = second_best_algo_row['bandwidth_' + metric] / best_algo_row['bandwidth_' + metric] 
-            else:
-                cell = best_algo
+            continue
+
 
         # Step 6: Append the data for this group (including old columns)
         new_data.append({
@@ -406,7 +290,7 @@ def augment_df(df, metric, keep_all_ratios=False, reference="Bine"):
         })
 
     # Step 7: Create a new DataFrame
-    return pd.DataFrame(new_data)
+    return (pd.DataFrame(new_data), (win_cases / float(total_cases)) * 100.0)
 
 def algo_to_family(df, args):
     # Convert algo_name to algo_family
@@ -458,24 +342,8 @@ def family_name_to_letter_color(family_name):
         # error
         raise ValueError(f"Unknown algorithm family {family_name}")
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate graphs")
-    parser.add_argument("--system", type=str, help="System name")
-    parser.add_argument("--nnodes", type=str, help="Number of nodes (comma separated)")
-    parser.add_argument("--tasks_per_node", type=int, help="Tasks per node", default=1)
-    parser.add_argument("--collective", type=str, help="Collective")    
-    parser.add_argument("--notes", type=str, help="Notes")   
-    parser.add_argument("--exclude", type=str, help="Algos to exclude", default=None)   
-    parser.add_argument("--metric", type=str, help="Metric to consider [mean|median|percentile_90]", default="mean")   
-    parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
-    parser.add_argument("--y_no", help="Does not show ticks and labels on y-axis", action="store_true")
-    parser.add_argument("--bvb", help="Compare Bine only with Binomial", action="store_true")
-    args = parser.parse_args()
-
-    #print("Called with args:")
-    #print(args)
-
-    df = get_summaries_df(args)
+def get_data_coll(args, coll):
+    df = get_summaries_df(args, coll)
           
     # Drop the columns I do not need
     df = df[["buffer_size", "Nodes", "algo_name", "mean", "median", "percentile_90"]]
@@ -497,111 +365,75 @@ def main():
     # drop all the metrics
     for m in metrics:
         df = df.drop(columns=[m])
-
     # print full df, no limts on cols or rows
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
     pd.set_option('display.width', None)
 
     df = algo_to_family(df, args)
+    return augment_df(df, args.metric)
 
-    df_all = df.copy()
-    df_all = augment_df(df_all, args.metric)
-    df_numeric_all = df_all.copy()
-    df_numeric_all['cell'] = pd.to_numeric(df_all['cell'], errors='coerce')
+def main():
+    parser = argparse.ArgumentParser(description="Generate graphs")
+    parser.add_argument("--system", type=str, help="System name")
+    parser.add_argument("--nnodes", type=str, help="Number of nodes (comma separated)")
+    parser.add_argument("--tasks_per_node", type=int, help="Tasks per node", default=1)
+    parser.add_argument("--notes", type=str, help="Notes")   
+    parser.add_argument("--exclude", type=str, help="Algos to exclude", default=None)   
+    parser.add_argument("--metric", type=str, help="Metric to consider [mean|median|percentile_90]", default="mean")   
+    parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
+    parser.add_argument("--y_no", help="Does not show ticks and labels on y-axis", action="store_true")
+    parser.add_argument("--bvb", help="Compare Bine only with Binomial", action="store_true")
+    args = parser.parse_args()
+
+    #print("Called with args:")
+    #print(args)
+    df = pd.DataFrame()
+    for coll in ["allreduce", "allgather", "reduce_scatter", "alltoall", "bcast", "reduce", "gather", "scatter"]:
+        df_coll, wins = get_data_coll(args, coll)
+        if coll.lower() == "reduce_scatter":
+            coll = "Red.-Scat."
+
+        # If empty, continue
+        if df_coll.empty:
+            print(f"Warning: Bine never wins on {coll}. Skipping.", file=sys.stderr)
+            continue
+        # append wins with no decimals
+        df_coll["Collective"] = coll.capitalize() + "\n(" + str(int(wins)) + "%)"
+        # Drop buffer_size and Nodes columns        
+        df_coll = df_coll.drop(columns=["buffer_size", "Nodes"])
+        # Rename cell to Improvement
+        df_coll = df_coll.rename(columns={"cell": "Improvement (%)"})
+        # For improvement, do (1-improvement)*100
+        df_coll["Improvement (%)"] = (df_coll["Improvement (%)"] - 1) * 100.0
+        df = pd.concat([df, df_coll], ignore_index=True)
+
+
+    # Custom mean marker style
+    mean_props = {
+        "marker": "o",
+        "markerfacecolor": "black",  # Fill color
+        "markeredgecolor": "black",  # Border color
+        "markersize": 8
+    }
+
+    # Make a boxplot, using "Collective" as x-axis and "Improvement" as y-axis
+    # Set the figure size
+    plt.figure()
+    sns.boxplot(data=df, y="Collective", x="Improvement (%)", showfliers=True, showmeans=True, meanprops=mean_props, palette=sns.color_palette("deep"))
+    # remove y-title
+    plt.ylabel("")
+
+    # Make dir if it does not exist
+    outdir = "plot/best_box/"
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
     
-    coll = args.collective.capitalize().replace("_", "")
-    if coll.lower() == "reducescatter":
-        coll = "Red.-Scat."
+    outfile = outdir + "/" + args.system + ".pdf"
+    # Save as PDF
+    plt.savefig(outfile, bbox_inches="tight")
+    
 
-    if args.bvb:
-        df_bvb = df.copy()
-        if args.collective.lower() == "alltoall":
-            filter = ["Bruck", "Bine"]        
-        else:
-            filter = ["Binomial", "Bine"]
-        df_bvb = df_bvb[df_bvb['algo_family'].isin(filter)]
-        df_bvb = augment_df(df_bvb, args.metric, True)
-        df_numeric_bvb = df_bvb.copy()
-        df_numeric_bvb['cell'] = pd.to_numeric(df_bvb['cell'], errors='coerce')
-
-        total_valid = df_numeric_bvb["cell"].notna().sum()    
-        
-        # Rows with cell > 1
-        greater_than_1 = df_numeric_bvb[df_numeric_bvb["cell"] > 1]
-        count_gt1 = (len(greater_than_1)/total_valid)*100.0
-        gmean_gt1 = gmean(greater_than_1["cell"])
-        max_gt1 = greater_than_1["cell"].max()
-        gmean_gt1 = (gmean_gt1 - 1) * 100.0
-        max_gt1 = (max_gt1 - 1) * 100.0
-
-        # Rows with cell < 1
-        less_than_1 = df_numeric_bvb[df_numeric_bvb["cell"] < 1]
-        if less_than_1["cell"].empty:
-            count_lt1 = 0.0
-            gmean_lt1 = 0.0
-            min_lt1 = 0.0
-        else:        
-            count_lt1 = (len(less_than_1)/total_valid)*100.0
-            gmean_lt1 = gmean(less_than_1["cell"])
-            min_lt1 = less_than_1["cell"].min()
-            gmean_lt1 = (gmean_lt1 - 1) * 100.0
-            min_lt1 = (min_lt1 - 1) * 100.0
-            gmean_lt1 = -gmean_lt1 
-            min_lt1 = -min_lt1
-
-        #print(f"Bine wins: {count_gt1:.2f}% ({gmean_gt1:.2f}%/{max_gt1:.2f}%) Binomial wins: {count_lt1:.2f}% ({gmean_lt1:.2f}%/{min_lt1:.2f}%)")
-        """
-        if coll.lower() == "alltoall":
-            coll = "A2A"
-        elif coll.lower() == "allgather":
-            coll = "AG"
-        elif coll.lower() == "allreduce":
-            coll = "AR"
-        elif coll.lower() == "scatter":
-            coll = "SCT"
-        elif coll.lower() == "gather":
-            coll = "GAT"
-        elif coll.lower() == "bcast":
-            coll = "BCST"
-        elif coll.lower() == "reduce":
-            coll = "RED"
-        elif coll.lower() == "reducescatter":
-            coll = "RDSC"
-        """
-
-        small_red, big_red = get_tracer_out(args, False)
-        small_red *= 100.0
-        big_red *= 100.0
-
-        small_red_max, big_red_max = get_tracer_out(args, True)
-        small_red_max *= 100.0
-        big_red_max *= 100.0        
-
-        red = f"{big_red:.0f}\\%/{big_red_max:.0f}\\%"
-
-        """
-        if small_red != 0:
-            red = f"{small_red:.0f}\\%/{big_red:.0f}\\%"
-        else:
-            red = f"{big_red:.0f}\\%"
-        """
-
-        #print(f"{coll} & {count_gt1:.2f}\\% & {gmean_gt1:.2f}\\%/{max_gt1:.2f}\\% & {count_lt1:.2f}\\% & {gmean_lt1:.2f}\\%/{min_lt1:.2f}\\% & \\\\")
-        print(f"{coll} & {count_gt1:.0f}\\% & {gmean_gt1:.0f}\\%/{max_gt1:.0f}\\% & {count_lt1:.0f}\\% & {gmean_lt1:.0f}\\%/{min_lt1:.0f}\\% & {red} \\\\")
-        
-    else:
-        wins_sota = 100 * (df_numeric_all['cell'].notna().sum() / df_numeric_all.shape[0])
-        mean_impr_sota = (df_numeric_all['cell'].mean() - 1)*100.0
-        median_impr_sota = (df_numeric_all['cell'].median() - 1)*100.0
-        max_impr_sota = (df_numeric_all['cell'].max() - 1)*100.0 
-        # Replace numbers < 1.0 with nan
-        #df_numeric_bvb.loc[df_numeric_bvb['cell'] < 1.0, 'cell'] = np.nan
-        #wins_bvb = 100 * (df_numeric_bvb['cell'].notna().sum() / df_numeric_bvb.shape[0])
-        #mean_impr_bvb = (df_numeric_bvb['cell'].mean() - 1)*100.0
-        #max_impr_bvb = (df_numeric_bvb['cell'].max() - 1)*100.0    
-        print(f"{coll} & {wins_sota:.0f}% & {mean_impr_sota:.0f}% & {median_impr_sota:.0f}% & {max_impr_sota:.0f}%  \\\\")
-        #print(df_numeric_all)
     
 if __name__ == "__main__":
     main()

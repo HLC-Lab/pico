@@ -40,3 +40,8 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_04_14___03_44_45,6,64,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
 2025_04_14___03_44_45,7,64,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
 2025_04_14___12_48_39,0,64,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
+2025_04_14___00_47_08,0,16,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
+2025_04_14___01_21_26,0,8,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
+2025_04_14___02_15_10,0,4,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
+2025_04_14___02_33_44,0,32,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
+2025_04_14___04_39_29,0,64,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
