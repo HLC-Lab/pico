@@ -88,17 +88,13 @@ else
     # PARAMS+=" --reservation=s_int_lped_boost -H"
 
     if [[ "$INTERACTIVE" == "yes" ]]; then
-        inform "Submitting job with parameters: $PARAMS"
+        inform "Salloc with parameters: $PARAMS"
+        export PARAMS="$PARAMS"
         salloc $PARAMS
     else
-        if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
-            PARAMS+=" --exclusive --output=$OUTPUT_DIR/slurm_%j.out --error=$OUTPUT_DIR/slurm_%j.err"
-            inform "Submitting job with parameters: $PARAMS"
-            sbatch $PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
-        else
-            PARAMS+=" --output=debug_%j.out"
-            inform "Submitting job with parameters: $PARAMS"
-            sbatch $PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
-        fi
+        [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]] && PARAMS+=" --exclusive --output=$OUTPUT_DIR/slurm_%j.out --error=$OUTPUT_DIR/slurm_%j.err" || PARAMS+=" --output=debug_%j.out"
+        export PARAMS="$PARAMS"
+        inform "Sbatching job with parameters: $PARAMS"
+        sbatch $PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
     fi
 fi
