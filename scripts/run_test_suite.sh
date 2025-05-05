@@ -2,6 +2,7 @@
 # Trap SIGINT (Ctrl+C) and call cleanup function
 trap cleanup SIGINT
 
+[[ -n "$PARAMS" ]] && inform "Sbatch params: $PARAMS"
 
 iter=0
 for config in ${TEST_CONFIG_FILES[@]//,/ }; do
