@@ -14,3 +14,7 @@ results/*/*
 !results/*/*.tar.gz
 results/local/*
 results/local_metadata.csv
+tracer/sinfo_leonardo/
+tracer/sinfo_lumi
+tracer/*.pdf
+tracer/sinfo_summary.csv
