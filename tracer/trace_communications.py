@@ -12,7 +12,7 @@ def load_communication_pattern(filename):
         pattern = json.load(f)
     return pattern
 
-def load_allocation(filename, location):
+def load_allocation(filename, location, hostname_only):
     """
     Reads a CSV file mapping MPI_Rank to hostname.
     Expected CSV header: MPI_Rank,allocation
@@ -22,22 +22,99 @@ def load_allocation(filename, location):
         reader = csv.DictReader(csvfile)
         for row in reader:
             rank = int(row['MPI_Rank'])
-            if location != "lumi":
+            if location != "lumi" or hostname_only:
                 hostname = row['allocation']
             else:
                 hostname = row['xname']
             allocation[rank] = hostname
     return allocation
 
-def map_rank_to_cell(allocation, node_to_cell, location):
+def lumi_node_to_cell(node_id):
+    if node_id < 1000 or (node_id > 3047 and node_id < 5001) or node_id > 7977:
+        print(f"{__file__}: Node ID {node_id} is out of range.", file=sys.stderr)
+        sys.exit(1)
+    if node_id <= 1255:
+        return 1000
+    elif node_id <= 1511:
+        return 1001
+    elif node_id <= 1767:
+        return 1002
+    elif node_id <= 2023:
+        return 1003
+    elif node_id <= 2279:
+        return 1004
+    elif node_id <= 2535:
+        return 1005
+    elif node_id <= 2791:
+        return 1006
+    elif node_id <= 3047:
+        return 1007
+    if node_id <= 5123:
+        return 1100
+    elif node_id <= 5247:
+        return 1101
+    elif node_id <= 5371:
+        return 1102
+    elif node_id <= 5495:
+        return 1103
+    elif node_id <= 5619:
+        return 1104
+    elif node_id <= 5743:
+        return 1105
+    elif node_id <= 5867:
+        return 1200
+    elif node_id <= 5991:
+        return 1201
+    elif node_id <= 6115:
+        return 1202
+    elif node_id <= 6239:
+        return 1203
+    elif node_id <= 6363:
+        return 1204
+    elif node_id <= 6487:
+        return 1205
+    elif node_id <= 6611:
+        return 1300
+    elif node_id <= 6735:
+        return 1301
+    elif node_id <= 6859:
+        return 1302
+    elif node_id <= 6983:
+        return 1303
+    elif node_id <= 7107:
+        return 1304
+    elif node_id <= 7231:
+        return 1305
+    elif node_id <= 7355:
+        return 1400
+    elif node_id <= 7479:
+        return 1401
+    elif node_id <= 7603:
+        return 1402
+    elif node_id <= 7727:
+        return 1403
+    elif node_id <= 7851:
+        return 1404
+    elif node_id <= 7977:
+        return 1405
+    else:
+        print(f"{__file__}: Node ID {node_id} is out of range.", file=sys.stderr)
+        sys.exit(1)
+
+
+def map_rank_to_cell(allocation, node_to_cell, location, hostname_only):
     """
     Maps each MPI rank to a cell based on its hostname and the node-to-cell mapping.
     """
     patterns = {
         "leonardo": r'lrdn(\d+)',
-        "lumi": r'x(\d+)',
         "mare_nostrum": r'as(\d+)'
     }
+    if hostname_only:
+        patterns["lumi"] = r'nid(\d+)'
+    else:
+        patterns["lumi"] = r'x(\d+)'
+
     if location not in patterns:
         print(f"{__file__}: Location '{location}' not supported.", file=sys.stderr)
         sys.exit(1)
@@ -48,7 +125,11 @@ def map_rank_to_cell(allocation, node_to_cell, location):
         match = re.search(pattern, hostname)
         if match:
             node_id = int(match.group(1))
-            cell = node_to_cell.get(node_id) if location == "leonardo" else node_id
+            if location == "lumi" and hostname_only:
+                # Get the node ID from the hostname directly
+                cell = lumi_node_to_cell(node_id)
+            else:
+                cell = node_to_cell.get(node_id) if location == "leonardo" else node_id
             rank_to_cell[rank] = cell
         else:
             print(f"{__file__}: Node ID not found for rank {rank} and hostname {hostname}\n", file=sys.stderr)
@@ -62,23 +143,23 @@ def load_topology(filename, location):
     Reads a topology map file and returns a mapping from node id to cell id.
     Expected format in each line: "NODE 0001 RACK 1 CELL 1 ROW 1 ...".
     """
-    if location != "leonardo":
+    if location == "leonardo":
+        node_to_cell = {}
+        with open(filename, 'r') as f:
+            for line in f:
+                parts = line.split()
+                if "CELL" in parts and "NODE" in parts:
+                    try:
+                        node_index = parts.index("NODE")
+                        node_id = int(parts[node_index + 1])
+                        cell_index = parts.index("CELL")
+                        cell_id = int(parts[cell_index + 1])
+                        node_to_cell[node_id] = cell_id
+                    except (ValueError, IndexError):
+                        continue
+        return node_to_cell
+    else:
         return {}
-
-    node_to_cell = {}
-    with open(filename, 'r') as f:
-        for line in f:
-            parts = line.split()
-            if "CELL" in parts and "NODE" in parts:
-                try:
-                    node_index = parts.index("NODE")
-                    node_id = int(parts[node_index + 1])
-                    cell_index = parts.index("CELL")
-                    cell_id = int(parts[cell_index + 1])
-                    node_to_cell[node_id] = cell_id
-                except (ValueError, IndexError):
-                    continue
-    return node_to_cell
 
 
 def apply_substitutions(s, subs):
@@ -330,6 +411,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--coll", default="ALLREDUCE,ALLGATHER,ALLTOALL,BCAST,REDUCE,REDUCE_SCATTER,SCATTER", help="Collective operation to analyze (comma-separated)")
     parser.add_argument("--save", action='store_true', help="Save the results to a CSV file")
     parser.add_argument("--out", help="Output CSV file name")
+    parser.add_argument("--hostname_only", action='store_true', help="If only hostname is present (i.e., for LUMI, no xname availiable)")
     return parser.parse_args()
 
 
@@ -380,9 +462,9 @@ def main():
         print(f"Allocation file not found: {args.alloc}", file=sys.stderr)
         return 1
 
-    allocation = load_allocation(args.alloc, args.location)
+    allocation = load_allocation(args.alloc, args.location, args.hostname_only)
     node_to_cell = load_topology(args.map, args.location)
-    rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location)
+    rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location, args.hostname_only)
 
     if len(rank_to_cell) & (len(rank_to_cell) - 1) != 0:
         print(f"Number of ranks ({len(rank_to_cell)}) is not a power of 2.", file=sys.stderr)
