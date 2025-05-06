@@ -8,8 +8,8 @@ export PARTITION=standard-g
 export ACCOUNT=project_465000997
 
 if [[ "$PARTITION" == "standard-g" ]]; then
-    export GPU_NODE_PARTITION=4
-    export CPU_NODE_PARTITION=56 # 64 cores per node, 8 are reserved for the system
+    export PARTITION_GPUS_PER_NODE=4
+    export PARTITION_CPUS_PER_NODE=56 # 64 cores per node, 8 are reserved for the system
 fi
 
 # MPI library specific variables

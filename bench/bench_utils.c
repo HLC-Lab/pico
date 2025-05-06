@@ -62,6 +62,31 @@ static inline allocator_func_ptr get_allocator(coll_t collective) {
   }
 }
 
+#ifdef CUDA_AWARE
+static inline allocator_func_ptr get_allocator_cuda(coll_t collective) {
+  switch (collective) {
+    case ALLREDUCE:
+      return allreduce_allocator_cuda;
+    case ALLGATHER:
+      return allgather_allocator_cuda;
+    case ALLTOALL:
+      return alltoall_allocator_cuda;
+    case BCAST:
+      return bcast_allocator_cuda;
+    case GATHER:
+      return gather_allocator_cuda;
+    case REDUCE:
+      return reduce_allocator_cuda;
+    case REDUCE_SCATTER:
+      return reduce_scatter_allocator_cuda;
+    case SCATTER:
+      return scatter_allocator_cuda;
+    default:
+      return NULL;
+  }
+}
+#endif
+
 /**
 * @brief Select and returns the appropriate allreduce function based
 * on the algorithm. It returns the default allreduce function if the
@@ -242,6 +267,9 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
     fprintf(stderr, "Error! Allocator is NULL. Aborting...");
     return -1;
   }
+  #ifdef CUDA_AWARE
+  test_routine->allocator_cuda = get_allocator_cuda(test_routine->collective);
+  #endif
 
   // Set the right function pointer based on the collective type and algorithm
   switch (test_routine->collective){
@@ -283,10 +311,182 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
     swing_allreduce_segsize = (size_t) strtoll(segsize, NULL, 10);
   }
 
+  test_routine->segsize = swing_allreduce_segsize;
+
   return 0;
 }
 
 
+  // if(rank == 0){
+  //   char data_filename[128], data_fullpath[BENCH_MAX_PATH_LENGTH];
+  //   if(swing_allreduce_segsize != 0){
+  //     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%ld_%s.csv",
+  //              count, algorithm, swing_allreduce_segsize, type_string);
+  //   } else {
+  //     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
+  //              count, algorithm, type_string);
+  //   }
+  //   if(concatenate_path(data_dir, data_filename, data_fullpath) == -1) {
+  //     line = __LINE__;
+  //     goto err_hndl;
+  //   }
+  //   if(write_output_to_file(output_level, data_fullpath, highest, all_times, iter) == -1){
+  //     line = __LINE__;
+  //     goto err_hndl;
+  //   }
+  // }
+  //
+  // // Save to file allocations (it uses MPI parallel I/O operations)
+  // char alloc_filename[128] = "alloc.csv";
+  // char alloc_fullpath[BENCH_MAX_PATH_LENGTH];
+  // if(concatenate_path(outputdir, alloc_filename, alloc_fullpath) == -1){
+  //   line = __LINE__;
+  //   goto err_hndl;
+  // }
+int get_data_saving_options(test_routine_t *test_routine, size_t count,
+                            const char *algorithm, const char *type_string) {
+  int comm_sz;
+  const char *output_level = NULL, *output_dir = NULL, *data_dir = NULL;
+  char data_filename[128], alloc_filename[128];
+
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+
+  output_dir = getenv("OUTPUT_DIR");
+  data_dir = getenv("DATA_DIR");
+  output_level = getenv("OUTPUT_LEVEL");
+  if(output_dir == NULL || data_dir == NULL || output_level == NULL) {
+    fprintf(stderr, "Error: Environment variables OUTPUT_DIR, DATA_DIR or OUTPUT_LEVEL not set. Aborting...");
+    return -1;
+  }
+
+  if (test_routine->segsize != 0) {
+    snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%ld_%s.csv", count, algorithm, test_routine->segsize, type_string);
+  } else {
+    snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv", count, algorithm, type_string);
+  }
+
+  if(concatenate_path(data_dir, data_filename, test_routine->output_data_file) == -1) {
+    fprintf(stderr, "Error: Failed to concatenate path. Aborting...");
+    return -1;
+  }
+
+#ifndef CUDA_AWARE
+  snprintf(alloc_filename, sizeof(alloc_filename), "/alloc_%d.csv", comm_sz);
+#else
+  snprintf(alloc_filename, sizeof(alloc_filename), "/alloc_%d_GPU.csv", comm_sz);
+#endif
+
+  if (concatenate_path(output_dir, alloc_filename, test_routine->alloc_file) == -1) {
+    fprintf(stderr, "Error: Failed to concatenate path. Aborting...");
+    return -1;
+  }
+
+  if(strcmp(output_level, "all") == 0) {
+    test_routine->output_level = ALL;
+  } else if(strcmp(output_level, "statistics") == 0) {
+    test_routine->output_level = STATISTICS;
+  } else if(strcmp(output_level, "summarized") == 0) {
+    test_routine->output_level = SUMMARIZED;
+  } else {
+    fprintf(stderr, "Error: Invalid OUTPUT_LEVEL value. Aborting...");
+    return -1;
+  }
+
+  return 0;
+}
+
+
+#ifdef CUDA_AWARE
+int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
+
+  int comm_sz, rank;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  cudaError_t err;
+
+  switch (coll) {
+    case ALLREDUCE:
+      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      break;
+    case ALLGATHER:
+      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyHostToDevice), err);
+      break;
+    case ALLTOALL:
+      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      break;
+    case BCAST:
+      if (rank == 0) {
+        BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      }
+      break;
+    case GATHER:
+      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyHostToDevice), err);
+      break;
+    case REDUCE:
+      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      break;
+    case REDUCE_SCATTER;
+      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      break;
+    case SCATTER:
+      if (rank == 0) {
+        BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      }
+      break;
+    default:
+      fprintf(stderr, "Error: Unsupported collective type. Aborting...");
+      return -1;
+  }
+
+  return 0;
+}
+
+int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
+
+  int comm_sz, rank;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  cudaError_t err;
+
+  switch (coll) {
+    case ALLREDUCE:
+      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      break;
+    case ALLGATHER:
+      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      break;
+    case ALLTOALL:
+      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      break;
+    case BCAST:
+      if (rank != 0) {
+        BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      }
+      break;
+    case GATHER:
+      if (rank == 0) {
+        BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      }
+      break;
+    case REDUCE:
+      if (rank == 0) {
+        BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      }
+      break;
+    case REDUCE_SCATTER;
+      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyDeviceToHost), err);
+      break;
+    case SCATTER:
+      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyDeviceToHost), err);
+      break;
+    default:
+      fprintf(stderr, "Error: Unsupported collective type. Aborting...");
+      return -1;
+  }
+
+  return 0;
+}
+#endif // CUDA_AWARE
 
 int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
               MPI_Datatype dtype, MPI_Comm comm, int iter, double *times){
@@ -545,14 +745,23 @@ static inline int write_summarized_output_to_file(const char *fullpath, double *
   return 0;
 }
 
-int write_output_to_file(const char *output_level, const char *filename, double *highest, double *all_times, int iter){
-  if(strcmp(output_level, "all") == 0) {
-    return write_all_output_to_file(filename, highest, all_times, iter);
-  } else if(strcmp(output_level, "summarized") == 0) {
-    return write_summarized_output_to_file(filename, highest, iter);
-  } else {
-    fprintf(stderr, "Error: Output level %s not recognized. Aborting...", output_level);
-    return -1;
+int write_statistics_output_to_file(const char *fullpath, double *highest, int iter) {
+  // TODO: Implement the statistics output file writing
+  return 0;
+}
+
+int write_output_to_file(test_routine_t test_routine, double *highest, double *all_times, int iter)
+{
+  switch (test_routine.output_level) {
+    case ALL:
+      return write_all_output_to_file(test_routine.output_data_file, highest, all_times, iter);
+    case STATISTICS:
+      return write_statistics_output_to_file(test_routine.output_data_file, highest, iter);
+    case SUMMARIZED:
+      return write_summarized_output_to_file(test_routine.output_data_file, highest, iter);
+    default:
+      fprintf(stderr, "Error: Output level not recognized. Aborting...");
+      return -1;
   }
 }
 

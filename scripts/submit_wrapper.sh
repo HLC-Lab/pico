@@ -3,32 +3,37 @@
 source scripts/utils.sh
 
 # 1. Set default values for the variables (are defined in `utils.sh`)
+export TASKS_PER_NODE=$DEFAULT_TASKS_PER_NODE
+export COMPILE_ONLY=$DEFAULT_COMPILE_ONLY
 export TIMESTAMP=$DEFAULT_TIMESTAMP
 export TYPES=$DEFAULT_TYPES
 export SIZES=$DEFAULT_SIZES
 export SEGMENT_SIZES=$DEFAULT_SEGMENT_SIZES
 export COLLECTIVES=$DEFAULT_COLLECTIVES
-export TEST_TIME=$DEFAULT_TEST_TIME
-export CUDA=$DEFAULT_CUDA
+
+export GPU_AWARENESS=$DEFAULT_GPU_AWARENESS
 export GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
+
 export OUTPUT_LEVEL=$DEFAULT_OUTPUT_LEVEL
 export COMPRESS=$DEFAULT_COMPRESS
 export DELETE=$DEFAULT_DELETE
-export COMPILE_ONLY=$DEFAULT_COMPILE_ONLY
+export NOTES=$DEFAULT_NOTES
+
+export TEST_TIME=$DEFAULT_TEST_TIME
+export EXCLUDE_NODES=$DEFAULT_EXCLUDE_NODES
+export JOB_DEP=$DEFAULT_JOB_DEP
+export OTHER_SLURM_PARAMS=$DEFAULT_OTHER_SLURM_PARAMS
+export SHOW_ENV=$DEFAULT_SHOW_ENV
+
 export DEBUG_MODE=$DEFAULT_DEBUG_MODE
 export DRY_RUN=$DEFAULT_DRY_RUN
 export INTERACTIVE=$DEFAULT_INTERACTIVE
-export SHOW_ENV=$DEFAULT_SHOW_ENV
-export NOTES=$DEFAULT_NOTES
-export TASK_PER_NODE=$DEFAULT_TASK_PER_NODE
-export JOB_DEP=$DEFAULT_JOB_DEP
-export OTHER_PARAMS=$DEFAULT_OTHER_PARAMS
 
 # 2. Parse and validate command line arguments
 parse_cli_args "$@"
 
 # 3. Set the location-specific configuration (defined in `config/environment/$LOCATION.sh`)
-source_environment "$LOCATION" || exit 1
+source_environment || exit 1
 
 # 4. Validate all the given arguments
 validate_args || exit 1
@@ -44,14 +49,14 @@ fi
 
 # 7. Compile code. If `$DEBUG_MODE` is `yes`, debug flags will be added
 compile_code || exit 1
-[[ "$COMPILE_ONLY" == "yes" ]] && exit 0
+[[ "$COMPILE_ONLY" == "yes" ]] && success "Compile only mode. Exiting..." && exit 0
 
 # 8. Defines env dependant variables
 export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
 export LOCATION_DIR="$SWING_DIR/results/$LOCATION"
 export OUTPUT_DIR="$SWING_DIR/results/$LOCATION/$TIMESTAMP"
 export BENCH_EXEC_CPU=$SWING_DIR/bin/bench
-[[ "$CUDA" == "True" ]] && export BENCH_EXEC_CUDA=$SWING_DIR/bin/bench_cuda
+[[ "$GPU_AWARENESS" == "yes" ]] && export BENCH_EXEC_GPU=$SWING_DIR/bin/bench_cuda
 export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
 export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
 
@@ -66,35 +71,33 @@ fi
 if [[ "$LOCATION" == "local" ]]; then
     scripts/run_test_suite.sh
 else
-    PARAMS="--account $ACCOUNT --nodes $N_NODES --time $TEST_TIME --partition $PARTITION"
+    SLURM_PARAMS="--account $ACCOUNT --nodes $N_NODES --time $TEST_TIME --partition $PARTITION"
 
     if [[ -n "$QOS" ]]; then
-        PARAMS+=" --qos $QOS"
-        [[ -n "$QOS_TASKS_PER_NODE" ]] && export TASK_PER_NODE="$QOS_TASKS_PER_NODE"
+        SLURM_PARAMS+=" --qos $QOS"
+        [[ -n "$QOS_TASKS_PER_NODE" ]] && export SLURM_TASKS_PER_NODE="$QOS_TASKS_PER_NODE"
         [[ -n "$QOS_GRES" ]] && GRES="$QOS_GRES"
     fi
 
-    if [[ "$CUDA" == "True" ]]; then
+    if [[ "$GPU_AWARENESS" == "yes" ]]; then
         [[ -z "$GRES" ]] && GRES="gpu:$MAX_GPU_TEST"
-        PARAMS+=" --gpus-per-node $MAX_GPU_TEST"
+        SLURM_PARAMS+=" --gpus-per-node $MAX_GPU_TEST"
     fi
 
-    [[ -n "$FORCE_TASKS" && -z "$QOS_TASKS_PER_NODE" ]] && PARAMS+=" --ntasks $FORCE_TASKS" || PARAMS+=" --ntasks-per-node $TASK_PER_NODE"
-    [[ -n "$GRES" ]] && PARAMS+=" --gres=$GRES"
-    [[ -n "$EXCLUDE_NODES" ]] && PARAMS+=" --exclude $EXCLUDE_NODES" 
-    [[ -n "$JOB_DEP" ]] && PARAMS+=" --dependency=afterany:$JOB_DEP"
-    [[ -n "$OTHER_PARAMS" ]] && PARAMS+=" $OTHER_PARAMS"
-
-    # PARAMS+=" --reservation=s_int_lped_boost -H"
+    [[ -n "$FORCE_TASKS" && -z "$QOS_TASKS_PER_NODE" ]] && SLURM_PARAMS+=" --ntasks $FORCE_TASKS" || SLURM_PARAMS+=" --ntasks-per-node $SLURM_TASKS_PER_NODE"
+    [[ -n "$GRES" ]] && SLURM_PARAMS+=" --gres=$GRES"
+    [[ -n "$EXCLUDE_NODES" ]] && SLURM_PARAMS+=" --exclude $EXCLUDE_NODES" 
+    [[ -n "$JOB_DEP" ]] && SLURM_PARAMS+=" --dependency=afterany:$JOB_DEP"
+    [[ -n "$OTHER_SLURM_PARAMS" ]] && SLURM_PARAMS+=" $OTHER_SLURM_PARAMS"
 
     if [[ "$INTERACTIVE" == "yes" ]]; then
-        inform "Salloc with parameters: $PARAMS"
-        export PARAMS="$PARAMS"
-        salloc $PARAMS
+        inform "Salloc with parameters: $SLURM_PARAMS"
+        export SLURM_PARAMS="$SLURM_PARAMS"
+        salloc $SLURM_PARAMS
     else
-        [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]] && PARAMS+=" --exclusive --output=$OUTPUT_DIR/slurm_%j.out --error=$OUTPUT_DIR/slurm_%j.err" || PARAMS+=" --output=debug_%j.out"
-        export PARAMS="$PARAMS"
-        inform "Sbatching job with parameters: $PARAMS"
-        sbatch $PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
+        [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]] && SLURM_PARAMS+=" --exclusive --output=$OUTPUT_DIR/slurm_%j.out --error=$OUTPUT_DIR/slurm_%j.err" || SLURM_PARAMS+=" --output=debug_%j.out"
+        export SLURM_PARAMS="$SLURM_PARAMS"
+        inform "Sbatching job with parameters: $SLURM_PARAMS"
+        sbatch $SLURM_PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
     fi
 fi

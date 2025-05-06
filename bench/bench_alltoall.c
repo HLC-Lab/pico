@@ -18,3 +18,21 @@ int alltoall_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
 
   return 0; // Success
 }
+
+#ifdef CUDA_AWARE
+
+int alltoall_allocator_cuda(void** d_sbuf, void** d_rbuf, void** d_rbuf_gt,
+                        size_t count, size_t type_size, MPI_Comm comm) {
+  cudaError_t err;
+  BENCH_CUDA_CHECK(cudaMalloc(d_sbuf, count * type_size), err);
+
+  BENCH_CUDA_CHECK(cudaMalloc(d_rbuf, count * type_size), err);
+  BENCH_CUDA_CHECK(cudaMemset(*d_rbuf, 0, count * type_size), err);
+
+  BENCH_CUDA_CHECK(cudaMalloc(d_rbuf_gt, count * type_size), err);
+  BENCH_CUDA_CHECK(cudaMemset(*d_rbuf_gt, 0, count * type_size), err);
+
+  return 0; // Success
+}
+
+#endif

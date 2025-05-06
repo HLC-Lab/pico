@@ -12,26 +12,37 @@ export SEPARATOR="==============================================================
 ###############################################################################
 # Default values
 ###############################################################################
+
+# General options
+export DEFAULT_TASKS_PER_NODE="1"
 export DEFAULT_COMPILE_ONLY="no"
 export DEFAULT_TIMESTAMP=$(date +"%Y_%m_%d___%H_%M_%S")
 export DEFAULT_TYPES="int32"
 export DEFAULT_SIZES="8,64,512,4096,32768,262144,2097152,16777216,134217728"
 export DEFAULT_SEGMENT_SIZES="0,16384,131072,1048576"
 export DEFAULT_COLLECTIVES="allreduce,allgather,alltoall,bcast,gather,reduce,reduce_scatter,scatter"
-export DEFAULT_TEST_TIME="01:00:00"
+
+# GPU options
+export DEFAULT_GPU_AWARENESS="no"
+export DEFAULT_GPU_PER_NODE="0"
+
+# Data saving options
 export DEFAULT_OUTPUT_LEVEL="summarized"
 export DEFAULT_COMPRESS="yes"
 export DEFAULT_DELETE="no"
+export DEFAULT_NOTES=""
+
+# Various SLURM options
+export DEFAULT_TEST_TIME="01:00:00"
+export DEFAULT_EXCLUDE_NODES=""
+export DEFAULT_JOB_DEP=""
+export DEFAULT_OTHER_SLURM_PARAMS=""
+export DEFAULT_INTERACTIVE="no"
+
+# Debug options
 export DEFAULT_DEBUG_MODE="no"
 export DEFAULT_DRY_RUN="no"
-export DEFAULT_INTERACTIVE="no"
 export DEFAULT_SHOW_ENV="no"
-export DEFAULT_NOTES=""
-export DEFAULT_CUDA="False"
-export DEFAULT_GPU_PER_NODE="0"
-export DEFAULT_TASK_PER_NODE=1
-export DEFAULT_JOB_DEP=""
-export DEFAULT_OTHER_PARAMS=""
 
 ###############################################################################
 # Utility functions for logging
@@ -61,6 +72,13 @@ export -f warning
 
 inform() {
     echo -e "${BLUE}$1${NC}"
+
+    if [[ $# -gt 1 ]]; then
+        shift
+        for msg in "$@"; do
+            echo -e "  • $msg "
+        done
+    fi
 }
 export -f inform
 
@@ -77,90 +95,145 @@ export -f cleanup
 ###############################################################################
 # Usage function: prints short or full help message
 ###############################################################################
-usage() {
-    local help_verbosity=$1
-    if [ "$help_verbosity" == "full" ]; then
+usage_required() {
+inform "Required arguments:"
       cat <<EOF
-Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]
+  --location          Location
+  --nodes             Number of nodes (required if not in --compile-only)
+EOF
+}
 
-Options:
---location          Location (required)
---nodes             Number of nodes (required if not in --compile-only)
---ntasks            Total number of tasks. Will override tasks per node and
-                    does not allow for --cuda option.
---compile-only      Compile only.
-                    [default: "${DEFAULT_COMPILE_ONLY}"]
---output-dir        Output dir of test.
-                    [default: "${DEFAULT_TIMESTAMP}" (current timestamp)]
---types             Data types, comma separated.
-                    Allowed types: int,int8,int16,int32,int64,float,double,char.
-                    [default: "${DEFAULT_TYPES}"]
---sizes             Array sizes, comma separated.
-                    [default: "${DEFAULT_SIZES}"]
---collectives       Comma separated list of collectives to test.
-                    To each collective, it must correspond a JSON file in `config/test/`.
-                    [default: "${DEFAULT_COLLECTIVES}"]
---cuda              Enable CUDA support.
-                    As of now only allgather is supported.
-                    [default: "${DEFAULT_CUDA}"]
---gpu-per-node      Defines number of gpus per node to use in the test.
-                    Comma separated list to allow for multiple testing options.
-                    If CUDA is enabled and this option not selected, it will be set
-                    to the value GPU_NODE_PARTITION defined in `config/environments/`.
-                    If CUDA is disabled, it will be ignored.
-                    [default: "${DEFAULT_GPU_PER_NODE}"]
---time              Sbatch time, in format HH:MM:SS.
-                    [default: "${DEFAULT_TEST_TIME}"]
---output-level      Specify which test data to save.
-                    Allowed values:
-                      - summarized  save summarized test data only.
-                      - all         save all test data.
-                    [default: "${DEFAULT_OUTPUT_LEVEL}"]
---compress          Compress result dir into a tar.gz.
-                    [default: "${DEFAULT_COMPRESS}"]
---delete            Delete result dir after compression.
-                    If --compress is 'no', this will be ignored.
-                    [default: "${DEFAULT_DELETE}"]
---debug             Debug mode:
-                      - --time is set to 00:10:00
-                      - Run only one iteration for each test instance.
-                      - Compile with -g -DDEBUG without optimization.
-                      - Use int32 data type.
-                      - Do not save results (--compress and --delete are ignored).
-                      - Do not exit after error.
-                    [default: "${DEFAULT_DEBUG_MODE}"]
---dry-run           Dry run mode. Test the script without running the actual bench tests.
-                    It differs from debug mode as it will not compile and run code,
-                    apart from python scripts to check the configuration and update dynamic rules.
-                    [default: "${DEFAULT_DRY_RUN}"]
---job-dep           Colon separated list of Slurm job dependencies. It is set to `afterany`.
-                    If set, the job will be submitted after the specified job(s) finish.
-                    This is useful for chaining jobs together.
-                    [default: "${DEFAULT_JOB_DEP}"]
---other-params      Other parameters to pass to the job submission command.
-                    [default: "${DEFAULT_OTHER_PARAMS}"]
---interactive       Interactive mode (use salloc instead of sbatch).
-                    [default: "${DEFAULT_INTERACTIVE}"]
---show-env          Show environment variables.
-                    Will only apply if --debug is 'yes' and MPI_LIB is either MPICH or CRAY_MPICH.
-                    Otherwise it won't have any effect.
-                    [default: "${DEFAULT_SHOW_ENV}"]
---notes             Notes for metadata entry.
-                    [default: "${DEFAULT_NOTES}"]
+usage_general() {
+inform "General options:"
+      cat <<EOF
+  --ntasks-per-node   Comma separated list of number of tasks per node to use in the test.
+                      It will have effect if --gpu-per-node is 0.
+                      [default: "${DEFAULT_TASKS_PER_NODE}"]
+  --ntasks            Total number of tasks. Must be greater than or equal to --nodes.
+                      Will override tasks per node and conflicts with --gpu-awareness options.
+  --compile-only      Compile only.
+                      [default: "${DEFAULT_COMPILE_ONLY}"]
+  --output-dir        Output dir of test.
+                      [default: "${DEFAULT_TIMESTAMP}" (current timestamp)]
+  --types             Data types, comma separated.
+                      [default: "${DEFAULT_TYPES}"]
+  --sizes             Array sizes in nuber of elements, comma separated.
+                      [default: "${DEFAULT_SIZES}"]
+  --segment-sizes     Segment sizes in bytes, comma separated.
+                      [default: "${DEFAULT_SEGMENT_SIZES}"]
+  --collectives       Comma separated list of collectives to test. To each collective, it must correspond a JSON file in 'config/test/'.
+                      [default: "${DEFAULT_COLLECTIVES}"]
+EOF
+}
+
+usage_gpu() {
+warning "As of now, only Allgather is supported with GPU aware MPI."
+inform "GPU options:"
+      cat <<EOF
+  --gpu-awareness     Test GPU aware MPI. Library tested must be GPU aware.
+                      Moreover in 'config/environments/.." PARTITION_GPUS_PER_NODE,
+                      GPU_LIB and GPU_LIB_VERSION must be defined.
+                      [default: "${DEFAULT_GPU_AWARENESS}"]
+  --gpu-per-node      Comma separated list of number of gpus per node to use in the test.
+                      Each number must be less than or equal to PARTITION_GPUS_PER_NODE.
+                      If 0, the test will run on CPU with the --ntasks-per-node value(s).
+                      If not specified, it will be set to the value PARTITION_GPUS_PER_NODE defined in 'config/environments/'.
+                      [default: "${DEFAULT_GPU_PER_NODE}"]
+EOF
+}
+
+usage_data() {
+inform "Data saving options:"
+      cat <<EOF
+  --output-level      Specify which test data to save. Allowed values: summarized, all.
+                      [default: "${DEFAULT_OUTPUT_LEVEL}"]
+  --compress          Compress result dir into a tar.gz.
+                      [default: "${DEFAULT_COMPRESS}"]
+  --delete            Delete result dir after compression. If --compress is 'no', this will be ignored.
+                      [default: "${DEFAULT_DELETE}"]
+  --notes             Notes for metadata entry.
+                      [default: "${DEFAULT_NOTES}"]
+EOF
+}
+
+usage_job() {
+inform "Various SLURM options:"
+      cat <<EOF
+  --time              Sbatch time, in format HH:MM:SS.
+                      [default: "${DEFAULT_TEST_TIME}"]
+  --exclude-nodes     List of nodes to exclude from the test. Refer to SLURM documentation for the format.
+                      [default: "${DEFAULT_EXCLUDE_NODES}"]
+  --job-dep           Colon separated list of Slurm job dependencies. It is set to 'afterany'.
+                      [default: "${DEFAULT_JOB_DEP}"]
+  --other-params      Other parameters to pass to the job submission command.
+                      [default: "${DEFAULT_OTHER_SLURM_PARAMS}"]
+  --interactive       Interactive mode (use salloc instead of sbatch).
+                      [default: "${DEFAULT_INTERACTIVE}"]
+EOF
+}
+
+usage_debug() {
+inform "Debug options:"
+      cat <<EOF
+  --debug             Debug mode:
+                        - --time is set to 00:10:00
+                        - Run only one iteration for each test instance.
+                        - Compile with -g -DDEBUG without optimization.
+                        - Do not save results (--compress and --delete are ignored).
+                      [default: "${DEFAULT_DEBUG_MODE}"]
+  --dry-run           Dry run mode. Test the script without running the actual bench tests.
+                      [default: "${DEFAULT_DRY_RUN}"]
+  --show-env          Show MPI environment variables when srun is launched. Will only apply if --debug is 'yes'.
+                      [default: "${DEFAULT_SHOW_ENV}"]
+EOF
+}
+
+usage_help() {
+      cat <<EOF
+
 --help              Show short help message
 --help-full         Show full help message
 EOF
-    else
-        cat <<EOF
-Usage: $0 --location <LOCATION> --nodes <N_NODES> [options...]
 
-Options:
---location          Location (required)
---nodes             Number of nodes (required if not in --compile-only)
+}
 
-For full help, run: $0 --help-full
-EOF
-    fi
+usage() {
+    inform "Usage:" "\$ $0 --location <LOCATION> --nodes <N_NODES> [options...]\n"
+    usage_required
+
+    local help_verbosity=$1
+    case "$help_verbosity" in
+        full)
+            usage_general
+            usage_gpu
+            usage_data
+            usage_job
+            usage_debug
+            usage_help
+            ;;
+        general)
+            usage_general
+            ;;
+        gpu)
+            usage_gpu
+            ;;
+        data)
+            usage_data
+            ;;
+        job)
+            usage_job
+            ;;
+        debug)
+            usage_debug
+            ;;
+        help)
+            usage_help
+            ;;
+        *)
+          ;;
+    esac
+
+    inform "For full help, run: $0 --help-full"
 }
 
 ###############################################################################
@@ -177,6 +250,7 @@ check_arg() {
 parse_cli_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
+          # Required arguments
             --location)
                 export LOCATION="$2"
                 shift 2
@@ -185,8 +259,19 @@ parse_cli_args() {
                 export N_NODES="$2"
                 shift 2
                 ;;
+            # General options
+            --ntasks-per-node)
+                check_arg "$1" "$2"
+                export TASKS_PER_NODE="$2"
+                shift 2
+                ;;
             --ntasks)
                 export FORCE_TASKS="$2"
+                shift 2
+                ;;
+            --compile-only)
+                check_arg "$1" "$2"
+                export COMPILE_ONLY="$2"
                 shift 2
                 ;;
             --output-dir)
@@ -204,14 +289,9 @@ parse_cli_args() {
                 export SIZES="$2"
                 shift 2
                 ;;
-            --cuda)
+            --segment-sizes)
                 check_arg "$1" "$2"
-                export CUDA="$2"
-                shift 2
-                ;;
-            --gpu-per-node)
-                check_arg "$1" "$2"
-                export GPU_PER_NODE="$2"
+                export SEGMENT_SIZES="$2"
                 shift 2
                 ;;
             --collectives)
@@ -219,11 +299,18 @@ parse_cli_args() {
                 export COLLECTIVES="$2"
                 shift 2
                 ;;
-            --time)
+            # GPU options
+            --gpu-awareness)
                 check_arg "$1" "$2"
-                export TEST_TIME="$2"
+                export GPU_AWARENESS="$2"
                 shift 2
                 ;;
+            --gpu-per-node)
+                check_arg "$1" "$2"
+                export GPU_PER_NODE="$2"
+                shift 2
+                ;;
+            # Data saving options
             --output-level)
                 check_arg "$1" "$2"
                 export OUTPUT_LEVEL="$2"
@@ -239,11 +326,38 @@ parse_cli_args() {
                 export DELETE="$2"
                 shift 2
                 ;;
-            --compile-only)
+            --notes)
                 check_arg "$1" "$2"
-                export COMPILE_ONLY="$2"
+                export NOTES="$2"
                 shift 2
                 ;;
+            # Various SLURM options
+            --time)
+                check_arg "$1" "$2"
+                export TEST_TIME="$2"
+                shift 2
+                ;;
+            --exclude-nodes)
+                check_arg "$1" "$2"
+                export EXCLUDE_NODES="$2"
+                shift 2
+                ;;
+            --job-dep)
+                check_arg "$1" "$2"
+                export JOB_DEP="$2"
+                shift 2
+                ;;
+            --other-params)
+                check_arg "$1" "$2"
+                export OTHER_SLURM_PARAMS="$2"
+                shift 2
+                ;;
+            --interactive)
+                check_arg "$1" "$2"
+                export INTERACTIVE="$2"
+                shift 2
+                ;;
+            # Debug options
             --debug)
                 check_arg "$1" "$2"
                 export DEBUG_MODE="$2"
@@ -254,31 +368,12 @@ parse_cli_args() {
                 export DRY_RUN="$2"
                 shift 2
                 ;;
-            --interactive)
-                check_arg "$1" "$2"
-                export INTERACTIVE="$2"
-                shift 2
-                ;;
             --show-env)
                 check_arg "$1" "$2"
                 export SHOW_ENV="$2"
                 shift 2
                 ;;
-            --job-dep)
-                check_arg "$1" "$2"
-                export JOB_DEP="$2"
-                shift 2
-                ;;
-            --other-params)
-                check_arg "$1" "$2"
-                export OTHER_PARAMS="$2"
-                shift 2
-                ;;
-            --notes)
-                check_arg "$1" "$2"
-                export NOTES="$2"
-                shift 2
-                ;;
+            # Help messages
             --help)
                 usage
                 exit 0
@@ -289,7 +384,7 @@ parse_cli_args() {
                 ;;
             *)
                 error "Error: Unknown option $1" >&2
-                usage
+                usage "full"
                 cleanup
                 ;;
         esac
@@ -299,74 +394,85 @@ parse_cli_args() {
 ###############################################################################
 # Validate required arguments and options
 ###############################################################################
-check_yes_no() {
-    if [[ "$1" != "yes" && "$1" != "no" ]]; then
-        error "$2 must be either 'yes' or 'no'."
-        usage
+check_enum() {
+    local val=$1 flag=$2 ctx=$3 allowed=$4
+    for a in "${allowed//,/ }"; do
+        [[ "$val" == "$a" ]]
+        return 0
+    done
+
+    error "$flag must be one of: ${allowed}."
+    usage "$ctx"
+    return 1
+}
+
+check_regex() {
+    local val=$1 flag=$2 ctx=$3 re=$4
+    [[ "$val" =~ $re ]] || { error "$flag must match '$re'."; usage "$ctx"; return 1; }
+}
+
+check_integer() {
+    local val=$1 flag=$2 ctx=$3 min=$4 max=${5-}
+
+    if ! [[ "$val" =~ ^[0-9]+$ ]] || (( val < min )); then
+        error "$flag must be an integer ≥ $min."
+        usage "$ctx"
+        return 1
+    fi
+
+    if [[ -n "$max" && "$val" -gt "$max" ]]; then
+        error "$flag must be an integer ≤ $max."
+        usage "$ctx"
         return 1
     fi
 }
 
+check_list() {
+    local val=$1 re=$2 flag=$3 ctx=$4
+    for item in ${val//,/ }; do
+        [[ $item =~ $re ]] || { error "$flag contains invalid entry '$item'."; usage "$ctx"; return 1; }
+    done
+}
+
 validate_args() {
-    check_yes_no "$COMPILE_ONLY" "--compile-only" || return 1
-    check_yes_no "$DEBUG_MODE" "--debug" || return 1
+    # Check validity of arguments, regardless of conflicts or overrides
+    check_integer "$N_NODES" "--nodes" "required" 2 || return 1
 
-    if [[ "$CUDA" != "True" && "$CUDA" != "False" ]]; then
-      error "--cuda must be either 'True' or 'False'."
-      usage
-      return 1
-    fi
+    [[ -n "$FORCE_TASKS" ]] && { check_integer "$FORCE_TASKS" "--ntasks" "general" "$N_NODES" || return 1; }
+    local slurm_tasks_per_node=1
+    for tasks in ${TASKS_PER_NODE//,/ }; do
+        check_integer "$tasks" "--ntasks-per-node" "general" 1 "$PARTITION_CPUS_PER_NODE" || return 1
+        [[ "$tasks" -gt "$slurm_tasks_per_node" ]] && slurm_tasks_per_node="$tasks"
+    done
+    check_enum "$COMPILE_ONLY" "--compile-only" "general" "yes,no" || return 1
+    check_list "$TYPES" "^(int|int8|int16|int32|int64|float|double|char)$" "--types" "general" || return 1
+    check_list "$SIZES" "^[0-9]+$" "--sizes" "general" || return 1
+    check_list "$SEGMENT_SIZES" "^[0-9]+$" "--segment-sizes" "general" || return 1
 
-
-    if [[ "$COMPILE_ONLY" == "yes" ]]; then
-        success "Compile only mode. Skipping validation."
-        return 0
-    fi
-
-    if [[ -z "$N_NODES" || ! "$N_NODES" =~ ^[0-9]+$ || "$N_NODES" -lt 2 ]]; then
-        error "--nodes must be a numeric value and at least 2."
-        usage
-        return 1
-    elif [[ "$OUTPUT_LEVEL" != "summarized" && "$OUTPUT_LEVEL" != "all" ]]; then
-        error "--output-level must be either 'summarized' or 'all'."
-        usage 
-        return 1
-    elif [[ ! "$TEST_TIME" =~ ^[0-9]{2}:[0-5][0-9]:[0-5][0-9]$ ]]; then
-        error "--time must be in the format 'HH:MM:SS' with minutes and seconds between 00 and 59."
-        usage
-        return 1
-    else
-        for dep in ${JOB_DEP//:/ }; do
-            if [[ ! "$dep" =~ ^[0-9]+$ ]]; then
-                error "--job-dep must be a colon-separated list of numeric values."
-                usage
-                return 1
-            fi
+    check_enum "$GPU_AWARENESS" "--gpu-awareness" "gpu" "yes,no" || return 1
+    if [[ "$GPU_AWARENESS" == "yes" ]]; then
+        for gpu in ${GPU_PER_NODE//,/ }; do
+            check_integer "$gpu" "--gpu-per-node" "gpu" 0 "$PARTITION_GPUS_PER_NODE" || return 1
+            [[ "$gpu" -gt "$slurm_tasks_per_node" ]] && slurm_tasks_per_node="$gpu"
         done
     fi
 
-    if [[ -n "$FORCE_TASKS" ]]; then
-        if [[ ! "$FORCE_TASKS" =~ ^[0-9]+$ || "$FORCE_TASKS" -lt "$N_NODES" ]]; then
-            error "--ntasks must be a numeric value bigger than --nodes."
-            usage
-            return 1
-        fi
-        warning "--ntasks set, ignoring --cuda."
-        export CUDA="False"
-    fi
+    check_enum "$OUTPUT_LEVEL" "--output-level" "data" "summarized,all" || return 1
+    check_enum "$COMPRESS" "--compress" "data" "yes,no" || return 1
+    check_enum "$DELETE" "--delete" "data" "yes,no" || return 1
 
-    check_yes_no "$COMPRESS" "--compress" || return 1
-    check_yes_no "$DELETE" "--delete" || return 1
-    check_yes_no "$DRY_RUN" "--dry-run" || return 1
-    check_yes_no "$INTERACTIVE" "--interactive" || return 1
-    check_yes_no "$SHOW_ENV" "--show-env" || return 1
+    check_regex "$TEST_TIME" "--time" "job" "^[0-9]{2}:[0-5][0-9]:[0-5][0-9]$" || return 1
+    check_list "$JOB_DEP" "^[0-9]+$" "--job-dep" "job" || return 1
+    check_enum "$INTERACTIVE" "--interactive" "job" "yes,no" || return 1
+
+    check_enum "$DEBUG_MODE" "--debug" "debug" "yes,no" || return 1
+    check_enum "$DRY_RUN" "--dry-run" "debug" "yes,no" || return 1
+    check_enum "$SHOW_ENV" "--show-env" "debug" "yes,no" || return 1
+
+    export SLURM_TASKS_PER_NODE="$slurm_tasks_per_node"
 
     [[ "$DRY_RUN" == "yes" ]] && warning "DRY RUN MODE: Commands will be printed but not executed"
-
-    if [[ "$COMPRESS" == "no" ]] && [[ "$DELETE" == "yes" ]]; then
-        warning "--compress is 'no', hence --delete will be ignored"
-        export DELETE="no"
-    fi
+    [[ "$COMPRESS" == "no" && "$DELETE" == "yes" ]] && warning "--compress is 'no', hence --delete will be ignored" && export DELETE="no"
 
     if [[ "$DEBUG_MODE" == "yes" ]]; then
         local messages=()
@@ -382,68 +488,37 @@ validate_args() {
         export TEST_TIME="00:10:00"
     fi
 
-    for type in ${TYPES//,/ }; do
-        if [[ ! "$type" =~ ^(int|int8|int16|int32|int64|float|double|char)$ ]]; then
-            error " --types must be a comma-separated list. Allowed types: int,int8,int16,int32,int64,float,double,char"
-            usage
-            return 1
-        fi
-    done
-
-    for size in ${SIZES//,/ }; do
-        if [[ ! "$size" =~ ^[0-9]+$ ]] || [[ $size -lt 1 ]]; then
-            error "--sizes must be a comma-separated list of positive integers."
-            usage
-            return 1
-        fi
-    done
-
     local test_conf_files=()
     for collective in ${COLLECTIVES//,/ }; do
-        if [[ $collective != "allgather" && $CUDA == "True" ]]; then
-            error "Only 'allgather' collective is supported with CUDA enabled."
-            usage
+        if [[ $collective != "allgather" && "$GPU_AWARENESS" == "yes" ]]; then
+            error "Only 'allgather' collective is supported with GPUS."
+            usage "gpu"
             return 1
         fi
 
         local file_path="$SWING_DIR/config/test/${collective}.json"
         if [ ! -f "$file_path" ]; then
             error "--collectives must be a comma-separated list. No '${collective}.json' file found in config/test/"
-            usage
+            usage "general"
             return 1
         fi
         test_conf_files+=( "$file_path" )
     done
     export TEST_CONFIG_FILES=$(IFS=','; echo "${test_conf_files[*]}")
 
-    local task_per_node=1
-    local max_gpu_per_node=0
-    if [[ "$CUDA" == "True" ]]; then
-        if [[ -z "$GPU_NODE_PARTITION" ]]; then
-            error "'GPU_NODE_PARTITION' is not defined in config/environments/${LOCATION}."
-            return 1
-        fi
-        for gpu in ${GPU_PER_NODE//,/ }; do
-            if [[ ! "$gpu" =~ ^[0-9]+$  ||  "$gpu" -gt "$GPU_NODE_PARTITION" ]]; then
-                error "--gpu-per-node must be a comma-separated list of non negative integers, less then or equal to GPU_NODE_PARTITON."
-                usage
-                return 1
-            fi
-            [[ "$gpu" -gt "$task_per_node" ]] && task_per_node=$gpu
-            [[ "$gpu" -gt "$max_gpu_per_node" ]] && max_gpu_per_node=$gpu
-        done
-
-        if [[ "$DEFAULT_GPU_PER_NODE" == "$GPU_PER_NODE" ]]; then
-          warning "No --gpu-per-node specified. Setting it to 'GPU_PER_NODE_PARTITION'."
-          export GPU_PER_NODE=$GPU_NODE_PARTITION
-          task_per_node=$GPU_NODE_PARTITION
-          max_gpu_per_node=$GPU_NODE_PARTITION
-        fi
-    else 
-        export GPU_PER_NODE=$DEFAULT_GPU_PER_NODE
+    if [[ "$GPU_AWARENESS" == "yes" ]]; then
+        [[ -z "$GPU_LIB" || -z "$GPU_LIB_VERSION" ]] && { error "GPU_LIB and GPU_LIB_VERSION must be defined in the environment script."; return 1; }
+        check_enum "$GPU_LIB" "--gpu-lib" "gpu" "CUDA,ROCm" || return 1
+        [[ "$GPU_PER_NODE" == "0" ]] && { error "GPU_PER_NODE is set to 0 while GPU_AWARENESS is 'yes'."; return 1; }
+    else
+        [[ "$GPU_PER_NODE" != "0" ]] && { error "GPU_PER_NODE must be 0 when GPU_AWARENESS is 'no'."; return 1; }
     fi
-    export TASK_PER_NODE=$task_per_node
-    export MAX_GPU_TEST=$max_gpu_per_node
+
+    if [[ -n "$FORCE_TASKS" ]]; then
+        warning "--ntasks is set. It will override --ntasks-per-node, --gpu-awareness and --gpu-per-node."
+        export GPU_AWARENESS="no"
+        export GPU_PER_NODE="0"
+    fi
 
     return 0
 }
@@ -452,21 +527,45 @@ validate_args() {
 # Source the environment script for the given location
 ###############################################################################
 source_environment() {
-    if [ -z "$1" ]; then
-        error "--location not provided."
-        usage
+    [[ -z "$LOCATION" ]] && { error "Location not provided." ; usage "required"; return 1; }
+
+    local env_file="config/environments/$LOCATION.sh"
+    [[ ! -f "$env_file" ]] && { error "Environment script for '${LOCATION}' not found!"; usage "required"; return 1; }
+
+    source "$env_file" || { error "Failed to source environment script for '${LOCATION}'."; return 1; }
+
+    local required_vars=(
+        SWINGCC
+        RUN
+        SWING_DIR
+        MPI_LIB
+        MPI_LIB_VERSION
+        PARTITION_CPUS_PER_NODE
+        PARTITION_GPUS_PER_NODE
+    )
+
+    if [[ "$LOCATION" != "local" ]]; then
+        required_vars+=(
+            PARTITION
+            ACCOUNT
+        )
+    fi
+
+    local missing_vars=()
+    for var in "${required_vars[@]}"; do
+        if [[ -z "${!var}" ]]; then
+            missing_vars+=("$var")
+        fi
+    done
+
+    if (( ${#missing_vars[@]} > 0 )); then
+        for var in "${missing_vars[@]}"; do
+            error "'$var' is not defined in config/environments/${LOCATION}.sh"
+        done
         return 1
     fi
 
-    local env_file="config/environments/$1.sh"
-    if [ -f "$env_file" ]; then
-        source "$env_file"
-        return 0
-    else
-        error "Environment script for '${LOCATION}' not found!"
-        usage
-        return 1
-    fi
+    return 0
 }
 
 ###############################################################################
@@ -522,9 +621,21 @@ activate_virtualenv() {
 ###############################################################################
 compile_code() {
     make_command="make all"
-    [[ "$DEBUG_MODE" == "yes" ]] && make_command+=" DEBUG=1"
-    [[ "$DEBUG_MODE" == "no"  ]] && make_command+=" -s"
-    [[ "$CUDA" == "True" ]] && make_command+=" CUDA_AWARE=1"
+    [[ "$DEBUG_MODE" == "yes" ]] && make_command+=" DEBUG=1" ||  make_command+=" -s"
+    if [[ "$GPU_AWARENESS" == "yes" ]]; then
+      case "$GPU_LIB" in
+        "CUDA")
+            make_command+=" CUDA_AWARE=1"
+            ;;
+        # "HIP")
+        #     make_command+=" HIP_AWARE=1"
+        #     ;;
+        *)
+            error "Invalid GPU_LIB value: $GPU_LIB"
+            return 1
+            ;;
+        esac
+    fi
 
     if [[ "$DRY_RUN" == "yes" ]]; then
         inform "Would run: $make_command"
@@ -549,13 +660,13 @@ print_formatted_list() {
     local list_items="$2"
     local items_per_line="${3:-5}"  # Default to 5 items per line
     local formatting="${4:-normal}" # Options: normal, numeric, size
-    
+
     echo "  • $list_name:"
     if [[ -z "$list_items" ]]; then
         echo "      None specified"
         return
     fi
-    
+
     case "$formatting" in
         "numeric")
             local i=1
@@ -600,7 +711,7 @@ print_sanity_checks() {
     echo "  • Debug Mode:            $DEBUG_MODE"
     echo "  • Number of Nodes:       $N_NODES"
     echo "  • Total MPI tasks:       $MPI_TASKS"
-    [[ -z "$FORCE_TASKS" ]] && echo "  • Task per Node:         $CURRENT_TASK_PER_NODE"
+    [[ -z "$FORCE_TASKS" ]] && echo "  • Task per Node:         $CURRENT_TASKS_PER_NODE"
 
     inform "Output Settings:"
     echo "  • Output Level:          $OUTPUT_LEVEL"
@@ -614,7 +725,7 @@ print_sanity_checks() {
 
     inform "Test Parameters:"
     echo "  • Collective Type:       $COLLECTIVE_TYPE"
-    
+
     print_formatted_list "Algorithms" "${ALGOS[*]}" 1 "numeric"
     print_formatted_list "Array Sizes" "$SIZES" 5 "normal"
     print_formatted_list "Data Types" "$TYPES" 5 "normal"
@@ -622,8 +733,12 @@ print_sanity_checks() {
     inform "System Information:"
     echo "  • MPI Library:           $MPI_LIB $MPI_LIB_VERSION"
     echo "  • Libswing Version:      $LIBSWING_VERSION"
-    echo "  • CUDA Enabled:          $CUDA"
-    [[ "${CUDA}" == "True" ]] && echo "  • GPU per node:          $CURRENT_TASK_PER_NODE"
+    echo "  • GPU awareness:         $GPU_AWARENESS"
+    if [[ "$GPU_AWARENESS" == "yes" ]]; then
+        echo "  • GPU per node:          $CURRENT_TASKS_PER_NODE"
+        echo "  • GPU library:           $GPU_LIB"
+        echo "  • GPU library version:   $GPU_LIB_VERSION"
+    fi
     [ -n "$NOTES" ] && echo -e "\nNotes: $NOTES"
 
     success "${SEPARATOR}"

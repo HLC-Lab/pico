@@ -1,47 +1,47 @@
-timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,libswing_version,CUDA,output_level,MPI_Op,notes
-2025_04_10___17_40_37,0,4,1,ALLREDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___17_40_37,1,4,1,ALLGATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___17_40_37,2,4,1,ALLTOALL,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___17_40_37,3,4,1,BCAST,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___17_40_37,4,4,1,GATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___17_40_37,5,4,1,REDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___17_40_37,6,4,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___17_40_37,7,4,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,0,8,1,ALLREDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,1,8,1,ALLGATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,2,8,1,ALLTOALL,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,3,8,1,BCAST,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,4,8,1,GATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,5,8,1,REDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,6,8,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_18_47,7,8,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,0,16,1,ALLREDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,1,16,1,ALLGATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,2,16,1,ALLTOALL,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,3,16,1,BCAST,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,4,16,1,GATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,5,16,1,REDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,6,16,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_10___19_19_35,7,16,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_10___20_36_45,0,32,1,ALLREDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_12___14_04_47,0,32,1,ALLGATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_12___14_04_47,1,32,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_12___14_07_21,0,32,1,ALLTOALL,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_12___14_07_21,1,32,1,BCAST,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_12___14_07_21,2,32,1,GATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_12___14_07_21,3,32,1,REDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_12___14_07_21,4,32,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,0,64,1,ALLREDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,1,64,1,ALLGATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,2,64,1,ALLTOALL,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,3,64,1,BCAST,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,4,64,1,GATHER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,5,64,1,REDUCE,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,6,64,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,false,summarized,MPI_SUM, UCX_MAX_RNDV_RAILS=1
-2025_04_14___03_44_45,7,64,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_14___12_48_39,0,64,1,SCATTER,OMPI,4.1.5,1.0.0,false,summarized,null, UCX_MAX_RNDV_RAILS=1
-2025_04_14___00_47_08,0,16,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
-2025_04_14___01_21_26,0,8,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
-2025_04_14___02_15_10,0,4,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
-2025_04_14___02_33_44,0,32,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
-2025_04_14___04_39_29,0,64,4,ALLREDUCE,OMPI,4.1.5,1.0.0,true,summarized,null,vsnccl
+timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,libswing_version,gpu_awareness,gpu_lib,gpu_lib_version,output_level,MPI_Op,notes
+2025_04_10___17_40_37,0,4,1,ALLREDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,1,4,1,ALLGATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,2,4,1,ALLTOALL,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,3,4,1,BCAST,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,4,4,1,GATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,5,4,1,REDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,6,4,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___17_40_37,7,4,1,SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,0,8,1,ALLREDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,1,8,1,ALLGATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,2,8,1,ALLTOALL,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,3,8,1,BCAST,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,4,8,1,GATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,5,8,1,REDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,6,8,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_18_47,7,8,1,SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,0,16,1,ALLREDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,1,16,1,ALLGATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,2,16,1,ALLTOALL,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,3,16,1,BCAST,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,4,16,1,GATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,5,16,1,REDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,6,16,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_10___19_19_35,7,16,1,SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_10___20_36_45,0,32,1,ALLREDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_12___14_04_47,0,32,1,ALLGATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_12___14_04_47,1,32,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_12___14_07_21,0,32,1,ALLTOALL,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_12___14_07_21,1,32,1,BCAST,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_12___14_07_21,2,32,1,GATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_12___14_07_21,3,32,1,REDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_12___14_07_21,4,32,1,SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,0,64,1,ALLREDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,1,64,1,ALLGATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,2,64,1,ALLTOALL,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,3,64,1,BCAST,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,4,64,1,GATHER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,5,64,1,REDUCE,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,6,64,1,REDUCE_SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,MPI_SUM,UCX_MAX_RNDV_RAILS=1
+2025_04_14___03_44_45,7,64,1,SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_14___12_48_39,0,64,1,SCATTER,OMPI,4.1.5,1.0.0,no,null,null,summarized,null,UCX_MAX_RNDV_RAILS=1
+2025_04_14___00_47_08,0,16,4,ALLREDUCE,OMPI,4.1.5,1.0.0,yes,CUDA,12.2,summarized,null,vsnccl
+2025_04_14___01_21_26,0,8,4,ALLREDUCE,OMPI,4.1.5,1.0.0,yes,CUDA,12.2,summarized,null,vsnccl
+2025_04_14___02_15_10,0,4,4,ALLREDUCE,OMPI,4.1.5,1.0.0,yes,CUDA,12.2,summarized,null,vsnccl
+2025_04_14___02_33_44,0,32,4,ALLREDUCE,OMPI,4.1.5,1.0.0,yes,CUDA,12.2,summarized,null,vsnccl
+2025_04_14___04_39_29,0,64,4,ALLREDUCE,OMPI,4.1.5,1.0.0,yes,CUDA,12.2,summarized,null,vsnccl

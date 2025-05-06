@@ -11,6 +11,10 @@ int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Datatype dtype;
+#ifdef CUDA_AWARE
+  cudaError_t err;
+  void *d_sbuf = NULL, *d_rbuf = NULL, *d_rbuf_gt = NULL;
+#endif
   int rank, comm_sz, line, iter;
   size_t count, type_size;
   void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
@@ -22,18 +26,6 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(comm, &comm_sz);
 
   // Get test arguments
-#ifndef DEBUG
-  const char *outputdir = NULL, *data_dir = NULL, *output_level = NULL;
-  outputdir = getenv("OUTPUT_DIR");
-  data_dir = getenv("DATA_DIR");
-  output_level = getenv("OUTPUT_LEVEL");
-  if(outputdir == NULL || data_dir == NULL || output_level == NULL) {
-    fprintf(stderr, "Error: Environment variables OUTPUT_DIR, DATA_DIR or OUTPUT_LEVEL not set. Aborting...");
-    line = __LINE__;
-    goto err_hndl;
-  }
-#endif // DEBUG
-
   if(get_command_line_arguments(argc, argv, &count, &iter, &algorithm, &type_string) == -1 ||
       get_routine (&test_routine, algorithm) == -1 ||
       get_data_type(type_string, &dtype, &type_size) == -1 ){
@@ -41,11 +33,25 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 
+#ifndef DEBUG
+  if (get_data_saving_options(&test_routine, count, algorithm, type_string) == -1) {
+    line = __LINE__;
+    goto err_hndl;
+  }
+#endif // DEBUG
+
   // Allocate memory for the buffers based on the collective type
   if(test_routine.allocator(&sbuf, &rbuf, &rbuf_gt, count, type_size, comm) != 0){
     line = __LINE__;
     goto err_hndl;
   }
+
+#ifdef CUDA_AWARE
+  if(test_routine.allocator_cuda(&d_sbuf, &d_rbuf, &d_rbuf_gt, count, type_size, comm) != 0){
+    line = __LINE__;
+    goto err_hndl;
+  }
+#endif // CUDA_AWARE
 
   // Allocate memory for buffers independent of collective type
   times = (double *)calloc(iter, sizeof(double));
@@ -75,13 +81,11 @@ int main(int argc, char *argv[]) {
 #endif // DEBUG
 
 #ifdef CUDA_AWARE
-  void *d_sbuf = NULL, *d_rbuf = NULL;
-  const char *gpu_per_node = getenv("CURRENT_TASK_PER_NODE");
-  int gpu_per_node_int = atoi(gpu_per_node);
-  int gpu_rank = rank % gpu_per_node_int;
-  BENCH_CUDA_CHECK(cudaSetDevice(gpu_rank));
-  cuda_coll_malloc((void**)&d_rbuf, (void**)&d_sbuf, count, type_size, test_routine.collective);
-  cuda_coll_memcpy(d_sbuf, sbuf, count, type_size, test_routine.collective);
+  if (coll_memcpy_host_to_device(&d_sbuf, &sbuf, count, type_size, test_routine.collective) != 0){
+    line = __LINE__;
+    goto err_hndl;
+  }
+
   void *tmpsbuf = sbuf;
   void *tmprbuf = rbuf;
   sbuf = d_sbuf;
@@ -98,10 +102,10 @@ int main(int argc, char *argv[]) {
 #ifdef CUDA_AWARE
   rbuf = tmprbuf;
   sbuf = tmpsbuf;
-  // FIX: Adjust count
-  BENCH_CUDA_CHECK(cudaMemcpy(rbuf, d_rbuf, count * type_size, cudaMemcpyDeviceToHost));
-  BENCH_CUDA_CHECK(cudaFree(d_sbuf));
-  BENCH_CUDA_CHECK(cudaFree(d_rbuf));
+  if (coll_memcpy_device_to_host(&d_rbuf, &rbuf, count, type_size, test_routine.collective) != 0){
+    line = __LINE__;
+    goto err_hndl;
+  }
 #endif
 
   // Check the results against the ground truth
@@ -134,44 +138,23 @@ int main(int argc, char *argv[]) {
   // Save results to a .csv file inside `/data/` subdirectory. Bash script `run_test_suite.sh`
   // is responsible to create the `/data/` subdir.
   if(rank == 0){
-    char data_filename[128], data_fullpath[BENCH_MAX_PATH_LENGTH];
-    if(swing_allreduce_segsize != 0){
-      snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%ld_%s.csv",
-               count, algorithm, swing_allreduce_segsize, type_string);
-    } else {
-      snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
-               count, algorithm, type_string);
-    }
-    if(concatenate_path(data_dir, data_filename, data_fullpath) == -1) {
+    if(write_output_to_file(test_routine, highest, all_times, iter) == -1){
       line = __LINE__;
       goto err_hndl;
     }
-    if(write_output_to_file(output_level, data_fullpath, highest, all_times, iter) == -1){
-      line = __LINE__;
-      goto err_hndl;
-    }
-  }
-
-  // Save to file allocations (it uses MPI parallel I/O operations)
-  char alloc_filename[128] = "alloc.csv";
-  char alloc_fullpath[BENCH_MAX_PATH_LENGTH];
-  if(concatenate_path(outputdir, alloc_filename, alloc_fullpath) == -1){
-    line = __LINE__;
-    goto err_hndl;
   }
 
   // Write current allocations if and only if the file `alloc_fullpath`
-  // does not exists (i.e. only the first time for each srun this function
-  // is encountered the allocations will be registerd)
+  // does not exists
   int should_write_alloc = 0;
   if(rank == 0){
-    should_write_alloc = file_not_exists(alloc_fullpath);
+    should_write_alloc = file_not_exists(test_routine.alloc_file);
   }
   PMPI_Bcast(&should_write_alloc, 1, MPI_INT, 0, comm);
   if((should_write_alloc == 1) &&
-      (write_allocations_to_file(alloc_fullpath, comm) != MPI_SUCCESS)){
+      (write_allocations_to_file(test_routine.alloc_file, comm) != MPI_SUCCESS)){
     // Remove the file if the write operation failed
-    if(rank == 0){ remove(alloc_fullpath); }
+    if(rank == 0){ remove(test_routine.alloc_file); }
     line = __LINE__;
     goto err_hndl;
   }
@@ -187,6 +170,12 @@ int main(int argc, char *argv[]) {
     free(all_times);
     free(highest);
   }
+
+#ifdef CUDA_AWARE
+  if(NULL != d_sbuf)    cudaFree(d_sbuf);
+  if(NULL != d_rbuf)    cudaFree(d_rbuf);
+  if(NULL != d_rbuf_gt) cudaFree(d_rbuf_gt);
+#endif // CUDA_AWARE
 
   MPI_Barrier(comm);
 
@@ -207,6 +196,12 @@ err_hndl:
     if(NULL != all_times)  free(all_times);
     if(NULL != highest)    free(highest);
   }
+
+#ifdef CUDA_AWARE
+  if(NULL != d_sbuf)    cudaFree(d_sbuf);
+  if(NULL != d_rbuf)    cudaFree(d_rbuf);
+  if(NULL != d_rbuf_gt) cudaFree(d_rbuf_gt);
+#endif // CUDA_AWARE
 
   MPI_Abort(comm, MPI_ERR_UNKNOWN);
 

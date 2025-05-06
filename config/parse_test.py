@@ -118,13 +118,13 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
     exclude_tags = test_config["tags"]["exclude"]
     include_specific = test_config["specific"]["include"]
     exclude_specific = test_config["specific"]["exclude"]
-    cuda_bool = cuda.lower() == "true"
-    
+    cuda_bool = cuda.lower() == "yes"
+
     matching_algorithms = []
     skip_algorithms = []
     is_segmented = []
     cvars = []
-    
+
     if collective not in algorithm_config["collective"]:
         print(f"{__file__}: collective {collective} not found in ALGORITHM_CONFIG_FILE.", file=sys.stderr)
         sys.exit(1)
@@ -220,7 +220,8 @@ def main():
     number_of_nodes = os.getenv("MPI_TASKS")
     mpi_type = os.getenv("MPI_LIB")
     mpi_version = os.getenv("MPI_LIB_VERSION")
-    cuda = os.getenv("CUDA")
+    # TODO: Modify cuda variable and method 
+    cuda = os.getenv("GPU_AWARENESS")
     if not (algorithm_file and test_file and output_file and number_of_nodes and
             number_of_nodes.isdigit() and mpi_type and mpi_version and cuda):
         print(f"\n{__file__}: Environment variables not set.\n", file=sys.stderr)

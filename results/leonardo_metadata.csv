@@ -1,176 +1,176 @@
-timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,libswing_version,CUDA,output_level,MPI_Op,notes
-2025_03_12___12_18_24,0,8,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_12___12_18_24,1,8,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_12___12_18_24,2,8,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_12___12_18_24,3,8,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_13___15_38_05,0,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
-2025_03_13___15_47_02,0,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_19___20_05_06,0,32,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_19___20_04_47,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_19___21_30_29,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_19___21_30_29,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_19___21_30_29,2,128,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_19___21_30_29,3,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_20___12_52_50,0,4,4,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
-2025_03_20___12_52_50,1,4,2,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
-2025_03_20___12_52_50,2,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,true,summarized,null,null
-2025_03_20___12_52_50,3,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_22___10_48_09,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_22___10_48_09,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_22___10_48_09,2,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_22___10_48_09,3,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_28___16_48_20,0,2048,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_28___16_48_20,1,2048,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_28___17_14_41,0,2048,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,rail 4
-2025_03_28___17_14_41,1,2048,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,rail 4
-2025_03_28___17_42_08,0,1024,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_28___17_42_08,1,1024,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_03_28___18_19_43,0,512,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_03_28___18_19_43,1,512,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_01___18_15_01,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,New big test with all collectives
-2025_04_01___18_15_01,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
-2025_04_01___18_15_01,2,128,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
-2025_04_01___18_15_01,3,128,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
-2025_04_01___18_15_01,4,128,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,New big test with all collectives
-2025_04_01___18_15_01,5,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,New big test with all collectives
-2025_04_01___18_15_01,6,128,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,New big test with all collectives
-2025_04_02___20_02_52,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_02___20_02_52,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_02___20_02_52,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_02___20_02_52,3,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_02___20_02_52,4,256,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_02___20_02_52,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_02___20_02_52,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_02___20_02_52,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_04___00_19_08,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,"Improvements in most collectives, hopefully last test"
-2025_04_04___00_19_08,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
-2025_04_04___00_19_08,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
-2025_04_04___00_19_08,3,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
-2025_04_04___00_19_08,4,256,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
-2025_04_04___00_19_08,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,"Improvements in most collectives, hopefully last test"
-2025_04_04___00_19_08,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,"Improvements in most collectives, hopefully last test"
-2025_04_04___00_19_08,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,"Improvements in most collectives, hopefully last test"
-2025_04_04___18_21_29,0,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,1200+ nodes are excluded
-2025_04_05___23_20_55,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_05___23_20_55,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_05___23_20_55,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_05___23_20_55,3,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_05___23_20_55,4,256,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_05___23_20_55,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_05___23_20_55,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_05___23_20_55,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_13_36,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,UCX_IB_SL=0 test
-2025_04_06___13_24_12,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_12,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_12,2,128,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_12,3,128,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_12,4,128,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_12,5,128,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_12,6,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_12,7,128,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_31,0,64,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_31,1,64,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_31,2,64,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_31,3,64,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_31,4,64,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_31,5,64,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_31,6,64,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_31,7,64,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_51,0,32,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_51,1,32,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_51,2,32,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_51,3,32,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_51,4,32,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_24_51,5,32,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_51,6,32,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_24_51,7,32,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_12,0,16,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_12,1,16,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_12,2,16,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_12,3,16,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_12,4,16,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_12,5,16,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_12,6,16,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_12,7,16,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_25,0,8,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_25,1,8,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_25,2,8,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_25,3,8,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_25,4,8,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_25,5,8,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_25,6,8,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_25,7,8,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_39,0,4,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_39,1,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_39,2,4,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_39,3,4,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_39,4,4,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_39,5,4,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_39,6,4,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_39,7,4,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_56,0,2,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_56,1,2,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_56,2,2,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_56,3,2,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_56,4,2,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___13_25_56,5,2,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_56,6,2,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_04_06___13_25_56,7,2,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_04_06___20_44_58,0,254,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,testing non po2 algos
-2025_04_06___20_44_58,1,254,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,testing non po2 algos
-2025_04_06___23_05_13,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,4 tasks per node
-2025_04_06___23_05_13,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,4 tasks per node
-2025_04_06___23_05_13,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,4 tasks per node
-2025_04_06___23_05_13,3,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,4 tasks per node
-2025_04_06___23_05_13,4,256,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,4 tasks per node
-2025_04_06___23_05_13,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,4 tasks per node
-2025_04_06___23_05_13,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,4 tasks per node
-2025_04_06___23_05_13,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,4 tasks per node
-2025_04_06___23_14_26,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,UCX_IB_SL=0 test
-2025_04_06___23_14_26,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,UCX_IB_SL=0 test
-2025_04_06___23_14_26,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,UCX_IB_SL=0 test
-2025_04_06___23_14_26,3,256,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,UCX_IB_SL=0 test
-2025_04_06___23_14_26,4,256,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,UCX_IB_SL=0 test
-2025_04_06___23_14_26,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,UCX_IB_SL=0 test
-2025_04_06___23_14_26,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,UCX_IB_SL=0 test
-2025_04_06___23_14_26,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,UCX_IB_SL=0 test
-2025_05_01___17_13_22,0,64,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_13_22,1,64,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_22,2,64,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_22,3,64,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_22,4,64,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_22,5,64,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_13_22,6,64,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_13_22,7,64,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_53,0,32,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_13_53,1,32,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_53,2,32,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_53,3,32,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_53,4,32,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_13_53,5,32,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_13_53,6,32,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_13_53,7,32,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_29,0,16,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_14_29,1,16,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_29,2,16,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_29,3,16,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_29,4,16,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_29,5,16,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_14_29,6,16,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_14_29,7,16,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_46,0,8,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_14_46,1,8,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_46,2,8,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_46,3,8,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_46,4,8,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_14_46,5,8,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_14_46,6,8,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_14_46,7,8,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_15_19,0,4,1,ALLREDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_15_19,1,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_15_19,2,4,1,ALLTOALL,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_15_19,3,4,1,BCAST,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_15_19,4,4,1,GATHER,OMPI,4.1.6,1.0.0,false,summarized,null,null
-2025_05_01___17_15_19,5,4,1,REDUCE,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_15_19,6,4,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,false,summarized,MPI_SUM,null
-2025_05_01___17_15_19,7,4,1,SCATTER,OMPI,4.1.6,1.0.0,false,summarized,null,null
+timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,libswing_version,gpu_awareness,gpu_lib,gpu_lib_version,output_level,MPI_Op,notes
+2025_03_12___12_18_24,0,8,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_12___12_18_24,1,8,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_12___12_18_24,2,8,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_12___12_18_24,3,8,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_13___15_38_05,0,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,yes,CUDA,12.1,summarized,null,null
+2025_03_13___15_47_02,0,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_19___20_05_06,0,32,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_19___20_04_47,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_19___21_30_29,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_19___21_30_29,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_19___21_30_29,2,128,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_19___21_30_29,3,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_20___12_52_50,0,4,4,ALLGATHER,OMPI,4.1.6,1.0.0,yes,CUDA,12.1,summarized,null,null
+2025_03_20___12_52_50,1,4,2,ALLGATHER,OMPI,4.1.6,1.0.0,yes,CUDA,12.1,summarized,null,null
+2025_03_20___12_52_50,2,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,yes,CUDA,12.1,summarized,null,null
+2025_03_20___12_52_50,3,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_22___10_48_09,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_22___10_48_09,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_22___10_48_09,2,256,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_22___10_48_09,3,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_28___16_48_20,0,2048,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_28___16_48_20,1,2048,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_28___17_14_41,0,2048,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,rail 4
+2025_03_28___17_14_41,1,2048,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,rail 4
+2025_03_28___17_42_08,0,1024,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_28___17_42_08,1,1024,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_03_28___18_19_43,0,512,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_03_28___18_19_43,1,512,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_01___18_15_01,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,New big test with all collectives
+2025_04_01___18_15_01,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,New big test with all collectives
+2025_04_01___18_15_01,2,128,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,New big test with all collectives
+2025_04_01___18_15_01,3,128,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,New big test with all collectives
+2025_04_01___18_15_01,4,128,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,New big test with all collectives
+2025_04_01___18_15_01,5,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,New big test with all collectives
+2025_04_01___18_15_01,6,128,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,New big test with all collectives
+2025_04_02___20_02_52,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_02___20_02_52,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_02___20_02_52,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_02___20_02_52,3,256,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_02___20_02_52,4,256,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_02___20_02_52,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_02___20_02_52,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_02___20_02_52,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_04___00_19_08,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,Improvements in most collectives
+2025_04_04___00_19_08,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,Improvements in most collectives
+2025_04_04___00_19_08,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,Improvements in most collectives
+2025_04_04___00_19_08,3,256,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,Improvements in most collectives
+2025_04_04___00_19_08,4,256,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,Improvements in most collectives
+2025_04_04___00_19_08,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,Improvements in most collectives
+2025_04_04___00_19_08,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,Improvements in most collectives
+2025_04_04___00_19_08,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,Improvements in most collectives
+2025_04_04___18_21_29,0,256,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,1200+ nodes are excluded
+2025_04_05___23_20_55,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_05___23_20_55,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_05___23_20_55,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_05___23_20_55,3,256,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_05___23_20_55,4,256,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_05___23_20_55,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_05___23_20_55,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_05___23_20_55,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_13_36,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,UCX_IB_SL=0 test
+2025_04_06___13_24_12,0,128,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_12,1,128,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_12,2,128,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_12,3,128,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_12,4,128,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_12,5,128,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_12,6,128,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_12,7,128,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_31,0,64,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_31,1,64,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_31,2,64,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_31,3,64,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_31,4,64,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_31,5,64,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_31,6,64,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_31,7,64,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_51,0,32,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_51,1,32,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_51,2,32,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_51,3,32,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_51,4,32,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_24_51,5,32,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_51,6,32,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_24_51,7,32,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_12,0,16,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_12,1,16,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_12,2,16,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_12,3,16,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_12,4,16,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_12,5,16,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_12,6,16,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_12,7,16,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_25,0,8,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_25,1,8,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_25,2,8,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_25,3,8,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_25,4,8,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_25,5,8,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_25,6,8,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_25,7,8,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_39,0,4,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_39,1,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_39,2,4,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_39,3,4,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_39,4,4,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_39,5,4,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_39,6,4,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_39,7,4,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_56,0,2,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_56,1,2,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_56,2,2,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_56,3,2,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_56,4,2,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___13_25_56,5,2,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_56,6,2,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_04_06___13_25_56,7,2,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_04_06___20_44_58,0,254,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,testing non po2 algos
+2025_04_06___20_44_58,1,254,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,testing non po2 algos
+2025_04_06___23_05_13,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,4 tasks per node
+2025_04_06___23_05_13,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,4 tasks per node
+2025_04_06___23_05_13,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,4 tasks per node
+2025_04_06___23_05_13,3,256,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,4 tasks per node
+2025_04_06___23_05_13,4,256,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,4 tasks per node
+2025_04_06___23_05_13,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,4 tasks per node
+2025_04_06___23_05_13,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,4 tasks per node
+2025_04_06___23_05_13,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,4 tasks per node
+2025_04_06___23_14_26,0,256,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,UCX_IB_SL=0 test
+2025_04_06___23_14_26,1,256,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,UCX_IB_SL=0 test
+2025_04_06___23_14_26,2,256,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,UCX_IB_SL=0 test
+2025_04_06___23_14_26,3,256,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,UCX_IB_SL=0 test
+2025_04_06___23_14_26,4,256,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,UCX_IB_SL=0 test
+2025_04_06___23_14_26,5,256,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,UCX_IB_SL=0 test
+2025_04_06___23_14_26,6,256,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,UCX_IB_SL=0 test
+2025_04_06___23_14_26,7,256,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,UCX_IB_SL=0 test
+2025_05_01___17_13_22,0,64,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_13_22,1,64,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_22,2,64,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_22,3,64,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_22,4,64,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_22,5,64,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_13_22,6,64,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_13_22,7,64,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_53,0,32,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_13_53,1,32,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_53,2,32,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_53,3,32,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_53,4,32,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_13_53,5,32,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_13_53,6,32,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_13_53,7,32,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_29,0,16,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_14_29,1,16,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_29,2,16,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_29,3,16,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_29,4,16,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_29,5,16,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_14_29,6,16,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_14_29,7,16,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_46,0,8,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_14_46,1,8,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_46,2,8,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_46,3,8,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_46,4,8,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_14_46,5,8,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_14_46,6,8,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_14_46,7,8,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_15_19,0,4,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_15_19,1,4,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_15_19,2,4,1,ALLTOALL,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_15_19,3,4,1,BCAST,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_15_19,4,4,1,GATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_05_01___17_15_19,5,4,1,REDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_15_19,6,4,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_05_01___17_15_19,7,4,1,SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null

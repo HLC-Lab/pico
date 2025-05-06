@@ -50,7 +50,7 @@
 extern size_t swing_allreduce_segsize;
 
 //-----------------------------------------------------------------------------------------------
-//                        ENUM FOR COLLECTIVE SELECTION
+//                        ENUM FOR TEST DESCRIPTION
 // ----------------------------------------------------------------------------------------------
 
 /**
@@ -70,6 +70,17 @@ typedef enum{
   SCATTER,
   COLL_UNKNOWN
 }coll_t;
+
+/**
+ * @enum output_level_t
+ *
+ * @brief Defines the output level of data saving for benchmark's results.
+ * */
+typedef enum{
+  ALL = 0,
+  STATISTICS,
+  SUMMARIZED
+}output_level_t;
 
 
 //-----------------------------------------------------------------------------------------------
@@ -108,25 +119,25 @@ typedef int (*reduce_scatter_func_ptr)(REDUCE_SCATTER_ARGS);
 typedef int (*scatter_func_ptr)(SCATTER_ARGS);
 
 static inline int allreduce_wrapper(ALLREDUCE_ARGS){
-    return MPI_Allreduce(sbuf, rbuf, (int)count, dtype, op, comm);
+  return MPI_Allreduce(sbuf, rbuf, (int)count, dtype, op, comm);
 }
 static inline int allgather_wrapper(ALLGATHER_ARGS){
-    return MPI_Allgather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
+  return MPI_Allgather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
 }
 static inline int alltoall_wrapper(ALLTOALL_ARGS){
-    return MPI_Alltoall(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
+  return MPI_Alltoall(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
 }
 static inline int bcast_wrapper(BCAST_ARGS){
-    return MPI_Bcast(buf, (int)count, dtype, root, comm);
+  return MPI_Bcast(buf, (int)count, dtype, root, comm);
 }
 static inline int gather_wrapper(GATHER_ARGS){
-    return MPI_Gather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, root, comm);
+  return MPI_Gather(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, root, comm);
 }
 static inline int reduce_wrapper(REDUCE_ARGS){
-    return MPI_Reduce(sbuf, rbuf, (int)count, dtype, op, root, comm);
+  return MPI_Reduce(sbuf, rbuf, (int)count, dtype, op, root, comm);
 }
 static inline int scatter_wrapper(SCATTER_ARGS){
-    return MPI_Scatter(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, root, comm);
+  return MPI_Scatter(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, root, comm);
 }
 
 
@@ -139,6 +150,7 @@ static inline int scatter_wrapper(SCATTER_ARGS){
  * @brief Structure to hold collective type and function pointers
  * for collective specific allocator, custom collective and 
  * ground truth functions pointers.
+ * It also holds the output level, the output folder path and the data folder path.
  *
  * @var collective Specifies the type of collective operation.
  * @var allocator Pointer to the memory allocator function.
@@ -146,8 +158,11 @@ static inline int scatter_wrapper(SCATTER_ARGS){
  */
 typedef struct {
   coll_t collective; /**< Specifies the type of collective operation. */
-
   allocator_func_ptr allocator; /**< Pointer to the memory allocator function. */
+#ifdef CUDA_AWARE
+  allocator_func_ptr allocator_cuda; /**< Pointer to the CUDA memory allocator function. */
+#endif // CUDA_AWARE
+  size_t segsize; /**< Size of the segment for segmented collectives. */
 
   /** Union of function pointers for custom collective functions. */
   union {
@@ -160,83 +175,41 @@ typedef struct {
     reduce_scatter_func_ptr reduce_scatter;
     scatter_func_ptr scatter;
   } function;
+
+  output_level_t output_level;    /**< Specifies the output level for data saving. */
+  char output_data_file[BENCH_MAX_PATH_LENGTH];   /**< Path to the output directory. */
+  char alloc_file[BENCH_MAX_PATH_LENGTH];         /**< Path to the data directory. */
 } test_routine_t;
 
 
 // ----------------------------------------------------------------------------------------------
-//                                MACRO FOR CUDA FUNCTION CALLS
+//                                CUDA FUNCTIONS
 // ----------------------------------------------------------------------------------------------
 
 #ifdef CUDA_AWARE
 
-#define BENCH_CUDA_CHECK(cmd) do {                      \
-  cudaError_t e = cmd;                                  \
-  if( e != cudaSuccess ) {                              \
+#define BENCH_CUDA_CHECK(cmd, err) do {                 \
+  err = cmd;                                            \
+  if( err != cudaSuccess ) {                            \
     fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n",  \
-        __FILE__,__LINE__,cudaGetErrorString(e));       \
-    exit(EXIT_FAILURE);                                 \
+        __FILE__, __LINE__, cudaGetErrorString(err));   \
+    return -1;                                          \
   }                                                     \
 } while(0)
 
-static inline int cuda_coll_memcpy(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
+int allreduce_allocator_cuda(ALLOCATOR_ARGS);
+int allgather_allocator_cuda(ALLOCATOR_ARGS);
+int alltoall_allocator_cuda(ALLOCATOR_ARGS);
+int bcast_allocator_cuda(ALLOCATOR_ARGS);
+int gather_allocator_cuda(ALLOCATOR_ARGS);
+int reduce_allocator_cuda(ALLOCATOR_ARGS);
+int reduce_scatter_allocator_cuda(ALLOCATOR_ARGS);
+int scatter_allocator_cuda(ALLOCATOR_ARGS);
 
-  int comm_sz;
-  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
+int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t type_size, coll_t coll) {
 
-  switch (coll) {
-    // case BCAST:
-    //   BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
-    //   break;
-    // case ALLREDUCE:
-    //   BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
-    //   break;
-    case ALLGATHER:
-      BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, (count  / comm_sz)* type_size, cudaMemcpyHostToDevice));
-      break;
-    // case REDUCE_SCATTER:
-    //   BENCH_CUDA_CHECK(cudaMemcpy(d_buf, buf, count * type_size, cudaMemcpyHostToDevice));
-    //   break;
-    default:
-      fprintf(stderr, "Error: Unsupported collective type. Aborting...");
-      return -1;
-  }
-
-  return 0;
-}
-
-
-
-static inline int cuda_coll_malloc(void** rbuf, void** sbuf, size_t count, size_t type_size, coll_t coll) {
-
-  int comm_sz;
-  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
-
-  switch (coll) {
-    // case BCAST:
-    //   BENCH_CUDA_CHECK(cudaMalloc(sbuf, count * type_size));
-    //   BENCH_CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
-    //   break;
-    // case ALLREDUCE:
-    //   BENCH_CUDA_CHECK(cudaMalloc(sbuf, count * type_size));
-    //   BENCH_CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
-    //   break;
-    case ALLGATHER:
-      BENCH_CUDA_CHECK(cudaMalloc(sbuf, (count/comm_sz) * type_size));
-      BENCH_CUDA_CHECK(cudaMalloc(rbuf, count * type_size));
-      break;
-    // case REDUCE_SCATTER:
-    //   BENCH_CUDA_CHECK(cudaMalloc(sbuf, count * type_size));
-    //   BENCH_CUDA_CHECK(cudaMalloc(rbuf, (count/comm_sz) * type_size));
-    //   break;
-    default:
-      fprintf(stderr, "Error: Unsupported collective type. Aborting...");
-      return -1;
-  }
-
-  return 0;
-}
-
-#endif // CUDA_AWARE
+#endif
 
 
 //-----------------------------------------------------------------------------------------------
@@ -383,6 +356,21 @@ int get_command_line_arguments(int argc, char** argv, size_t *array_count,
 
 
 /**
+ * @brief Retrieves the data saving options based on environment variables.
+ *
+ * This function reads the `OUTPUT_LEVEL` environment variable to determine
+ * the data saving options for the benchmark results as well as the
+ * `OUTPUT_DIR` and `DATA_DIR` environment variables to set the output
+ * directory and data directory respectively.
+ *
+ * @param test_routine Pointer to a `test_routine_t` structure to populate.
+ *
+ * @return `0` on success, `-1` on error.
+ */
+int get_data_saving_options(test_routine_t *test_routine, size_t count,
+                            const char *algorithm, const char *type_string);
+
+/**
  * @brief Retrieves the MPI datatype and size based on a string identifier utilizing `type_map`.
  *
  * @param type_string String representation of the data type.
@@ -405,8 +393,7 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
  * iterations will be saved. If `output_level` is set to "summarized", only the
  * highest timing value for each iteration will be saved.
  *
- * @param output_level The output level to save. Can be "all" or "summarized".
- * @param fullpath The full path to the output file.
+ * @param test_routine The test routine structure containing the output level and file path
  * @param highest An array containing the highest timing values for each iteration.
  * @param all_times A 2D array flattened into 1D containing timing values for all ranks 
  *                  across all iterations.
@@ -416,7 +403,7 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
  *
  * @note Time is saved in ns (i.e. 10^-9 s).
  */
-int write_output_to_file(const char *output_level, const char *filename, double *highest, double *all_times, int iter);
+int write_output_to_file(test_routine_t test_routine, double *highest, double *all_times, int iter);
 
 /**
  * @brief Checks if a file does not exists.
