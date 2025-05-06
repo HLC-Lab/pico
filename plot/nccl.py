@@ -79,14 +79,26 @@ def get_summaries_df(args):
             ],
             stdout=subprocess.DEVNULL)
 
-        s = pd.read_csv(summary + "/aggregated_results_summary.csv")        
-        # Filter by collective type
-        s = s[s["collective_type"].str.lower() == args.collective.lower()]      
-        # Drop the rows where buffer_size is equal to 4 (we do not have them for all results :( )  
-        s = s[s["buffer_size"] != 4]
-        s["Nodes"] = nodes
-        # Append s to df
-        df = pd.concat([df, s], ignore_index=True)
+        sum = pd.read_csv(summary + "/aggregated_results_summary.csv")        
+        # for all the algo, vector_size listed in sum
+        algos = sum["algo_name"].unique()
+        buffer_size = sum["array_dim"].unique()
+        for algo in algos:
+            for bsize in buffer_size:          
+                if bsize == "4":
+                    continue           
+                # 
+                try:
+                    s = pd.read_csv(summary + "/0/" + str(bsize) + "_" + str(algo) + ".csv", on_bad_lines='skip')
+                except pd.errors.EmptyDataError:
+                    continue
+                # Drop first 20% of lines
+                s = s.iloc[int(len(s)*0.2):]
+                s["Nodes"] = nodes
+                s["array_dim"] = bsize
+                s["algo_name"] = algo
+                # Append s to df
+                df = pd.concat([df, s], ignore_index=True)
     return df
 
 def algo_name_to_family(algo_name, system):
@@ -362,126 +374,58 @@ def main():
     #print(args)
 
     df = get_summaries_df(args)
-          
-    # Drop the columns I do not need
-    df = df[["buffer_size", "Nodes", "algo_name", "mean", "median", "percentile_90"]]
-
-    # If system name is "fugaku", drop all the algo_name starting with uppercase "RECDOUB"
-    if args.system == "fugaku":
-        df = df[~df["algo_name"].str.startswith("RECDOUB")]
 
     if args.exclude:
         df = df[~df["algo_name"].str.contains(args.exclude, case=False)]
-    
-    #df = df[~df["algo_name"].str.contains("default_mpich", case=False)]
-    
+        
+    # rename "highest" column to "mean"
+    df = df.rename(columns={"highest": "mean"})
+    df["buffer_size"] = df["array_dim"].astype(int)*4
     # Compute the bandwidth for each metric
     for m in metrics:
         if m == args.metric:
             df["bandwidth_" + m] = ((df["buffer_size"]*8.0)/(1000.0*1000*1000)) / (df[m].astype(float) / (1000.0*1000*1000))
     
-    # drop all the metrics
-    for m in metrics:
-        df = df.drop(columns=[m])
-
     # print full df, no limts on cols or rows
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
     pd.set_option('display.width', None)
 
-    df = algo_to_family(df, args)
-    df = augment_df(df,args.metric)
-    #print(df)
 
-    # We need to separate numerical and string cells
-    # Step 1: Create the 'numeric' version of the DataFrame, where strings are NaN
-    df_numeric = df.copy()
-    df_numeric['cell'] = pd.to_numeric(df['cell'], errors='coerce')
 
-    # Step 2: Pivot the numeric data for heatmap plotting
-    heatmap_data_numeric = df_numeric.pivot(index='buffer_size', columns='Nodes', values='cell')
-    heatmap_data_numeric = heatmap_data_numeric[args.nnodes.split(",")]    
 
-    # Step 3: Pivot the original data for string annotation
-    heatmap_data_string = df.pivot(index='buffer_size', columns='Nodes', values='cell')
-    heatmap_data_string = heatmap_data_string[args.nnodes.split(",")]
+    #df = algo_to_family(df, args)
+    # Filter df by only keeping data on 64 nodes
+    df = df[df["Nodes"] == "64"]
 
-    # Set up the figure and axes
-    plt.figure()
 
-    # Create a matrix of colors for the heatmap cells based on the content of the dataframe
-    # Create an empty matrix of the same shape as df for background colors
-    cell_colors = np.full(heatmap_data_string.shape, 'white', dtype=object)  # Default white for numbers
+    # Step 1: Compute the normalization baseline (only for allreduce_nccl_tree)
+    tree_baseline = (
+        df[df['algo_name'] == 'allreduce_nccl_tree']
+        .groupby(['Nodes', 'array_dim'])['bandwidth_mean']
+        .mean()
+        .rename("tree_mean_bw")
+    )
 
-    # Create the heatmap with numerical values for color
-    red_green = LinearSegmentedColormap.from_list("RedGreen", ["darkred", "white", "darkgreen"])
-    ax = sns.heatmap(heatmap_data_numeric, 
-                    annot=True, 
-                    cmap=red_green, 
-                    fmt=fmt,
-                    center=1, 
-                    cbar=True, 
-                    #square=True,
-                    annot_kws={'size': big_font_size, 'weight': 'bold'},
-                    cbar_kws={"orientation": "horizontal", "location" : "top", "aspect": 40},
-                    )
+    # Step 2: Join the baseline to the original DataFrame
+    df = df.join(tree_baseline, on=['Nodes', 'array_dim'])
 
-    # Get the colorbar and set the font size
-    cbar = ax.collections[0].colorbar
-    cbar.ax.tick_params(labelsize=small_font_size)  # Adjust font size of ticks
+    # Step 3: Normalize
+    df['normalized_bandwidth'] = df['bandwidth_mean'] / df['tree_mean_bw']
 
-    ###############
-    # SET STRINGS #
-    ###############
-    for i in range(heatmap_data_string.shape[0]):
-        for j in range(heatmap_data_string.shape[1]):
-            val = heatmap_data_string.iloc[i, j]
-            # Check if the value is a string
-            if isinstance(val, str):
-                val, col = family_name_to_letter_color(val)
-                plt.text(j + 0.5, i + 0.5, val, ha='center', va='center', color=col, weight='bold', fontsize=big_font_size)
-            # Check if the value is NaN (not a number)
-            elif pd.isna(val):
-                plt.text(j + 0.5, i + 0.5, "N/A", ha='center', va='center', color='black', weight='bold', fontsize=big_font_size)
-    
-    ################
-    # SET BG COLOR #
-    ################
-    # Loop over each cell and change the background color
-    for i in range(heatmap_data_string.shape[0]):
-        for j in range(heatmap_data_string.shape[1]):
-            if isinstance(heatmap_data_string.iloc[i, j], str):
-                ax.add_patch(plt.Rectangle((j, i), 1, 1, color='#f0f0f0', lw=0, zorder=-1))    
+    # For each message size, find the average of "allreduce_nccl_tree"
 
-    # For each ror use the corresponding buffer_size_hr rather than buffer_size as labels
-    # Get all the row names, sort them (numerically), and the apply to each of them the human_readable_size function
-    # to get the human-readable size
-    # Then set the x-ticks labels to these human-readable sizes
-    # Get heatmap_data.rows and convert to a list of int
-    buffer_sizes = heatmap_data_string.index.astype(int).tolist()
-    buffer_sizes.sort()
-    buffer_sizes = [human_readable_size(int(x)) for x in buffer_sizes]
-    # Use buffer_sizes as labels
-    plt.yticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes)
+    #sns.pointplot(data=df, x="buffer_size", y="normalized_bandwidth", hue="algo_name", palette=sota_palette, dodge=True, linewidth=1)
+    sns.pointplot(data=df, x="buffer_size", y="bandwidth_mean", hue="algo_name", palette=sota_palette, dodge=True, linewidth=1)
+    #sns.boxplot(data=df, x="buffer_size", y="normalized_bandwidth", hue="algo_name", palette=sota_palette, dodge=True, linewidth=0.5, showfliers=False)
 
-    plt.xlabel("# Nodes", fontsize=big_font_size)
-    plt.ylabel("Vector Size", fontsize=big_font_size)
-    plt.xticks(fontsize=small_font_size)
-    plt.yticks(fontsize=small_font_size)
-    # Do not rotate xticklabels
-    plt.xticks(rotation=0)   
 
     # Make dir if it does not exist
-    outdir = "plot/" + args.system + "_hm/" + args.collective + "/"
+    outdir = "plot/" + args.system + "_nccl/" + args.collective + "/"
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    # in outfile name we should save all the infos in args
-    # Convert args to a string with param name and param value
-    args_str = "_".join([f"{k}_{v}" for k, v in vars(args).items() \
-                        if k != "nnodes" and k != "system" and k != "collective" and (k != "notes" or v != None) and (k != "exclude" or v != None)])
-    args_str = args_str.replace("|", "_")
-    outfile = outdir + "/" + args_str + ".pdf"
+    outfile = outdir + "/box.pdf"
     # Save as PDF
     plt.savefig(outfile, bbox_inches="tight")
 

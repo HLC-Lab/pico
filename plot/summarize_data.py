@@ -23,15 +23,20 @@ def process_benchmark_file(file_path, warmup_ratio=0.2):
     Read a benchmark CSV file, discard the warmup iterations,
     extract the 'highest' column, and compute summary statistics.
     """
-    # print(f"Processing file: {file_path}")
-    df = pd.read_csv(file_path)
+    #print(f"Processing file: {file_path}")
+    try:
+        df = pd.read_csv(file_path, on_bad_lines="skip")
+    except pd.errors.EmptyDataError:
+        print(f"Empty data error for file: {file_path}", file=sys.stderr)
+        return None
+
 
     if "fugaku" in file_path:
         # Discard last line
         df = df.iloc[:-1]
         # Warmup already done before printing data
         warmup_ratio = 0.0
-    
+        
     warmup_count = int(len(df) * warmup_ratio)
     df = df.iloc[warmup_count:]
 
@@ -93,6 +98,28 @@ def parse_filename(filename):
     Expected format: <array_dim>_<algo_name>_<dtype>.csv
     Example: 512_swing_static_over_int32.csv
     """
+    # Dirty, but do not want to waste time on regex
+    # Mannaggia a Lorenzo che non ha messo il datatype nel filename
+    filename = filename.split(".")[0]  # Remove the .csv extension
+    fields = filename.split("_")
+    array_dim = int(fields[0])
+    if fields[-1] != "int32":
+        dtype = "int32"
+        algo_name = "_".join(fields[1:])
+    else:
+        dtype = fields[-1]
+        algo_name = "_".join(fields[1:-1])
+
+    dtype_size = DTYPE_TO_BYTES.get(dtype, 4)  # Default to 4 bytes if unknown
+    buffer_size = array_dim * dtype_size
+    return {
+        'array_dim': array_dim,
+        'algo_name': algo_name,
+        'dtype': dtype,
+        'buffer_size': buffer_size
+    }
+
+    """
     pattern = r"(?P<array_dim>\d+)_(?P<algo_name>.+)_(?P<dtype>[^_]+)\.csv"
     match = re.match(pattern, filename)
     if match:
@@ -105,7 +132,6 @@ def parse_filename(filename):
         except (ValueError, KeyError) as e:
             print(f"Error processing filename {filename}: {str(e)}", file=sys.stderr)
             buffer_size = None
-        
         return {
             'array_dim': array_dim,
             'algo_name': params['algo_name'],
@@ -114,7 +140,7 @@ def parse_filename(filename):
         }
     else:
         return {'array_dim': None, 'algo_name': None, 'dtype': None, 'buffer_size': None}
-
+    """
 
 def aggregate_results(results_dir: os.PathLike, metadata: pd.DataFrame, target_timestamp: str, system_name: str) -> pd.DataFrame:
     """
@@ -133,6 +159,8 @@ def aggregate_results(results_dir: os.PathLike, metadata: pd.DataFrame, target_t
             if file.endswith(".csv"):
                 filepath = os.path.join(test_dir, file)
                 stats = process_benchmark_file(filepath)
+                if stats is None:
+                    continue
                 file_params = parse_filename(file)
 
                 result = {

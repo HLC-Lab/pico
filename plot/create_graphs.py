@@ -90,6 +90,7 @@ def normalize_dataset(data: pd.DataFrame, mpi_lib : str, base : str | None = Non
             base = 'default_ompi'
         elif mpi_lib in ['MPICH', 'CRAY_MPICH']:
             base = 'default_mpich'
+        base = 'allreduce_nccl_pat'
 
     grouped_data = data.groupby('buffer_size')
 
