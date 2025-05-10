@@ -4,12 +4,11 @@
   "MPI_Op": "MPI_SUM",
   "tags": {
     "include": [
-      "internal",
-      "external"
+      "rabenseifner"
     ],
     "exclude": [
+      "external",
       "smp",
-      "can_crash",
       "suboptimal"
     ]
   },
