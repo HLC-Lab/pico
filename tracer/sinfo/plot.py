@@ -19,11 +19,14 @@ small_font_size = 15
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Plot sinfo summary')
 parser.add_argument('--min_ranks', type=int, help='Minimum number of ranks to consider')
+parser.add_argument('--collective', type=str, help='Collective to consider', default="allreduce")
+parser.add_argument('--algo_baseline', type=str, help='Baseline algorithm to consider', default="rabenseifner")
+parser.add_argument('--algo_bine', type=str, help='Bine algorithm to consider', default="swing_bandwidth")
 args = parser.parse_args()
 
-df_leo = pd.read_csv('sinfo_summary_leonardo.csv')
+df_leo = pd.read_csv('leonardo_' + args.collective + '_' + args.algo_baseline + '_vs_' + args.algo_bine + '.csv')
 df_leo["System"] = "Leonardo"
-df_lumi = pd.read_csv('sinfo_summary_lumi.csv')
+df_lumi = pd.read_csv('lumi_' + args.collective + '_' + args.algo_baseline + '_vs_' + args.algo_bine + '.csv')
 df_lumi["System"] = "LUMI"
 df = pd.concat([df_leo, df_lumi], ignore_index=True)
 
@@ -54,7 +57,7 @@ plt.ylabel("")
 plt.xlabel("Global Links Traffic Reduction (%)")
 
 # Save as PDF
-plt.savefig("sinfo_summary_min_" + str(args.min_ranks) + ".pdf", bbox_inches="tight")
+plt.savefig("box_min_" + str(args.min_ranks) + "_" + args.collective + "_" + args.algo_baseline + "_vs_" + args.algo_bine + ".pdf", bbox_inches="tight")
 
 ###############
 # Scatterplot #
@@ -67,4 +70,4 @@ plt.figure()
 sns.scatterplot(data=df, x='Nodes', y='Reduction', hue="System", style="System", markers=["o", "s"], s=100)
 # x logscale
 plt.xscale("log")
-plt.savefig("sinfo_summary_scatter_min_" + str(args.min_ranks) + ".pdf", bbox_inches="tight")
+plt.savefig("scatter_min_" + str(args.min_ranks) + "_" + args.collective + "_" + args.algo_baseline + "_vs_" + args.algo_bine + ".pdf", bbox_inches="tight")

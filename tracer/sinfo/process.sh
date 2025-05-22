@@ -5,13 +5,13 @@ ALGO_BINE="swing_bandwidth"
 
 for system in "leonardo" "lumi"
 do
-    echo "Nodes,Reduction" > sinfo_summary_${system}.csv
+    echo "Nodes,Reduction" > ${system}_${COLLECTIVE}_${ALGO_BINOMIAL}_vs_${ALGO_BINE}.csv
     total_reduction=0
     count=0
-    for f in $(ls sinfo_${system})
+    for f in $(ls ${system})
     do
         #echo $f
-        fname="./sinfo_${system}/$f"
+        fname="./${system}/$f"
         total_lines=$(wc -l < "$fname")
 
         if [ "$total_lines" -lt 2 ]; then
@@ -34,7 +34,7 @@ do
             REDUCTION=$(echo "scale=2; ( $BINOMIAL_BYTES - $BINE_BYTES ) * 100.0 / $BINOMIAL_BYTES" | bc)
             total_reduction=$(echo "$total_reduction + $REDUCTION" | bc)
             count=$((count + 1))
-            echo "$lines_to_keep,$REDUCTION" >> sinfo_summary_${system}.csv
+            echo "$lines_to_keep,$REDUCTION" >> ${system}_${COLLECTIVE}_${ALGO_BINOMIAL}_vs_${ALGO_BINE}.csv
             rm out.csv            
         fi
         rm tmp.csv
