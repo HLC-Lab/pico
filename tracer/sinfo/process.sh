@@ -5,7 +5,7 @@ ALGO_BINE="swing_bandwidth"
 
 for system in "leonardo" "lumi"
 do
-    echo "Nodes,Reduction" > ${system}_${COLLECTIVE}_${ALGO_BINOMIAL}_vs_${ALGO_BINE}.csv
+    echo "Nodes,Groups,Reduction" > ${system}_${COLLECTIVE}_${ALGO_BINOMIAL}_vs_${ALGO_BINE}.csv
     total_reduction=0
     count=0
     for f in $(ls ${system})
@@ -25,7 +25,8 @@ do
         echo "MPI_Rank,allocation" > tmp.csv
         awk -v max="$lines_to_keep" 'NR <= max {print NR "," $0}' "$fname" >> tmp.csv
 
-        python3 trace_communications.py --location ${system} --alloc tmp.csv --comm algo_patterns.json --map maps/${system}.txt --save --out out.csv --hostname_only &>/dev/null
+        OUT=$(python3 ../trace_communications.py --location ${system} --alloc tmp.csv --comm ../algo_patterns.json --map ../maps/${system}.txt --save --out out.csv --hostname_only)
+        NUM_GROUPS=$(echo "$OUT" | grep "Num Cells" | cut -d ':' -f 2 | cut -d ' ' -f 2)
         
         if [ -f "out.csv" ]; then
             BINE_BYTES=$(cat out.csv | grep ${COLLECTIVE} | grep ${ALGO_BINE} | cut -d ',' -f4)
@@ -34,7 +35,7 @@ do
             REDUCTION=$(echo "scale=2; ( $BINOMIAL_BYTES - $BINE_BYTES ) * 100.0 / $BINOMIAL_BYTES" | bc)
             total_reduction=$(echo "$total_reduction + $REDUCTION" | bc)
             count=$((count + 1))
-            echo "$lines_to_keep,$REDUCTION" >> ${system}_${COLLECTIVE}_${ALGO_BINOMIAL}_vs_${ALGO_BINE}.csv
+            echo "$lines_to_keep,$NUM_GROUPS,$REDUCTION" >> ${system}_${COLLECTIVE}_${ALGO_BINOMIAL}_vs_${ALGO_BINE}.csv
             rm out.csv            
         fi
         rm tmp.csv

@@ -62,12 +62,14 @@ plt.savefig("box_min_" + str(args.min_ranks) + "_" + args.collective + "_" + arg
 ###############
 # Scatterplot #
 ###############
-# Randomze df rows order
-df = df.sample(frac=1).reset_index(drop=True)
-rcParams['figure.figsize'] = 13,13
-plt.clf()
-plt.figure()
-sns.scatterplot(data=df, x='Nodes', y='Reduction', hue="System", style="System", markers=["o", "s"], s=100)
-# x logscale
-plt.xscale("log")
-plt.savefig("scatter_min_" + str(args.min_ranks) + "_" + args.collective + "_" + args.algo_baseline + "_vs_" + args.algo_bine + ".pdf", bbox_inches="tight")
+for system in ["Leonardo", "LUMI"]:
+    # Randomze df rows order
+    newdf = df.sample(frac=1).reset_index(drop=True)
+    newdf = newdf[newdf["System"] == system]
+    rcParams['figure.figsize'] = 13,13
+    plt.clf()
+    plt.figure()
+    sns.scatterplot(data=newdf, x='Nodes', y='Reduction', hue="System", style="System", size="Groups", markers=["o", "s"], s=100)
+    # x logscale
+    plt.xscale("log")
+    plt.savefig("scatter_" + system + "_min_" + str(args.min_ranks) + "_" + args.collective + "_" + args.algo_baseline + "_vs_" + args.algo_bine + ".pdf", bbox_inches="tight")
