@@ -9,7 +9,7 @@ The mapping between nodes and switches is not completely trivial and different f
 The smallest entity that can easily be selected on LUMI is not a switch but a group in the dragonfly topology. The scheduler does define a feature for that for each of the nodes in LUMI-C and LUMI-G.
 
 # Xgroup, switches and IDS
-There are  256 CPU nodes or 128 GPU nodes per cabinet (network group).
+There are 256 CPU nodes or 128 GPU nodes per cabinet (network group).
 
 Detailed info will be found in the file `/etc/cray/xname`, that contains a code formatted as such:
 

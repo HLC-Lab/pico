@@ -8,10 +8,14 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import rcParams
 import matplotlib
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy.stats import gmean
+
 
 matplotlib.rc('pdf', fonttype=42) # To avoid issues with camera-ready submission
-rcParams['figure.figsize'] = 24,6.75
-#rcParams['figure.figsize'] = 6.75,6.75
+#rcParams['figure.figsize'] = 12,6.75
+#rcParams['figure.figsize'] = 6.75,3.375
+rcParams['figure.figsize'] = 3.375,3.375
+sns.set_style("whitegrid")
 big_font_size = 18
 small_font_size = 15
 fmt=".2f"
@@ -29,45 +33,47 @@ def human_readable_size(num_bytes):
         num_bytes /= 1024
     return f"{int(num_bytes)} PiB"
 
-def get_summaries(args):
+def get_summaries(args, coll):
     # Read metadata file
     metadata_file = f"results/" + args.system + "_metadata.csv"
     if not os.path.exists(metadata_file):
         print(f"Metadata file {metadata_file} not found. Exiting.", file=sys.stderr)
         sys.exit(1)
     metadata = pd.read_csv(metadata_file)
+    nnodes = [n for n in str(args.nnodes).split(",")]
     summaries = {} # Contain the folder for each node count
     # Search all the entries we might need
-    i = 0
-    for tpn in args.tasks_per_node.split(","):
-        collective = "allreduce" # any would work
-        filtered_metadata = metadata[(metadata["collective_type"].str.lower() == collective) & \
-                                    (metadata["nnodes"].astype(str) == str(args.nnodes)) & \
-                                    (metadata["tasks_per_node"].astype(int) == int(tpn))]    
+    for nodes in nnodes:
+        if "tasks_per_node" in metadata.columns:
+            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == coll) & \
+                                        (metadata["nnodes"].astype(str) == str(nodes)) & \
+                                        (metadata["tasks_per_node"].astype(int) == args.tasks_per_node)]
+        else:
+            filtered_metadata = metadata[(metadata["collective_type"].str.lower() == coll) & \
+                                        (metadata["nnodes"].astype(str) == str(nodes))]            
         if args.notes:
-            tmp_notes = args.notes.split(",")[i].strip()
-            if tmp_notes != "null":
-                filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == tmp_notes)]
+            filtered_metadata = filtered_metadata[(filtered_metadata["notes"].str.strip() == args.notes.strip())]
         else:
             # Keep only those without notes
             filtered_metadata = filtered_metadata[filtered_metadata["notes"].isnull()]
-        
+            
         if filtered_metadata.empty:
-            print(f"Metadata file {metadata_file} does not contain the requested data. Exiting.", file=sys.stderr)
-            sys.exit(1)
+            print(f"Metadata file {metadata_file} does not contain the requested data nodes {nodes} coll {coll}. Exiting.", file=sys.stderr)
+            continue
+            #sys.exit(1)
     
         # Among the remaining ones, keep only tha last one
         filtered_metadata = filtered_metadata.iloc[-1]
         #summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/" + str(filtered_metadata["test_id"]) + "/aggregated_result_summary.csv"
-        summaries[collective + "_" + tpn] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/"
-        i += 1
+        summaries[nodes] = "results/" + args.system + "/" + filtered_metadata["timestamp"] + "/"
     return summaries
 
-def get_summaries_df(args):
-    summaries = get_summaries(args)
+
+def get_summaries_df(args, coll):
+    summaries = get_summaries(args, coll)
     df = pd.DataFrame()
     # Loop over the summaries
-    for ctpn, summary in summaries.items():
+    for nodes, summary in summaries.items():
         # Create the summary, by calling the summarize_data.py script
         # Check if the summary already exists
         if not os.path.exists(summary + "/aggregated_results_summary.csv") or True:        
@@ -78,14 +84,15 @@ def get_summaries_df(args):
                 summary
             ],
             stdout=subprocess.DEVNULL)
-        
+
+        # Read the data
         s = pd.read_csv(summary + "/aggregated_results_summary.csv")        
-        # Filter by node count
-        s = s[s["nnodes"].astype(str) == str(args.nnodes)]
+        # Filter by collective type
+        s = s[s["collective_type"].str.lower() == coll]      
         # Drop the rows where buffer_size is equal to 4 (we do not have them for all results :( )  
         s = s[s["buffer_size"] != 4]
-        s["Collective"] = ctpn.split("_")[0]
-        s["Tasks per Node"] = ctpn.split("_")[1]
+        s["Nodes"] = nodes
+
         # Append s to df
         df = pd.concat([df, s], ignore_index=True)
     return df
@@ -183,6 +190,8 @@ def algo_name_to_family(algo_name, system):
             return "Binomial"
         elif "sparbit" in algo_name.lower():
             return "Binomial"
+        elif "allgather_reduce" in algo_name.lower():
+            return "Allgather Reduce"
     elif system == "lumi":
         if "binomial_mpich" in algo_name.lower():
             return "Binomial"
@@ -226,30 +235,32 @@ def algo_name_to_family(algo_name, system):
     
 
 def augment_df(df, metric):
+    reference = "Bine"
     # Step 1: Create an empty list to hold the new rows
     new_data = []
 
     # For each (buffer_size, nodes) group the data so that for eacha algo_family we only keep the entry with the highest bandwidth_mean
-    df = df.loc[df.groupby(['buffer_size', 'collective_type', 'tasks_per_node', 'algo_family'])['bandwidth_' + metric].idxmax()]
-
-    # Step 2: Group by 'buffer_size' and 'collective_type'
-    for (buffer_size, collective_type, tasks_per_node), group in df.groupby(['buffer_size', 'collective_type', 'tasks_per_node']):
+    df = df.loc[df.groupby(['buffer_size', 'Nodes', 'algo_family'])['bandwidth_' + metric].idxmax()]
+    total_cases = 0
+    win_cases = 0
+    # Step 2: Group by 'buffer_size' and 'Nodes'
+    for (buffer_size, nodes), group in df.groupby(['buffer_size', 'Nodes']):        
         # Step 3: Get the best algorithm
         best_algo_row = group.loc[group['bandwidth_' + metric].idxmax()]
         best_algo = best_algo_row['algo_family']
-        
+        total_cases += 1
         # Step 4: Get the second best algorithm (excluding the best one)
         tmp = group[group['algo_family'] != best_algo]['bandwidth_' + metric]
         if tmp.empty:
-            print(f"Warning: No second best algorithm found for buffer_size {buffer_size} and nodes {collective_type}. Skipping.", file=sys.stderr)
+            print(f"Warning: No second best algorithm found for buffer_size {buffer_size} and nodes {nodes}. Skipping.", file=sys.stderr)
             continue
         second_best_algo_row = group.loc[tmp.idxmax()]
         second_best_algo = second_best_algo_row['algo_family']
 
         # Get Bine bandwidth_mean for this group
-        bine_row = group.loc[group['algo_family'] == "Bine"]
+        bine_row = group.loc[group['algo_family'] == reference]
         if bine_row.empty:
-            print(f"Warning: No Bine algorithm found for buffer_size {buffer_size} and nodes {collective_type}. Skipping.", file=sys.stderr)
+            print(f"Warning: No Bine algorithm found for buffer_size {buffer_size} and nodes {nodes}. Skipping.", file=sys.stderr)
             continue
         
         bine_bandwidth_mean = bine_row['bandwidth_' + metric].values[0]
@@ -261,26 +272,27 @@ def augment_df(df, metric):
         # Truncate to 1 decimal place
         ratio = round(ratio, 1)
         
-        if best_algo == "Bine":
+        if best_algo == reference:
             cell = best_algo_row['bandwidth_' + metric] / second_best_algo_row['bandwidth_' + metric]  
+            win_cases += 1
         elif ratio >= 1.0:
-            cell = ratio         
+            cell = ratio  
+            win_cases += 1       
         else:
-            #print(f"Losign on {buffer_size},{nodes} vs {best_algo} by {bine_bandwidth_mean / best_algo_row['bandwidth_' + metric]} ({bine_bandwidth_mean} vs {best_algo_row['bandwidth_' + metric]})")
-            cell = best_algo
-        
+            continue
+
+
         # Step 6: Append the data for this group (including old columns)
         new_data.append({
             'buffer_size': buffer_size,
-            'Tasks per Node': tasks_per_node,
-            'Collective': collective_type,
+            'Nodes': nodes,
             #'algo_family': best_algo,
             #'bandwidth_' + metric: best_algo_row['bandwidth_' + metric],
             'cell': cell,
         })
 
     # Step 7: Create a new DataFrame
-    return pd.DataFrame(new_data)
+    return (pd.DataFrame(new_data), (win_cases / float(total_cases)) * 100.0)
 
 def algo_to_family(df, args):
     # Convert algo_name to algo_family
@@ -332,32 +344,11 @@ def family_name_to_letter_color(family_name):
         # error
         raise ValueError(f"Unknown algorithm family {family_name}")
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate graphs")
-    parser.add_argument("--system", type=str, help="System name")
-    parser.add_argument("--nnodes", type=str, help="Number of nodes")
-    parser.add_argument("--tasks_per_node", type=str, help="Tasks per node")
-    parser.add_argument("--notes", type=str, help="Notes")   
-    parser.add_argument("--exclude", type=str, help="Algos to exclude", default=None)   
-    parser.add_argument("--metric", type=str, help="Metric to consider [mean|median|percentile_90]", default="mean")   
-    parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
-    parser.add_argument("--y_no", help="Does not show ticks and labels on y-axis", action="store_true")
-    args = parser.parse_args()
-
-    #print("Called with args:")
-    #print(args)
-
-    df = get_summaries_df(args)
-
-    # Drop some collectives (check exact match)
-    collectives_to_drop = ["alltoall", "bcast", "scatter"]
-    for collective in collectives_to_drop:
-        df = df[~df["collective_type"].str.lower().str.startswith(collective)]
-    
+def get_data_coll(args, coll):
+    df = get_summaries_df(args, coll)
           
-
     # Drop the columns I do not need
-    df = df[["buffer_size", "nnodes", "collective_type", "tasks_per_node", "algo_name", "mean", "median", "percentile_90"]]
+    df = df[["buffer_size", "Nodes", "algo_name", "mean", "median", "percentile_90"]]
 
     # If system name is "fugaku", drop all the algo_name starting with uppercase "RECDOUB"
     if args.system == "fugaku":
@@ -376,131 +367,76 @@ def main():
     # drop all the metrics
     for m in metrics:
         df = df.drop(columns=[m])
-
     # print full df, no limts on cols or rows
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
     pd.set_option('display.width', None)
 
     df = algo_to_family(df, args)
-    df = augment_df(df,args.metric)
-    #print(df)
+    return augment_df(df, args.metric)
 
-    # We need to separate numerical and string cells
-    # Step 1: Create the 'numeric' version of the DataFrame, where strings are NaN
-    df_numeric = df.copy()
-    df_numeric['cell'] = pd.to_numeric(df['cell'], errors='coerce')
+def main():
+    parser = argparse.ArgumentParser(description="Generate graphs")
+    parser.add_argument("--system", type=str, help="System name")
+    parser.add_argument("--nnodes", type=str, help="Number of nodes (comma separated)")
+    parser.add_argument("--tasks_per_node", type=int, help="Tasks per node", default=1)
+    parser.add_argument("--notes", type=str, help="Notes")   
+    parser.add_argument("--exclude", type=str, help="Algos to exclude", default=None)   
+    parser.add_argument("--metric", type=str, help="Metric to consider [mean|median|percentile_90]", default="mean")   
+    parser.add_argument("--base", type=str, help="Compare against [all|binomial]", default="all")
+    parser.add_argument("--y_no", help="Does not show ticks and labels on y-axis", action="store_true")
+    parser.add_argument("--bvb", help="Compare Bine only with Binomial", action="store_true")
+    args = parser.parse_args()
 
-    # Step 2: Pivot the numeric data for heatmap plotting
-    heatmap_data_numeric = df_numeric.pivot(index='buffer_size', columns=['Collective', 'Tasks per Node'], values='cell')
-    #heatmap_data_numeric = heatmap_data_numeric[["ALLREDUCE-1", "ALLREDUCE-4", "ALLGATHER-1", "ALLGATHER-4", "REDUCE_SCATTER-1", "REDUCE_SCATTER-4", "ALLTOALL-1", "ALLTOALL-4", "REDUCE-1", "REDUCE-4", "BCAST-1", "BCAST-4", "SCATTER-1", "SCATTER-4", "GATHER-1", "GATHER-4"]]
-    heatmap_data_numeric = heatmap_data_numeric[sorted(heatmap_data_numeric.columns)]
+    #print("Called with args:")
+    #print(args)
+    df = pd.DataFrame()
+    for coll in ["allreduce", "allgather", "reduce_scatter", "alltoall", "bcast", "reduce", "gather", "scatter"]:
+        df_coll, wins = get_data_coll(args, coll)
+        if coll.lower() == "reduce_scatter":
+            coll = "Red.-Scat."
 
-    # Step 3: Pivot the original data for string annotation
-    heatmap_data_string = df.pivot(index='buffer_size', columns=['Collective', 'Tasks per Node'], values='cell')
-    #heatmap_data_string = heatmap_data_string[["ALLREDUCE-1", "ALLREDUCE-4", "ALLGATHER-1", "ALLGATHER-4", "REDUCE_SCATTER-1", "REDUCE_SCATTER-4", "ALLTOALL-1", "ALLTOALL-4", "REDUCE-1", "REDUCE-4", "BCAST-1", "BCAST-4", "SCATTER-1", "SCATTER-4", "GATHER-1", "GATHER-4"]]
-    heatmap_data_string = heatmap_data_string[sorted(heatmap_data_string.columns)]
+        # If empty, continue
+        if df_coll.empty:
+            print(f"Warning: Bine never wins on {coll}. Skipping.", file=sys.stderr)
+            continue
+        # append wins with no decimals
+        df_coll["Collective"] = coll.capitalize() + "\n(" + str(int(wins)) + "%)"
+        # Drop buffer_size and Nodes columns        
+        df_coll = df_coll.drop(columns=["buffer_size", "Nodes"])
+        # Rename cell to Improvement
+        df_coll = df_coll.rename(columns={"cell": "Improvement (%)"})
+        # For improvement, do (1-improvement)*100
+        df_coll["Improvement (%)"] = (df_coll["Improvement (%)"] - 1) * 100.0
+        df = pd.concat([df, df_coll], ignore_index=True)
 
-    # Set up the figure and axes
+
+    # Custom mean marker style
+    mean_props = {
+        "marker": "o",
+        "markerfacecolor": "black",  # Fill color
+        "markeredgecolor": "black",  # Border color
+        "markersize": 8
+    }
+
+    # Make a boxplot, using "Collective" as x-axis and "Improvement" as y-axis
+    # Set the figure size
     plt.figure()
-
-    # Create a matrix of colors for the heatmap cells based on the content of the dataframe
-    # Create an empty matrix of the same shape as df for background colors
-    cell_colors = np.full(heatmap_data_string.shape, 'white', dtype=object)  # Default white for numbers
-
-    # Create the heatmap with numerical values for color
-    red_green = LinearSegmentedColormap.from_list("RedGreen", ["darkred", "white", "darkgreen"])
-    ax = sns.heatmap(heatmap_data_numeric, 
-                    annot=True, 
-                    cmap=red_green, 
-                    fmt=fmt,
-                    center=1, 
-                    cbar=True, 
-                    #square=True,
-                    annot_kws={'size': big_font_size, 'weight': 'bold'},
-                    cbar_kws={"orientation": "horizontal", "location" : "top", "aspect": 40},
-                    )
-    
-    for i in range(heatmap_data_numeric.shape[1] + 1):
-        if i % 2 == 0:
-            ax.axvline(i, color='white', lw=20)
-
-
-    # Get the colorbar and set the font size
-    cbar = ax.collections[0].colorbar
-    cbar.ax.tick_params(labelsize=small_font_size)  # Adjust font size of ticks
-
-    ###############
-    # SET STRINGS #
-    ###############
-    for i in range(heatmap_data_string.shape[0]):
-        for j in range(heatmap_data_string.shape[1]):
-            val = heatmap_data_string.iloc[i, j]
-            # Check if the value is a string
-            if isinstance(val, str):
-                val, col = family_name_to_letter_color(val)
-                plt.text(j + 0.5, i + 0.5, val, ha='center', va='center', color=col, weight='bold', fontsize=big_font_size)
-            # Check if the value is NaN (not a number)
-            elif pd.isna(val):
-                plt.text(j + 0.5, i + 0.5, "N/A", ha='center', va='center', color='black', weight='bold', fontsize=big_font_size)
-    
-    ################
-    # SET BG COLOR #
-    ################
-    # Loop over each cell and change the background color
-    for i in range(heatmap_data_string.shape[0]):
-        for j in range(heatmap_data_string.shape[1]):
-            if isinstance(heatmap_data_string.iloc[i, j], str):
-                ax.add_patch(plt.Rectangle((j, i), 1, 1, color='#f0f0f0', lw=0, zorder=-1))    
-
-    # For each ror use the corresponding buffer_size_hr rather than buffer_size as labels
-    # Get all the row names, sort them (numerically), and the apply to each of them the human_readable_size function
-    # to get the human-readable size
-    # Then set the x-ticks labels to these human-readable sizes
-    # Get heatmap_data.rows and convert to a list of int
-    buffer_sizes = heatmap_data_string.index.astype(int).tolist()
-    buffer_sizes.sort()
-    buffer_sizes = [human_readable_size(int(x)) for x in buffer_sizes]
-    # Use buffer_sizes as labels
-    plt.yticks(ticks=np.arange(len(buffer_sizes)) + 0.5, labels=buffer_sizes)
-
-    plt.xlabel("")
-    plt.ylabel("Vector Size", fontsize=big_font_size)
-    plt.xticks(fontsize=small_font_size)
-    plt.yticks(fontsize=small_font_size)
-    # Do not rotate xticklabels
-    plt.xticks(rotation=0)   
-
-    # Get current xticklabels
-    xticklabels = [tick.get_text() for tick in ax.get_xticklabels()]
-
-    # Create new labels, for example: append something or modify
-    new_labels = []
-    for label in xticklabels:
-        ppn = label.split("-")[-1]
-        # The rest is coll name (might have dashes within)
-        coll = "-".join(label.split("-")[:-1])
-        if coll == "REDUCE_SCATTER":
-            coll = "RED. SCAT."
-        # Lower except for the first letter
-        coll = coll.capitalize()
-        new_labels.append(f"{coll}\n(PPN={ppn})")
-
-    # Set the new labels
-    ax.set_xticklabels(new_labels)
-
+    sns.boxplot(data=df, y="Collective", x="Improvement (%)", showfliers=True, showmeans=True, meanprops=mean_props, palette=sns.color_palette("deep"))
+    # remove y-title
+    plt.ylabel("")
 
     # Make dir if it does not exist
-    outdir = "plot/" + args.system + "_hm_tpn/"
+    outdir = "plot/best_box/"
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-
-    # in outfile name we should save all the infos in args
-    # Convert args to a string with param name and param value
-    outfile = outdir + "/" + args.tasks_per_node + ".pdf"
+    
+    outfile = outdir + "/" + args.system + ".pdf"
     # Save as PDF
     plt.savefig(outfile, bbox_inches="tight")
+    
 
+    
 if __name__ == "__main__":
     main()
 

@@ -453,7 +453,8 @@ def print_group_mapping(rank_to_cell) -> None:
         formatted_ranks = " ".join(f"{rank:>{num_of_digits}}" for rank in ranks)
         print(f"Cell {cell:>2} -> [{formatted_ranks}]")
     print("=" * 100)
-
+    print("Num Cells:", len(cell_to_rank))
+    print("=" * 100)
 
 def main():
     args = parse_arguments()
@@ -529,7 +530,7 @@ def main():
 
     print("\n`n` denotes the size of the send buffer\n\n")
 
-    print_group_mapping(rank_to_cell);
+    print_group_mapping(rank_to_cell)
 
     if args.save:
         save_to_csv(rows, len(rank_to_cell), args.alloc, args.out)

@@ -1,5 +1,6 @@
 #!/bin/bash
-for extra_params in "" #"--bvb" #"--y_no"
+# Remove the --bvb if you want to compare to all the algorithms
+for extra_params in "--bvb" #"--y_no"
 do
     for base in all #binomial
     do
@@ -12,7 +13,7 @@ do
             # For allreduce and reduce_scatter we also consider the cases where we do not segment
             for collective in allreduce
             do
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 16,32,64,128,256,512,1024 
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 16,32,64,128,256,512,1024 --exclude "block_by_block|segmented"
             done
 
             for collective in allgather
@@ -22,7 +23,7 @@ do
 
             for collective in reduce_scatter
             do
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 16,32,64,128,256,512,1024 
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 16,32,64,128,256,512,1024 --exclude "block_by_block|segmented"
             done
 
             for collective in alltoall bcast reduce gather scatter
@@ -43,7 +44,7 @@ do
             # For allreduce and reduce_scatter we also consider the cases where we do not segment
             for collective in allreduce
             do
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 128,256,512,1024,2048 --exclude "block_by_block"
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 128,256,512,1024,2048 --exclude "block_by_block|segmented"
             done
 
             for collective in allgather
@@ -53,7 +54,7 @@ do
 
             for collective in reduce_scatter
             do
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 128,256 --exclude "block_by_block"
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --nnodes 128,256 --exclude "block_by_block|segmented"
             done
 
             for collective in alltoall bcast reduce gather scatter
@@ -74,22 +75,22 @@ do
             # For allreduce and reduce_scatter we also consider the cases where we do not segment
             for collective in allreduce
             do
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32 
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32,64 --exclude "block_by_block|segmented"
             done
 
             for collective in allgather
             do    
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32,64
             done
 
             for collective in reduce_scatter
             do
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32,64 --exclude "block_by_block|segmented"
             done
 
             for collective in alltoall bcast reduce gather scatter
             do
-                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32
+                python3 ./plot/table.py --system ${system} --collective ${collective} --tasks_per_node 1 --metric ${metric} --base ${base} ${extra_params} --notes "UCX_MAX_RNDV_RAILS=1" --nnodes 4,8,16,32,64 
             done
         done      
 
