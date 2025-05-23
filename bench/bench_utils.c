@@ -674,6 +674,34 @@ int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_siz
   return -1;
 }
 
+
+int split_communicator(MPI_Comm *inter_comm, MPI_Comm *intra_comm){
+  int rank, size, current_tasks_per_node;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  char* tasks_per_node_env = getenv("CURRENT_TASKS_PER_NODE");
+  if (tasks_per_node_env == NULL) {
+    fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE environment variable is not set.\n");
+    return MPI_ERR_COMM;
+  }
+  current_tasks_per_node = atoi(tasks_per_node_env);
+  if (current_tasks_per_node <= 0) {
+    fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE must be a positive integer.\n");
+    return MPI_ERR_COMM;
+  }
+
+  if (size % current_tasks_per_node != 0) {
+    fprintf(stderr, "Error: The number of ranks (%d) is not divisible by CURRENT_TASKS_PER_NODE (%d).\n", size, current_tasks_per_node);
+    return MPI_ERR_COMM;
+  }
+
+  MPI_Comm_split(MPI_COMM_WORLD, (rank / current_tasks_per_node), rank, intra_comm);
+  MPI_Comm_split(MPI_COMM_WORLD, (rank % current_tasks_per_node), rank, inter_comm);
+
+  return MPI_SUCCESS;
+}
+
 /**
 * @breif Writes all timing results to a specified output file in CSV format.
 *

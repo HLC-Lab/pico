@@ -1079,6 +1079,10 @@ cleanup_and_return:
   return err;
 }
 
+#ifdef CUDA_AWARE
+// TODO: add allreduce_swing_bdw_hier_gpu
+#endif
+
 // NOTE: Not fully implemented
 //
 // int allreduce_swing_bdw_segmented(const void *send_buf, void *recv_buf, size_t count, MPI_Datatype dtype,

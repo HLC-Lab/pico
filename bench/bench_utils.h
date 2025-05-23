@@ -381,6 +381,23 @@ int get_data_saving_options(test_routine_t *test_routine, size_t count,
 int get_data_type(const char *type_string, MPI_Datatype *dtype, size_t *type_size);
 
 
+/**
+ * @brief Splits the MPI communicator into inter and intra communicators.
+ *
+ * This function splits the MPI_COMM_WORLD communicator into two communicators:
+ * - `intra_comm`: for communication within a node.
+ * - `inter_comm`: for communication between nodes.
+ *
+ * @param[out] inter_comm Pointer to the inter communicator.
+ * @param[out] intra_comm Pointer to the intra communicator.
+ *
+ * @return MPI_SUCCESS on success, an MPI_ERR code on error.
+ *
+ * @note The number of tasks per node is determined by the `CURRENT_TASKS_PER_NODE`
+ * environment variable. The function checks if the number of ranks is divisible by this value.
+ */
+int split_communicator(MPI_Comm *inter_comm, MPI_Comm *intra_comm);
+
 //-----------------------------------------------------------------------------------------------
 //                                  I/O FUNCTIONS
 //-----------------------------------------------------------------------------------------------
