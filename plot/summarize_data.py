@@ -191,7 +191,7 @@ def aggregate_results(results_dir: os.PathLike, metadata: pd.DataFrame, target_t
                     'timestamp': target_timestamp,
                     'test_id': str(test_id),
                     'MPI_Op': meta_row['MPI_Op'],
-                    'CUDA': meta_row['CUDA'],
+                    # 'CUDA': meta_row['CUDA'],
                     'notes': meta_row['notes'],
                     'mpi_lib': meta_row['mpi_lib'],
                     'mpi_lib_version': meta_row['mpi_lib_version'],

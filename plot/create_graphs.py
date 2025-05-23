@@ -348,7 +348,7 @@ def main():
     mpi_tasks = nnodes * df['tasks_per_node'].iloc[0]
 
     drop_cols = ['array_dim','nnodes','system','timestamp','test_id','MPI_Op',
-                 'CUDA','notes','mpi_lib','mpi_lib_version','libswing_version', 'tasks_per_node']
+                 'notes','mpi_lib','mpi_lib_version','libswing_version', 'tasks_per_node']
     df.drop(columns=drop_cols, inplace=True)
 
     if args.collective is not None:
