@@ -1,0 +1,104 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "4.3.0",
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH non-blocking algorithm.",
+    "version": "4.3.0",
+    "cvar": "nb",
+    "tags": [
+      "non_blocking"
+    ]
+  },
+  "smp_mpich": {
+    "desc": "MPICH SMP algorithm.",
+    "version": "4.3.0",
+    "cvar": "smp",
+    "tags": [
+      "smp"
+    ]
+  },
+  "recursive_doubling_mpich": {
+    "desc": "MPICH recursive doubling algorithm.",
+    "version": "4.3.0",
+    "cvar": "recursive_doubling",
+    "tags": [
+      "recursive_doubling"
+    ]
+  },
+  "recursive_multiplying_mpich": {
+    "desc": "MPICH recursive multiplying algorithm. Generalization of the recursive doubling algorithm. The env var MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL can be used to set the value of k. If k=2 it is equivalent to recursive doubling.",
+    "version": "4.3.0",
+    "cvar": "recursive_multiplying",
+    "tags": [
+      "recursive_multiplying"
+    ]
+  },
+  "rechexch_mpich": {
+    "desc": "MPICH recursive exchange algorithm.",
+    "version": "4.3.0",
+    "cvar": "recexch",
+    "tags": [
+      "recexch"
+    ]
+  },
+  "ring_mpich": {
+    "desc": "MPICH ring algorithm. Count must be greater or equal to comm_sz.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "ring",
+    "tags": [
+      "ring"
+    ]
+  },
+  "rabenseifner_mpich": {
+    "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code. It works only with count >= comm_sz.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "reduce_scatter_allgather",
+    "tags": [
+      "rabenseifner"
+    ]
+  },
+  "k_rabenseifner_mpich": {
+    "desc": "MPICH K-nomial Rabenseifner algorithm. Generalization of the rabenseifner algorithm that uses recursive multiplying instead of recursive doubling reduce scatter and allgather. Is called `k_reduce_scatter_allgather`. The variable `MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL` can be used to set the value of k. If k=2 it is equivalent to rabenseifner.",
+    "version": "4.3.0",
+    "cvar": "k_reduce_scatter_allgather",
+    "tags": [
+      "k_rabenseifner"
+    ]
+  },
+  "tree_mpich": {
+    "desc": "MPICH tree algorithm. Segments the message to pipeline communication and reduction. Sends the segmented message into a tree topology created by the function itself. The variables `MPIR_CVAR_ALLREDUCE_TREE_TYPE` and `MPIR_CVAR_ALLREDUCE_TREE_KVAL` can be used to set the tree type and the value of k of knomial and kary trees.",
+    "version": "4.3.0",
+    "cvar": "tree",
+    "tags": [
+      "tree"
+    ]
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "brucks_mpich": {
+    "desc": "MPICH Brucks algorithm.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "brucks",
+    "tags": [
+      "brucks"
+    ]
+  },
+  "k_brucks_mpich": {
+    "desc": "MPICH K-nomial Brucks algorithm. Generalization of the brucks algorithm that uses recursive multiplying instead of recursive doubling. Is called `k_brucks`. The variable `MPIR_CVAR_ALLGATHER_BRUCKS_KVAL` can be used to set the value of k. If k=2 it is equivalent to brucks.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "k_brucks",
+    "tags": [
+      "k_brucks"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH nonblocking algorithm.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "nb",
+    "tags": [
+      "nb"
+    ]
+  },
+  "recursive_doubling_mpich": {
+    "desc": "MPICH recursive doubling algorithm. It works only with power of 2 processes.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "cvar": "recursive_doubling",
+    "tags": [
+      "recursive_doubling"
+    ]
+  },
+  "ring_mpich": {
+    "desc": "MPICH ring algorithm. Count must be greater or equal to comm_sz.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "ring",
+    "tags": [
+      "ring"
+    ]
+  },
+  "recexch_mpich": {
+    "desc": "MPICH recexch distance doubling algorithm. It is a generalization of the recursive doubling to work with any `k` radix. The cvar `MPIR_CVAR_ALLGATHER_RECEXCH_KVAL` can be used to set the value of k. If k=1 the algorithm is a distance halving allgather and can be also called with its own cvar. If k=2 it is equivalent to recursive doubling.",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "recexch_doubling",
+    "tags": [
+      "recexch_doubling"
+    ]
+  },
+  "recexch_halving_mpich": {
+    "desc": "MPICH recexch distance halving algorithm. It uses the same code of `rechexch_mpich` but with `k=1`.",
+    "version": "4.3.0",
+    "cvar": "recexch_halving",
+    "tags": [
+      "recexch_halving"
+    ]
+  }
+}

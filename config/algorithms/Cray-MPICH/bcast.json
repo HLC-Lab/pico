@@ -1,0 +1,50 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "8.0.0",
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH non-blocking algorithm.",
+    "version": "8.0.0",
+    "cvar": "nb",
+    "tags": [
+      "non_blocking"
+    ]
+  },
+  "smp_mpich": {
+    "desc": "MPICH smp algorithm.",
+    "version": "8.0.0",
+    "cvar": "smp",
+    "tags": [
+      "smp"
+    ]
+  },
+  "scatter_recursive_doubling_allgather_mpich": {
+    "desc": "MPICH scatter recursive-doubling allgather algorithm. It performs the broadcast pipelining a scatter followed by an allgather, both with recurisve doubling communication pattern.",
+    "version": "8.0.0",
+    "cvar": "scatter_recursive_doubling_allgather",
+    "tags": [
+      "scatter_recursive_doubling_allgather"
+    ]
+  },
+  "scatter_ring_allgather_mpich": {
+    "desc": "MPICH scatter ring allgather algorithm. This broadcast is based on a scatter followed by an allgather, both with ring communication pattern. Can outperform the recursive doubling variant for large messages or non power of two messages.",
+    "version": "8.0.0",
+    "cvar": "scatter_ring_allgather",
+    "tags": [
+      "scatter_ring_allgather"
+    ]
+  },
+  "binomial_mpich": {
+    "desc": "MPICH binomial tree based algorithm. It performs the broadcast by sending messages to rank at comm_sz/2 away from the root. Those ranks become the roots of their own subtree and repeat the process until all ranks have received the message.",
+    "version": "8.0.0",
+    "cvar": "binomial",
+    "tags": [
+      "binomial"
+    ]
+  }
+}

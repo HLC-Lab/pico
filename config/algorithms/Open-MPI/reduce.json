@@ -1,0 +1,95 @@
+{
+  "default_ompi": {
+    "desc": "Open MPI default algorithm selection",
+    "version": "4.1.5",
+    "dynamic_rule": 0,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "default"
+    ]
+  },
+  "linear_ompi": {
+    "desc": "Open MPI linear algorithm.",
+    "version": "4.1.5",
+    "dynamic_rule": 1,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "linear"
+    ]
+  },
+  "chain_ompi": {
+    "desc": "Open MPI chain algorithm.",
+    "version": "4.1.5",
+    "dynamic_rule": 2,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "chain",
+      "suboptimal"
+    ]
+  },
+  "pipeline_ompi": {
+    "desc": "Open MPI pipeline algorithm.",
+    "version": "4.1.5",
+    "dynamic_rule": 3,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "pipeline",
+      "suboptimal"
+    ]
+  },
+  "binary_ompi": {
+    "desc": "Open MPI binary tree reduce.",
+    "version": "4.1.5",
+    "dynamic_rule": 4,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "split_binary"
+    ]
+  },
+  "binomial_ompi": {
+    "desc": "Open MPI binomial tree reduce.",
+    "version": "4.1.5",
+    "dynamic_rule": 5,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "binomial"
+    ]
+  },
+  "in_order_ompi": {
+    "desc": "Open MPI in order reduce.",
+    "version": "4.1.5",
+    "dynamic_rule": 6,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "in_order"
+    ]
+  },
+  "rabenseifner_ompi": {
+    "desc": "Open MPI Rabenseifner reduce.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 7,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "rabenseifner"
+    ]
+  }
+}

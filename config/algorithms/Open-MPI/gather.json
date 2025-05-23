@@ -1,0 +1,87 @@
+{
+  "default_ompi": {
+    "desc": "Open MPI default algorithm selection",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 0,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "default"
+    ]
+  },
+  "linear_ompi": {
+    "desc": "Open MPI linear algorithm. It consists in the root receiving messages from all other processes.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 1,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "linear"
+    ]
+  },
+  "binomial_ompi": {
+    "desc": "Open MPI binomial tree based algorithm.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 2,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "binomial"
+    ]
+  },
+  "linear_synch_ompi": {
+    "desc": "Open MPI linear synchronous algorithm. It consists in the root receiving messages from all other processes, but synchronizing messages by having them segmented by `segsize`. It can crash for big tests",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 3,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "linear",
+      "synchronous"
+    ]
+  }
+}

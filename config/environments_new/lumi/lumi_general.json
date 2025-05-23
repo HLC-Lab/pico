@@ -1,0 +1,6 @@
+{
+  "NAME": "lumi",
+  "desc": "Lumi HPC Cluster.",
+  "SLURM": true,
+  "MODULES": "cray-python/3.11.5"
+}

@@ -1,0 +1,45 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "4.3.0",
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "binomial_mpich": {
+    "desc": "MPICH binomial tree based algorithm.",
+    "version": "4.3.0",
+    "cvar": "binomial",
+    "tags": [
+      "binomial"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH non-blocking algorithm.",
+    "version": "4.3.0",
+    "cvar": "nb",
+    "tags": [
+      "non_blocking"
+    ]
+  },
+  "rabenseifner_mpich": {
+    "desc": "MPICH Rabenseifner algorithm. Internally is called reduce_scatter_gather",
+    "version": "4.3.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "reduce_scatter_gather",
+    "tags": [
+      "rabenseifner"
+    ]
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "NETWORK_LIB": "ucx",
+  "NETWORK_LIB_VERSION": "1.13.0",
+  "MPI": {
+    "Open MPI 4.1.6": {
+      "desc": "An open source Message Passing Interface implementation.",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--gcc--12.2.0"
+      },
+      "RUN": "srun",
+      "SWINGCC": "mpicc",
+      "metadata": {
+        "MPI_LIB": "OPEN_MPI",
+        "MPI_LIB_VERSION": "4.1.6",
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "12.2.0"
+      },
+      "GPU": {
+        "load": {
+          "type": "module",
+          "module": "cuda/12.1"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.1"
+        }
+      }
+    },
+    "Open MPI NVHPC 23.11": {
+      "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--nvhpc--23.11"
+      },
+      "RUN": "srun",
+      "SWINGCC": "nvc",
+      "metadata": {
+        "MPI_LIB": "OPEN_MPI_NVHPC",
+        "MPI_LIB_VERSION": "4.1.6",
+        "MPI_LIB_COMPILER": "nvhpc",
+        "MPI_LIB_COMPILER_VERSION": "23.11"
+      },
+      "GPU": {
+        "load": {
+          "type": "default"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.3"
+        }
+      }
+    },
+    "Open MPI NVHPC 24.3": {
+      "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--nvhpc--24.3"
+      },
+      "RUN": "srun",
+      "SWINGCC": "nvc",
+      "metadata": {
+        "MPI_LIB": "OPEN_MPI_NVHPC",
+        "MPI_LIB_VERSION": "4.1.6",
+        "MPI_LIB_COMPILER": "nvhpc",
+        "MPI_LIB_COMPILER_VERSION": "24.3"
+      },
+      "GPU": {
+        "load": {
+          "type": "default"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.3"
+        }
+      }
+    },
+    "Intel MPI": {
+      "desc": "Intel MPI Library is a multifabric message-passing library that implements the open-source MPICH specification.",
+      "load": {
+        "type": "module",
+        "module": "intel-oneapi-mpi/2021.10.0"
+      },
+      "RUN": "srun",
+      "SWINGCC": "mpiicc",
+      "metadata": {
+        "MPI_LIB": "INTEL_MPI",
+        "MPI_LIB_VERSION": "2021.10",
+        "MPI_LIB_COMPILER": "icx",
+        "MPI_LIB_COMPILER_VERSION": "2021.10"
+      }
+    }
+  }
+}

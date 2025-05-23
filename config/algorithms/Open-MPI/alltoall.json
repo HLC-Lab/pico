@@ -1,0 +1,151 @@
+{
+  "default_ompi": {
+    "desc": "Open MPI default algorithm selection",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 0,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "ignore"
+    ]
+  },
+  "linear_ompi": {
+    "desc": "Launches all non-blocking send/recv pairs and wait for them to complete.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 1,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "linear",
+      "non_blocking"
+    ]
+  },
+  "pairwise_ompi": {
+    "desc": "For comm size P, implemented as P rounds of blocking MPI_Sendrecv",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_even",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 2,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "pairwise",
+      "blocking"
+    ]
+  },
+  "modified_bruck_ompi": {
+    "desc": "An algorithm exploiting network packet quantization to achieve O(log) time complexity. Typically best for very small message sizes.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 3,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "modified_bruck",
+      "log_time"
+    ]
+  },
+  "linear_sync_ompi": {
+    "desc": "Keep N non-blocking MPI_Isend/Irecv pairs in flight at all times. N is set by the coll_tuned_alltoall_max_requests MCA variable.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 4,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "linear_sync",
+      "non_blocking"
+    ]
+  },
+  "two_proc_ompi": {
+    "desc": "An implementation tailored for alltoall between 2 ranks, otherwise it is not used.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "==",
+            "value": 2
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 5,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "two_proc",
+      "small_rank"
+    ]
+  }
+}

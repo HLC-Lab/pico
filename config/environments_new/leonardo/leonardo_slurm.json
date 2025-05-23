@@ -1,0 +1,63 @@
+{
+  "PARTITIONS": {
+    "boost_usr_prod": {
+      "desc": "Boost partition with GPU nodes.",
+      "PARTITION_GPUS_PER_NODE": "4",
+      "PARTITION_CPUS_PER_NODE": "32",
+      "QOS": {
+        "default": {
+          "required": false,
+          "QOS_MAX_NODES": "64",
+          "QOS_MAX_TIME": "24:00:00"
+        },
+        "boost_qos_bprod": {
+          "required": true,
+          "QOS_MIN_NODES": "65",
+          "QOS_MAX_NODES": "256",
+          "QOS_MAX_TIME": "24:00:00",
+          "QOS_TASKS_PER_NODE": "32",
+          "QOS_GRES": "gpu:4"
+        },
+        "boost_qos_dbg": {
+          "required": true,
+          "QOS_MAX_NODES": "2",
+          "QOS_MAX_TIME": "00:30:00"
+        },
+        "boost_qos_lprod": {
+          "required": true,
+          "QOS_MAX_NODES": "3",
+          "QOS_MAX_TIME": "4-00:00:00"
+        }
+      }
+    },
+    "dcgp_usr_prod": {
+      "desc": "Data centric partition with two sockets per node.",
+      "PARTITION_SOCKETS_PER_NODE": "2",
+      "PARTITION_CPUS_PER_NODE": "112",
+      "QOS": {
+        "default": {
+          "required": false,
+          "QOS_MAX_NODES": "16",
+          "QOS_MAX_TIME": "24:00:00"
+        },
+        "dcgp_qos_bprod": {
+          "required": true,
+          "QOS_MIN_NODES": "17",
+          "QOS_MAX_NODES": "128",
+          "QOS_MAX_TIME": "24:00:00",
+          "QOS_TASKS_PER_NODE": "112"
+        },
+        "dcgp_qos_dbg": {
+          "required": true,
+          "QOS_MAX_NODES": "2",
+          "QOS_MAX_TIME": "00:30:00"
+        },
+        "dcgp_qos_lprod": {
+          "required": true,
+          "QOS_MAX_NODES": "3",
+          "QOS_MAX_TIME": "4-00:00:00"
+        }
+      }
+    }
+  }
+}

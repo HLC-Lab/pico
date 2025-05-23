@@ -1,0 +1,114 @@
+{
+  "default_ompi": {
+    "desc": "Open MPI default algorithm selection",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 0,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "default"
+    ]
+  },
+  "non_overlapping_ompi": {
+    "desc": "Open MPI non-overlapping algorithm. Consists in a Reduce to rank 0 followed by a Scatterv. Utilizes default Reduce and Scatterv algorithm selection. This algorithm is used for small messages. It can crash for big tests",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 1,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "non_overlapping",
+      "small_sizes",
+      "can_crash"
+    ]
+  },
+  "recursive_halving_ompi": {
+    "desc": "Open MPI recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 2,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "recursive_halving",
+      "small_sizes",
+      "medium_sizes"
+    ]
+  },
+  "ring_ompi": {
+    "desc": "Open MPI ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 3,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "ring",
+      "large_sizes"
+    ]
+  },
+  "butterfly_ompi": {
+    "desc": "Open MPI butterfly algorithm. This algorithm is used for small messages",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 4,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "butterfly",
+      "small_sizes",
+      "can_crash"
+    ]
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "default_ompi": {
+    "desc": "Open MPI default algorithm selection",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 0,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "default"
+    ]
+  },
+  "linear_ompi": {
+    "desc": "Open MPI linear algorithm.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 1,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "linear"
+    ]
+  },
+  "binomial_ompi": {
+    "desc": "Open MPI binomial tree based algorithm.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 2,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "binomial"
+    ]
+  },
+  "linear_nb_ompi": {
+    "desc": "Open MPI linear nb algorithm.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "dynamic_rule": 3,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "linear",
+      "non_blocking"
+    ]
+  }
+}

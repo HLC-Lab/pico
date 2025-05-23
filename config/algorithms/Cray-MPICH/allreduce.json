@@ -1,0 +1,53 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "8.0.0",
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH non-blocking algorithm.",
+    "version": "8.0.0",
+    "cvar": "nb",
+    "tags": [
+      "non_blocking"
+    ]
+  },
+  "smp_mpich": {
+    "desc": "MPICH SMP algorithm.",
+    "version": "8.0.0",
+    "cvar": "smp",
+    "tags": [
+      "smp"
+    ]
+  },
+  "recursive_doubling_mpich": {
+    "desc": "MPICH recursive doubling algorithm.",
+    "version": "8.0.0",
+    "cvar": "recursive_doubling",
+    "tags": [
+      "recursive_doubling"
+    ]
+  },
+  "rabenseifner_mpich": {
+    "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code. It works only with count >= comm_sz.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "reduce_scatter_allgather",
+    "tags": [
+      "rabenseifner"
+    ]
+  }
+}

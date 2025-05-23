@@ -1,0 +1,66 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "4.3.0",
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH non-blocking algorithm.",
+    "version": "4.3.0",
+    "cvar": "nb",
+    "tags": [
+      "non_blocking"
+    ]
+  },
+  "smp_mpich": {
+    "desc": "MPICH smp algorithm.",
+    "version": "4.3.0",
+    "cvar": "smp",
+    "tags": [
+      "smp"
+    ]
+  },
+  "scatter_recursive_doubling_allgather_mpich": {
+    "desc": "MPICH scatter recursive-doubling allgather algorithm. It performs the broadcast pipelining a scatter followed by an allgather, both with recurisve doubling communication pattern.",
+    "version": "4.3.0",
+    "cvar": "scatter_recursive_doubling_allgather",
+    "tags": [
+      "scatter_recursive_doubling_allgather"
+    ]
+  },
+  "scatter_ring_allgather_mpich": {
+    "desc": "MPICH scatter ring allgather algorithm. This broadcast is based on a scatter followed by an allgather, both with ring communication pattern. Can outperform the recursive doubling variant for large messages or non power of two messages.",
+    "version": "4.3.0",
+    "cvar": "scatter_ring_allgather",
+    "tags": [
+      "scatter_ring_allgather"
+    ]
+  },
+  "binomial_mpich": {
+    "desc": "MPICH binomial tree based algorithm. It performs the broadcast by sending messages to rank at comm_sz/2 away from the root. Those ranks become the roots of their own subtree and repeat the process until all ranks have received the message.",
+    "version": "4.3.0",
+    "cvar": "binomial",
+    "tags": [
+      "binomial"
+    ]
+  },
+  "tree_mpich": {
+    "desc": "MPICH general tree algorithm. It uses a k-nomial or k-ary tree to perform the broadcast. The variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` can be used to set the value of k and the type of tree.",
+    "version": "4.3.0",
+    "cvar": "tree",
+    "tags": [
+      "tree"
+    ]
+  },
+  "pipelined_tree_mpich": {
+    "desc": "MPICH pipelined tree based algorithm. It works like the tree based algorithm but segmenting the message into smaller chunks that are sent to the child processes in a pipelined fashion. It can outperform the tree based algorithm for large messages. Like the tree based algorithm it uses the variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` to set the value of k and the type of tree. Moreover it uses the variable `MPIR_CVAR_BCAST_TREE_PIPELINE_CHUNK_SIZE` to set the size of the chunks.",
+    "version": "4.3.0",
+    "cvar": "pipelined_tree",
+    "tags": [
+      "pipelined_tree"
+    ]
+  }
+}

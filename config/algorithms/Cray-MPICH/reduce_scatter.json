@@ -1,0 +1,125 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH non-blocking algorithm.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "nb",
+    "tags": [
+      "non_blocking"
+    ]
+  },
+  "non_commutative_mpich": {
+    "desc": "MPICH non-commutative algorithm. Described in `An Improved Algorithm for (Non-commutative) Reduce-Scatter with an Application`, the implemented version requires comm_sz to be a power of 2 and the blocks of equal size.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "cvar": "noncommutative",
+    "tags": [
+      "non_commutative"
+    ]
+  },
+  "pairwise_mpich": {
+    "desc": "MPICH pairwise algorithm.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "pairwise",
+    "tags": [
+      "pairwise"
+    ]
+  },
+  "recursive_doubling_mpich": {
+    "desc": "MPICH recursive doubling algorithm.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "recursive_doubling",
+    "tags": [
+      "recursive_doubling"
+    ]
+  },
+  "recursive_halving_mpich": {
+    "desc": "MPICH recursive halving algorithm.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "recursive_halving",
+    "tags": [
+      "recursive_halving"
+    ]
+  }
+}

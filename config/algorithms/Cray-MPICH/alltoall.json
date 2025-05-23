@@ -1,0 +1,143 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "auto",
+    "tags": [
+      "default"
+    ]
+  },
+  "brucks_mpich": {
+    "desc": "MPICH Brucks algorithm.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "brucks",
+    "tags": [
+      "brucks"
+    ]
+  },
+  "non_blocking_mpich": {
+    "desc": "MPICH nonblocking algorithm.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "cvar": "nb",
+    "tags": [
+      "nb"
+    ]
+  },
+  "pairwise_mpich": {
+    "desc": "MPICH pairwise exchange algorithm. It works only with power of 2 processes.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "cvar": "pairwise",
+    "tags": [
+      "pairwise"
+    ]
+  },
+  "pairwise_sendrecv_replace_mpich": {
+    "desc": "MPICH pairwise sendrecv_replace algorithm. It works only with power of 2 processes.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "cvar": "pairwise_sendrecv_replace",
+    "tags": [
+      "pairwise_sendrecv_replace"
+    ]
+  },
+  "scattered_mpich": {
+    "desc": "MPICH scattered algorithm. It works only with power of 2 processes.",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "cvar": "scattered",
+    "tags": [
+      "scattered"
+    ]
+  }
+}
