@@ -3,7 +3,7 @@
   "NETWORK_LIB_VERSION": "bar",
   "MPI": {
     "Cray MPICH": {
-      "desc": "System's default Open MPI installation",
+      "desc": "System's default MPI installation. CRAY customized version of MPICH.",
       "load": {
         "type": "module",
         "module": "LUMI/24.03 partition/L"

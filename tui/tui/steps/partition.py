@@ -4,10 +4,8 @@ Step 2: Choose SLURM partition and QOS.
 from textual.widgets import Select, Button, Static
 from .base import StepScreen
 
-
 class PartitionStep(StepScreen):
     def compose(self):
-        """Render partition dropdown, QOS placeholder, and next button."""
         yield Static("Select Partition", classes="screen-header")
         parts = list(self.session.environment.slurm["PARTITIONS"].keys())
         yield Select(
@@ -17,44 +15,64 @@ class PartitionStep(StepScreen):
         )
 
         yield Static("Select QOS", classes="screen-header", id="qos-label")
-        # Placeholder QOS dropdown (no ID)
-        yield Select([], prompt="QOS:")
+        yield Select([], prompt="QOS:")  # placeholder, no id
 
-        # Next disabled until both partition+QOS chosen
         yield Button("Next", id="next", disabled=True)
 
     def on_select_changed(self, event):
-        """Handle partition and QOS changes and enable Next appropriately."""
-        # Partition chosen: swap in real QOS dropdown
+        from textual.widgets import Select as _Select
+        # Partition chosen
         if event.control.id == "partition-select":
+            if event.value is _Select.BLANK:
+                self.query_one("#next").disabled = True
+                return
             p = event.value
-            part_cfg = self.session.environment.slurm["PARTITIONS"][p]
-            self.session.partition.name = p
-            self.session.partition.details = part_cfg
+            cfg = self.session.environment.slurm["PARTITIONS"][p]
+            self.session.partition.name    = p
+            self.session.partition.details = cfg
 
             qos_keys = [
-                q for q, opts in part_cfg["QOS"].items()
+                q for q, opts in cfg["QOS"].items()
                 if opts.get("required", False) or q == "default"
             ]
             new_qos = Select(
                 [(q, q) for q in qos_keys],
                 prompt="QOS:"
             )
-            # Remove placeholder (always 2nd Select)
             placeholder = self.query(Select)[1]
             placeholder.remove()
-            # Mount the real dropdown after the label
             self.mount(new_qos, after="#qos-label")
 
-        # QOS selected: store and maybe enable Next
+        # QOS chosen
         elif isinstance(event.control, Select) and event.control.prompt == "QOS:":
+            if event.value is _Select.BLANK:
+                self.query_one("#next").disabled = True
+                return
             self.session.partition.qos = event.value
 
-        # Enable Next only when both fields set
+        # Enable Next?
         if self.session.partition.name and self.session.partition.qos:
             self.query_one("#next").disabled = False
 
     def on_button_pressed(self, event):
-        """Proceed to MPI selection."""
         if event.button.id == "next":
-            self.next(__import__('tui.steps.mpi', fromlist=['MPIStep']).MPIStep)
+            from tui.steps.mpi import MPIStep
+            self.next(MPIStep)
+
+    def get_help_desc(self) -> str:
+        # no partition yet
+        if not self.session.partition.details:
+            return "First choose a partition, then pick a QOS."
+        focused = getattr(self.focused, "id", None)
+        # partition selected, QOS not yet
+        if not self.session.partition.qos:
+            if focused == "partition-select":
+                return self.session.partition.details.get("desc", "No description.")
+            return "Pick a QOS for your selected partition."
+        # both done: show the chosen QOS desc
+        qos = self.session.partition.qos
+        return (
+            self.session.partition.details["QOS"]
+            .get(qos, {})
+            .get("desc", "No description.")
+        )
