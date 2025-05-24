@@ -1,10 +1,15 @@
-from textual.widgets import Static, Button
+"""
+Final step: display a summary of the selected configuration.
+"""
+from textual.widgets import Button, Static
 from .base import StepScreen
 import json
+
 
 class SummaryStep(StepScreen):
     def compose(self):
         yield Static("Configuration Summary", classes="screen-header")
+        # Build a JSON summary
         summary = {
             'environment': self.session.environment.general,
             'partition': self.session.partition.details,

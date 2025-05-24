@@ -1,13 +1,15 @@
+/* Basic theming for the TUI */
+
 tui {
-    background: #1e1e1e;
-    color: #d4d4d4;
+  background: #1e1e1e;
+  color: #d4d4d4;
 }
 
 .screen-header {
-    text-style: bold;
-    background: #007acc;
+  text-style: bold;
+  background: #007acc;
 }
 
 .screen-footer {
-    text-style: reverse;
+  text-style: reverse;
 }
