@@ -22,8 +22,8 @@ class PartitionSelection:
     """
     name: str = ''
     qos: str = ''
-    details: Optional[dict] = None  # partition details
-
+    details: Optional[dict] = None       # partition‐level keys (desc, CPUs/GPU per node, etc.)
+    qos_details: Optional[dict] = None   # ONLY the selected QOS block
 
 @dataclass
 class MPILibrarySelection:
@@ -40,5 +40,8 @@ class SessionConfig:
     Full session state carrying all selections.
     """
     environment: EnvironmentSelection = field(default_factory=EnvironmentSelection)
-    partition: PartitionSelection   = field(default_factory=PartitionSelection)
-    mpi: MPILibrarySelection        = field(default_factory=MPILibrarySelection)
+    partition:   PartitionSelection   = field(default_factory=PartitionSelection)
+    mpi:         MPILibrarySelection  = field(default_factory=MPILibrarySelection)
+    nodes: int = 0
+    tasks_per_node: int = 1
+    test_time: str = ""

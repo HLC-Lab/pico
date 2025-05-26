@@ -82,9 +82,13 @@ class ConfigureStep(StepScreen):
             qos_widget._setup_options_renderables()
             qos_widget.disabled = False
 
-        # QOS selected → store
+        # -- QOS selected → store only that block
         elif sel.id == "qos-select" and event.value is not _Select.BLANK:
-            self.session.partition.qos = event.value
+            chosen = event.value
+            self.session.partition.qos = chosen
+            self.session.partition.qos_details = (
+                self.session.partition.details["QOS"][chosen]
+            )
 
         # Enable Next?
         env_ok  = bool(self.session.environment.name)
@@ -96,8 +100,8 @@ class ConfigureStep(StepScreen):
 
     def on_button_pressed(self, event):
         if event.button.id == "next":
-            from tui.steps.mpi import MPIStep
-            self.next(MPIStep)
+            from tui.steps.node_config import NodeConfigStep
+            self.next(NodeConfigStep)
 
     def get_help_desc(self) -> str:
         focused = getattr(self.focused, "id", None)

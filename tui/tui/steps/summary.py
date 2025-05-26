@@ -8,12 +8,28 @@ import json
 class SummaryStep(StepScreen):
     def compose(self):
         yield Static("Configuration Summary", classes="screen-header")
-        summary = {
-            'environment': self.session.environment.general,
-            'partition':   self.session.partition.details,
-            'qos':         self.session.partition.qos,
-            'mpi':         self.session.mpi.config,
-        }
+        if self.session.environment.general.get("SLURM") is False:
+            summary = {
+                'environment': self.session.environment.general,
+                'mpi': self.session.mpi.config,
+                'nodes': self.session.nodes
+            }
+        else:
+            summary = {
+                'environment': self.session.environment.general,
+                'partition': {
+                    'name': self.session.partition.name,
+                    **{k: v for k, v in self.session.partition.details.items() if k != "QOS"}
+                },
+                'qos': {
+                    'name': self.session.partition.qos,
+                    **(self.session.partition.qos_details or {})
+                },
+                'mpi': self.session.mpi.config,
+                'nodes': self.session.nodes,
+                'tasks_per_node': self.session.tasks_per_node,
+                'test_time': self.session.test_time or "",
+            }
         yield Static(json.dumps(summary, indent=2))
         yield Button("Finish", id="finish")
 
