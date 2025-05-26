@@ -5,11 +5,13 @@ from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer
 from textual.containers import Container
 from tui.components import Router
+from pathlib import Path
 
+TUI_DIR = Path(__file__).parent
 
 class BenchmarkApp(App):
     """Main application class."""
-    # CSS_PATH = "style.tcss"
+    CSS_PATH = TUI_DIR / "style.tcss"
 
     def compose(self) -> ComposeResult:
         """Compose the root layout: header, router container, footer."""

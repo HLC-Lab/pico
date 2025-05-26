@@ -3,7 +3,7 @@ Defines the Router widget and imports all step screens.
 """
 from textual.widget import Widget
 from models import SessionConfig
-from .steps.environment import EnvironmentStep
+from .steps.configure import ConfigureStep
 
 class Router(Widget):
     """
@@ -13,4 +13,4 @@ class Router(Widget):
         """Initialize session and show first screen."""
         self.session = SessionConfig()
         # Push the environment selection screen
-        self.app.push_screen(EnvironmentStep(self.session))
+        self.app.push_screen(ConfigureStep(self.session))

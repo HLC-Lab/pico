@@ -1,15 +1,13 @@
 from .components import Router
 from .steps import (
-    EnvironmentStep,
-    PartitionStep,
+    ConfigureStep,
     MPIStep,
     SummaryStep,
 )
 
 __all__ = [
     "Router",
-    "EnvironmentStep",
-    "PartitionStep",
+    "ConfigureStep",
     "MPIStep",
     "SummaryStep",
 ]

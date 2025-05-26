@@ -8,7 +8,6 @@ from pathlib import Path
 # Base config directory (assumes this file sits next to `config/`)
 CONFIG_DIR = Path(__file__).parent.parent / "config"
 
-
 def load_json(*path_parts) -> dict:
     """
     Load a JSON file from CONFIG_DIR / path_parts.
