@@ -31,6 +31,16 @@ Footer {
   margin-right: 1;
 }
 
+.summary-container {
+  overflow: auto;
+  height: 80%;
+}
+
+.summary-box {
+  border: solid white;
+  margin: 1;
+}
+
 Select {
   width: 40;
   background: #2a2e3f;
@@ -48,7 +58,7 @@ Select:disabled {
 Button {
   padding: 1 3;
   border: round #565f89;
-  background: #bb9af7;
+  background: #7aa2f7;
   color: #1a1b26;
 }
 
@@ -57,3 +67,14 @@ Button:disabled {
   color: #565f89;
   border: round #414868;
 }
+
+.button-row {
+  padding-left: 2;
+  padding-right: 2;
+  align-horizontal: left;
+}
+
+.button-row Button {
+  margin-left: 3;
+}
+
