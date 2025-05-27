@@ -681,15 +681,6 @@
                 "value": "comm_sz"
               }
             ]
-          },
-          {
-            "key": "comm_sz",
-            "conditions": [
-              {
-                "operator": "is_power_of_two",
-                "value": true
-              }
-            ]
           }
         ],
         "tags": [
