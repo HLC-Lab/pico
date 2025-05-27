@@ -1138,7 +1138,7 @@ cleanup_and_return:
 }
 
 // WARNING: Old version, only working for powers of two number of processes
-//int allreduce_swing_bdw_remap_segmented_p2(const void *send_buf, void *recv_buf, size_t count,
+//int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, size_t count,
 //                                        MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
 //  int size, rank, dest, steps, step, err = MPI_SUCCESS;
 //  int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
