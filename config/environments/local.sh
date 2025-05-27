@@ -29,12 +29,12 @@ fi
 # Load test dependnt environment variables
 load_other_env_var(){
     if [[ "$MPI_LIB" == "OMPI_SWING" || "$MPI_LIB" == "OMPI" ]]; then
-        if [[ "$GPU_AWARENESS" == "yes" ]]; then
-            export OMPI_MCA_btl=""
-            export OMPI_MCA_mpi_cuda_support=1
-        else
+        if [[ "$GPU_AWARENESS" == "no" ]]; then
             export OMPI_MCA_btl="^smcuda"
             export OMPI_MCA_mpi_cuda_support=0
+        else
+            export OMPI_MCA_btl=""
+            export OMPI_MCA_mpi_cuda_support=1
         fi
     elif [[ "$MPI_LIB" == "MPICH" ]]; then
         [[ "$DEBUG_MODE" == "yes" && "$SHOW_ENV" == "yes" ]] && export MPICH_ENV_DISPLAY=1 || export MPICH_ENV_DISPLAY=0
