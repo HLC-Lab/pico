@@ -921,13 +921,12 @@ cleanup_and_return:
   return err;
 }
 
-int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, size_t count,
-                                        MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
+int allreduce_swing_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtype, MPI_Op op, MPI_Comm comm) {
   int size, rank, dest, steps, step, err = MPI_SUCCESS;
   int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
-  int phase_scount, phase_rcount, num_phases, inbi;
+  int phase_scount, phase_rcount, num_phases, inbi, vdest;
   size_t w_size, segsize, segcount;
-  uint32_t vrank, vdest;
+  uint32_t vrank;
   char *tmp_send = NULL, *tmp_recv = NULL;
   char *inbuf[2] = {NULL, NULL}, *inbuf_free[2] = {NULL, NULL};
   ptrdiff_t lb, extent, true_extent, gap = 0, inbuf_size;
@@ -936,11 +935,16 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
-  // Does not support non-power-of-two or negative sizes
-  steps = log_2(size);
-  if(!is_power_of_two(size) || steps == -1) {
-    return MPI_ERR_ARG;
+  steps = hibit(size, (int)(sizeof(size) * CHAR_BIT) - 1);
+  if(steps == -1) {
+      return MPI_ERR_ARG;
   }
+  int adjsize = 1 << steps;  // Largest power of two <= size
+
+  // Number of nodes that exceed the largest power of two less than or equal to size
+  int extra_ranks = size - adjsize;
+  int is_power_of_two = (size & (size - 1)) == 0;
+
 
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
@@ -948,7 +952,7 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
   segsize = swing_allreduce_segsize;
   segcount = segsize / extent;      // Number of elements in a segment
   if (segsize == 0) {
-    segcount = count / size;
+    segcount = count;
     segsize = segcount * extent;
   }
 
@@ -964,13 +968,37 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
   inbuf[0] = inbuf_free[0] - gap;
   inbuf[1] = inbuf_free[1] - gap;
 
-  // Copy into receive_buffer content of send_buffer to not produce
-  // side effects on send_buffer
-  if(send_buf != MPI_IN_PLACE) {
-    err = copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
-    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+  // First part of computation to get a 2^n number of nodes.
+  // What happens is that first #extra_rank even nodes sends their
+  // data to the successive node and do not partecipate in the general
+  // collective call operation.
+  // All the nodes that do not stop their computation will receive an alias
+  // called new_node, used to calculate their correct destination wrt this
+  // new "cut" topology.
+  int new_rank = rank, loop_flag = 0;
+  if(rank < (2 * extra_ranks)) {
+    if(0 == (rank % 2)) {
+      err = MPI_Send(sbuf, count, dtype, (rank + 1), 0, comm);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      loop_flag = 1;
+    } else {
+      // TODO: Pay attention to commuitativity of the operation
+      err = MPI_Recv(rbuf, count, dtype, (rank - 1), 0, comm, MPI_STATUS_IGNORE);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      MPI_Reduce_local((char *) sbuf, (char *) rbuf, count, dtype, op);
+      new_rank = rank >> 1;
+    }
+  } else {
+    new_rank = rank - extra_ranks;
+    // Copy into receive_buffer content of send_buffer to not produce
+    // side effects on send_buffer
+    if(sbuf != MPI_IN_PLACE) {
+      err = copy_buffer((char *)sbuf, (char *) rbuf, count, dtype);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+    }
   }
 
+  // Here the actual allreduce starts
   r_index = (int *) malloc(sizeof(*r_index) * steps);
   s_index = (int *) malloc(sizeof(*s_index) * steps);
   r_count = (int *) malloc(sizeof(*r_count) * steps);
@@ -980,85 +1008,115 @@ int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, si
     goto cleanup_and_return;
   }
 
-  // Reduce-Scatter phase
-  w_size = count;
-  s_index[0] = r_index[0] = 0;
-  vrank = remap_rank((uint32_t) size, (uint32_t) rank);
-  for(step = 0; step < steps; step++) {
-    dest = pi(rank, step, size);
-    vdest = remap_rank((uint32_t) size, (uint32_t) dest);
+  // Only the remaining ranks will do the following part
+  if(!loop_flag){
+    // Reduce-Scatter phase
+    w_size = count;
+    s_index[0] = r_index[0] = 0;
+    vrank = remap_rank((uint32_t) adjsize, (uint32_t) new_rank);
 
-    if(vrank < vdest) {
-      r_count[step] = w_size / 2;
-      s_count[step] = w_size - r_count[step];
-      s_index[step] = r_index[step] + r_count[step];
-    } else {
-      s_count[step] = w_size / 2;
-      r_count[step] = w_size - s_count[step];
-      r_index[step] = s_index[step] + s_count[step];
-    }
+    for(step = 0; step < steps; step++) {
+      vdest = pi(new_rank, step, adjsize);
 
-    num_phases = (r_count[step] > s_count[step]) ?
-                    (int) (r_count[step] / segcount) :
-                    (int) (s_count[step] / segcount);
+      dest = is_power_of_two ?
+                vdest :
+                (vdest < extra_ranks) ?
+                (vdest << 1) + 1 : vdest + extra_ranks;
 
-    phase_scount = (s_count[step] > segcount) ? segcount : s_count[step];
-    phase_rcount = (r_count[step] > segcount) ? segcount : r_count[step];
+      //printf("Rank %d step %d dest %d vdest %d vrank %d\n",
+      //       rank, step, dest, vdest, vrank);
+      // TODO: dest or vdest as param?
+      vdest = remap_rank((uint32_t) adjsize, (uint32_t) vdest);
 
-    inbi = 0;
-    err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
-    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      if(vrank < vdest) {
+        r_count[step] = w_size / 2;
+        s_count[step] = w_size - r_count[step];
+        s_index[step] = r_index[step] + r_count[step];
+      } else {
+        s_count[step] = w_size / 2;
+        r_count[step] = w_size - s_count[step];
+        r_index[step] = s_index[step] + s_count[step];
+      }
 
-    tmp_send = (char *)recv_buf + s_index[step] * extent;
-    err = MPI_Send(tmp_send, phase_scount, dtype, dest, 0, comm);
-    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      num_phases = (r_count[step] > s_count[step]) ?
+                      (int) (r_count[step] / segcount) :
+                      (int) (s_count[step] / segcount);
 
-    tmp_recv = (char *)recv_buf + r_index[step] * extent;
+      phase_scount = (s_count[step] > segcount) ? segcount : s_count[step];
+      phase_rcount = (r_count[step] > segcount) ? segcount : r_count[step];
 
-    for(int phase = 0; phase < num_phases - 1; phase++){
-      char *tmp_recv_phase = tmp_recv + (ptrdiff_t)(phase * phase_rcount * extent);
-      char *tmp_send_phase = tmp_send + (ptrdiff_t)((phase + 1) * phase_scount * extent);
-      inbi = inbi ^ 0x1;
-
+      inbi = 0;
       err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
-      err = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
+      tmp_send = (char *)rbuf + s_index[step] * extent;
+      err = MPI_Send(tmp_send, phase_scount, dtype, dest, 0, comm);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
-      err = MPI_Reduce_local(inbuf[inbi ^ 0x1], tmp_recv_phase, phase_rcount, dtype, op);
+      tmp_recv = (char *)rbuf + r_index[step] * extent;
+
+      for(int phase = 0; phase < num_phases - 1; phase++){
+        char *tmp_recv_phase = tmp_recv + (ptrdiff_t)(phase * phase_rcount * extent);
+        char *tmp_send_phase = tmp_send + (ptrdiff_t)((phase + 1) * phase_scount * extent);
+        inbi = inbi ^ 0x1;
+
+        err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
+        if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+        err = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
+        if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+        err = MPI_Reduce_local(inbuf[inbi ^ 0x1], tmp_recv_phase, phase_rcount, dtype, op);
+        if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+        err = MPI_Send(tmp_send_phase, phase_scount, dtype, dest, 0, comm);
+        if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      }
+
+      err = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
-      err = MPI_Send(tmp_send_phase, phase_scount, dtype, dest, 0, comm);
+      if(num_phases != 0){
+        tmp_recv += (ptrdiff_t)((num_phases - 1) * phase_rcount * extent);
+      }
+      err = MPI_Reduce_local(inbuf[inbi], tmp_recv, phase_rcount, dtype, op);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+      if(step + 1 < steps) {
+        r_index[step + 1] = r_index[step];
+        s_index[step + 1] = r_index[step];
+        w_size = r_count[step];
+      }
     }
 
-    err = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
-    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+    // Allgather phase
+    for(step = steps - 1; step >= 0; step--) {
+      vdest = pi(new_rank, step, adjsize);
 
-    if(num_phases != 0){
-      tmp_recv += (ptrdiff_t)((num_phases - 1) * phase_rcount * extent);
-    }
-    err = MPI_Reduce_local(inbuf[inbi], tmp_recv, phase_rcount, dtype, op);
-    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      dest = is_power_of_two ?
+                vdest :
+                (vdest < extra_ranks) ?
+                (vdest << 1) + 1 : vdest + extra_ranks;
 
-    if(step + 1 < steps) {
-      r_index[step + 1] = r_index[step];
-      s_index[step + 1] = r_index[step];
-      w_size = r_count[step];
+      tmp_send = (char *)rbuf + r_index[step] * extent;
+      tmp_recv = (char *)rbuf + s_index[step] * extent;
+      err = MPI_Sendrecv(tmp_send, r_count[step], dtype, dest, 0,
+                        tmp_recv, s_count[step], dtype, dest, 0,
+                        comm, MPI_STATUS_IGNORE);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
     }
   }
 
-  // Allgather phase
-  for(step = steps - 1; step >= 0; step--) {
-    dest = pi(rank, step, size);
-
-    tmp_send = (char *)recv_buf + r_index[step] * extent;
-    tmp_recv = (char *)recv_buf + s_index[step] * extent;
-    err = MPI_Sendrecv(tmp_send, r_count[step], dtype, dest, 0,
-                       tmp_recv, s_count[step], dtype, dest, 0,
-                       comm, MPI_STATUS_IGNORE);
-    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+  // Final results is sent to nodes that are not included in general computation
+  // (general computation loop requires 2^n nodes).
+  if(rank < (2 * extra_ranks)){
+    if(!loop_flag){
+      err = MPI_Send(rbuf, count, dtype, (rank - 1), 0, comm);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+    } else {
+      err = MPI_Recv(rbuf, count, dtype, (rank + 1), 0, comm, MPI_STATUS_IGNORE);
+      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+    }
   }
 
   free(inbuf_free[0]);
@@ -1078,6 +1136,165 @@ cleanup_and_return:
   if(NULL != s_count)       free(s_count);
   return err;
 }
+
+// WARNING: Old version, only working for powers of two number of processes
+//int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, size_t count,
+//                                        MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
+//  int size, rank, dest, steps, step, err = MPI_SUCCESS;
+//  int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
+//  int phase_scount, phase_rcount, num_phases, inbi;
+//  size_t w_size, segsize, segcount;
+//  uint32_t vrank, vdest;
+//  char *tmp_send = NULL, *tmp_recv = NULL;
+//  char *inbuf[2] = {NULL, NULL}, *inbuf_free[2] = {NULL, NULL};
+//  ptrdiff_t lb, extent, true_extent, gap = 0, inbuf_size;
+//  MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+//
+//  MPI_Comm_size(comm, &size);
+//  MPI_Comm_rank(comm, &rank);
+//
+//  // Does not support non-power-of-two or negative sizes
+//  steps = log_2(size);
+//  if(!is_power_of_two(size) || steps == -1) {
+//    return MPI_ERR_ARG;
+//  }
+//
+//  MPI_Type_get_extent(dtype, &lb, &extent);
+//  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+//
+//  segsize = swing_allreduce_segsize;
+//  segcount = segsize / extent;      // Number of elements in a segment
+//  if (segsize == 0) {
+//    segcount = count / size;
+//    segsize = segcount * extent;
+//  }
+//
+//  // Allocate temporary buffer for send/recv and reduce operations
+//  inbuf_size = (segcount < (count >> 1)) ?
+//                  true_extent + extent * segcount : true_extent + extent * (count >> 1);
+//  inbuf_free[0] = (char *)malloc(inbuf_size);
+//  inbuf_free[1] = (char *)malloc(inbuf_size);
+//  if(NULL == inbuf_free[0] || NULL == inbuf_free[1]) {
+//    err = MPI_ERR_NO_MEM;
+//    goto cleanup_and_return;
+//  }
+//  inbuf[0] = inbuf_free[0] - gap;
+//  inbuf[1] = inbuf_free[1] - gap;
+//
+//  // Copy into receive_buffer content of send_buffer to not produce
+//  // side effects on send_buffer
+//  if(send_buf != MPI_IN_PLACE) {
+//    err = copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
+//    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//  }
+//
+//  r_index = (int *) malloc(sizeof(*r_index) * steps);
+//  s_index = (int *) malloc(sizeof(*s_index) * steps);
+//  r_count = (int *) malloc(sizeof(*r_count) * steps);
+//  s_count = (int *) malloc(sizeof(*s_count) * steps);
+//  if(NULL == r_index || NULL == s_index || NULL == r_count || NULL == s_count) {
+//    err = MPI_ERR_NO_MEM;
+//    goto cleanup_and_return;
+//  }
+//
+//  // Reduce-Scatter phase
+//  w_size = count;
+//  s_index[0] = r_index[0] = 0;
+//  vrank = remap_rank((uint32_t) size, (uint32_t) rank);
+//  for(step = 0; step < steps; step++) {
+//    dest = pi(rank, step, size);
+//    vdest = remap_rank((uint32_t) size, (uint32_t) dest);
+//
+//    if(vrank < vdest) {
+//      r_count[step] = w_size / 2;
+//      s_count[step] = w_size - r_count[step];
+//      s_index[step] = r_index[step] + r_count[step];
+//    } else {
+//      s_count[step] = w_size / 2;
+//      r_count[step] = w_size - s_count[step];
+//      r_index[step] = s_index[step] + s_count[step];
+//    }
+//
+//    num_phases = (r_count[step] > s_count[step]) ?
+//                    (int) (r_count[step] / segcount) :
+//                    (int) (s_count[step] / segcount);
+//
+//    phase_scount = (s_count[step] > segcount) ? segcount : s_count[step];
+//    phase_rcount = (r_count[step] > segcount) ? segcount : r_count[step];
+//
+//    inbi = 0;
+//    err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
+//    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//
+//    tmp_send = (char *)recv_buf + s_index[step] * extent;
+//    err = MPI_Send(tmp_send, phase_scount, dtype, dest, 0, comm);
+//    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//
+//    tmp_recv = (char *)recv_buf + r_index[step] * extent;
+//
+//    for(int phase = 0; phase < num_phases - 1; phase++){
+//      char *tmp_recv_phase = tmp_recv + (ptrdiff_t)(phase * phase_rcount * extent);
+//      char *tmp_send_phase = tmp_send + (ptrdiff_t)((phase + 1) * phase_scount * extent);
+//      inbi = inbi ^ 0x1;
+//
+//      err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
+//      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//
+//      err = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
+//      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//
+//      err = MPI_Reduce_local(inbuf[inbi ^ 0x1], tmp_recv_phase, phase_rcount, dtype, op);
+//      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//
+//      err = MPI_Send(tmp_send_phase, phase_scount, dtype, dest, 0, comm);
+//      if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//    }
+//
+//    err = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
+//    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//
+//    if(num_phases != 0){
+//      tmp_recv += (ptrdiff_t)((num_phases - 1) * phase_rcount * extent);
+//    }
+//    err = MPI_Reduce_local(inbuf[inbi], tmp_recv, phase_rcount, dtype, op);
+//    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//
+//    if(step + 1 < steps) {
+//      r_index[step + 1] = r_index[step];
+//      s_index[step + 1] = r_index[step];
+//      w_size = r_count[step];
+//    }
+//  }
+//
+//  // Allgather phase
+//  for(step = steps - 1; step >= 0; step--) {
+//    dest = pi(rank, step, size);
+//
+//    tmp_send = (char *)recv_buf + r_index[step] * extent;
+//    tmp_recv = (char *)recv_buf + s_index[step] * extent;
+//    err = MPI_Sendrecv(tmp_send, r_count[step], dtype, dest, 0,
+//                       tmp_recv, s_count[step], dtype, dest, 0,
+//                       comm, MPI_STATUS_IGNORE);
+//    if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+//  }
+//
+//  free(inbuf_free[0]);
+//  free(inbuf_free[1]);
+//  free(r_index);
+//  free(s_index);
+//  free(r_count);
+//  free(s_count);
+//  return MPI_SUCCESS;
+//
+//cleanup_and_return:
+//  if(NULL != inbuf_free[0]) free(inbuf_free[0]);
+//  if(NULL != inbuf_free[1]) free(inbuf_free[1]);
+//  if(NULL != r_index)       free(r_index);
+//  if(NULL != s_index)       free(s_index);
+//  if(NULL != r_count)       free(r_count);
+//  if(NULL != s_count)       free(s_count);
+//  return err;
+//}
 
 #ifdef CUDA_AWARE
 // TODO: add allreduce_swing_bdw_hier_gpu
