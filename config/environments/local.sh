@@ -2,7 +2,6 @@
 export SWINGCC=mpicc
 export RUN=mpiexec
 export RUNFLAGS="--map-by :OVERSUBSCRIBE"
-export SWING_DIR=$HOME/University/Tesi/test
 export PARTITION_GPUS_PER_NODE=1
 export PARTITION_CPUS_PER_NODE=16
 

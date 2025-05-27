@@ -537,7 +537,6 @@ source_environment() {
     local required_vars=(
         SWINGCC
         RUN
-        SWING_DIR
         MPI_LIB
         MPI_LIB_VERSION
         PARTITION_CPUS_PER_NODE

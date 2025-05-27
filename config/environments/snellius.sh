@@ -2,7 +2,6 @@
 export SWINGCC=mpicc
 export RUN=srun
 export RUNFLAGS=--mpi=pmix
-export SWING_DIR=$HOME/Swing_Test/
 
 export PARTITION=rome
 export ACCOUNT=vusei7310

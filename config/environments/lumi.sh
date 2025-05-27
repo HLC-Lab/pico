@@ -1,7 +1,6 @@
 # General variables always needed
 export SWINGCC=cc
 export RUN=srun
-export SWING_DIR=/scratch/project_465000997/Swing_Test
 
 # Account/partition specific variables
 export PARTITION=standard-g
