@@ -435,16 +435,17 @@ check_list() {
 }
 
 validate_args() {
-    # Check validity of arguments, regardless of conflicts or overrides
-    check_integer "$N_NODES" "--nodes" "required" 2 || return 1
-
+    # Check validity of arguments
+    check_enum "$COMPILE_ONLY" "--compile-only" "general" "yes,no" || return 1
+    [[ "$COMPILE_ONLY" == no ]] && { check_integer "$N_NODES" "--nodes" "required" 2 || return 1; }
     [[ -n "$FORCE_TASKS" ]] && { check_integer "$FORCE_TASKS" "--ntasks" "general" "$N_NODES" || return 1; }
+
     local slurm_tasks_per_node=1
     for tasks in ${TASKS_PER_NODE//,/ }; do
         check_integer "$tasks" "--ntasks-per-node" "general" 1 "$PARTITION_CPUS_PER_NODE" || return 1
         [[ "$tasks" -gt "$slurm_tasks_per_node" ]] && slurm_tasks_per_node="$tasks"
     done
-    check_enum "$COMPILE_ONLY" "--compile-only" "general" "yes,no" || return 1
+
     check_list "$TYPES" "^(int|int8|int16|int32|int64|float|double|char)$" "--types" "general" || return 1
     check_list "$SIZES" "^[0-9]+$" "--sizes" "general" || return 1
     check_list "$SEGMENT_SIZES" "^[0-9]+$" "--segment-sizes" "general" || return 1

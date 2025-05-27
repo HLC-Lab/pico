@@ -1,6 +1,6 @@
 # tui/steps/configure.py
 
-from textual.widgets import Static, Select, Button
+from textual.widgets import Static, Select, Button, Footer, Header
 from .base import StepScreen
 from config_loader import list_environments, get_environment_general, get_environment_slurm
 
@@ -14,7 +14,7 @@ class ConfigureStep(StepScreen):
         yield Static("Environment:", classes="field-label")
         yield Select(
             [(e, e) for e in list_environments()],
-            prompt="Env:",
+            prompt="Environment:",
             id="env-select"
         )
 
@@ -50,6 +50,7 @@ class ConfigureStep(StepScreen):
             self.session.environment.general = get_environment_general(env)
 
             part_widget = self.query_one("#partition-select", Select)
+            qos_widget = self.query_one("#qos-select", Select)
             if self.session.environment.general.get("SLURM", False):
                 slurm = get_environment_slurm(env)
                 self.session.environment.slurm = slurm
@@ -62,6 +63,12 @@ class ConfigureStep(StepScreen):
                 part_widget.disabled = False
             else:
                 # no SLURM: skip partition/QOS
+                part_widget.disabled = True
+                self.session.partition.name = None
+                self.session.partition.details = {}
+                qos_widget.disabled = True
+                self.session.partition.qos = None
+                self.session.partition.qos_details = {}
                 self.query_one("#next", Button).disabled = False
                 return
 
