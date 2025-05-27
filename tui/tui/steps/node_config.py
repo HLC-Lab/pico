@@ -5,6 +5,7 @@ Step 3: Choose number of nodes, (tasks per node), and (test time).
 Tasks/time only when SLURM is enabled.
 """
 
+from textual.containers import Horizontal
 from textual.widgets import Static, Input, Button, Label
 from .base import StepScreen
 
@@ -13,8 +14,8 @@ class NodeConfigStep(StepScreen):
     def compose(self):
         """Render inputs and Next button."""
         # Always: Number of Nodes
-        yield Static("Number of Nodes", classes="screen-header")
-        yield Input(placeholder=f"min {self.min_nodes_no_slurm()}",
+        yield Static("Number of Nodes", classes="field-label")
+        yield Input(placeholder=f"min {self.min_nodes() or '2'}, max {self.max_nodes() or '∞'}",
                     id="nodes-input")
         yield Label("", id="nodes-error", classes="error")
 
@@ -22,42 +23,41 @@ class NodeConfigStep(StepScreen):
         if self.session.environment.general.get("SLURM", False):
             # Tasks per Node
             tp_max = self.task_max()
-            yield Static("Tasks per Node", classes="screen-header")
+            yield Static("Tasks per Node", classes="field-label")
             yield Input(placeholder=f"1–{tp_max}",
                         id="tasks-input",
                         value="1")
             yield Label("", id="tasks-error", classes="error")
 
             # Test Time
-            default_time = "01:00:00"
-            yield Static("Test Time", classes="screen-header")
+            default_time = "00:30:00"
+            yield Static("Test Time", classes="field-label")
             yield Input(placeholder=f"HH:MM:SS (max {self.time_max_str()})",
                         id="time-input",
                         value=default_time)
             yield Label("", id="time-error", classes="error")
 
-        # Next button
-        yield Button("Next", id="next", disabled=True)
+        yield Horizontal(
+            Button("Prev", id="prev", disabled=True),
+            Button("Next", id="next", disabled=True),
+            classes="button-row"
+        )
 
     # ─── Helpers ────────────────────────────────────────────────────────────────
 
     def min_nodes_no_slurm(self) -> int:
-        """Minimum nodes when no SLURM: always 2."""
         return 2
 
     def min_nodes(self) -> int:
-        """Min nodes from QOS or default 2."""
         qos_cfg = self.session.partition.qos_details or {}
         return int(qos_cfg.get("QOS_MIN_NODES", 2))
 
     def max_nodes(self) -> int | None:
-        """Max nodes from QOS, or None if not set."""
         qos_cfg = self.session.partition.qos_details or {}
         m = qos_cfg.get("QOS_MAX_NODES")
         return int(m) if m is not None else None
 
     def task_max(self) -> int:
-        """Max tasks per node from partition details (CPUs per node)."""
         val = self.session.partition.details.get("PARTITION_CPUS_PER_NODE")
         return int(val) if val is not None else 1
 
@@ -77,7 +77,7 @@ class NodeConfigStep(StepScreen):
             timestr = tmax
         h, m, s = map(int, timestr.split(":"))
         max_sec = days*86400 + h*3600 + m*60 + s
-        return (0, max_sec)
+        return (1, max_sec)
 
     def time_max_str(self) -> str:
         """Return the original QOS_MAX_TIME string or '∞'."""
