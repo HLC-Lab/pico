@@ -20,11 +20,13 @@ class NodeConfigStep(StepScreen):
         slurm_enabled = self.session.environment.general.get("SLURM", False)
         tp_max = self.task_max(slurm_enabled=slurm_enabled)
         time_max = self.time_max_str(slurm_enabled=slurm_enabled)
+        min_nodes = self.min_nodes(slurm_enabled=slurm_enabled)
+        max_nodes = self.max_nodes() if slurm_enabled else '∞'
 
         yield Horizontal(
             Vertical(
-                Static("Number of Nodes", classes="field-label"),
-                Input(placeholder=f"min {self.min_nodes() or '2'}, max {self.max_nodes() or '∞'}", id="nodes-input"),
+                Static("Number of Nodes" if slurm_enabled else "Number of Tasks" , classes="field-label"),
+                Input(placeholder=f"min {min_nodes or '2'}, max {max_nodes or '∞'}", id="nodes-input"),
                 Label("", id="nodes-error", classes="error"),
                 classes="field",
             ),
@@ -67,22 +69,23 @@ class NodeConfigStep(StepScreen):
     def on_input_changed(self, event):
         """Validate inputs and toggle Next button."""
         nid = event.input.id
+        slurm_enabled = self.session.environment.general.get("SLURM", False)
         # Validate this field
         if nid == "nodes-input":
             ok, msg = self.validate_nodes(event.value)
             self.query_one("#nodes-error", Label).update(msg)
-        elif nid == "tasks-input":
+        elif nid == "tasks-input" and slurm_enabled:
             ok, msg = self.validate_tasks(event.value)
             self.query_one("#tasks-error", Label).update(msg)
-        elif nid == "time-input":
+        elif nid == "time-input" and slurm_enabled:
             ok, msg = self.validate_time(event.value)
             self.query_one("#time-error", Label).update(msg)
 
         # Check overall validity
         nodes_ok, _ = self.validate_nodes(self.query_one("#nodes-input", Input).value)
-        if self.session.environment.general.get("SLURM", False):
+        if slurm_enabled:
             tasks_ok, _ = self.validate_tasks(self.query_one("#tasks-input", Input).value)
-            time_ok, _  = self.validate_time(self.query_one("#time-input",  Input).value)
+            time_ok, _  = self.validate_time(self.query_one("#time-input", Input).value)
             all_ok = nodes_ok and tasks_ok and time_ok
         else:
             all_ok = nodes_ok
@@ -125,7 +128,9 @@ class NodeConfigStep(StepScreen):
     def min_nodes_no_slurm(self) -> int:
         return 2
 
-    def min_nodes(self) -> int:
+    def min_nodes(self, slurm_enabled: bool = True) -> int:
+        if not slurm_enabled:
+            return 2
         qos_cfg = self.session.partition.qos_details or {}
         return int(qos_cfg.get("QOS_MIN_NODES", 2))
 
