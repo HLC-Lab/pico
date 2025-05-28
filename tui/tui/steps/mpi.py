@@ -1,20 +1,23 @@
 """
 Step 3: Choose MPI implementation.
 """
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Select, Static
 from .base import StepScreen
 from config_loader import list_mpi_libs, get_mpi_config
 
 class MPIStep(StepScreen):
     def compose(self):
-        yield Static("Select MPI Library", classes="screen-header")
         libs = list_mpi_libs(self.session.environment.name)
-        yield Select(
-            [(m, m) for m in libs],
-            prompt="MPI:",
-            id="mpi-select"
+        yield Vertical(
+            Static("Select MPI Library", classes="screen-header"),
+            Select([(m, m) for m in libs], prompt="MPI:", id="mpi-select")
         )
-        yield Button("Next", id="next", disabled=True)
+        yield Horizontal(
+            Button("Prev", id="prev"),
+            Button("Next", id="next", disabled=True),
+            classes="button-row"
+        )
 
     def on_select_changed(self, event):
         from textual.widgets import Select as _Select
@@ -31,6 +34,15 @@ class MPIStep(StepScreen):
         if event.button.id == "next":
             from tui.steps.summary import SummaryStep
             self.next(SummaryStep)
+        elif event.button.id == "prev":
+            self.session.mpi.name = ""
+            self.session.mpi.config = None
+            if self.session.environment.general.get("SLURM", False):
+                from tui.steps.node_config import NodeConfigStep
+                self.prev(NodeConfigStep)
+            else:
+                from tui.steps.configure import ConfigureStep
+                self.prev(ConfigureStep)
 
     def get_help_desc(self) -> str:
         cfg = self.session.mpi.config or {}

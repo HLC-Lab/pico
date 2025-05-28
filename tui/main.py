@@ -9,7 +9,7 @@ from pathlib import Path
 
 TUI_DIR = Path(__file__).parent
 
-class BenchmarkApp(App):
+class PICOtui(App):
     """Main application class."""
     CSS_PATH = TUI_DIR / "style.tcss"
 
@@ -21,4 +21,5 @@ class BenchmarkApp(App):
 
 
 if __name__ == '__main__':
-    BenchmarkApp().run()
+    app = PICOtui()
+    app.run()

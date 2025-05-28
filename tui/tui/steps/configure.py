@@ -1,7 +1,7 @@
 # tui/steps/configure.py
 
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Static, Select, Button, Switch
+from textual.widgets import Static, Select, Button, Switch, Footer, Header
 from .base import StepScreen
 from config_loader import list_environments, get_environment_general, get_environment_slurm
 from models import PartitionSelection
@@ -13,9 +13,14 @@ class ConfigureStep(StepScreen):
     """
 
     def compose(self):
-        yield Static("Environment:", classes="field-label")
-        yield Select([(e, e) for e in list_environments()],
-                     prompt="Environment:", id="env-select")
+        yield Header(show_clock=True)
+        yield Horizontal(
+            Vertical(
+                Static("Environment:", classes="field-label"),
+                Select([(e, e) for e in list_environments()], prompt="Environment:", id="env-select")
+            ),
+            classes="row"
+        )
 
         yield Horizontal(
             Vertical(
@@ -42,6 +47,7 @@ class ConfigureStep(StepScreen):
                 Static("Dry Run Mode", classes="field-label"),
                 Switch(id="dry-switch", value=False, classes="switch")
             ),
+            classes="tight-switches"
         )
 
         yield Horizontal(
@@ -49,6 +55,8 @@ class ConfigureStep(StepScreen):
             Button("Next", id="next", disabled=True),
             classes="button-row"
         )
+
+        yield Footer()
 
 
     def reset_select(self, widget: Select):
@@ -73,10 +81,7 @@ class ConfigureStep(StepScreen):
             self.reset_select(qos_w)
             self.session.partition = PartitionSelection()
 
-            if env is Select.BLANK:
-                self.session.environment.clear()
-            else:
-                # Update environment config
+            if env is not Select.BLANK:
                 self.session.environment.name = env
                 self.session.environment.general = get_environment_general(env)
                 
