@@ -665,8 +665,43 @@
           "external"
         ]
       },
+      "swing_block_by_block_any_even": {
+        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with even processes. This version sends each data block/segment individually. It segments the message into segments of size `segsize  = count / comm_sz` ",
+        "library": {
+          "libswing": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+    {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "swing_block_by_block",
+          "swing",
+          "bandwidth_optimal",
+          "remap",
+          "external"
+        ]
+      },
       "swing_bdw_remap_segmented_over": {
-        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
+        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
         "library": {
           "libswing": "1.0.0"
         },

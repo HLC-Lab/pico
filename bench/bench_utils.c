@@ -103,6 +103,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "swing_bdw_static_over", allreduce_swing_bdw_static);
   CHECK_STR(algorithm, "swing_bdw_remap_over", allreduce_swing_bdw_remap);
   CHECK_STR(algorithm, "swing_bdw_remap_segmented_over", allreduce_swing_bdw_remap_segmented);
+  CHECK_STR(algorithm, "swing_block_by_block_any_even", allreduce_swing_block_by_block_any_even);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;
