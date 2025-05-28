@@ -1,51 +1,27 @@
 Screen {
+  align: center middle;
   background: #1a1b26;
   color: #c0caf5;
   padding: 1 2;
 }
 
+/* ------------------------ */
+/* Widgets general styling  */
+/* ------------------------ */
 Header {
   background: #414868;
   color: #c0caf5;
-  border-bottom: solid #565f89;
 }
 
 Footer {
   background: #414868;
   color: #c0caf5;
-  border-top: solid #565f89;
-}
-
-.row {
-  layout: horizontal;
-  padding: 1 0;
-  height: auto;
-  align-horizontal: left;
-  align-vertical: middle;
-}
-
-.field-label {
-  width: 14;
-  text-style: bold;
-  color: #7aa2f7;
-  margin-right: 1;
-}
-
-.summary-container {
-  overflow: auto;
-  height: 80%;
-}
-
-.summary-box {
-  border: solid white;
-  margin: 1;
 }
 
 Select {
-  width: 40;
   background: #2a2e3f;
   color: #c0caf5;
-  border: tall #565f89;
+  border: ascii #565f89;
   padding: 0 1;
   margin-right: 1;
 }
@@ -57,7 +33,8 @@ Select:disabled {
 
 Button {
   padding: 1 3;
-  border: round #565f89;
+  width: auto;
+  border: ascii #565f89;
   background: #7aa2f7;
   color: #1a1b26;
 }
@@ -65,16 +42,118 @@ Button {
 Button:disabled {
   background: #24283b;
   color: #565f89;
-  border: round #414868;
+  border: ascii #414868;
 }
 
-.button-row {
-  padding-left: 2;
-  padding-right: 2;
+Switch {
+  padding: 1 3;
+  width: 15;
+  min-width: 15;
+  margin: 0 1;
+  border: ascii #565f89;
+  background: #1a1b26;
+  color: #c0caf5;
+}
+
+Switch:disabled {
+  background: #16161e;
+  color: #414868;
+  border: ascii #414868;
+}
+
+Switch:focus {
+  border: ascii #7aa2f7;
+  background: #24283b;
+  color: #c0caf5;
+}
+
+/* ------------------------ */
+/* Titles and labels        */
+/* ------------------------ */
+.field-label {
+  width: auto;
+  text-style: bold;
+  color: #7aa2f7;
+  margin-right: 1;
+}
+
+/* ------------------------ */
+/* General Row with equal   */
+/* widht columns            */
+/* ------------------------ */
+.row {
+  layout: horizontal;
+  padding: 1 0;
+  height: auto;
+  max-height: 8;
   align-horizontal: left;
+  align-vertical: middle;
+}
+
+/* ------------------------ */
+/* Compact row only Switch  */
+/* ------------------------ */
+.tight-switches {
+  height: auto;
+  max-height: 8;
+  width: auto;
+}
+
+.tight-switches > Vertical {
+    width: auto;
+    margin-right: 2;
+}
+
+/* ------------------------ */
+/* next and prev button row */
+/* ------------------------ */
+.button-row {
+  padding-right: 1;
+  align-horizontal: center;
+}
+
+.button-row:last-child {
+  padding-right: 0;
 }
 
 .button-row Button {
-  margin-left: 3;
+  width: 50%;
+  margin-left: 2;
+  margin-right: 1;
+}
+
+.button-row Button:last-child {
+  margin-left: 1;
+  margin-right: 2;
+}
+
+
+.summary-container {
+  overflow: auto;
+  height: 80%;
+}
+
+.summary-box {
+  border: ascii white;
+  margin: 1;
+}
+
+/* the two “big” fields each grab 1fr */
+.field {
+  width: 1fr;
+  min-width: 20;          /* never shrink below 20 chars wide */
+  margin-right: 2;        /* gap to the next column */
+}
+
+/* remove the right margin on the last field */
+.field:last-child {
+  margin-right: 0;
+}
+
+/* switch column only as wide as its contents */
+.switch-col {
+  width: auto;
+  margin-left: 2;         /* if you want space before/after */
+  margin-right: 2;
 }
 

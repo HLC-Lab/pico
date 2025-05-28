@@ -1,6 +1,7 @@
 # tui/steps/configure.py
 
-from textual.widgets import Static, Select, Button
+from textual.containers import Horizontal, Vertical
+from textual.widgets import Static, Select, Button, Switch, Footer, Header
 from .base import StepScreen
 from config_loader import list_environments, get_environment_general, get_environment_slurm
 from models import PartitionSelection
@@ -12,17 +13,50 @@ class ConfigureStep(StepScreen):
     """
 
     def compose(self):
-        yield Static("Environment:", classes="field-label")
-        yield Select([(e, e) for e in list_environments()],
-                     prompt="Environment:", id="env-select")
+        yield Header(show_clock=True)
+        yield Horizontal(
+            Vertical(
+                Static("Environment:", classes="field-label"),
+                Select([(e, e) for e in list_environments()], prompt="Environment:", id="env-select")
+            ),
+            classes="row"
+        )
 
-        yield Static("Partition:", classes="field-label")
-        yield Select([], prompt="Partition:", id="partition-select", disabled=True)
+        yield Horizontal(
+            Vertical(
+                Static("Partition:", classes="field-label"),
+                Select([], prompt="Partition:", id="partition-select", disabled=True)
+            ),
+            Vertical(
+                Static("QOS:", classes="field-label"),
+                Select([], prompt="QOS:", id="qos-select", disabled=True)
+            ),
+            classes="row"
+        )
 
-        yield Static("QOS:", classes="field-label")
-        yield Select([], prompt="QOS:", id="qos-select", disabled=True)
+        yield Horizontal(
+            Vertical(
+                Static("Compile Only", classes="field-label"),
+                Switch(id="compile-switch", value=False, classes="switch")
+            ),
+            Vertical(
+                Static("Debug Mode", classes="field-label"),
+                Switch(id="debug-switch", value=False, classes="switch")
+            ),
+            Vertical(
+                Static("Dry Run Mode", classes="field-label"),
+                Switch(id="dry-switch", value=False, classes="switch")
+            ),
+            classes="tight-switches"
+        )
 
-        yield Button("Next", id="next", disabled=True)
+        yield Horizontal(
+            Button("Prev", id="prev", disabled=True),
+            Button("Next", id="next", disabled=True),
+            classes="button-row"
+        )
+
+        yield Footer()
 
 
     def reset_select(self, widget: Select):
@@ -33,88 +67,62 @@ class ConfigureStep(StepScreen):
         widget.value = Select.BLANK
         widget.disabled = True
 
-
     def on_select_changed(self, event):
         sel = event.control
-        from textual.widgets import Select as _Select
 
-        # Grab the widgets once
         part_w = self.query_one("#partition-select", Select)
-        qos_w  = self.query_one("#qos-select",      Select)
-        next_b = self.query_one("#next",             Button)
+        qos_w = self.query_one("#qos-select", Select)
+        next_b = self.query_one("#next", Button)
 
-
-        # 1) Real environment picked
+        # Environment changed
         if sel.id == "env-select":
             env = event.value
-            # Reset partition and QOS selects
             self.reset_select(part_w)
             self.reset_select(qos_w)
             self.session.partition = PartitionSelection()
 
-            if env is _Select.BLANK:
-                next_b.disabled = True
-                return
+            if env is not Select.BLANK:
+                self.session.environment.name = env
+                self.session.environment.general = get_environment_general(env)
+                
+                if self.session.environment.general.get("SLURM", False):
+                    # Load SLURM config
+                    self.session.environment.slurm = get_environment_slurm(env)
+                    part_w.set_options([(p, p) for p in self.session.environment.slurm["PARTITIONS"]])
+                    part_w.disabled = False
 
-            self.session.environment.name    = env
-            self.session.environment.general = get_environment_general(env)
-
-            # SLURM?
-            if self.session.environment.general.get("SLURM", False):
-                sl = get_environment_slurm(env)
-                self.session.environment.slurm = sl
-
-                # Populate and enable partition
-                parts = list(sl["PARTITIONS"].keys())
-                part_w._options = [(p, p) for p in parts]
-                part_w._setup_variables_for_options(part_w._options)
-                part_w._setup_options_renderables()
-                part_w.disabled = False
-
-                next_b.disabled = True   # must choose partition+QOS
-            else:
-                # Non-SLURM: skip ahead
-                self.reset_select(part_w)
-                next_b.disabled = False
-            return
-
-        # 3) Partition chosen → populate QOS
-        if sel.id == "partition-select":
-            p   = event.value
-            # Reset QOS select
+        # Partition changed
+        elif sel.id == "partition-select":
             self.reset_select(qos_w)
             self.session.partition.qos = ""
-            self.session.partition.details = {}
+            
+            if event.value is not Select.BLANK:
+                # Load partition details
+                partition = event.value
+                self.session.partition.name = partition
+                self.session.partition.details = self.session.environment.slurm["PARTITIONS"][partition]
+                
+                # Populate QOS
+                qos_options = [
+                    q for q, opts in self.session.partition.details["QOS"].items()
+                    if opts.get("required") or q == "default"
+                ]
+                qos_w.set_options([(q, q) for q in qos_options])
+                qos_w.disabled = False
 
-            if p is _Select.BLANK:
-                next_b.disabled = True
-                return
+        # QOS changed
+        elif sel.id == "qos-select":
+            self.session.partition.qos = event.value
+            if event.value is not Select.BLANK:
+                self.session.partition.qos_details = (
+                    self.session.partition.details["QOS"][event.value]
+                )
 
-            cfg = self.session.environment.slurm["PARTITIONS"][p]
-            self.session.partition.name    = p
-            self.session.partition.details = cfg
-
-            # Populate QOS
-            qos_keys = [q for q,o in cfg["QOS"].items() if o.get("required") or q=="default"]
-            qos_w._options = [(q, q) for q in qos_keys]
-            qos_w._setup_variables_for_options(qos_w._options)
-            qos_w._setup_options_renderables()
-            qos_w.disabled = False
-            return
-
-        # 4) QOS chosen → store details
-        if sel.id == "qos-select" and event.value is not _Select.BLANK:
-            chosen = event.value
-            self.session.partition.qos = chosen
-            self.session.partition.qos_details = (
-                self.session.partition.details["QOS"][chosen]
-            )
-
-        # 5) Finally update Next-button state
-        env_ok  = bool(self.session.environment.name)
-        slurm   = self.session.environment.general.get("SLURM", False)
+        # Unified state check
+        env_ok = bool(self.session.environment.name)
+        slurm = self.session.environment.general.get("SLURM", False)
         part_ok = bool(self.session.partition.name) if slurm else True
-        qos_ok  = bool(self.session.partition.qos)  if slurm else True
+        qos_ok = bool(self.session.partition.qos) if slurm else True
         next_b.disabled = not (env_ok and part_ok and qos_ok)
 
 
@@ -123,6 +131,29 @@ class ConfigureStep(StepScreen):
             from tui.steps.node_config import NodeConfigStep
             self.next(NodeConfigStep)
 
+    def on_switch_changed(self, event):
+        compile_switch = self.query_one("#compile-switch", Switch)
+        dry_switch = self.query_one("#dry-switch", Switch)
+
+        cid = event.control.id
+        val = event.value
+
+        if cid == "compile-switch":
+            self.session.compile_only = val
+            if val:
+                self.session.dry_run = False
+                dry_switch.value = False
+            dry_switch.disabled = val
+
+        elif cid == "debug-switch":
+            self.session.debug_mode = val
+
+        elif cid == "dry-switch":
+            self.session.dry_run = val
+            if val:
+                self.session.compile_only = False
+                compile_switch.value = False
+            compile_switch.disabled = val
 
     def get_help_desc(self) -> str:
         focused = getattr(self.focused, "id", None)

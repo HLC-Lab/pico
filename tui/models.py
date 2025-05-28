@@ -42,6 +42,9 @@ class SessionConfig:
     environment: EnvironmentSelection = field(default_factory=EnvironmentSelection)
     partition:   PartitionSelection   = field(default_factory=PartitionSelection)
     mpi:         MPILibrarySelection  = field(default_factory=MPILibrarySelection)
+    compile_only: bool = False
+    debug_mode: bool = False
+    dry_run: bool = False
     nodes: int = 0
     tasks_per_node: int = 1
     test_time: str = ""
