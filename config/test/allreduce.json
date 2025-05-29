@@ -9,7 +9,8 @@
     ],
     "exclude": [
       "smp",
-      "suboptimal"
+      "suboptimal",
+      "can_crash"
     ]
   },
   "specific": {

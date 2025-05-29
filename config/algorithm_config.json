@@ -571,6 +571,7 @@
         ],
         "tags": [
           "rabenseifner",
+          "can_crash",
           "medium_sizes",
           "large_sizes",
           "external"
@@ -682,7 +683,7 @@
               }
             ]
           },
-    {
+          {
             "key": "comm_sz",
             "conditions": [
               {

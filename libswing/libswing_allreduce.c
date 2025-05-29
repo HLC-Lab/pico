@@ -460,11 +460,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
   int err = MPI_SUCCESS;
   ptrdiff_t lb, extent, gap = 0;
   MPI_Type_get_extent(dtype, &lb, &extent);
-  // Find the biggest power-of-two smaller than count to allocate
-  // as few memory as necessary for buffers
-  int n_pow = hibit((int) count, (int) (sizeof(count) * CHAR_BIT) -1); 
-  size_t buf_count = 1 << n_pow;
-  ptrdiff_t buf_size = datatype_span(dtype, buf_count, &gap);
+  ptrdiff_t buf_size = datatype_span(dtype, count, &gap);
 
   /* Temporary buffer for receiving messages */
   char *tmp_buf = NULL;
