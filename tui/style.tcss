@@ -89,7 +89,9 @@ Switch:focus {
 
 /* ----- Checkboxes ----- */
 Checkbox {
-  width: 40;
+  width: 100%;
+  height: auto;
+  max-height: 80%;
   background: #2a2e3f;
   color: #c0caf5;
   border: ascii #565f89;
@@ -161,6 +163,16 @@ Checkbox {
   margin-right: 2;
 }
 
+.collectives-container {
+  padding: 1 0;
+  width: 100%;
+  height: auto;
+  max-height: 80%;
+}
+
+.first-big{
+  width: 80%;
+}
 /* ============================================================================ */
 /* FIELD LAYOUTS                                                               */
 /* ============================================================================ */

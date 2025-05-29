@@ -97,8 +97,8 @@ class NodeConfigStep(StepScreen):
         """Store values and proceed."""
         if event.button.id == "next":
             self._save_values()
-            from tui.steps.mpi import MPIStep
-            self.next(MPIStep)
+            from tui.steps.mpi_collectives import MPICollectivesStep
+            self.next(MPICollectivesStep)
         elif event.button.id == "prev":
             self._reset_values()
             from tui.steps.configure import ConfigureStep
