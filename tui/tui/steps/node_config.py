@@ -5,40 +5,54 @@ Step 3: Choose number of nodes, (tasks per node), and (test time).
 Tasks/time only when SLURM is enabled.
 """
 
-from textual.containers import Horizontal, Vertical, Container
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Static, Input, Button, Label, Switch
 from .base import StepScreen
 
 
-default_time = "00:30:00"
+DEFAULT_TIME = "00:30:00"
+
 
 class NodeConfigStep(StepScreen):
     
+    @property
+    def slurm_enabled(self) -> bool:
+        """Check if SLURM is enabled in the current session."""
+        return self.session.environment.general.get("SLURM", False)
+    
+    @property
+    def qos_config(self) -> dict:
+        """Get QOS configuration details."""
+        return self.session.partition.qos_details or {}
+    
+    @property 
+    def partition_config(self) -> dict:
+        """Get partition configuration details."""
+        return self.session.partition.details or {}
+
     def compose(self):
         """Render inputs and Next button."""
-
-        slurm_enabled = self.session.environment.general.get("SLURM", False)
-        tp_max = self.task_max(slurm_enabled=slurm_enabled)
-        time_max = self.time_max_str(slurm_enabled=slurm_enabled)
-        min_nodes = self.min_nodes(slurm_enabled=slurm_enabled)
-        max_nodes = self.max_nodes() if slurm_enabled else '∞'
+        min_nodes = self._get_min_nodes()
+        max_nodes = self._get_max_nodes()
+        max_tasks = self._get_max_tasks()
+        max_time_str = self._get_max_time_str()
 
         yield Horizontal(
             Vertical(
-                Static("Number of Nodes" if slurm_enabled else "Number of Tasks" , classes="field-label"),
-                Input(placeholder=f"min {min_nodes or '2'}, max {max_nodes or '∞'}", id="nodes-input"),
+                Static("Number of Nodes" if self.slurm_enabled else "Number of Tasks", classes="field-label"),
+                Input(placeholder=f"min {min_nodes}, max {max_nodes}", id="nodes-input"),
                 Label("", id="nodes-error", classes="error"),
                 classes="field",
             ),
             Vertical(
                 Static("Exclude?", classes="field-label"),
-                Switch(id="exclude-switch", value=False, disabled=not slurm_enabled),
+                Switch(id="exclude-switch", value=False, disabled=not self.slurm_enabled),
                 classes="switch-col",
             ),
             Vertical(
                 Static("Excluded Nodes", classes="field-label"),
-                Input(placeholder=f"What nodes do you want to exclude?", id="excluded-noodes", disabled=True),
-                Label("", id="nodes-error", classes="error"),
+                Input(placeholder="What nodes do you want to exclude?", id="excluded-nodes", disabled=True),
+                Label("", id="excluded-nodes-error", classes="error"),
                 classes="field",
             ),
             classes="row",
@@ -47,12 +61,12 @@ class NodeConfigStep(StepScreen):
         yield Horizontal(
             Vertical(
                 Static("Tasks per Node", classes="field-label"),
-                Input(placeholder=f"1–{tp_max}", id="tasks-input", value="1", disabled=not slurm_enabled),
+                Input(placeholder=f"1–{max_tasks}", id="tasks-input", value="1", disabled=not self.slurm_enabled),
                 Label("", id="tasks-error", classes="error")
             ),
             Vertical(
                 Static("Test Time", classes="field-label"),
-                Input(placeholder=f"HH:MM:SS (max {time_max})", id="time-input", value=default_time, disabled=not slurm_enabled),
+                Input(placeholder=f"HH:MM:SS (max {max_time_str})", id="time-input", value=DEFAULT_TIME, disabled=not self.slurm_enabled),
                 Label("", id="time-error", classes="error")
             ),
             classes="row",
@@ -68,150 +82,196 @@ class NodeConfigStep(StepScreen):
 
     def on_input_changed(self, event):
         """Validate inputs and toggle Next button."""
-        nid = event.input.id
-        slurm_enabled = self.session.environment.general.get("SLURM", False)
-        # Validate this field
-        if nid == "nodes-input":
-            ok, msg = self.validate_nodes(event.value)
-            self.query_one("#nodes-error", Label).update(msg)
-        elif nid == "tasks-input" and slurm_enabled:
-            ok, msg = self.validate_tasks(event.value)
-            self.query_one("#tasks-error", Label).update(msg)
-        elif nid == "time-input" and slurm_enabled:
-            ok, msg = self.validate_time(event.value)
-            self.query_one("#time-error", Label).update(msg)
+        self._validate_field(event.input.id, event.value)
+        self._update_next_button()
 
-        # Check overall validity
-        nodes_ok, _ = self.validate_nodes(self.query_one("#nodes-input", Input).value)
-        if slurm_enabled:
-            tasks_ok, _ = self.validate_tasks(self.query_one("#tasks-input", Input).value)
-            time_ok, _  = self.validate_time(self.query_one("#time-input", Input).value)
-            all_ok = nodes_ok and tasks_ok and time_ok
-        else:
-            all_ok = nodes_ok
-
-        self.query_one("#next", Button).disabled = not all_ok
+    def on_switch_changed(self, event):
+        """Handle exclude switch toggle."""
+        if event.switch.id == "exclude-switch":
+            excluded_input = self.query_one("#excluded-nodes", Input)
+            excluded_input.disabled = not event.value
+            if not event.value:
+                excluded_input.value = ""
 
     def on_button_pressed(self, event):
         """Store values and proceed."""
         if event.button.id == "next":
-            self.session.nodes = int(self.query_one("#nodes-input", Input).value)
-            if self.session.environment.general.get("SLURM", False):
-                self.session.tasks_per_node = int(self.query_one("#tasks-input", Input).value)
-                self.session.test_time      = self.query_one("#time-input",  Input).value
+            self._save_values()
             from tui.steps.mpi import MPIStep
             self.next(MPIStep)
         elif event.button.id == "prev":
-            self.session.nodes = 0
-            self.session.tasks_per_node = 1
-            self.session.test_time = default_time
+            self._reset_values()
             from tui.steps.configure import ConfigureStep
             self.prev(ConfigureStep)
 
     def get_help_desc(self) -> str:
         """Contextual help based on focused input."""
-        f = getattr(self.focused, "id", "")
-        if f == "nodes-input":
-            if self.session.environment.general.get("SLURM", False):
-                mn, _ = self.time_bounds()  # misuse; correct is min_nodes()
-                return f"Nodes: {self.min_nodes()}–{self.max_nodes() or '∞'}"
-            else:
-                return "Nodes (min 2, no max)"
-        if f == "tasks-input":
-            return f"Tasks/node: 1–{self.task_max()}"
-        if f == "time-input":
-            return f"Time (max {self.time_max_str()})"
-        return "Configure run resources before MPI."
+        focus_id = getattr(self.focused, "id", "")
+        
+        help_map = {
+            "nodes-input": f"Nodes: {self._get_min_nodes()}–{self._get_max_nodes()}",
+            "tasks-input": f"Tasks/node: 1–{self._get_max_tasks()}",
+            "time-input": f"Time (max {self._get_max_time_str()})",
+        }
+        
+        return help_map.get(focus_id, "Configure run resources before MPI.")
 
-    # ─── Helpers ────────────────────────────────────────────────────────────────
+    # ─── Configuration Getters ─────────────────────────────────────────────────
 
-    def min_nodes_no_slurm(self) -> int:
-        return 2
-
-    def min_nodes(self, slurm_enabled: bool = True) -> int:
-        if not slurm_enabled:
+    def _get_min_nodes(self) -> int:
+        """Get minimum number of nodes based on configuration."""
+        if not self.slurm_enabled:
             return 2
-        qos_cfg = self.session.partition.qos_details or {}
-        return int(qos_cfg.get("QOS_MIN_NODES", 2))
+        return int(self.qos_config.get("QOS_MIN_NODES", 2))
 
-    def max_nodes(self) -> int | None:
-        qos_cfg = self.session.partition.qos_details or {}
-        m = qos_cfg.get("QOS_MAX_NODES")
-        return int(m) if m is not None else None
-
-    def task_max(self, slurm_enabled: bool = True) -> int:
-        if not slurm_enabled:
-            return 1
-        val = self.session.partition.details.get("PARTITION_CPUS_PER_NODE")
-        return int(val) if val is not None else 1
-
-    def time_bounds(self) -> tuple[int, int | None]:
-        """
-        Return (min_sec, max_sec) for test time from QOS_MAX_TIME.
-        """
-        qos_cfg = self.session.partition.qos_details or {}
-        tmax = qos_cfg.get("QOS_MAX_TIME")
-        if not tmax:
-            return (0, None)
-        if "-" in tmax:
-            days, timestr = tmax.split("-", 1)
-            days = int(days)
-        else:
-            days = 0
-            timestr = tmax
-        h, m, s = map(int, timestr.split(":"))
-        max_sec = days*86400 + h*3600 + m*60 + s
-        return (1, max_sec)
-
-    def time_max_str(self, slurm_enabled: bool = True) -> str:
-        if not slurm_enabled:
+    def _get_max_nodes(self) -> str:
+        """Get maximum number of nodes as string for display."""
+        if not self.slurm_enabled:
             return "∞"
-        qos_cfg = self.session.partition.qos_details or {}
-        return qos_cfg.get("QOS_MAX_TIME", "∞")
+        max_nodes = self.qos_config.get("QOS_MAX_NODES")
+        return str(max_nodes) if max_nodes is not None else "∞"
 
-    # ─── Validators ─────────────────────────────────────────────────────────────
+    def _get_max_tasks(self) -> int:
+        """Get maximum tasks per node."""
+        if not self.slurm_enabled:
+            return 1
+        cpus = self.partition_config.get("PARTITION_CPUS_PER_NODE")
+        return int(cpus) if cpus is not None else 1
 
-    def validate_nodes(self, text: str) -> tuple[bool, str]:
+    def _get_max_time_str(self) -> str:
+        """Get maximum time as string for display."""
+        if not self.slurm_enabled:
+            return "∞"
+        return self.qos_config.get("QOS_MAX_TIME", "∞")
+
+    def _get_max_time_seconds(self) -> int | None:
+        """Get maximum time in seconds for validation."""
+        if not self.slurm_enabled:
+            return None
+        
+        max_time = self.qos_config.get("QOS_MAX_TIME")
+        if not max_time:
+            return None
+            
         try:
-            val = int(text)
+            # Parse format like "7-00:00:00" or "01:30:00"
+            if "-" in max_time:
+                days_str, time_str = max_time.split("-", 1)
+                days = int(days_str)
+            else:
+                days = 0
+                time_str = max_time
+                
+            h, m, s = map(int, time_str.split(":"))
+            return days * 86400 + h * 3600 + m * 60 + s
+        except (ValueError, IndexError):
+            return None
+
+    # ─── Validation ─────────────────────────────────────────────────────────────
+
+    def _validate_field(self, field_id: str, value: str) -> None:
+        """Validate a single field and update its error label."""
+        validators = {
+            "nodes-input": self._validate_nodes,
+            "tasks-input": self._validate_tasks,
+            "time-input": self._validate_time,
+        }
+        
+        if field_id in validators:
+            _, error_msg = validators[field_id](value)
+            error_label_id = field_id.replace("-input", "-error")
+            self.query_one(f"#{error_label_id}", Label).update(error_msg)
+
+    def _validate_nodes(self, text: str) -> tuple[bool, str]:
+        """Validate number of nodes."""
+        try:
+            value = int(text)
         except ValueError:
             return False, "Must be integer"
-        if self.session.environment.general.get("SLURM", False):
-            mn = self.min_nodes()
-            mx = self.max_nodes()
-            if val < mn:
-                return False, f"Min {mn}"
-            if mx is not None and val > mx:
-                return False, f"Max {mx}"
-        else:
-            mn = self.min_nodes_no_slurm()
-            if val < mn:
-                return False, f"Min {mn}"
+        
+        min_nodes = self._get_min_nodes()
+        if value < min_nodes:
+            return False, f"Min {min_nodes}"
+        
+        if self.slurm_enabled:
+            max_nodes_raw = self.qos_config.get("QOS_MAX_NODES")
+            if max_nodes_raw is not None and value > int(max_nodes_raw):
+                return False, f"Max {max_nodes_raw}"
+        
         return True, ""
 
-    def validate_tasks(self, text: str) -> tuple[bool, str]:
+    def _validate_tasks(self, text: str) -> tuple[bool, str]:
+        """Validate tasks per node."""
+        if not self.slurm_enabled:
+            return True, ""
+            
         try:
-            val = int(text)
+            value = int(text)
         except ValueError:
             return False, "Must be integer"
-        mx = self.task_max()
-        if val < 1:
+        
+        if value < 1:
             return False, "Min 1"
-        if val > mx:
-            return False, f"Max {mx}"
+        
+        max_tasks = self._get_max_tasks()
+        if value > max_tasks:
+            return False, f"Max {max_tasks}"
+        
         return True, ""
 
-    def validate_time(self, text: str) -> tuple[bool, str]:
+    def _validate_time(self, text: str) -> tuple[bool, str]:
+        """Validate time format and limits."""
+        if not self.slurm_enabled:
+            return True, ""
+        
+        # Validate format
         parts = text.split(":")
         if len(parts) != 3 or not all(p.isdigit() for p in parts):
             return False, "Format HH:MM:SS"
-        h, m, s = map(int, parts)
-        total = h*3600 + m*60 + s
-        _, mx = self.time_bounds()
-        if total < 0:
-            return False, "Too short"
-        if mx is not None and total > mx:
-            return False, f"Max {self.time_max_str()}"
+        
+        try:
+            h, m, s = map(int, parts)
+            total_seconds = h * 3600 + m * 60 + s
+        except ValueError:
+            return False, "Invalid time values"
+        
+        if total_seconds <= 0:
+            return False, "Must be positive"
+        
+        max_seconds = self._get_max_time_seconds()
+        if max_seconds is not None and total_seconds > max_seconds:
+            return False, f"Max {self._get_max_time_str()}"
+        
         return True, ""
 
+    def _update_next_button(self) -> None:
+        """Enable/disable Next button based on all field validations."""
+        nodes_valid, _ = self._validate_nodes(self.query_one("#nodes-input", Input).value)
+        
+        if self.slurm_enabled:
+            tasks_valid, _ = self._validate_tasks(self.query_one("#tasks-input", Input).value)
+            time_valid, _ = self._validate_time(self.query_one("#time-input", Input).value)
+            all_valid = nodes_valid and tasks_valid and time_valid
+        else:
+            all_valid = nodes_valid
+        
+        self.query_one("#next", Button).disabled = not all_valid
 
+    # ─── State Management ───────────────────────────────────────────────────────
+
+    def _save_values(self) -> None:
+        """Save current form values to session."""
+        self.session.nodes = int(self.query_one("#nodes-input", Input).value)
+        
+        if self.slurm_enabled:
+            self.session.tasks_per_node = int(self.query_one("#tasks-input", Input).value)
+            self.session.test_time = self.query_one("#time-input", Input).value
+        else:
+            self.session.tasks_per_node = 1
+            self.session.test_time = DEFAULT_TIME
+
+    def _reset_values(self) -> None:
+        """Reset session values to defaults."""
+        self.session.nodes = 0
+        self.session.tasks_per_node = 1
+        self.session.test_time = DEFAULT_TIME

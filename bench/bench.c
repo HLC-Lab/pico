@@ -10,7 +10,7 @@
 int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
   MPI_Comm comm = MPI_COMM_WORLD;
-  MPI_Comm inter_comm, intra_comm;
+  // MPI_Comm inter_comm, intra_comm;
   MPI_Datatype dtype;
 #ifdef CUDA_AWARE
   cudaError_t err;
@@ -20,19 +20,19 @@ int main(int argc, char *argv[]) {
   size_t count, type_size;
   void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
   double *times = NULL, *all_times = NULL, *highest = NULL;
-  const char *algorithm, *type_string, *is_hier = getenv("HIERARCHICAL");
+  const char *algorithm, *type_string; //, *is_hier = getenv("HIERARCHICAL");
   test_routine_t test_routine;
 
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
   // TODO: Continue with hierarchical communicator setup
-  if (is_hier == NULL) { line = __LINE__; goto err_hndl; }
-  if (strcmp(is_hier, "yes") == 0) {
-    if (split_communicator(&inter_comm, &intra_comm) != MPI_SUCCESS) {
-      line = __LINE__; goto err_hndl;
-    }
-  }
+  // if (is_hier == NULL) { line = __LINE__; goto err_hndl; }
+  // if (strcmp(is_hier, "yes") == 0) {
+  //   if (split_communicator(&inter_comm, &intra_comm) != MPI_SUCCESS) {
+  //     line = __LINE__; goto err_hndl;
+  //   }
+  // }
 
   // Get test arguments
   if(get_command_line_arguments(argc, argv, &count, &iter, &algorithm, &type_string) == -1 ||
