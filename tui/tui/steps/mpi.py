@@ -32,8 +32,8 @@ class MPIStep(StepScreen):
 
     def on_button_pressed(self, event):
         if event.button.id == "next":
-            from tui.steps.summary import SummaryStep
-            self.next(SummaryStep)
+            from tui.steps.collectives import CollectiveStep
+            self.next(CollectiveStep)
         elif event.button.id == "prev":
             self.session.mpi.name = ""
             self.session.mpi.config = None

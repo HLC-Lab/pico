@@ -2,7 +2,7 @@
 Data model definitions for the session configuration.
 """
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
 
 
 @dataclass
@@ -42,6 +42,7 @@ class SessionConfig:
     environment: EnvironmentSelection = field(default_factory=EnvironmentSelection)
     partition:   PartitionSelection   = field(default_factory=PartitionSelection)
     mpi:         MPILibrarySelection  = field(default_factory=MPILibrarySelection)
+    algorithms: List[str] = field(default_factory=list)
     compile_only: bool = False
     debug_mode: bool = False
     dry_run: bool = False

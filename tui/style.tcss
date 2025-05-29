@@ -1,3 +1,19 @@
+/* ============================================================================ */
+/* COLOR PALETTE (Tokyo Night Theme)                                           */
+/* ============================================================================ */
+/*
+  Primary Background: #1a1b26
+  Secondary Background: #24283b, #2a2e3f
+  Border/Muted: #565f89, #414868
+  Text Primary: #c0caf5
+  Accent: #7aa2f7
+  Disabled: #16161e
+*/
+
+/* ============================================================================ */
+/* SCREEN & GLOBAL STYLES                                                      */
+/* ============================================================================ */
+
 Screen {
   align: center middle;
   background: #1a1b26;
@@ -5,32 +21,21 @@ Screen {
   padding: 1 2;
 }
 
-/* ------------------------ */
-/* Widgets general styling  */
-/* ------------------------ */
-Header {
-  background: #414868;
-  color: #c0caf5;
-}
+/* ============================================================================ */
+/* LAYOUT COMPONENTS                                                           */
+/* ============================================================================ */
 
+Header,
 Footer {
   background: #414868;
   color: #c0caf5;
 }
 
-Select {
-  background: #2a2e3f;
-  color: #c0caf5;
-  border: ascii #565f89;
-  padding: 0 1;
-  margin-right: 1;
-}
+/* ============================================================================ */
+/* FORM CONTROLS                                                               */
+/* ============================================================================ */
 
-Select:disabled {
-  color: #565f89;
-  background: #24283b;
-}
-
+/* ----- Buttons ----- */
 Button {
   padding: 1 3;
   width: auto;
@@ -45,6 +50,21 @@ Button:disabled {
   border: ascii #414868;
 }
 
+/* ----- Select Dropdowns ----- */
+Select {
+  background: #2a2e3f;
+  color: #c0caf5;
+  border: ascii #565f89;
+  padding: 0 1;
+  margin-right: 1;
+}
+
+Select:disabled {
+  color: #565f89;
+  background: #24283b;
+}
+
+/* ----- Switches ----- */
 Switch {
   padding: 1 3;
   width: 15;
@@ -67,9 +87,20 @@ Switch:focus {
   color: #c0caf5;
 }
 
-/* ------------------------ */
-/* Titles and labels        */
-/* ------------------------ */
+/* ----- Checkboxes ----- */
+Checkbox {
+  width: 40;
+  background: #2a2e3f;
+  color: #c0caf5;
+  border: ascii #565f89;
+  padding: 0 1;
+  margin-right: 1;
+}
+
+/* ============================================================================ */
+/* TEXT & LABELS                                                               */
+/* ============================================================================ */
+
 .field-label {
   width: auto;
   text-style: bold;
@@ -77,10 +108,11 @@ Switch:focus {
   margin-right: 1;
 }
 
-/* ------------------------ */
-/* General Row with equal   */
-/* widht columns            */
-/* ------------------------ */
+/* ============================================================================ */
+/* LAYOUT CLASSES                                                              */
+/* ============================================================================ */
+
+/* ----- General Rows ----- */
 .row {
   layout: horizontal;
   padding: 1 0;
@@ -90,23 +122,7 @@ Switch:focus {
   align-vertical: middle;
 }
 
-/* ------------------------ */
-/* Compact row only Switch  */
-/* ------------------------ */
-.tight-switches {
-  height: auto;
-  max-height: 8;
-  width: auto;
-}
-
-.tight-switches > Vertical {
-    width: auto;
-    margin-right: 2;
-}
-
-/* ------------------------ */
-/* next and prev button row */
-/* ------------------------ */
+/* ----- Button Rows ----- */
 .button-row {
   padding-right: 1;
   align-horizontal: center;
@@ -127,6 +143,41 @@ Switch:focus {
   margin-right: 2;
 }
 
+/* ----- Switch Layouts ----- */
+.tight-switches {
+  height: auto;
+  max-height: 8;
+  width: auto;
+}
+
+.tight-switches > Vertical {
+  width: auto;
+  margin-right: 2;
+}
+
+.switch-col {
+  width: auto;
+  margin-left: 2;
+  margin-right: 2;
+}
+
+/* ============================================================================ */
+/* FIELD LAYOUTS                                                               */
+/* ============================================================================ */
+
+.field {
+  width: 1fr;
+  min-width: 20;        /* Never shrink below 20 chars wide */
+  margin-right: 2;      /* Gap to the next column */
+}
+
+.field:last-child {
+  margin-right: 0;      /* Remove right margin on last field */
+}
+
+/* ============================================================================ */
+/* SUMMARY & CONTENT CONTAINERS                                                */
+/* ============================================================================ */
 
 .summary-container {
   overflow: auto;
@@ -137,23 +188,3 @@ Switch:focus {
   border: ascii white;
   margin: 1;
 }
-
-/* the two “big” fields each grab 1fr */
-.field {
-  width: 1fr;
-  min-width: 20;          /* never shrink below 20 chars wide */
-  margin-right: 2;        /* gap to the next column */
-}
-
-/* remove the right margin on the last field */
-.field:last-child {
-  margin-right: 0;
-}
-
-/* switch column only as wide as its contents */
-.switch-col {
-  width: auto;
-  margin-left: 2;         /* if you want space before/after */
-  margin-right: 2;
-}
-

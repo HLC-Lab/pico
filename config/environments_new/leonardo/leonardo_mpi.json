@@ -4,6 +4,7 @@
   "MPI": {
     "Open MPI 4.1.6": {
       "desc": "An open source Message Passing Interface implementation.",
+      "name": "Open-MPI",
       "load": {
         "type": "module",
         "module": "openmpi/4.1.6--gcc--12.2.0"
@@ -29,6 +30,7 @@
     },
     "Open MPI NVHPC 23.11": {
       "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "name": "Open-MPI",
       "load": {
         "type": "module",
         "module": "openmpi/4.1.6--nvhpc--23.11"
@@ -53,6 +55,7 @@
     },
     "Open MPI NVHPC 24.3": {
       "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "name": "Open-MPI",
       "load": {
         "type": "module",
         "module": "openmpi/4.1.6--nvhpc--24.3"
@@ -77,6 +80,7 @@
     },
     "Intel MPI": {
       "desc": "Intel MPI Library is a multifabric message-passing library that implements the open-source MPICH specification.",
+      "name": "Intel-MPI",
       "load": {
         "type": "module",
         "module": "intel-oneapi-mpi/2021.10.0"

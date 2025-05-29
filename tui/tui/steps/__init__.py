@@ -4,6 +4,7 @@ from .base import StepScreen
 from .help import HelpScreen
 from .configure import ConfigureStep
 from .node_config import NodeConfigStep
+from .collectives import CollectiveStep
 
 __all__ = [
     "ConfigureStep",
@@ -12,4 +13,5 @@ __all__ = [
     "StepScreen",
     "HelpScreen",
     "NodeConfigStep",
+    "CollectiveStep",
 ]

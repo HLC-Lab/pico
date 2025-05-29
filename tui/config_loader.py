@@ -60,3 +60,21 @@ def get_mpi_config(env_name: str, mpi_name: str) -> dict:
     """
     mpi_cfg = load_json('environments_new', env_name, f"{env_name}_mpi.json")
     return mpi_cfg['MPI'][mpi_name]
+
+
+def list_algorithms(mpi_lib_name: str) -> list[str]:
+    """
+    Return all collective algorithm names (without “.json”) 
+    for the given MPI library, by scanning config/algorithms/<mpi_lib_name>.
+    """
+    alg_dir = CONFIG_DIR / "algorithms" / mpi_lib_name
+    return [
+        p.stem
+        for p in sorted(alg_dir.glob("*.json"))
+    ]
+
+def get_algorithm_config(mpi_lib_name: str, alg_name: str) -> dict:
+    """
+    Load a specific algorithm’s JSON (if you ever need its contents).
+    """
+    return load_json("algorithms", mpi_lib_name, f"{alg_name}.json")
