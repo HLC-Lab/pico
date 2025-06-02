@@ -5,6 +5,8 @@ Base class for all step screens: shared session, navigation helpers,
 context‐sensitive help toggle, and keyboard focus navigation.
 """
 
+from textual.widgets import Button
+from textual.containers import Horizontal
 from textual.screen import Screen
 from tui.steps.help import HelpScreen
 
@@ -34,6 +36,14 @@ class StepScreen(Screen):
     def on_mount(self) -> None:
         self.title = "PICO"
         self.sub_title = "Performance Evaluation for Collective Operations"
+
+    def navigation_buttons(self, prev_disabled: bool = False, next_disabled: bool = True) -> Horizontal:
+        return Horizontal(
+            Button("Prev", id="prev", disabled=prev_disabled),
+            Button("Next", id="next", disabled=next_disabled),
+            classes="button-row"
+        )
+
     # ─── Navigation Helpers ─────────────────────────────────────────────────────
 
     def next(self, next_screen_cls):
@@ -45,6 +55,7 @@ class StepScreen(Screen):
         """Pop this screen and push `prev_screen_cls(session)`."""
         self.app.pop_screen()
         self.app.push_screen(prev_screen_cls(self.session))
+
 
     # ─── Bound Actions ──────────────────────────────────────────────────────────
 

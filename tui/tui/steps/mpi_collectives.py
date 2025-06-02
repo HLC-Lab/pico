@@ -1,13 +1,14 @@
-
 """
 Step 3: Choose MPI implementation and which collectives to benchmark.
 """
 
 from textual.containers import Vertical, Horizontal
-from textual.widgets import Button, Select, Static, Checkbox, Switch
+from textual.widgets import Button, Select, Static, Checkbox, Switch, Header, Footer
 from textual.types import NoSelection
 from textual.app import ComposeResult
 from tui.steps.base import StepScreen
+from models import MPILibrarySelection, CollectiveSelection
+from typing import List
 from config_loader import list_mpi_libs, get_mpi_config, list_algorithms
 
 
@@ -20,6 +21,8 @@ class MPICollectivesStep(StepScreen):
         # yield Static("MPI Selection & Collectives", classes="field-label")
         # MPI dropdown
         libs = list_mpi_libs(self.session.environment.name)
+
+        yield Header(show_clock=True)
         yield Horizontal(
             Vertical(
                 Static("MPI Selection", classes="field-label"),
@@ -29,12 +32,12 @@ class MPICollectivesStep(StepScreen):
             Vertical(
                 Horizontal(
                     Vertical(
-                        Static("Collectives", classes="field-label"),
-                        Switch(id="compile-switch", name="Compile Only")
+                        Static("Use also LibPICO?", classes="field-label"),
+                        Switch(id="compile-switch")
                     ),
                     Vertical(
-                        Static("Collectives", classes="field-label"),
-                        Switch(id="debug-switch", name="Debug Mode")
+                        Static("Placeholder", classes="field-label"),
+                        Switch(id="debug-switch", disabled=True)
                     ),
                     classes="tight-switches"
                 )
@@ -46,29 +49,41 @@ class MPICollectivesStep(StepScreen):
         self.collectives_container = Vertical(id="collectives", classes="collectives-container")
         yield self.collectives_container
 
-        # Navigation buttons
-        yield Horizontal(
-            Button("Prev", id="prev"),
-            Button("Next", id="next", disabled=True),
-            classes="button-row"
-        )
+        yield self.navigation_buttons()
+
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.session.mpi = MPILibrarySelection()
+        self.session.collectives = []
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "mpi-select":
+            self.session.mpi = MPILibrarySelection()
+            self.session.collectives = []
             value = event.value
             if isinstance(value, NoSelection) or not isinstance(value, str) or value == "":
                 self.query_one("#next", Button).disabled = True
                 self.collectives_container.remove_children()
                 return
 
-            name = value  # safely treat as str here
+            name = value
             self.session.mpi.name = name
             self.session.mpi.config = get_mpi_config(self.session.environment.name, name)
+            self.session.mpi.type = self.session.mpi.config.get("type", "unknown")
 
-            algs = list_algorithms(name)
+            if not self.session.mpi.config or "type" not in self.session.mpi.config:
+                self.notify("Invalid MPI configuration", severity="error")
+                self.query_one("#next", Button).disabled = True
+                self.collectives_container.remove_children()
+                return
+            
+
+            algs = list_algorithms(self.session.mpi.type)
             self.collectives_container.remove_children()
             for alg in algs:
-                self.collectives_container.mount(Checkbox(label=alg, id=f"alg-{alg}"))
+                checkbox_id = f"alg-{name}-{alg}".replace(" ", "_").replace(".", "_")
+                self.collectives_container.mount(Checkbox(label=alg, id=checkbox_id))
 
             self._update_next_button_state()
 
@@ -83,23 +98,15 @@ class MPICollectivesStep(StepScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "next":
             # Store selected algorithms
-            self.session.algorithms = [
-                cb.label for cb in self.query(Checkbox) if cb.value
-            ]
+            for cb in self.query(Checkbox):
+                if cb.value:
+                    self.session.collectives.append(CollectiveSelection(self.session.mpi.name, cb.label))
             from tui.steps.algorithms import AlgorithmSelectionStep
             self.next(AlgorithmSelectionStep)
 
         elif event.button.id == "prev":
-            # Clear MPI info
-            self.session.mpi.name = ""
-            self.session.mpi.config = None
-            self.session.algorithms = []
-            if self.session.environment.general.get("SLURM", False):
-                from tui.steps.node_config import NodeConfigStep
-                self.prev(NodeConfigStep)
-            else:
-                from tui.steps.configure import ConfigureStep
-                self.prev(ConfigureStep)
+            from tui.steps.node_config import NodeConfigStep
+            self.prev(NodeConfigStep)
 
     def get_help_desc(self) -> str:
         focused = getattr(self.focused, "id", None)

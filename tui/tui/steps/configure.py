@@ -50,11 +50,7 @@ class ConfigureStep(StepScreen):
             classes="tight-switches"
         )
 
-        yield Horizontal(
-            Button("Prev", id="prev", disabled=True),
-            Button("Next", id="next", disabled=True),
-            classes="button-row"
-        )
+        yield self.navigation_buttons(prev_disabled=True)
 
         yield Footer()
 

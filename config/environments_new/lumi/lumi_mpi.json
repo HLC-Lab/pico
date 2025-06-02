@@ -4,7 +4,7 @@
   "MPI": {
     "Cray MPICH": {
       "desc": "System's default MPI installation. CRAY customized version of MPICH.",
-      "name": "Cray-MPICH",
+      "type": "Cray-MPICH",
       "load": {
         "type": "module",
         "module": "LUMI/24.03 partition/L"

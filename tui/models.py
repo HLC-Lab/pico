@@ -25,12 +25,27 @@ class PartitionSelection:
     details: Optional[dict] = None       # partition‐level keys (desc, CPUs/GPU per node, etc.)
     qos_details: Optional[dict] = None   # ONLY the selected QOS block
 
+
+@dataclass
+class AlgorithmsSelection:
+    collective: str = ''
+    algorithms: List[str] = field(default_factory=list)
+
+@dataclass
+class CollectiveSelection:
+    library: str = ''
+    collective_type: str = ''
+    algo_list: List[str] = field(default_factory=list)
+    algorithms: List[AlgorithmsSelection] = field(default_factory=list)
+
+
 @dataclass
 class MPILibrarySelection:
     """
     User’s chosen MPI library and its config.
     """
     name: str = ''
+    type: str = ''
     config: Optional[dict] = None
 
 
@@ -39,10 +54,10 @@ class SessionConfig:
     """
     Full session state carrying all selections.
     """
-    environment: EnvironmentSelection = field(default_factory=EnvironmentSelection)
-    partition:   PartitionSelection   = field(default_factory=PartitionSelection)
-    mpi:         MPILibrarySelection  = field(default_factory=MPILibrarySelection)
-    algorithms: List[str] = field(default_factory=list)
+    environment:    EnvironmentSelection      = field(default_factory=EnvironmentSelection)
+    partition:      PartitionSelection        = field(default_factory=PartitionSelection)
+    mpi:            MPILibrarySelection       = field(default_factory=MPILibrarySelection)
+    collectives:    List[CollectiveSelection] = field(default_factory=list)
     compile_only: bool = False
     debug_mode: bool = False
     dry_run: bool = False

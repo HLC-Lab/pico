@@ -4,7 +4,7 @@ Final step: display a summary of the selected configuration.
 import json
 from pathlib import Path
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Static
+from textual.widgets import Button, Input, Static, Header, Footer
 from textual.containers import Vertical, Horizontal, Container
 from textual.app import ComposeResult
 from tui.steps.base import StepScreen
@@ -16,6 +16,9 @@ class SavePrompt(ModalScreen[str | None]):
     BINDINGS = [("escape", "cancel", "Cancel")]
 
     def compose(self) -> ComposeResult:
+
+        yield Header(show_clock=True)
+
         yield Vertical(
             Static("Enter filename to save configuration (e.g. config.json):", id="save-label"),
             Input(placeholder="my_config.json", id="save-filename"),
@@ -26,6 +29,8 @@ class SavePrompt(ModalScreen[str | None]):
             Button("Cancel", id="cancel-save"),
             classes="button-row"
         )
+
+        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "confirm-save":
@@ -50,6 +55,8 @@ class SummaryStep(StepScreen):
     """Final step: shows summary and offers save option."""
 
     def compose(self) -> ComposeResult:
+
+        yield Header(show_clock=True)
         yield Static("Summary", classes="screen-header")
 
         summary = self.get_summary()
@@ -63,6 +70,8 @@ class SummaryStep(StepScreen):
             Button("Finish", id="finish-button"),
             classes="button-row"
         )
+
+        yield Footer()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "save-button":
@@ -83,6 +92,7 @@ class SummaryStep(StepScreen):
             self.app.exit()
 
     def get_summary(self) -> dict:
+        # TODO: Adjust this method to return the actual session configuration.
         if self.session.environment.general.get("SLURM") is False:
             return {
                 'environment': self.session.environment.general,

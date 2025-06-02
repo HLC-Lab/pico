@@ -2,9 +2,9 @@
   "NETWORK_LIB": "foo",
   "NETWORK_LIB_VERSION": "bar",
   "MPI": {
-    "Open-MPI": {
+    "Open MPI": {
       "desc": "System's default Open MPI installation",
-      "name": "Open-MPI",
+      "type": "Open-MPI",
       "load": {
         "type": "default"
       },
@@ -19,7 +19,7 @@
     },
     "MPICH": {
       "desc": "Custom MPICH installation.",
-      "name": "MPICH",
+      "type": "MPICH",
       "load": {
         "type": "env variables",
         "env": {

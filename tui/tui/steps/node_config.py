@@ -1,12 +1,10 @@
-# tui/steps/node_config.py
-
 """
 Step 3: Choose number of nodes, (tasks per node), and (test time).
 Tasks/time only when SLURM is enabled.
 """
 
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Static, Input, Button, Label, Switch
+from textual.widgets import Static, Input, Button, Label, Switch, Header, Footer
 from .base import StepScreen
 
 
@@ -37,6 +35,7 @@ class NodeConfigStep(StepScreen):
         max_tasks = self._get_max_tasks()
         max_time_str = self._get_max_time_str()
 
+        yield Header(show_clock=True)
         yield Horizontal(
             Vertical(
                 Static("Number of Nodes" if self.slurm_enabled else "Number of Tasks", classes="field-label"),
@@ -72,11 +71,14 @@ class NodeConfigStep(StepScreen):
             classes="row",
         )
 
-        yield Horizontal(
-            Button("Prev", id="prev"),
-            Button("Next", id="next", disabled=True),
-            classes="button-row"
-        )
+        yield self.navigation_buttons()
+
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self._reset_values()
+        self._update_next_button()
+
 
     # ─── Event Handlers ────────────────────────────────────────────────────────
 
