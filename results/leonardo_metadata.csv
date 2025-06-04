@@ -180,3 +180,6 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_06_04___14_26_23,0,64,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
 2025_06_04___14_26_23,1,64,4,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
 2025_06_04___14_26_23,2,64,32,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_06_04___15_12_34,0,200,1,ALLREDUCE,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
+2025_06_04___15_12_34,1,200,1,ALLGATHER,OMPI,4.1.6,1.0.0,no,null,null,summarized,null,null
+2025_06_04___15_12_34,2,200,1,REDUCE_SCATTER,OMPI,4.1.6,1.0.0,no,null,null,summarized,MPI_SUM,null
