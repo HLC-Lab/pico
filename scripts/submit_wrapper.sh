@@ -3,7 +3,12 @@
 source scripts/utils.sh
 
 # 1. Set default values for the variables (are defined in `utils.sh`)
-export SWING_DIR="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
+if [[ -n "${BASH_SOURCE[0]}" ]]; then
+    export SWING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+else
+    echo "Warning: BASH_SOURCE is not set. Using current working directory as fallback."
+    export SWING_DIR="$(pwd)"
+fi
 
 export TASKS_PER_NODE=$DEFAULT_TASKS_PER_NODE
 export COMPILE_ONLY=$DEFAULT_COMPILE_ONLY
