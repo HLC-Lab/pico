@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "cvar": "auto",
+    "selection": "auto",
     "tags": [
       "default"
     ]
@@ -32,7 +32,7 @@
         ]
       }
     ],
-    "cvar": "nb",
+    "selection": "nb",
     "tags": [
       "non_blocking"
     ]
@@ -60,7 +60,7 @@
         ]
       }
     ],
-    "cvar": "noncommutative",
+    "selection": "noncommutative",
     "tags": [
       "non_commutative"
     ]
@@ -79,7 +79,7 @@
         ]
       }
     ],
-    "cvar": "pairwise",
+    "selection": "pairwise",
     "tags": [
       "pairwise"
     ]
@@ -98,7 +98,7 @@
         ]
       }
     ],
-    "cvar": "recursive_doubling",
+    "selection": "recursive_doubling",
     "tags": [
       "recursive_doubling"
     ]
@@ -117,7 +117,7 @@
         ]
       }
     ],
-    "cvar": "recursive_halving",
+    "selection": "recursive_halving",
     "tags": [
       "recursive_halving"
     ]

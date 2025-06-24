@@ -1,0 +1,100 @@
+{
+  "PARTITIONS": {
+    "boost_usr_prod": {
+      "desc": "Boost partition with GPU nodes.",
+      "is_gpu": true,
+      "gpus_per_node": 4,
+      "cpus_per_node": 32,
+      "sockets_per_node": 1,
+      "QOS": {
+        "default": {
+          "required": false,
+          "desc": "Default QOS for boost partition.",
+          "nodes_limit": {
+            "min": 1,
+            "max": 64
+          },
+          "time_limit": "24:00:00"
+        },
+        "boost_qos_bprod": {
+          "required": true,
+          "desc": "QOS for big jobs with more than 64 nodes.",
+          "nodes_limit": {
+            "min": 65,
+            "max": 256
+          },
+          "time_limit": "24:00:00",
+          "extra_requirements": {
+            "tasks_per_node": 32,
+            "gres": "gpu:4"
+          }
+        },
+        "boost_qos_dbg": {
+          "required": true,
+          "desc": "QOS for debugging jobs.",
+          "nodes_limit": {
+            "min": 1,
+            "max": 2
+          },
+          "time_limit": "00:30:00"
+        },
+        "boost_qos_lprod": {
+          "required": true,
+          "desc": "QOS for long running jobs.",
+          "nodes_limit": {
+            "min": 1,
+            "max": 3
+          },
+          "time_limit": "4-00:00:00"
+        }
+      }
+    },
+    "dcgp_usr_prod": {
+      "desc": "Data centric partition with two sockets per node.",
+      "is_gpu": false,
+      "sockets_per_node": 2,
+      "cpus_per_node": 112,
+      "QOS": {
+        "default": {
+          "required": false,
+          "desc": "Default QOS for data centric partition.",
+          "nodes_limit": {
+            "min": 1,
+            "max": 16
+          },
+          "time_limit": "24:00:00"
+        },
+        "dcgp_qos_bprod": {
+          "required": true,
+          "desc": "QOS for big jobs with more than 16 nodes.",
+          "nodes_limit": {
+            "min": 17,
+            "max": 128
+          },
+          "time_limit": "24:00:00",
+          "extra_requirements": {
+            "tasks_per_node": 112
+          }
+        },
+        "dcgp_qos_dbg": {
+          "required": true,
+          "desc": "QOS for debugging jobs in data centric partition.",
+          "nodes_limit": {
+            "min": 1,
+            "max": 2
+          },
+          "time_limit": "00:30:00"
+        },
+        "dcgp_qos_lprod": {
+          "required": true,
+          "desc": "QOS for long running jobs in data centric partition.",
+          "nodes_limit": {
+            "min": 1,
+            "max": 3
+          },
+          "time_limit": "4-00:00:00"
+        }
+      }
+    }
+  }
+}

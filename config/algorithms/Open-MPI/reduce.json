@@ -2,7 +2,7 @@
   "default_ompi": {
     "desc": "Open MPI default algorithm selection",
     "version": "4.1.5",
-    "dynamic_rule": 0,
+    "selection": 0,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -12,7 +12,7 @@
   "linear_ompi": {
     "desc": "Open MPI linear algorithm.",
     "version": "4.1.5",
-    "dynamic_rule": 1,
+    "selection": 1,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -22,7 +22,7 @@
   "chain_ompi": {
     "desc": "Open MPI chain algorithm.",
     "version": "4.1.5",
-    "dynamic_rule": 2,
+    "selection": 2,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -33,7 +33,7 @@
   "pipeline_ompi": {
     "desc": "Open MPI pipeline algorithm.",
     "version": "4.1.5",
-    "dynamic_rule": 3,
+    "selection": 3,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -44,7 +44,7 @@
   "binary_ompi": {
     "desc": "Open MPI binary tree reduce.",
     "version": "4.1.5",
-    "dynamic_rule": 4,
+    "selection": 4,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -54,7 +54,7 @@
   "binomial_ompi": {
     "desc": "Open MPI binomial tree reduce.",
     "version": "4.1.5",
-    "dynamic_rule": 5,
+    "selection": 5,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -64,7 +64,7 @@
   "in_order_ompi": {
     "desc": "Open MPI in order reduce.",
     "version": "4.1.5",
-    "dynamic_rule": 6,
+    "selection": 6,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -85,7 +85,7 @@
         ]
       }
     ],
-    "dynamic_rule": 7,
+    "selection": 7,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [

@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "dynamic_rule": 0,
+    "selection": 0,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -34,7 +34,7 @@
         ]
       }
     ],
-    "dynamic_rule": 1,
+    "selection": 1,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -57,7 +57,7 @@
         ]
       }
     ],
-    "dynamic_rule": 2,
+    "selection": 2,
     "additional_parameters": {
       "radix": {
         "desc": "Radix of the K-nomial tree. When not explicitly set it defaults to 2. Still don't know how to change it.",
@@ -79,7 +79,7 @@
   "recursive_doubling_ompi": {
     "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. When invoked on non power of 2 processes, it will fallback to k_bruck with `radix=2`",
     "version": "4.1.5",
-    "dynamic_rule": 3,
+    "selection": 3,
     "constraints": [
       {
         "key": "count",
@@ -122,7 +122,7 @@
         ]
       }
     ],
-    "dynamic_rule": 4,
+    "selection": 4,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -133,7 +133,7 @@
   "neighbor_ompi": {
     "desc": "Open MPI neighbor exchange algorithm. This algorithm is used for large messages. Works only for even number of processes. When invoked on odd number of processes, it will fallback to ring",
     "version": "4.1.5",
-    "dynamic_rule": 5,
+    "selection": 5,
     "constraints": [
       {
         "key": "count",
@@ -164,7 +164,7 @@
   "two_proc_ompi": {
     "desc": "Open MPI two processes algorithm. Works only for 2 processes",
     "version": "4.1.5",
-    "dynamic_rule": 6,
+    "selection": 6,
     "constraints": [
       {
         "key": "count",

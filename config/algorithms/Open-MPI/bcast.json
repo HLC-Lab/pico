@@ -2,7 +2,7 @@
   "default_ompi": {
     "desc": "Open MPI default algorithm selection",
     "version": "4.1.5",
-    "dynamic_rule": 0,
+    "selection": 0,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -12,7 +12,7 @@
   "linear_ompi": {
     "desc": "Open MPI linear algorithm, consists in root performing comm_sz - 1 send operations, one to each other process. All other processes perform a single receive operation. It can crash for big tests",
     "version": "4.1.5",
-    "dynamic_rule": 1,
+    "selection": 1,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -37,7 +37,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 2,
+    "selection": 2,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -58,7 +58,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 3,
+    "selection": 3,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -79,7 +79,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 4,
+    "selection": 4,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -99,7 +99,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 5,
+    "selection": 5,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -119,7 +119,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 6,
+    "selection": 6,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -144,7 +144,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 7,
+    "selection": 7,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -175,7 +175,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 8,
+    "selection": 8,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -206,7 +206,7 @@
         "default": 0
       }
     },
-    "dynamic_rule": 9,
+    "selection": 9,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [

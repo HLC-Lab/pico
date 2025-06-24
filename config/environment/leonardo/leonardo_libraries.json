@@ -1,0 +1,94 @@
+{
+  "NETWORK_LIB": "ucx",
+  "NETWORK_LIB_VERSION": "1.13.0",
+  "LIBRARY": {
+    "Open MPI 4.1.6": {
+      "desc": "An open source Message Passing Interface implementation.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "mpicc",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--gcc--12.2.0"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "module",
+          "module": "cuda/12.1"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "12.2.0",
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.1"
+      }
+    },
+    "Open MPI NVHPC 23.11": {
+      "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "nvc",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--nvhpc--23.11"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "nvhpc",
+        "MPI_LIB_COMPILER_VERSION": "23.11",
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.3"
+      }
+    },
+    "Open MPI NVHPC 24.3": {
+      "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "nvc",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--nvhpc--24.3"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "nvhpc",
+        "MPI_LIB_COMPILER_VERSION": "24.3",
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.3"
+      }
+    },
+    "Intel MPI": {
+      "desc": "Intel MPI Library is a multifabric message-passing library that implements the open-source MPICH specification.",
+      "standard": "mpi",
+      "lib_type": "Intel-MPI",
+      "version": "2021.10",
+      "compiler": "mpiicc",
+      "load": {
+        "type": "module",
+        "module": "intel-oneapi-mpi/2021.10.0"
+      },
+      "gpu": {
+        "support": false
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "icx",
+        "MPI_LIB_COMPILER_VERSION": "2021.10"
+      }
+    }
+  }
+}

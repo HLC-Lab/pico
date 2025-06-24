@@ -1,0 +1,22 @@
+{
+  "PARTITIONS": {
+    "standard-g": {
+      "desc": "GPU partition.",
+      "is_gpu": true,
+      "gpus_per_node": 4,
+      "cpus_per_node": 56,
+      "sockets_per_node": 1,
+      "QOS": {
+        "default": {
+          "required": false,
+          "desc": "Default QOS for standard GPU partition.",
+          "nodes_limit": {
+            "min": 1,
+            "max": 1024
+          },
+          "time_limit": "2-00:00:00"
+        }
+      }
+    }
+  }
+}

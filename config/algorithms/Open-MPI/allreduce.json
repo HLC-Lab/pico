@@ -2,7 +2,7 @@
   "default_ompi": {
     "desc": "Open MPI default algorithm selection",
     "version": "4.1.5",
-    "dynamic_rule": 0,
+    "selection": 0,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -12,7 +12,7 @@
   "linear_ompi": {
     "desc": "Open MPI linear algorithm from 'basic' module, consists in a Reduce to rank 0 followed by a Bcast. Both Reduce and Bcast are the one from the 'basic' module.",
     "version": "4.1.5",
-    "dynamic_rule": 1,
+    "selection": 1,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -23,7 +23,7 @@
   "non_overlapping_ompi": {
     "desc": "Open MPI non-overlapping algorithm, consists in a Reduce to rank 0 followed by a Bcast. Utilizes default Reduce and Bcast algorithm selection.",
     "version": "4.1.5",
-    "dynamic_rule": 2,
+    "selection": 2,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -34,7 +34,7 @@
   "recursive_doubling_ompi": {
     "desc": "Open MPI recursive doubling algorithm.",
     "version": "4.1.5",
-    "dynamic_rule": 3,
+    "selection": 3,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -44,7 +44,7 @@
   "ring_ompi": {
     "desc": "Open MPI ring algorithm. Not to be used if 'count'<'comm_sz'. If invoked on 'count'<'comm_sz' fallbacks to 'recursive_doubling'.",
     "version": "4.1.5",
-    "dynamic_rule": 4,
+    "selection": 4,
     "constraints": [
       {
         "key": "count",
@@ -65,7 +65,7 @@
   "ring_segmented_ompi": {
     "desc": "Open MPI ring segmented algorithm. Not to be used if 'count'<'comm_sz'. If invoked on 'count'<'comm_sz' defaults to 'recursive_doubling'.",
     "version": "4.1.5",
-    "dynamic_rule": 5,
+    "selection": 5,
     "additional_parameters": {
       "segsize": {
         "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
@@ -98,7 +98,7 @@
   "rabenseifner_ompi": {
     "desc": "Open MPI Rabenseifner algorithm. Not to be used if 'count'<'comm_sz'. Not to be used if 'op' is not commutative. If used on not commutative 'op' fallback to 'OMPI_LINEAR'.",
     "version": "4.1.5",
-    "dynamic_rule": 6,
+    "selection": 6,
     "constraints": [
       {
         "key": "count",
@@ -119,7 +119,7 @@
   "allgather_reduce_ompi": {
     "desc": "Open MPI allgather reduce algorithm.",
     "version": "5.0.0",
-    "dynamic_rule": 7,
+    "selection": 7,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [

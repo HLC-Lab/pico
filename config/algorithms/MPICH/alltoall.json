@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "cvar": "auto",
+    "selection": "auto",
     "tags": [
       "default"
     ]
@@ -32,7 +32,7 @@
         ]
       }
     ],
-    "cvar": "brucks",
+    "selection": "brucks",
     "tags": [
       "brucks"
     ]
@@ -51,7 +51,7 @@
         ]
       }
     ],
-    "cvar": "nb",
+    "selection": "nb",
     "tags": [
       "nb"
     ]
@@ -79,7 +79,7 @@
         ]
       }
     ],
-    "cvar": "pairwise",
+    "selection": "pairwise",
     "tags": [
       "pairwise"
     ]
@@ -107,7 +107,7 @@
         ]
       }
     ],
-    "cvar": "pairwise_sendrecv_replace",
+    "selection": "pairwise_sendrecv_replace",
     "tags": [
       "pairwise_sendrecv_replace"
     ]
@@ -135,7 +135,7 @@
         ]
       }
     ],
-    "cvar": "scattered",
+    "selection": "scattered",
     "tags": [
       "scattered"
     ]

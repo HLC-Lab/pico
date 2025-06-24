@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "cvar": "auto",
+    "selection": "auto",
     "tags": [
       "default"
     ]
@@ -32,7 +32,7 @@
         ]
       }
     ],
-    "cvar": "binomial",
+    "selection": "binomial",
     "tags": [
       "binomial"
     ]
@@ -51,7 +51,7 @@
         ]
       }
     ],
-    "cvar": "nb",
+    "selection": "nb",
     "tags": [
       "non_blocking"
     ]

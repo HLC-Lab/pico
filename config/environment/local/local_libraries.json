@@ -1,0 +1,45 @@
+{
+  "NETWORK_LIB": "foo",
+  "NETWORK_LIB_VERSION": "bar",
+  "LIBRARY": {
+    "Open MPI": {
+      "desc": "System's default Open MPI installation",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "5.0.7",
+      "compiler": "mpicc",
+      "gpu": {
+        "support": false
+      },
+      "load": {
+        "type": "default"
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "15.1.1"
+      }
+    },
+    "MPICH": {
+      "desc": "Custom MPICH installation.",
+      "standard": "mpi",
+      "lib_type": "MPICH",
+      "version": "4.3.0",
+      "compiler": "mpicc",
+      "gpu": {
+        "support": false
+      },
+      "load": {
+        "type": "env_var",
+        "vars": {
+          "PATH": "/opt/mpich-test/bin:$PATH",
+          "LD_LIBRARY_PATH": "/opt/mpich-test/lib:$LD_LIBRARY_PATH",
+          "MANPATH": "/opt/mpich-test/share:$MANPATH"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "15.1.1"
+      }
+    }
+  }
+}

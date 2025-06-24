@@ -4,77 +4,57 @@ Provides functions to read JSON config files for environments and MPI libraries.
 """
 import json
 from pathlib import Path
+from typing import List
 
 # Base config directory (assumes this file sits next to `config/`)
 CONFIG_DIR = Path(__file__).parent.parent / "config"
+ALG_DIR = CONFIG_DIR / "algorithms"
+ENV = 'environment'
+ENV_DIR = CONFIG_DIR / ENV
 
-def load_json(*path_parts) -> dict:
-    """
-    Load a JSON file from CONFIG_DIR / path_parts.
-
-    Args:
-        *path_parts: path segments under config/ (e.g. ('environments', 'lumi', 'lumi_general.json')).
-    Returns:
-        Parsed JSON as a dict.
-    """
+def load_json(*path_parts, panic=True) -> dict:
     path = CONFIG_DIR.joinpath(*path_parts)
-    with open(path, 'r') as f:
-        return json.load(f)
+    try:
+        with open(path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        if panic:
+            raise FileNotFoundError(f"Configuration file not found: {path}")
+        return {}
 
 
-def list_environments() -> list[str]:
-    """
-    List all available environment names (subdirectories under config/environments).
-    """
-    env_dir = CONFIG_DIR / 'environments_new'
-    return [p.name for p in env_dir.iterdir() if p.is_dir()]
+# --------------- ConfigureStep utilities --------------- #
 
+def conf_list_environments() -> List[str]:
+    return [p.name for p in ENV_DIR.iterdir() if p.is_dir()]
 
-def get_environment_general(env_name: str) -> dict:
-    """
-    Get the general settings for a given environment.
-    """
+def conf_get_general(env_name: str) -> dict:
     filename = f"{env_name}_general.json"
-    return load_json('environments_new', env_name, filename)
+    return load_json(ENV, env_name, filename)
 
-
-def get_environment_slurm(env_name: str) -> dict:
-    """
-    Get the SLURM-specific settings for an environment.
-    """
+def conf_get_slurm_opts(env_name: str) -> dict:
     filename = f"{env_name}_slurm.json"
-    return load_json('environments_new', env_name, filename)
+    return load_json(ENV, env_name, filename)
 
 
-def list_mpi_libs(env_name: str) -> list[str]:
-    """
-    List available MPI implementations for a given environment.
-    """
-    mpi_cfg = load_json('environments_new', env_name, f"{env_name}_mpi.json")
-    return list(mpi_cfg.get('MPI', {}).keys())
+# --------------- LibrariesStep utilities --------------- #
+
+def lib_get_libraries(env_name: str) -> dict:
+    filename = f"{env_name}_libraries.json"
+    return load_json(ENV, env_name, filename)
+
+# --------------- AlgorithmsStep utilities --------------- #
+
+def alg_get_list(lib_name: str, coll_name: str) -> dict:
+    return load_json("algorithms", lib_name, f"{coll_name}.json", panic=False)
+
+# WARN: I think this is slow, as it loads the whole file each time.
+# Consider caching when using get_alg_list() in AlgorithmStep and delete this.
+def alg_get_algo(lib_name: str, coll_name: str, algo_name: str) -> dict:
+    coll_algos = alg_get_list(lib_name, coll_name)
+    if algo_name not in coll_algos:
+        raise ValueError(f"Algorithm {algo_name} not found in {lib_name}/{coll_name}.json")
+
+    return coll_algos[algo_name]
 
 
-def get_mpi_config(env_name: str, mpi_name: str) -> dict:
-    """
-    Retrieve the configuration for a specific MPI library.
-    """
-    mpi_cfg = load_json('environments_new', env_name, f"{env_name}_mpi.json")
-    return mpi_cfg['MPI'][mpi_name]
-
-
-def list_algorithms(mpi_lib_name: str) -> list[str]:
-    """
-    Return all collective algorithm names (without “.json”) 
-    for the given MPI library, by scanning config/algorithms/<mpi_lib_name>.
-    """
-    alg_dir = CONFIG_DIR / "algorithms" / mpi_lib_name
-    return [
-        p.stem
-        for p in sorted(alg_dir.glob("*.json"))
-    ]
-
-def get_algorithm_config(mpi_lib_name: str, alg_name: str) -> dict:
-    """
-    Load a specific algorithm’s JSON (if you ever need its contents).
-    """
-    return load_json("algorithms", mpi_lib_name, f"{alg_name}.json")

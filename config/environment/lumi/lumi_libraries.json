@@ -1,0 +1,29 @@
+{
+  "NETWORK_LIB": "foo",
+  "NETWORK_LIB_VERSION": "bar",
+  "LIBRARY": {
+    "Cray MPICH": {
+      "desc": "System's default MPI installation. CRAY customized version of MPICH.",
+      "standard": "mpi",
+      "lib_type": "Cray-MPICH",
+      "version": "8.1.29",
+      "compiler": "cc",
+      "load": {
+        "type": "module",
+        "module": "LUMI/24.03 partition/L"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "cray clang",
+        "MPI_LIB_COMPILER_VERSION": "17.0.1",
+        "GPU_LIB": "ROCM",
+        "GPU_LIB_VERSION": "6.0.3"
+      }
+    }
+  }
+}

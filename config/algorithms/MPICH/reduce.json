@@ -2,7 +2,7 @@
   "default_mpich": {
     "desc": "MPICH default algorithm selection",
     "version": "4.3.0",
-    "cvar": "auto",
+    "selection": "auto",
     "tags": [
       "default"
     ]
@@ -10,7 +10,7 @@
   "binomial_mpich": {
     "desc": "MPICH binomial tree based algorithm.",
     "version": "4.3.0",
-    "cvar": "binomial",
+    "selection": "binomial",
     "tags": [
       "binomial"
     ]
@@ -18,7 +18,7 @@
   "non_blocking_mpich": {
     "desc": "MPICH non-blocking algorithm.",
     "version": "4.3.0",
-    "cvar": "nb",
+    "selection": "nb",
     "tags": [
       "non_blocking"
     ]
@@ -37,7 +37,7 @@
         ]
       }
     ],
-    "cvar": "reduce_scatter_gather",
+    "selection": "reduce_scatter_gather",
     "tags": [
       "rabenseifner"
     ]

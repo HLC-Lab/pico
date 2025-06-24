@@ -2,7 +2,7 @@
   "default_mpich": {
     "desc": "MPICH default algorithm selection",
     "version": "8.0.0",
-    "cvar": "auto",
+    "selection": "auto",
     "tags": [
       "default"
     ]
@@ -10,7 +10,7 @@
   "non_blocking_mpich": {
     "desc": "MPICH non-blocking algorithm.",
     "version": "8.0.0",
-    "cvar": "nb",
+    "selection": "nb",
     "tags": [
       "non_blocking"
     ]
@@ -18,7 +18,7 @@
   "smp_mpich": {
     "desc": "MPICH SMP algorithm.",
     "version": "8.0.0",
-    "cvar": "smp",
+    "selection": "smp",
     "tags": [
       "smp"
     ]
@@ -26,7 +26,7 @@
   "recursive_doubling_mpich": {
     "desc": "MPICH recursive doubling algorithm.",
     "version": "8.0.0",
-    "cvar": "recursive_doubling",
+    "selection": "recursive_doubling",
     "tags": [
       "recursive_doubling"
     ]
@@ -45,7 +45,7 @@
         ]
       }
     ],
-    "cvar": "reduce_scatter_allgather",
+    "selection": "reduce_scatter_allgather",
     "tags": [
       "rabenseifner"
     ]

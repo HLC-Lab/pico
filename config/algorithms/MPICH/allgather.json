@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "cvar": "auto",
+    "selection": "auto",
     "tags": [
       "default"
     ]
@@ -32,7 +32,7 @@
         ]
       }
     ],
-    "cvar": "brucks",
+    "selection": "brucks",
     "tags": [
       "brucks"
     ]
@@ -51,7 +51,7 @@
         ]
       }
     ],
-    "cvar": "k_brucks",
+    "selection": "k_brucks",
     "tags": [
       "k_brucks"
     ]
@@ -70,7 +70,7 @@
         ]
       }
     ],
-    "cvar": "nb",
+    "selection": "nb",
     "tags": [
       "nb"
     ]
@@ -98,7 +98,7 @@
         ]
       }
     ],
-    "cvar": "recursive_doubling",
+    "selection": "recursive_doubling",
     "tags": [
       "recursive_doubling"
     ]
@@ -117,13 +117,13 @@
         ]
       }
     ],
-    "cvar": "ring",
+    "selection": "ring",
     "tags": [
       "ring"
     ]
   },
   "recexch_mpich": {
-    "desc": "MPICH recexch distance doubling algorithm. It is a generalization of the recursive doubling to work with any `k` radix. The cvar `MPIR_CVAR_ALLGATHER_RECEXCH_KVAL` can be used to set the value of k. If k=1 the algorithm is a distance halving allgather and can be also called with its own cvar. If k=2 it is equivalent to recursive doubling.",
+    "desc": "MPICH recexch distance doubling algorithm. It is a generalization of the recursive doubling to work with any `k` radix. The selection `MPIR_CVAR_ALLGATHER_RECEXCH_KVAL` can be used to set the value of k. If k=1 the algorithm is a distance halving allgather and can be also called with its own selection. If k=2 it is equivalent to recursive doubling.",
     "version": "4.3.0",
     "constraints": [
       {
@@ -136,7 +136,7 @@
         ]
       }
     ],
-    "cvar": "recexch_doubling",
+    "selection": "recexch_doubling",
     "tags": [
       "recexch_doubling"
     ]
@@ -144,7 +144,7 @@
   "recexch_halving_mpich": {
     "desc": "MPICH recexch distance halving algorithm. It uses the same code of `rechexch_mpich` but with `k=1`.",
     "version": "4.3.0",
-    "cvar": "recexch_halving",
+    "selection": "recexch_halving",
     "tags": [
       "recexch_halving"
     ]

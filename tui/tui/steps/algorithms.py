@@ -1,113 +1,136 @@
-# tui/steps/algorithm_selection.py
 from textual import events
 from textual.app import ComposeResult
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Static, Button, Checkbox, TabbedContent, TabPane, Header, Footer
 from tui.steps.base import StepScreen
-from config_loader import get_algorithm_config
+from config_loader import alg_get_list, alg_get_algo
+from models import CollectiveType, AlgorithmSelection
+from typing import List, Tuple
+from packaging import version
 
 
-class AlgorithmSelectionStep(StepScreen):
-    """Screen to select algorithms for each chosen collective."""
+class AlgorithmsStep(StepScreen):
+    __libs: List[Tuple]
+    __collectives: List[str]
 
     def compose(self) -> ComposeResult:
+        self.__libs = [(lib.name, lib.get_type(), lib.get_id_name()) for lib in self.session.libraries]
+        self.__collectives = [str(key) for key in self.session.libraries[0].algorithms.keys()]
+
         yield Header(show_clock=True)
 
-        yield Static("Select Algorithms for Each Collective", classes="screen-header")
+        yield Static("Select Algorithms for Each Collective", classes="field-label")
 
-        # Create TabbedContent with a TabPane for each selected collective
         with TabbedContent():
-            for idx, coll in enumerate(self.session.collectives):
-                collective = coll.collective_type
-                pane_id = f"tab-{collective}"
-                collective_str = str(collective)
-                with TabPane(title=f"({idx+1}) {collective_str.capitalize()}", id=pane_id):
-                    # Load algorithms from the corresponding JSON file
-                    algos = get_algorithm_config(self.session.mpi.type, collective)
-                    for key, meta in algos.items():
-                        label = f"{key} ({meta.get('cvar', '')})"
-                        yield Checkbox(label=label, id=f"{collective}-{key}")
-
+            for pane_num, coll in enumerate(self.__collectives):
+                with TabPane(title=f"({pane_num+1}) {coll.capitalize()}", id=f"tab-{coll}"):
+                    columns = []
+                    for idx, (lib_name, lib_type, lib_name_id) in enumerate(self.__libs):
+                        lib_version = self.session.libraries[idx].version
+                        algos = alg_get_list(lib_type, coll)
+                        columns.append(Vertical(*[
+                            Checkbox(
+                                f"({lib_name}) {key}",
+                                id=f"{coll}-{key}-{lib_name_id}"
+                            )
+                            for key, meta in algos.items()
+                            if (ver := meta.get("version", None))
+                            and version.parse(ver) <= version.parse(lib_version)
+                        ]))
+                    yield Horizontal(*columns)
 
         yield self.navigation_buttons()
 
         yield Footer()
 
-    async def on_key(self, event: events.Key) -> None:
-        """
-        If the user presses a digit (1, 2, 3, …), switch to that tab index.
+    def on_mount(self) -> None:
+        for lib in self.session.libraries:
+            for key in lib.algorithms:
+                lib.algorithms[key].clear()
+        self.__libs_ok = { lib[2] : False for lib in self.__libs }
+        self.__coll_ok = { coll: False for coll in self.__collectives }
 
-        - Gather all TabPane children via tabs.query(TabPane).
-        - Convert the digit into a zero-based index.
-        - If valid, set tabs.active to that TabPane’s id (string).
-        - Then move keyboard focus into the first Checkbox of that pane.
-        """
+    async def on_key(self, event: events.Key) -> None:
         if not event.key.isdigit():
             return
 
         idx = int(event.key) - 1
         tabs = self.query_one(TabbedContent)
 
-        # Grab a list of all TabPane children
         panes = list(tabs.query(TabPane))
         if 0 <= idx < len(panes):
             pane = panes[idx]
             pane_id = pane.id
             if pane_id is not None:
-                # 1) Activate the chosen tab
                 tabs.active = pane_id
 
-                # 2) Immediately move focus into that pane’s first Checkbox
                 first_cb = pane.query_one(Checkbox)
                 if first_cb:
                     first_cb.focus()
 
-                # 3) Stop further propagation so nothing else overrides it
                 event.stop()
 
-    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+    def on_checkbox_changed(self):
         self._update_next_button_state()
+        self.notify(f"lib_ok {self.__libs_ok}, coll_ok {self.__coll_ok}",
+                    title="Update next status", markup=False, timeout=10)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle navigation button presses."""
         if event.button.id == "next":
-            # Collect selected algorithms
-            selected_algorithms = {}
-            for coll in self.session.collectives:
-                collective = coll.collective_type
-                selected = []
-                for cb in self.query(Checkbox).results():
-                    if cb.id and cb.id.startswith(f"{collective}-") and cb.value:
-                        selected.append(cb.label)
-                selected_algorithms[collective] = selected
-                coll.algo_list = selected_algorithms
+            for library in self.session.libraries:
+                for cb in self.query(Checkbox):
+                    if not (cb.value and cb.id):
+                        continue
 
-            # Proceed to the next step (e.g., SummaryStep)
+                    checkbox_collective, checkbox_algo_key, checkbox_lib_name_id = cb.id.split("-", 2)
+                    if checkbox_lib_name_id != library.get_id_name():
+                        continue
+
+                    algo_data = alg_get_algo(library.get_type(), checkbox_collective, checkbox_algo_key)
+                    if not algo_data:
+                        raise ValueError(f"Algorithm {checkbox_algo_key} not found in {library.get_type}/{checkbox_collective}.json")
+
+                    coll_type = CollectiveType.from_str(checkbox_collective)
+
+                    library.algorithms[coll_type].append(
+                        AlgorithmSelection.from_dict(checkbox_algo_key, checkbox_collective, algo_data)
+                    )
+
+            for library in self.session.libraries:
+                if not library.validate(validate_algo=True):
+                    raise ValueError(f"Library {library.name} contains errors. Please check the configuration.")
+
             from tui.steps.summary import SummaryStep
             self.next(SummaryStep)
 
         elif event.button.id == "prev":
-            # Return to the previous step (e.g., CollectiveStep)
-            from tui.steps.mpi_collectives import MPICollectivesStep
-            self.prev(MPICollectivesStep)
+            from tui.steps.libraries import LibrariesStep
+            self.prev(LibrariesStep)
 
-    def get_help_desc(self) -> str:
-        return (
-            "Select the algorithms you wish to benchmark for each collective operation. "
-            "Use the tabs to navigate between collectives and check the desired algorithms."
-        )
+
+    # TODO:
+    def get_help_desc(self):
+        return "a","b"
 
 
     def _update_next_button_state(self) -> None:
-        all_selected = True
-        for coll in self.session.collectives:
-            collective = coll.collective_type
+        for coll in self.__collectives:
             found = any(
                 cb.value
                 for cb in self.query(Checkbox)
-                if cb.id and cb.id.startswith(f"{collective}-")
+                if cb.id and cb.id.startswith(f"{coll}-")
             )
-            if not found:
-                all_selected = False
-                break
+            if found:
+                self.__coll_ok[coll] = True
 
-        self.query_one("#next", Button).disabled = not all_selected
+        for lib in self.__libs_ok:
+            found = any(
+                cb.value
+                for cb in self.query(Checkbox)
+                if cb.id and cb.id.endswith(f"-{lib}")
+            )
+            if found:
+                self.__libs_ok[lib] = True
+
+        enable_next = all(self.__coll_ok.values()) and all(self.__libs_ok.values())
+        self.query_one("#next", Button).disabled = not enable_next

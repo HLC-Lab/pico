@@ -21,8 +21,125 @@ Screen {
   padding: 1 2;
 }
 
+/* =========================================================================== */
+/* HELP and QUIT SCREEN                                                        */
+/* =========================================================================== */
+HelpScreen {
+  background: #1a1b26 70%;
+  align: center middle;
+}
+
+QuitScreen {
+  background: #1a1b26 70%;
+  align: center middle;
+}
+
+#quit-dialog {
+  grid-size: 2;
+  grid-gutter: 1 2;
+  grid-rows: 1fr 3;
+  padding: 0 1;
+  width: 40%;
+  height: 16;
+  border: ascii $background 80%;
+  background: $surface;
+}
+
+#help-dialog {
+  overflow: auto;
+  grid-size: 2;
+  grid-gutter: 1 2;
+  grid-rows: 1fr 3;
+  padding: 0 1;
+  width: 40%;
+  height: auto;
+  max-height: 50%;
+  border: ascii $background 80%;
+  background: $surface;
+}
+
+.help-label{
+  column-span: 1;
+  height: 8;
+  width: 1fr;
+  padding: 0 1;
+  content-align: center middle;
+  text-style: bold;
+  color: #7aa2f7;
+  content-align: center middle;
+}
+
+.quit-label{
+  column-span: 1;
+  height: 9;
+  width: 1fr;
+  padding: 0 1;
+  content-align: center middle;
+  text-style: bold;
+  color: #7aa2f7;
+  content-align: center middle;
+}
+
+
+.quit-button-row {
+  padding-right: 1;
+  padding-left: 1;
+  align-horizontal: center;
+}
+
+.quit-button-row:last-child {
+  padding-right: 0;
+}
+
+.quit-button-row Button {
+  width: 50%;
+  margin-right: 1;
+}
+
+.quit-button-row Button:last-child {
+  margin-right: 0;
+  margin-left: 1;
+  background: #f7768e
+}
+
+.main-label {
+  column-span: 1;
+  height: 2;
+  width: 1fr;
+  content-align: center middle;
+  text-style: bold;
+  color: #7aa2f7;
+  content-align: center middle;
+}
+
+.end-page-button-row {
+  padding-right: 1;
+  padding-left: 1;
+  margin: 0 2;
+  align-vertical: bottom;
+  align-horizontal: center;
+}
+
+.end-page-button-row Button{
+  width: 66%;
+}
+
+
+.task-list-container {
+  overflow: auto;
+  height: 1fr;
+  width: 100%;
+}
+
+.task-list-container > Horizontal{
+  width: 100%;
+  height: auto;
+  max-height: 5;
+  align-horizontal: left;
+  align-vertical: top;
+  }
 /* ============================================================================ */
-/* LAYOUT COMPONENTS                                                           */
+/* LAYOUT COMPONENTS                                                            */
 /* ============================================================================ */
 
 Header,
@@ -32,7 +149,7 @@ Footer {
 }
 
 /* ============================================================================ */
-/* FORM CONTROLS                                                               */
+/* FORM CONTROLS                                                                */
 /* ============================================================================ */
 
 /* ----- Buttons ----- */
@@ -56,12 +173,21 @@ Select {
   color: #c0caf5;
   border: ascii #565f89;
   padding: 0 1;
-  margin-right: 1;
+  margin: 0 1;
 }
 
 Select:disabled {
   color: #565f89;
   background: #24283b;
+}
+
+Input {
+  height: 4;
+  background: #2a2e3f;
+  color: #c0caf5;
+  border: ascii #565f89;
+  padding: 0 1;
+  margin: 0 1;
 }
 
 /* ----- Switches ----- */
@@ -74,6 +200,7 @@ Switch {
   background: #1a1b26;
   color: #c0caf5;
 }
+
 
 Switch:disabled {
   background: #16161e;
@@ -99,14 +226,12 @@ Checkbox {
   margin-right: 1;
 }
 
-/* ----- Text Inputs ----- */
-Inputs {
-  padding: 1 3;
-  margin: 0 1;
-  border: ascii #565f89;
-  background: #1a1b26;
-  color: #c0caf5;
+TabbedContent {
+  border: ascii #7aa2f7;
+  height: auto;
+  max-height: 80%;
 }
+
 
 /* ============================================================================ */
 /* TEXT & LABELS                                                               */
@@ -119,6 +244,29 @@ Inputs {
   margin-right: 1;
 }
 
+.field-label-small {
+  width: 20%;
+  min-width: 25;
+  text-style: bold;
+  color: #7aa2f7;
+  margin-right: 1;
+}
+
+
+.field-label-center {
+  width: 1fr;
+  min-width: 20;
+  text-style: bold;
+  color: #7aa2f7;
+  margin-right: 1;
+}
+
+.row-tight {
+  layout: horizontal;
+  height: 1;
+  align-horizontal: left;
+  align-vertical: middle;
+}
 /* ============================================================================ */
 /* LAYOUT CLASSES                                                              */
 /* ============================================================================ */
@@ -135,9 +283,9 @@ Inputs {
 
 /* ----- Button Rows ----- */
 .button-row {
-  padding-right: 1;
-  padding-left: 1;
+  padding: 1 1;
   align-horizontal: center;
+  align-vertical: bottom;
 }
 
 .button-row:last-child {
@@ -154,11 +302,13 @@ Inputs {
   margin-left: 1;
 }
 
+
 /* ----- Switch Layouts ----- */
 .tight-switches {
+  padding: 1 0;
   height: auto;
   max-height: 8;
-  width: auto;
+  width: 100%;
 }
 
 .tight-switches > Vertical {
@@ -167,6 +317,7 @@ Inputs {
 }
 
 .tight-switches > Vertical:last-child {
+  width: 1fr;
   margin-right: 0;
 }
 
@@ -176,19 +327,49 @@ Inputs {
   margin-right: 2;
 }
 
+
 .collectives-container {
-  padding: 1 0;
+  overflow: auto;
   width: 100%;
-  height: auto;
-  max-height: 80%;
+  height: 40%;
 }
 
 .first-big{
   width: 80%;
   margin-right: 2;
 }
+
+
+.lib-list-container {
+  overflow: auto;
+  height: 40%;
+  width: 100%;
+}
+
+.task-list-container > Horizontal{
+  width: 100%;
+  height: auto;
+  max-height: 5;
+  align-horizontal: left;
+  align-vertical: top;
+  }
+
+.algo-columns {
+    layout: horizontal;
+    padding: 1 2;
+    overflow: auto;
+    max-height: 80%;
+}
+
+.algo-column {
+    layout: vertical;
+    padding: 0 1;
+    height: auto;
+    max-height: 80%;
+    width: 1fr;             /* Equally distribute columns */
+}
 /* ============================================================================ */
-/* FIELD LAYOUTS                                                               */
+/* FIELD LAYOUTS                                                                */
 /* ============================================================================ */
 
 .field {
@@ -201,8 +382,54 @@ Inputs {
   margin-right: 0;      /* Remove right margin on last field */
 }
 
+.field-small {
+  width: 20%;
+  min-width: 25;
+  margin-right: 2;
+}
+
+
+.row-task {
+  layout: horizontal;
+  padding: 0 0;
+  height: auto;
+  max-height: 5;
+  align-horizontal: left;
+  align-vertical: middle;
+}
+
+.button-row-task {
+  width: 25%;
+  padding-right: 1;
+  padding-left: 1;
+  align-horizontal: center;
+}
+
+.button-row-task:last-child {
+  padding-right: 0;
+}
+
+.button-row-task Button {
+  width: 50%;
+  margin-right: 1;
+}
+
+.button-row-task Button:last-child {
+  margin-right: 0;
+  margin-left: 1;
+}
+
+.button-row-task-static {
+  align-horizontal: left;
+  width: 25%;
+}
+
+.button-row-task-static Static{
+  width: 50%;
+}
+
 /* ============================================================================ */
-/* SUMMARY & CONTENT CONTAINERS                                                */
+/* SUMMARY & CONTENT CONTAINERS                                                 */
 /* ============================================================================ */
 
 .summary-container {
@@ -214,3 +441,4 @@ Inputs {
   border: ascii white;
   margin: 1;
 }
+

@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "dynamic_rule": 0,
+    "selection": 0,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -34,7 +34,7 @@
         ]
       }
     ],
-    "dynamic_rule": 1,
+    "selection": 1,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -65,7 +65,7 @@
         ]
       }
     ],
-    "dynamic_rule": 2,
+    "selection": 2,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -87,7 +87,7 @@
         ]
       }
     ],
-    "dynamic_rule": 3,
+    "selection": 3,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -109,7 +109,7 @@
         ]
       }
     ],
-    "dynamic_rule": 4,
+    "selection": 4,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
@@ -140,7 +140,7 @@
         ]
       }
     ],
-    "dynamic_rule": 5,
+    "selection": 5,
     "cuda_support": "yes",
     "rocm_support": "ucx",
     "tags": [
