@@ -1,7 +1,0 @@
-{
-  "NAME": "leonardo",
-  "desc": "Leonardo HPC Cluster.",
-  "SLURM": true,
-  "UCX_IB_SL": "1",
-  "MODULES": "python/3.11.6--gcc--8.5.0"
-}
