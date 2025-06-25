@@ -205,17 +205,122 @@ class EnvironmentSelection:
 
         return (self.__validate() and self.partition.validate() and self.partition.qos.validate())
 
+class CDtype(Enum):
+    CHAR = 'char'
+    FLOAT = 'float'
+    DOUBLE = 'double'
+    INT8 = 'int8'
+    INT16 = 'int16'
+    INT32 = 'int32'
+    INT64 = 'int64'
+
+    def __str__(self) -> str:
+        return self.value
+
+    def get_size(self) -> int:
+        sizes = {
+            CDtype.CHAR: 1,
+            CDtype.FLOAT: 4,
+            CDtype.DOUBLE: 8,
+            CDtype.INT8: 1,
+            CDtype.INT16: 2,
+            CDtype.INT32: 4,
+            CDtype.INT64: 8
+        }
+        return sizes[self]
+
+
 @dataclass
-class CompileConfig:
+class TestDimension:
+    array_sizes: List[int] = field(default_factory=list)
+    array_sizes_bytes: List[int] = field(default_factory=list)
+    dtype: CDtype = CDtype.INT32
+    segment_sizes_bytes: List[int] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not self.array_sizes_bytes and self.array_sizes:
+            self.__sizes_bytes()
+        elif not self.array_sizes and self.array_sizes_bytes:
+            self.__sizes_elements()
+
+    def get_printable_sizes(self, get_segment_sizes=False) -> List[str]:
+        sizes = []
+        source_sizes = self.segment_sizes_bytes if get_segment_sizes else self.array_sizes_bytes
+
+        for size in source_sizes:
+            if size < 1024:
+                sizes.append(f"{size} B")
+            elif size < 1024**2:
+                sizes.append(f"{size / 1024:.2f} KiB")
+            else:
+                sizes.append(f"{size / 1024**2:.2f} MiB")
+        return sizes
+
+    def validate(self) -> bool:
+        if not self.dtype or not isinstance(self.dtype, CDtype):
+            return False
+        if not self.__validate_sizes:
+            return False
+        return True
+
+
+    def __validate_sizes(self) -> bool:
+        size_lists = [
+            self.array_sizes,
+            self.array_sizes_bytes,
+            self.segment_sizes_bytes
+        ]
+
+        for size_list in size_lists:
+            if not size_list:
+                return False
+            if any(size <= 0 for size in size_list):
+                return False
+            if len(size_list) != len(set(size_list)):
+                return False
+
+        if len(self.array_sizes) != len(self.array_sizes_bytes):
+            return False
+
+        dtype_size = self.dtype.get_size()
+        if dtype_size == 0:
+            raise ValueError(f"Invalid dtype size: {dtype_size}")
+        expected_bytes = [size * dtype_size for size in self.array_sizes]
+        if self.array_sizes_bytes != expected_bytes:
+            return False
+
+        return True
+
+    def __sizes_bytes(self) -> None:
+        if self.array_sizes:
+            self.array_sizes_bytes = [size * self.dtype.get_size() for size in self.array_sizes]
+
+    def __sizes_elements(self) -> None:
+        if self.array_sizes_bytes:
+            dtype_size = self.dtype.get_size()
+            if dtype_size == 0:
+                raise ValueError(f"Invalid dtype size: {dtype_size}")
+            self.array_sizes = [size // dtype_size for size in self.array_sizes_bytes]
+
+
+@dataclass
+class TestConfig:
     compile_only: bool = False
     use_gpu_buffers: bool = False
     debug_mode: bool = False
     dry_run: bool = False
-    inject_params: str = ''
+    dimensions: Optional[TestDimension] = None
+    inject_params: Optional[str] = None
 
     def validate(self) -> bool:
-        if (self.compile_only and self.dry_run):
-            return False
+        if self.compile_only:
+            if self.dry_run or self.dimensions:
+                return False
+        #TODO: Add validation
+
+        # else:
+        #     if not (self.dimensions and self.dimensions.validate()):
+        #         return False
 
         return True
 
@@ -616,10 +721,7 @@ class LibrarySelection:
             for coll, algos in self.algorithms.items():
                 for algo in algos:
                     if algo.coll != coll or not algo.validate():
-
                         return False
-
-
         return True
 
 
@@ -634,58 +736,64 @@ class LibrarySelection:
             raise ValueError(f"Unknown standard type: {self.standard}")
 
     def get_id_name(self) -> str:
+        """
+            Returns a sanitized version of the library name suitable for use as an identifier.
+        """
         return self.name.replace(' ','_').replace('.','_').replace('-','_').lower()
 
-
-def _merge_dicts(base: Dict[str, Any], partial: Dict[str, Any]) -> Dict[str, Any]:
-    result = base.copy()
-    for key, value in partial.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _merge_dicts(result[key], value)
-        else:
-            result[key] = value
-    return result
-
-
-def _convert(obj: Any) -> Any:
-    if isinstance(obj, Enum):
-        return str(obj)
-    if isinstance(obj, dict):
-        return { _convert(k): _convert(v) for k, v in obj.items() }
-    if isinstance(obj, list):
-        return [ _convert(item) for item in obj ]
-    return obj
-
-def _prune_none(obj: Any) -> Any:
-    if isinstance(obj, dict):
-        pruned = {}
-        for k, v in obj.items():
-            pv = _prune_none(v)
-            # Exclude None or empty lists/dicts
-            if pv is None:
-                continue
-            if isinstance(pv, dict) and not pv:
-                continue
-            if isinstance(pv, list) and not pv:
-                continue
-            pruned[k] = pv
-        return pruned
-    if isinstance(obj, list):
-        return [_prune_none(item) for item in obj if _prune_none(item) is not None]
-    return obj
 
 @dataclass
 class SessionConfig:
     environment: EnvironmentSelection = field(default_factory=lambda: EnvironmentSelection())
-    compile: CompileConfig = field(default_factory=lambda: CompileConfig())
+    test: TestConfig = field(default_factory=lambda: TestConfig())
     tasks: TaskConfig = field(default_factory=lambda: TaskConfig())
     libraries: List[LibrarySelection] = field(default_factory=list)
 
+    @staticmethod
+    def _merge_dicts(base: Dict[str, Any], partial: Dict[str, Any]) -> Dict[str, Any]:
+        result = base.copy()
+        for key, value in partial.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = SessionConfig._merge_dicts(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+
+    @staticmethod
+    def _convert(obj: Any) -> Any:
+        if isinstance(obj, Enum):
+            return str(obj)
+        if isinstance(obj, dict):
+            return { SessionConfig._convert(k): SessionConfig._convert(v) for k, v in obj.items() }
+        if isinstance(obj, list):
+            return [ SessionConfig._convert(item) for item in obj ]
+        return obj
+
+    @staticmethod
+    def _prune_none(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            pruned = {}
+            for k, v in obj.items():
+                pv = SessionConfig._prune_none(v)
+                # Exclude None or empty lists/dicts
+                if pv is None:
+                    continue
+                if isinstance(pv, dict) and not pv:
+                    continue
+                if isinstance(pv, list) and not pv:
+                    continue
+                pruned[k] = pv
+            return pruned
+        if isinstance(obj, list):
+            return [SessionConfig._prune_none(item) for item in obj if SessionConfig._prune_none(item) is not None]
+        return obj
+
     def to_dict(self, partial: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         raw = asdict(self)
-        base = _convert(raw)
+        base = self._convert(raw)
         if partial:
-            base = _merge_dicts(base, partial)
+            base = self._merge_dicts(base, partial)
 
-        return _prune_none(base)
+        return self._prune_none(base)
 

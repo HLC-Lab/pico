@@ -1,5 +1,6 @@
 from textual.app import ComposeResult
-from textual.widgets import Button, Label, Footer, Static, Select, Input
+from textual.widgets import Button, Label, Footer, Static, Select, Input, SelectionList
+from textual.widgets.selection_list import Selection
 from textual.containers import Vertical, Horizontal
 from textual.screen import Screen
 from typing import Tuple
@@ -115,13 +116,13 @@ class StepScreen(Screen):
             classes="button-row"
         )
 
-    def reset_select(self, widget: Select):
+    def reset_select(self, widget: Select, disable: bool = True):
         """Clear out options, reset value to blank, disable."""
         widget._options = []
         widget._setup_variables_for_options([])
         widget._setup_options_renderables()
         widget.value = Select.BLANK
-        widget.disabled = True
+        widget.disabled = disable
 
     def reset_input(self, widget: Input, disable: bool = True):
         widget.value = ""

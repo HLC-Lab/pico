@@ -181,6 +181,10 @@ Select:disabled {
   background: #24283b;
 }
 
+Select:focus {
+  border: ascii #7aa2f7;
+}
+
 Input {
   height: 4;
   background: #2a2e3f;
@@ -188,6 +192,10 @@ Input {
   border: ascii #565f89;
   padding: 0 1;
   margin: 0 1;
+}
+
+Input:focus {
+  border: ascii #7aa2f7;
 }
 
 /* ----- Switches ----- */
@@ -226,12 +234,28 @@ Checkbox {
   margin-right: 1;
 }
 
-TabbedContent {
+Checkbox:focus {
   border: ascii #7aa2f7;
+}
+
+TabbedContent {
+  border: ascii #565f89;
   height: auto;
   max-height: 80%;
 }
 
+TabbedContent:focus {
+  border: ascii #7aa2f7;
+}
+
+SelectionList {
+  border: ascii #565f89;
+  height: 1fr;
+}
+
+SelectionList:focus {
+  border: ascii #7aa2f7;
+}
 
 /* ============================================================================ */
 /* TEXT & LABELS                                                               */

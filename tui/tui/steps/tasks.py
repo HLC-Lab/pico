@@ -14,7 +14,7 @@ class TaskRow(Horizontal):
         self.session = session
 
     def compose(self) -> ComposeResult:
-        use_gpu = self.session.compile.use_gpu_buffers
+        use_gpu = self.session.test.use_gpu_buffers
         opts = [("cpu buffers", "cpu"), ("gpu buffers", "gpu")] if use_gpu else [("cpu buffers", "cpu")]
         yield Horizontal(
             Vertical(

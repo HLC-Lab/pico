@@ -1,8 +1,9 @@
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Static, Select, Switch, Footer, Header, Button, Input
+from textual.widgets import Static, Select, Switch, Footer, Header, Button, Input, SelectionList
+from textual.widgets.selection_list import Selection
 from .base import StepScreen
 from config_loader import conf_list_environments, conf_get_general, conf_get_slurm_opts
-from models import SessionConfig, EnvironmentSelection, PartitionSelection
+from models import SessionConfig, EnvironmentSelection, PartitionSelection, TestDimension, CDtype
 from typing import Tuple
 
 class ConfigureStep(StepScreen):
@@ -50,6 +51,46 @@ class ConfigureStep(StepScreen):
                     Input(placeholder="Insert here any sbatch param or env", id="inject-params")
                 ),
                 classes="tight-switches"
+        )
+
+        dtypes = [
+            ("char", CDtype.CHAR),
+            ("int8", CDtype.INT8),
+            ("int16", CDtype.INT16),
+            ("int32", CDtype.INT32),
+            ("int64", CDtype.INT64),
+            ("float", CDtype.FLOAT),
+            ("double", CDtype.DOUBLE)
+        ]
+
+        buffer_sizes =  ["32  Byte", "256 Byte", "2   KiB", "16  KiB", "128 KiB", "1   MiB", "8   MiB", "64  MiB", "512 MiB"]
+        segment_sizes = ["0   Byte", "16  KiB", "128 KiB", "1   MiB"]
+        buffer_items =  [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label), True) for label in buffer_sizes]
+        segment_items = [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label)) for label in segment_sizes]
+        segment_items[0] = Selection("No Segment", 0, True)
+
+        yield Horizontal(
+            Vertical(
+                Static("Data Type", classes = "field-label"),
+                Select( dtypes, prompt="Select Data Type", id="data-type-select"),
+                classes="field-small"
+            ),
+            Vertical(
+                Static("Buffer Sizes", classes="field-label"),
+                SelectionList[int](
+                    *buffer_items,
+                    id="buffer-size-select"
+                ),
+                classes="field"
+            ),
+            Vertical(
+                Static("Segment Sizes", classes="field-label"),
+                SelectionList[int](
+                    *segment_items,
+                    id="segment-size-select"
+                ),
+                classes="field"
+            ),
         )
 
         yield self.navigation_buttons(prev_disabled=True)
@@ -109,7 +150,12 @@ class ConfigureStep(StepScreen):
             if event.value is not Select.BLANK:
                 self.session.environment.partition.qos.from_dict(self.__slurm_opts, event.value)
 
-        next_b.disabled = not self.session.environment.validate()
+        # TODO:
+        elif event.select.id == "data-type-select":
+            self.__relable_selection_list()
+            pass
+
+        next_b.disabled = not (self.session.environment.validate() and self.session.test.validate())
         val = True
         if isinstance(self.session.environment.partition, PartitionSelection):
             val = not self.session.environment.partition.is_gpu
@@ -117,19 +163,23 @@ class ConfigureStep(StepScreen):
         gpu_sw.disabled = val
         if val:
             gpu_sw.value = False
-            self.session.compile.use_gpu_buffers = False
+            self.session.test.use_gpu_buffers = False
 
     def on_input_changed(self, event):
         input_w = event.control
         if input_w.id == "inject-params":
-            self.session.compile.inject_params = input_w.value.strip()
+            self.session.test.inject_params = input_w.value.strip()
         else:
             raise ValueError(f"Unexpected input control: {input_w.id}")
 
+    #TODO:
+    def on_selection_list_selection_changed(self, event):
+        pass
+
     def on_button_pressed(self, event):
         if event.button.id == 'next':
-            if not self.session.compile.validate():
-                raise ValueError("Compile configuration is not valid.")
+            if not self.session.test.validate():
+                raise ValueError("Test configuration is not valid.")
             if not self.session.environment.validate():
                 raise ValueError("Environment configuration is not valid.")
             from tui.steps.tasks import TasksStep
@@ -142,24 +192,34 @@ class ConfigureStep(StepScreen):
         cid = event.control.id
         val = event.value
 
+        #TODO: Restructure for ListSelection
         if cid == "compile-switch":
-            self.session.compile.compile_only = val
+            dt_select = self.query_one("#data-type-select", Select)
+            buf_list = self.query_one("#buffer-size-select", SelectionList)
+            seg_list = self.query_one("#segment-size-select", SelectionList)
+            self.session.test.compile_only = val
             if val:
-                self.session.compile.dry_run = False
+                self.session.test.dry_run = False
                 dry_switch.value = False
+
             dry_switch.disabled = val
+            self.reset_select(dt_select, disable=val)
+            buf_list.deselect_all()
+            buf_list.disabled = val
+            seg_list.deselect_all()
+            seg_list.disabled = val
         elif cid == "debug-switch":
-            self.session.compile.debug_mode = val
+            self.session.test.debug_mode = val
         elif cid == "dry-switch":
-            self.session.compile.dry_run = val
+            self.session.test.dry_run = val
             if val:
-                self.session.compile.compile_only = False
+                self.session.test.compile_only = False
                 compile_switch.value = False
             compile_switch.disabled = val
         elif cid == "gpu-switch":
             if not self.session.environment.partition:
                 raise ValueError("Partition must be selected before enabling GPU buffers.")
-            self.session.compile.use_gpu_buffers = val
+            self.session.test.use_gpu_buffers = val
 
     def get_help_desc(self) -> Tuple[str,str]:
         focused = self.focused
@@ -179,6 +239,7 @@ class ConfigureStep(StepScreen):
                 "Select the QOS for your test.",
                 self.session.environment.partition.qos.get_help() if self.session.environment.partition and self.session.environment.partition.qos else "No QOS selected."
             ),
+            #TODO: Add info
             "compile-switch": (
                 "Compile Only toggle",
                 "Enables compile-only mode without running tests. Not compatible with Dry Run."
@@ -207,6 +268,7 @@ class ConfigureStep(StepScreen):
                 "Example: --gres=gpu:1 or MY_ENV_VAR=value. \n"\
                 "BEWARE: These will be added to the sbatch command line and there is NO CHECK for correctness done by the script over those params."
             ),
+            #TODO: Add help for data type, buffer size, and segment size
         }
 
         if focused and focused.id in field_map:
@@ -214,4 +276,14 @@ class ConfigureStep(StepScreen):
 
         return (field_desc, chosen_desc)
 
+    def __parse_size(self, size_label: str) -> int:
+        """Parses human-readable sizes into bytes."""
+        suffixes = {"Byte": 1, "KiB": 1024, "MiB": 1024**2}
+        for suffix, factor in suffixes.items():
+            if size_label.endswith(suffix):
+                return int(size_label.replace(suffix, "")) * factor
+        return int(size_label)
 
+    #TODO:
+    def __relable_selection_list(self):
+        pass
