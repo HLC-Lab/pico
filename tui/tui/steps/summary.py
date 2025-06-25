@@ -1,21 +1,37 @@
 import json
-from textual.widgets import Button, Static, Header, Footer
-from textual.containers import Horizontal, Container
+from textual.widgets import Button, Static, Header, Footer, RichLog
+from textual.containers import Horizontal, Vertical
 from textual.app import ComposeResult
 from tui.steps.base import StepScreen
 
 class SummaryStep(StepScreen):
-    __summary: dict
+    __json: dict
+    __summary: str
 
     def compose(self) -> ComposeResult:
-
         yield Header(show_clock=True)
-        yield Static("Summary", classes="screen-header")
 
-        self.__summary = self.session.to_dict()
-        yield Container(
-            Static(json.dumps(self.__summary, indent=2), markup=False, classes="summary-box"),
-            classes="summary-container"
+        self.__json = self.session.to_dict()
+        self.__summary = self.session.get_summary()
+
+        json_log = RichLog(markup=False, classes="summary-box", id="json-log", wrap=True, auto_scroll=False)
+        summary_log = RichLog(markup=False, classes="summary-box", id="summary-log", wrap=True, auto_scroll=False)
+
+        json_log.write(json.dumps(self.__json, indent=2))
+        summary_log.write(self.__summary)
+
+        yield Horizontal(
+            Vertical(
+                Static("Generated Test JSON", classes="field-label"),
+                json_log,
+                classes="summary-container"
+            ),
+            Vertical(
+                Static("Short Summary", classes="field-label"),
+                summary_log,
+                classes="summary-container"
+            ),
+            classes="full"
         )
 
         yield Horizontal(
@@ -23,8 +39,6 @@ class SummaryStep(StepScreen):
             Button("Finish", id="finish"),
             classes="button-row"
         )
-
-        yield Footer()
 
     # TODO:
     def on_button_pressed(self, event: Button.Pressed) -> None:

@@ -458,11 +458,15 @@ SelectionList:focus {
 
 .summary-container {
   overflow: auto;
-  height: 80%;
+  width: 1fr;
 }
 
 .summary-box {
   border: ascii white;
-  margin: 1;
+  margin: 0 1 0 1;
+  background: $surface;
 }
 
+.full{
+  height: 80%;
+}

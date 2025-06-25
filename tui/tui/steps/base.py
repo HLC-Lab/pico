@@ -1,6 +1,5 @@
 from textual.app import ComposeResult
-from textual.widgets import Button, Label, Footer, Static, Select, Input, SelectionList
-from textual.widgets.selection_list import Selection
+from textual.widgets import Button, Label, Footer, Static, Select, Input
 from textual.containers import Vertical, Horizontal
 from textual.screen import Screen
 from typing import Tuple
@@ -97,8 +96,15 @@ class StepScreen(Screen):
         ("Tab", "focus_next", "Focus Next"),
         ("Shift+Tab", "focus_previous", "Focus Previous"),
         ("Enter", "select_item", "Select Item"),
-        ("q", "request_quit", "Quit"),
+        ("p", "go_prev", "Previous Step"),
+        ("P", "go_prev", "Previous Step"),
+        ("n", "go_next", "Next Step"),
+        ("N", "go_next", "Next Step"),
         ("h", "toggle_help", "Help"),
+        ("H", "toggle_help", "Help"),
+        ("?", "toggle_help", "Help"),
+        ("q", "request_quit", "Quit"),
+        ("Q", "request_quit", "Quit"),
     ]
 
     def __init__(self, session, **kwargs):
@@ -116,11 +122,12 @@ class StepScreen(Screen):
             classes="button-row"
         )
 
-    def reset_select(self, widget: Select, disable: bool = True):
+    def reset_select(self, widget: Select, disable: bool = True, clear = True):
         """Clear out options, reset value to blank, disable."""
-        widget._options = []
-        widget._setup_variables_for_options([])
-        widget._setup_options_renderables()
+        if clear:
+            widget._options = []
+            widget._setup_variables_for_options([])
+            widget._setup_options_renderables()
         widget.value = Select.BLANK
         widget.disabled = disable
 
@@ -131,6 +138,10 @@ class StepScreen(Screen):
     @property
     def has_slurm(self) -> bool:
         return self.session.environment.slurm if self.session.environment else False
+
+    @property
+    def lib_number(self) -> int:
+        return len(self.session.libraries) if self.session.libraries else 0
 
     # ─── Navigation Helpers ─────────────────────────────────────────────────────
 
@@ -151,12 +162,21 @@ class StepScreen(Screen):
     def action_toggle_help(self) -> None:
         self.app.push_screen(HelpScreen(self.get_help_desc()))
 
+    def action_go_next(self) -> None:
+        next_button = self.query_one("#next", Button)
+        if not next_button.disabled:
+            self.on_button_pressed(Button.Pressed(next_button))
+
+    def action_go_prev(self) -> None:
+        prev_button = self.query_one("#prev", Button)
+        if not prev_button.disabled:
+            self.on_button_pressed(Button.Pressed(prev_button))
+
 
     # ─── Subclasses Must Override ────────────────────────────────────────────────
 
+    def on_button_pressed(self, event):
+        pass
+
     def get_help_desc(self) -> Tuple[str, str]:
-        """
-        Return context‐sensitive help text for the current screen.
-        Must be implemented by each step subclass.
-        """
         raise NotImplementedError

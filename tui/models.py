@@ -205,6 +205,11 @@ class EnvironmentSelection:
 
         return (self.__validate() and self.partition.validate() and self.partition.qos.validate())
 
+    def get_summary(self) -> str:
+        if self.partition and self.partition.qos:
+            return f"{self.name}, {self.partition.name} (QOS: {self.partition.qos.name})"
+        return self.name
+
 class CDtype(Enum):
     CHAR = 'char'
     FLOAT = 'float'
@@ -324,6 +329,27 @@ class TestConfig:
 
         return True
 
+    #TODO: Improve the dimension handling
+    def get_summary(self) -> str:
+        summary = []
+        if self.compile_only:
+            summary.append("Compile Only")
+        if self.use_gpu_buffers:
+            summary.append("Use GPU Buffers")
+        if self.debug_mode:
+            summary.append("Debug Mode")
+        if self.dry_run:
+            summary.append("Dry Run")
+        if self.dimensions:
+            sizes = self.dimensions.get_printable_sizes()
+            seg_sizes = self.dimensions.get_printable_sizes(get_segment_sizes=True)
+            summary.append(f"Dimensions: {', '.join(sizes)}")
+            summary.append(f"Segment Sizes: {', '.join(seg_sizes)}")
+            summary.append(f"Data Type: {self.dimensions.dtype}")
+        if self.inject_params:
+            summary.append(f"Inject Params: {self.inject_params}")
+        return ', '.join(summary) if summary else "No test configuration set"
+
 class TestType(Enum):
     CPU = 'cpu'
     GPU = 'gpu'
@@ -346,6 +372,24 @@ class TaskConfig:
     test_time: Optional[str] = None
     exclude_nodes: Optional[str] = None
     job_dependency: Optional[Union[str, int]] = None
+
+    def get_summary(self) -> str:
+        summary = []
+        if self.number_of_nodes > 1:
+            summary.append(f"Nodes: {self.number_of_nodes}")
+        if self.test_time:
+            summary.append(f"Test Time: {self.test_time}")
+        if self.exclude_nodes:
+            summary.append(f"Exclude Nodes: {self.exclude_nodes}")
+        if self.job_dependency:
+            summary.append(f"Job Dependency: {self.job_dependency}")
+        tasks = []
+        for test_type, task_list in self.list_tasks.items():
+            if task_list:
+                tasks.append(f"{test_type}: {', '.join(map(str, task_list))}")
+        if tasks:
+            summary.append("Tasks: " + ', '.join(tasks))
+        return ', '.join(summary) if summary else "No task configuration set"
 
     def validate(self, session) -> bool:
         cpu_tasks = self.list_tasks.get(TestType.CPU, [])
@@ -667,6 +711,13 @@ class LibrarySelection:
     lib_load: LibraryLoad = field(default_factory=lambda: LibraryLoad())
     algorithms: Dict[CollectiveType, List[AlgorithmSelection]] = field(default_factory=dict)
 
+    def get_summary(self) -> str:
+        summary = f"Library: {self.name}\n" 
+        if self.algorithms:
+            algos = ', '.join(f"{coll}: {[algo.name for algo in algos]}" for coll, algos in self.algorithms.items())
+            summary += f"Algorithms: {algos}\n"
+        return summary
+
     @classmethod
     def from_dict(cls, lib_json: Dict[str, Any], name: str) -> "LibrarySelection":
         desc = lib_json.get('desc', '')
@@ -796,4 +847,15 @@ class SessionConfig:
             base = self._merge_dicts(base, partial)
 
         return self._prune_none(base)
+
+    def get_summary(self) -> str:
+        env = self.environment.get_summary()
+        test = self.test.get_summary()
+        tasks = self.tasks.get_summary()
+        libs = "\n".join(lib.get_summary() for lib in self.libraries)
+
+        return f"Environment: {env}\n\n" \
+               f"Test Configuration:\n{test}\n\n" \
+               f"Task Configuration:\n{tasks}\n\n" \
+               f"Libraries:\n{libs}"
 

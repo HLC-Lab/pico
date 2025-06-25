@@ -203,7 +203,7 @@ class ConfigureStep(StepScreen):
                 dry_switch.value = False
 
             dry_switch.disabled = val
-            self.reset_select(dt_select, disable=val)
+            self.reset_select(dt_select, disable=val, clear=False)
             buf_list.deselect_all()
             buf_list.disabled = val
             seg_list.deselect_all()
