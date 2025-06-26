@@ -34,6 +34,7 @@ class LibrariesStep(StepScreen):
 
         yield Header(show_clock=True)
 
+        # BUG: Not displayed correctly
         yield Horizontal(
             Static("Library", classes="field-label"),
             Horizontal(

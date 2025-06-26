@@ -45,6 +45,17 @@ QuitScreen {
   background: $surface;
 }
 
+#save-dialog {
+  grid-size: 2;
+  grid-gutter: 1 2;
+  grid-rows: 1fr 3;
+  padding: 0 1;
+  width: 40%;
+  height: 25;
+  border: ascii $background 80%;
+  background: $surface;
+}
+
 #help-dialog {
   overflow: auto;
   grid-size: 2;
@@ -80,6 +91,16 @@ QuitScreen {
   content-align: center middle;
 }
 
+.save-label{
+  column-span: 1;
+  height: 9;
+  width: 1fr;
+  padding: 0 1;
+  content-align: center middle;
+  text-style: bold;
+  color: #7aa2f7;
+  content-align: center middle;
+}
 
 .quit-button-row {
   padding-right: 1;
