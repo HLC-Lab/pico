@@ -124,6 +124,7 @@ class LibrariesStep(StepScreen):
             self.__remove_lib(index)
 
 
+    # TODO:
     def get_help_desc(self):
         return "a","b"
 

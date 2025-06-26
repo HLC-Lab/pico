@@ -17,6 +17,7 @@ class TaskRow(Horizontal):
         use_gpu = self.session.test.use_gpu_buffers
         opts = [("cpu buffers", "cpu"), ("gpu buffers", "gpu")] if use_gpu else [("cpu buffers", "cpu")]
         yield Horizontal(
+            #TODO: Disable opts if GPU buffers are not selected
             Vertical(
                 Select(opts, prompt="Type of Test", id=f"task-type-{self.index}"),
                 classes="field-small"
@@ -34,6 +35,11 @@ class TaskRow(Horizontal):
             classes="row-task"
         )
 
+
+#TODO: Improve error message prompts
+#BUG: On task limits:
+# - (GPU) limits is always 1
+# - (CPU) limits work correctly but are not displayed in the input placeholder
 class TasksStep(StepScreen):
     __task_counter = reactive(0)
     __lim : limits
@@ -255,6 +261,7 @@ class TasksStep(StepScreen):
 
         self.__update_next_button()
 
+    # TODO:
     def get_help_desc(self):
         return "a","b"
 

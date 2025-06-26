@@ -4,6 +4,7 @@ from textual.containers import Horizontal, Vertical
 from textual.app import ComposeResult
 from tui.steps.base import StepScreen
 
+#TODO: Save prompt
 class SummaryStep(StepScreen):
     __json: dict
     __summary: str
@@ -40,6 +41,8 @@ class SummaryStep(StepScreen):
             classes="button-row"
         )
 
+        yield Footer()
+
     # TODO:
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "prev":
@@ -48,6 +51,6 @@ class SummaryStep(StepScreen):
         elif event.button.id == "finish":
             pass
 
-
+    # TODO:
     def get_help_desc(self):
         return "a","b"

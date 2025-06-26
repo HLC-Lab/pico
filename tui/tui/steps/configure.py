@@ -1,3 +1,4 @@
+from textual import on
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static, Select, Switch, Footer, Header, Button, Input, SelectionList
 from textual.widgets.selection_list import Selection
@@ -7,6 +8,8 @@ from models import SessionConfig, EnvironmentSelection, PartitionSelection, Test
 from typing import Tuple
 
 class ConfigureStep(StepScreen):
+    __buffer_sizes =  ["32  Byte", "256 Byte", "2   KiB", "16  KiB", "128 KiB", "1   MiB", "8   MiB", "64  MiB", "512 MiB"]
+    __segment_sizes = ["0   Byte", "16  KiB", "128 KiB", "1   MiB"]
     def compose(self):
         yield Header(show_clock=True)
         yield Horizontal(
@@ -63,16 +66,14 @@ class ConfigureStep(StepScreen):
             ("double", CDtype.DOUBLE)
         ]
 
-        buffer_sizes =  ["32  Byte", "256 Byte", "2   KiB", "16  KiB", "128 KiB", "1   MiB", "8   MiB", "64  MiB", "512 MiB"]
-        segment_sizes = ["0   Byte", "16  KiB", "128 KiB", "1   MiB"]
-        buffer_items =  [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label), True) for label in buffer_sizes]
-        segment_items = [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label)) for label in segment_sizes]
+        buffer_items =  [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label), True) for label in self.__buffer_sizes]
+        segment_items = [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label)) for label in self.__segment_sizes]
         segment_items[0] = Selection("No Segment", 0, True)
 
         yield Horizontal(
             Vertical(
                 Static("Data Type", classes = "field-label"),
-                Select( dtypes, prompt="Select Data Type", id="data-type-select"),
+                Select( dtypes, prompt="Select Data Type", id="data-type-select", value=CDtype.INT32),
                 classes="field-small"
             ),
             Vertical(
@@ -150,10 +151,14 @@ class ConfigureStep(StepScreen):
             if event.value is not Select.BLANK:
                 self.session.environment.partition.qos.from_dict(self.__slurm_opts, event.value)
 
-        # TODO:
+        # Data type changed
         elif event.select.id == "data-type-select":
-            self.__relable_selection_list()
-            pass
+            dtype = event.value
+            if not self.session.test.dimensions:
+                self.session.test.dimensions = TestDimension(dtype=dtype if isinstance(dtype, CDtype) else CDtype.UNKNOWN)
+
+        self.__update_selections()
+        self.__label_selection_list()
 
         next_b.disabled = not (self.session.environment.validate() and self.session.test.validate())
         val = True
@@ -172,9 +177,6 @@ class ConfigureStep(StepScreen):
         else:
             raise ValueError(f"Unexpected input control: {input_w.id}")
 
-    #TODO:
-    def on_selection_list_selection_changed(self, event):
-        pass
 
     def on_button_pressed(self, event):
         if event.button.id == 'next':
@@ -185,6 +187,14 @@ class ConfigureStep(StepScreen):
             from tui.steps.tasks import TasksStep
             self.next(TasksStep)
 
+    # NOTE: Cannot make the Selection List change work without the decorator,
+    # on_selection_list_changed does not get called.
+    @on(SelectionList.SelectedChanged)
+    def sel_list_handler(self):
+        self.__update_selections()
+        next_b = self.query_one("#next", Button)
+        next_b.disabled = not (self.session.environment.validate() and self.session.test.validate())
+
     def on_switch_changed(self, event):
         compile_switch = self.query_one("#compile-switch", Switch)
         dry_switch = self.query_one("#dry-switch", Switch)
@@ -192,7 +202,6 @@ class ConfigureStep(StepScreen):
         cid = event.control.id
         val = event.value
 
-        #TODO: Restructure for ListSelection
         if cid == "compile-switch":
             dt_select = self.query_one("#data-type-select", Select)
             buf_list = self.query_one("#buffer-size-select", SelectionList)
@@ -203,10 +212,8 @@ class ConfigureStep(StepScreen):
                 dry_switch.value = False
 
             dry_switch.disabled = val
-            self.reset_select(dt_select, disable=val, clear=False)
-            buf_list.deselect_all()
+            dt_select.disabled = val
             buf_list.disabled = val
-            seg_list.deselect_all()
             seg_list.disabled = val
         elif cid == "debug-switch":
             self.session.test.debug_mode = val
@@ -220,6 +227,10 @@ class ConfigureStep(StepScreen):
             if not self.session.environment.partition:
                 raise ValueError("Partition must be selected before enabling GPU buffers.")
             self.session.test.use_gpu_buffers = val
+
+        self.__update_selections()
+        next_b = self.query_one("#next", Button)
+        next_b.disabled = not (self.session.environment.validate() and self.session.test.validate())
 
     def get_help_desc(self) -> Tuple[str,str]:
         focused = self.focused
@@ -284,6 +295,44 @@ class ConfigureStep(StepScreen):
                 return int(size_label.replace(suffix, "")) * factor
         return int(size_label)
 
-    #TODO:
-    def __relable_selection_list(self):
-        pass
+    def __label_selection_list(self):
+        buf_list = self.query_one("#buffer-size-select", SelectionList)
+        if not self.session.test.dimensions:
+            return
+
+        dt_size = CDtype.get_size(self.session.test.dimensions.dtype)
+        if dt_size <= 0:
+            return
+
+        selected_values = buf_list.selected
+        buf_list.clear_options()
+
+        for byte_label in self.__buffer_sizes:
+            raw_size = self.__parse_size(byte_label)
+            text_label = byte_label.replace("Byte", "  B")
+            element_count = raw_size // dt_size
+
+            pretty_label = f"{text_label:<10} — {element_count:>10} elements"
+            was_selected = raw_size in selected_values
+            buf_list.add_option(Selection(pretty_label, raw_size, was_selected))
+
+    def __update_selections(self):
+        test_opt = self.session.test
+        if test_opt.compile_only:
+            test_opt.dimensions = None
+            return
+
+        dt_sel = self.query_one("#data-type-select", Select).value
+        buf_sel = self.query_one("#buffer-size-select", SelectionList).selected
+        seg_sel = self.query_one("#segment-size-select", SelectionList).selected
+
+        test_opt.dimensions = TestDimension(
+            dtype=dt_sel if isinstance(dt_sel, CDtype) else CDtype.UNKNOWN,
+            sizes_bytes=buf_sel if buf_sel else [],
+            segsizes_bytes=seg_sel if seg_sel else []
+        )
+
+        test_opt.dimensions.fill_elements()
+
+
+

@@ -211,6 +211,7 @@ class EnvironmentSelection:
         return self.name
 
 class CDtype(Enum):
+    UNKNOWN = 'unknown'
     CHAR = 'char'
     FLOAT = 'float'
     DOUBLE = 'double'
@@ -224,6 +225,7 @@ class CDtype(Enum):
 
     def get_size(self) -> int:
         sizes = {
+            CDtype.UNKNOWN: 0,
             CDtype.CHAR: 1,
             CDtype.FLOAT: 4,
             CDtype.DOUBLE: 8,
@@ -237,20 +239,14 @@ class CDtype(Enum):
 
 @dataclass
 class TestDimension:
-    array_sizes: List[int] = field(default_factory=list)
-    array_sizes_bytes: List[int] = field(default_factory=list)
-    dtype: CDtype = CDtype.INT32
-    segment_sizes_bytes: List[int] = field(default_factory=list)
-
-    def __post_init__(self):
-        if not self.array_sizes_bytes and self.array_sizes:
-            self.__sizes_bytes()
-        elif not self.array_sizes and self.array_sizes_bytes:
-            self.__sizes_elements()
+    dtype: CDtype = CDtype.UNKNOWN
+    sizes_bytes: List[int] = field(default_factory=list)
+    sizes_elements: List[int] = field(default_factory=list)
+    segsizes_bytes: List[int] = field(default_factory=list)
 
     def get_printable_sizes(self, get_segment_sizes=False) -> List[str]:
         sizes = []
-        source_sizes = self.segment_sizes_bytes if get_segment_sizes else self.array_sizes_bytes
+        source_sizes = self.segsizes_bytes if get_segment_sizes else self.sizes_bytes
 
         for size in source_sizes:
             if size < 1024:
@@ -261,51 +257,41 @@ class TestDimension:
                 sizes.append(f"{size / 1024**2:.2f} MiB")
         return sizes
 
+
     def validate(self) -> bool:
-        if not self.dtype or not isinstance(self.dtype, CDtype):
+        dtype_size = self.dtype.get_size()
+        if self.dtype == CDtype.UNKNOWN or dtype_size == 0:
             return False
-        if not self.__validate_sizes:
+
+        expected_elements = [size // dtype_size for size in self.sizes_bytes]
+        if self.sizes_elements != expected_elements:
             return False
-        return True
 
-
-    def __validate_sizes(self) -> bool:
         size_lists = [
-            self.array_sizes,
-            self.array_sizes_bytes,
-            self.segment_sizes_bytes
+            self.sizes_elements,
+            self.sizes_bytes,
+            self.segsizes_bytes
         ]
 
         for size_list in size_lists:
             if not size_list:
                 return False
-            if any(size <= 0 for size in size_list):
+            if any(size <= 0 for size in size_list) and size_list != self.segsizes_bytes:
                 return False
             if len(size_list) != len(set(size_list)):
                 return False
 
-        if len(self.array_sizes) != len(self.array_sizes_bytes):
-            return False
-
-        dtype_size = self.dtype.get_size()
-        if dtype_size == 0:
-            raise ValueError(f"Invalid dtype size: {dtype_size}")
-        expected_bytes = [size * dtype_size for size in self.array_sizes]
-        if self.array_sizes_bytes != expected_bytes:
+        if len(self.sizes_elements) != len(self.sizes_bytes):
             return False
 
         return True
 
-    def __sizes_bytes(self) -> None:
-        if self.array_sizes:
-            self.array_sizes_bytes = [size * self.dtype.get_size() for size in self.array_sizes]
-
-    def __sizes_elements(self) -> None:
-        if self.array_sizes_bytes:
+    def fill_elements(self) -> None:
+        if self.sizes_bytes:
             dtype_size = self.dtype.get_size()
             if dtype_size == 0:
                 raise ValueError(f"Invalid dtype size: {dtype_size}")
-            self.array_sizes = [size // dtype_size for size in self.array_sizes_bytes]
+            self.sizes_elements = [size // dtype_size for size in self.sizes_bytes]
 
 
 @dataclass
@@ -314,18 +300,16 @@ class TestConfig:
     use_gpu_buffers: bool = False
     debug_mode: bool = False
     dry_run: bool = False
-    dimensions: Optional[TestDimension] = None
+    dimensions: Optional[TestDimension] = field(default_factory=lambda: TestDimension())
     inject_params: Optional[str] = None
 
     def validate(self) -> bool:
         if self.compile_only:
             if self.dry_run or self.dimensions:
                 return False
-        #TODO: Add validation
-
-        # else:
-        #     if not (self.dimensions and self.dimensions.validate()):
-        #         return False
+        else:
+            if not (self.dimensions and self.dimensions.validate()):
+                return False
 
         return True
 
