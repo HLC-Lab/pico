@@ -29,6 +29,7 @@ class SaveScreen(Screen):
         self.__json = json
 
     def compose(self) -> ComposeResult:
+        yield Header(show_clock=True)
         yield Vertical(
             Label(SAVE_MSG, id="question", classes="save-label"),
             Input(placeholder="Enter filename to save as...", id="filename-input"),
@@ -99,7 +100,6 @@ class SummaryStep(StepScreen):
 
         yield Footer()
 
-    # TODO:
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "prev":
             from tui.steps.algorithms import AlgorithmsStep

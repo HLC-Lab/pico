@@ -66,8 +66,8 @@ class ConfigureStep(StepScreen):
             ("double", CDtype.DOUBLE)
         ]
 
-        buffer_items =  [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label), True) for label in self.__buffer_sizes]
-        segment_items = [Selection(f"{label.replace("Byte", "  B")}", self.__parse_size(label)) for label in self.__segment_sizes]
+        buffer_items =  [Selection(f"{label.replace('Byte', '  B')}", self.__parse_size(label), True) for label in self.__buffer_sizes]
+        segment_items = [Selection(f"{label.replace('Byte', '  B')}", self.__parse_size(label)) for label in self.__segment_sizes]
         segment_items[0] = Selection("No Segment", 0, True)
 
         yield Horizontal(

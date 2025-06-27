@@ -2,7 +2,7 @@ from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static, Button, Checkbox, TabbedContent, TabPane, Header, Footer
-from tui.steps.base import StepScreen
+from .base import StepScreen
 from config_loader import alg_get_list, alg_get_algo
 from models import CollectiveType, AlgorithmSelection
 from typing import List, Tuple
@@ -72,8 +72,8 @@ class AlgorithmsStep(StepScreen):
 
     def on_checkbox_changed(self):
         self._update_next_button_state()
-        self.notify(f"lib_ok {self.__libs_ok}, coll_ok {self.__coll_ok}",
-                    title="Update next status", markup=False, timeout=10)
+        # self.notify(f"lib_ok {self.__libs_ok}, coll_ok {self.__coll_ok}",
+        #             title="Update next status", markup=False, timeout=10)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "next":
