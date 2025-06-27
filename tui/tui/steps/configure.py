@@ -173,7 +173,8 @@ class ConfigureStep(StepScreen):
     def on_input_changed(self, event):
         input_w = event.control
         if input_w.id == "inject-params":
-            self.session.test.inject_params = input_w.value.strip()
+            inj = input_w.value.strip()
+            self.session.test.inject_params = inj if inj else None
         else:
             raise ValueError(f"Unexpected input control: {input_w.id}")
 

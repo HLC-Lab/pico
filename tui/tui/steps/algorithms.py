@@ -9,6 +9,8 @@ from typing import List, Tuple
 from packaging import version
 
 
+#BUG: when selecting more libraries the data is not saved correctly:
+# - if you select an algo for lib 1 and another for lib 2, both are saved in both lib
 class AlgorithmsStep(StepScreen):
     __libs: List[Tuple]
     __collectives: List[str]
@@ -43,12 +45,14 @@ class AlgorithmsStep(StepScreen):
 
         yield Footer()
 
+
     def on_mount(self) -> None:
         for lib in self.session.libraries:
             for key in lib.algorithms:
                 lib.algorithms[key].clear()
         self.__libs_ok = { lib[2] : False for lib in self.__libs }
         self.__coll_ok = { coll: False for coll in self.__collectives }
+
 
     async def on_key(self, event: events.Key) -> None:
         if not event.key.isdigit():
@@ -72,8 +76,7 @@ class AlgorithmsStep(StepScreen):
 
     def on_checkbox_changed(self):
         self._update_next_button_state()
-        # self.notify(f"lib_ok {self.__libs_ok}, coll_ok {self.__coll_ok}",
-        #             title="Update next status", markup=False, timeout=10)
+
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "next":

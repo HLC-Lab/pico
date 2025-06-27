@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import List
 
 # Base config directory (assumes this file sits next to `config/`)
-CONFIG_DIR = Path(__file__).parent.parent / "config"
+SWING_DIR = Path(__file__).parent.parent
+CONFIG_DIR = SWING_DIR / "config"
 ALG_DIR = CONFIG_DIR / "algorithms"
 ENV = 'environment'
 ENV_DIR = CONFIG_DIR / ENV
