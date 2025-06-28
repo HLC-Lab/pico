@@ -1,0 +1,255 @@
+{
+  "recursive_distance_doubling_over": {
+    "desc": "Libswing external recursive distance doubling algorithm. It works only with power of 2 processes",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "recursive_distance_doubling",
+      "external"
+    ]
+  },
+  "recursive_halving_over": {
+    "desc": "Libswing external recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "recursive_halving",
+      "small_sizes",
+      "medium_sizes",
+      "external"
+    ]
+  },
+  "ring_over": {
+    "desc": "Libswing external ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "ring",
+      "large_sizes",
+      "external"
+    ]
+  },
+  "butterfly_over": {
+    "desc": "Libswing external butterfly algorithm. This algorithm is used for small messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "butterfly",
+      "small_sizes",
+      "can_crash",
+      "external"
+    ]
+  },
+  "swing_static_over": {
+    "desc": "Libswing external swing static algorithm. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          },
+          {
+            "operator": "<=",
+            "value": 256
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "swing",
+      "static",
+      "suboptimal",
+      "medium_sizes",
+      "large_sizes",
+      "external"
+    ]
+  },
+  "swing_send_remap_over": {
+    "desc": "Libswing external swing remap send algorithm. Works only with power of 2 processes.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "swing",
+      "remap",
+      "send",
+      "external"
+    ]
+  },
+  "swing_permute_remap_over": {
+    "desc": "Libswing external swing remap memcpy algorithm. Works only with power of 2 processes.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "swing",
+      "remap",
+      "memcpy",
+      "external"
+    ]
+  },
+  "swing_block_by_block_over": {
+    "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "swing",
+      "block_by_block",
+      "external"
+    ]
+  },
+  "swing_block_by_block_any_even": {
+    "desc": "Libswing external swing block by block algorithm. Works only any even processes",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_even",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "swing",
+      "block_by_block",
+      "external"
+    ]
+  }
+}

@@ -1,0 +1,363 @@
+{
+  "k_bruck_over": {
+    "desc": "Libswing external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "additional_parameters": {
+      "radix": {
+        "desc": "Radix of the K-nomial tree",
+        "required": true,
+        "type": "int"
+      }
+    },
+    "tags": [
+      "k_bruck",
+      "cuda",
+      "additional_parameter",
+      "external"
+    ]
+  },
+  "recursive_doubling_over": {
+    "desc": "Libswing external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "recursive_doubling",
+      "cuda",
+      "external"
+    ]
+  },
+  "ring_over": {
+    "desc": "Libswing external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "ring",
+      "cuda",
+      "external"
+    ]
+  },
+  "sparbit_over": {
+    "desc": "Libswing external sparse bit algorithm. Comm_sz must be greater or equal to count.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "sparbit",
+      "external"
+    ]
+  },
+  "swing_block_by_block_over": {
+    "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing_block_by_block",
+      "block_by_block",
+      "swing",
+      "external"
+    ]
+  },
+  "swing_block_by_block_over_any_even": {
+    "desc": "Libswing external swing block by block algorithm. Works for any number of even processes",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_even",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing_block_by_block",
+      "block_by_block",
+      "swing",
+      "external"
+    ]
+  },
+  "swing_permute_static_over": {
+    "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          },
+          {
+            "operator": "<=",
+            "value": 256
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing_static",
+      "swing",
+      "permute",
+      "static",
+      "suboptimal",
+      "external"
+    ]
+  },
+  "swing_send_static_over": {
+    "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses an additional send to the first step to order the buffer for the remapping of the ranks (send contiguous buffers).",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          },
+          {
+            "operator": "<=",
+            "value": 256
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing_static",
+      "swing",
+      "static",
+      "suboptimal",
+      "external"
+    ]
+  },
+  "swing_permute_remap_over": {
+    "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. This version remaps rank to allow the sending of contiguous buffers. Count must be greater or equal to comm_sz.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          },
+          {
+            "operator": "<=",
+            "value": 256
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing_remap",
+      "permute",
+      "swing",
+      "external"
+    ]
+  },
+  "swing_send_remap_over": {
+    "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing_remap",
+      "swing",
+      "external"
+    ]
+  },
+  "swing_2_blocks_over": {
+    "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing",
+      "cuda",
+      "external"
+    ]
+  },
+  "swing_2_blocks_dtype_over": {
+    "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "swing",
+      "dtype",
+      "cuda",
+      "external"
+    ]
+  }
+}

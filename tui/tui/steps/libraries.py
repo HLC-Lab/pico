@@ -53,8 +53,8 @@ class LibrariesStep(StepScreen):
             "Allgather",
             "Allreduce",
             "Alltoall",
-            "Barrier",
             "Broadcast",
+            "Gather",
             "Reduce",
             "ReduceScatter",
             "Scatter"

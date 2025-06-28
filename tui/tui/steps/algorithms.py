@@ -11,6 +11,7 @@ from packaging import version
 
 #BUG: when selecting more libraries the data is not saved correctly:
 # - if you select an algo for lib 1 and another for lib 2, both are saved in both lib
+#BUG: PICO algorithm selection must be repeated for each backend library
 class AlgorithmsStep(StepScreen):
     __libs: List[Tuple]
     __collectives: List[str]

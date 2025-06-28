@@ -1,0 +1,31 @@
+{
+  "swing_over": {
+    "desc": "Libswing external alltoall algorithm. This algorithm is used for small to medium messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "swing",
+      "external"
+    ]
+  }
+}
