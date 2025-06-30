@@ -693,6 +693,7 @@ class LibrarySelection:
     compiler: str = ''
     gpu_support: GPUSupport = field(default_factory=lambda: GPUSupport())
     lib_load: LibraryLoad = field(default_factory=lambda: LibraryLoad())
+    pico_backend: bool = False
     algorithms: Dict[CollectiveType, List[AlgorithmSelection]] = field(default_factory=dict)
 
     def get_summary(self) -> str:

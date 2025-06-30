@@ -9,15 +9,12 @@ from typing import List, Tuple
 from packaging import version
 
 
-#BUG: when selecting more libraries the data is not saved correctly:
-# - if you select an algo for lib 1 and another for lib 2, both are saved in both lib
-#BUG: PICO algorithm selection must be repeated for each backend library
 class AlgorithmsStep(StepScreen):
     __libs: List[Tuple]
     __collectives: List[str]
 
     def compose(self) -> ComposeResult:
-        self.__libs = [(lib.name, lib.get_type(), lib.get_id_name()) for lib in self.session.libraries]
+        self.__libs = [(lib.name, lib.get_type(), lib.get_id_name(), lib.pico_backend) for lib in self.session.libraries]
         self.__collectives = [str(key) for key in self.session.libraries[0].algorithms.keys()]
 
         yield Header(show_clock=True)
@@ -28,9 +25,13 @@ class AlgorithmsStep(StepScreen):
             for pane_num, coll in enumerate(self.__collectives):
                 with TabPane(title=f"({pane_num+1}) {coll.capitalize()}", id=f"tab-{coll}"):
                     columns = []
-                    for idx, (lib_name, lib_type, lib_name_id) in enumerate(self.__libs):
+                    for idx, (lib_name, lib_type, lib_name_id, pico) in enumerate(self.__libs):
                         lib_version = self.session.libraries[idx].version
                         algos = alg_get_list(lib_type, coll)
+                        # BUG: Selection screen crashes, moreover chechboxes are not scrollable
+                        if pico:
+                            pico_algos = alg_get_list("PicoLib-MPI", coll)
+                            algos.update(pico_algos)
                         columns.append(Vertical(*[
                             Checkbox(
                                 f"({lib_name}) {key}",
@@ -81,24 +82,36 @@ class AlgorithmsStep(StepScreen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "next":
-            for library in self.session.libraries:
-                for cb in self.query(Checkbox):
-                    if not (cb.value and cb.id):
-                        continue
+            for lib in self.session.libraries:
+                lib.algorithms = { 
+                    CollectiveType.from_str(coll): [] 
+                    for coll in self.__collectives 
+                }
 
-                    checkbox_collective, checkbox_algo_key, checkbox_lib_name_id = cb.id.split("-", 2)
-                    if checkbox_lib_name_id != library.get_id_name():
-                        continue
+            checked = [
+                cb for cb in self.query(Checkbox)
+                if cb.id and cb.value
+            ]
 
-                    algo_data = alg_get_algo(library.get_type(), checkbox_collective, checkbox_algo_key)
-                    if not algo_data:
-                        raise ValueError(f"Algorithm {checkbox_algo_key} not found in {library.get_type}/{checkbox_collective}.json")
+            for cb in checked:
+                if not cb.id:
+                    raise ValueError("Checkbox ID is missing. This should not happen.")
 
-                    coll_type = CollectiveType.from_str(checkbox_collective)
+                coll_str, algo_key, lib_id = cb.id.split("-", 2)
+                collective = CollectiveType.from_str(coll_str)
 
-                    library.algorithms[coll_type].append(
-                        AlgorithmSelection.from_dict(checkbox_algo_key, checkbox_collective, algo_data)
-                    )
+                library = next(
+                    lib for lib in self.session.libraries
+                    if lib.get_id_name() == lib_id
+                )
+
+                algo_data = alg_get_algo( library.get_type(), coll_str, algo_key )
+                if not algo_data:
+                    raise ValueError(f"Algorithm {algo_key} not found in {library.get_type}/{coll_str}.json")
+
+                library.algorithms[collective].append(
+                    AlgorithmSelection.from_dict(algo_key, coll_str, algo_data)
+                )
 
             for library in self.session.libraries:
                 if not library.validate(validate_algo=True):

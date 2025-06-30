@@ -1,6 +1,6 @@
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
-from textual.widgets import Select, Static, Header, Footer, Button, Checkbox
+from textual.widgets import Select, Static, Header, Footer, Button, Checkbox, Switch
 from .base import StepScreen
 from config_loader import lib_get_libraries
 from textual.reactive import reactive
@@ -20,9 +20,10 @@ class LibRow(Horizontal):
         yield Horizontal(
             Select(opts, prompt="Library", id=f"lib-sel-{self.index}", classes="field"),
             Horizontal(
+                Switch(id=f"pico-backend-{self.index}", disabled=True),
                 Button("–", id=f"remove-{self.index}", disabled=(self.index == 1)),
                 Button("+", id=f"add-{self.index}", disabled=True),
-                classes="button-row-task"
+                classes="switch-and-button-end"
             ),
             classes="row-task"
         )
@@ -34,13 +35,13 @@ class LibrariesStep(StepScreen):
 
         yield Header(show_clock=True)
 
-        # BUG: Not displayed correctly
         yield Horizontal(
-            Static("Library", classes="field-label"),
+            Static("Library", classes="field-label field"),
             Horizontal(
+                Static("Custom collectives?", classes="field-label"),
                 Static("Remove", classes="field-label"),
                 Static("Add", classes="field-label"),
-                classes="button-row-task"
+                classes="switch-and-button-end"
             ),
             classes="row-tight"
         )
@@ -90,9 +91,13 @@ class LibrariesStep(StepScreen):
         sel = event.control
         if sel.id.startswith("lib-sel-"):
             add_button = self.query_one(f"#add-{sel.id.split('-')[-1]}", Button)
+            pico_switch = self.query_one(f"#pico-backend-{sel.id.split('-')[-1]}", Switch)
             selected_lib = sel.value
-            if selected_lib is not Select.BLANK:
-                add_button.disabled = False
+            disabled = (selected_lib is Select.BLANK)
+            add_button.disabled = disabled
+            pico_switch.disabled = disabled
+            if disabled:
+                pico_switch.value = False
 
             self.__update_already_used()
 
@@ -104,22 +109,32 @@ class LibrariesStep(StepScreen):
     def on_button_pressed(self, event) -> None:
         button = event.control
         if button.id == "next":
-            collectives = {CollectiveType.from_str(str(cb.label)) : [] for cb in self.checkboxes if cb.value}
+            collectives = {
+                CollectiveType.from_str(str(cb.label)) : [] 
+                for cb in self.checkboxes if cb.value
+            }
             if not collectives:
                 raise ValueError("At least one collective must be selected.")
+
             for ind, lib in enumerate(self.__already_used):
                 library = LibrarySelection.from_dict(self.__lib_data.get('LIBRARY',{}).get(lib), lib)
                 library.algorithms = collectives
+                pico_switch = self.query_one(f"#pico-backend-{ind+1}", Switch)
+                library.pico_backend = pico_switch.value
                 self.session.libraries.append(library)
                 if not self.session.libraries[ind].validate():
                     raise ValueError(f"Library {lib} is not valid for the current environment.")
+
             from tui.steps.algorithms import AlgorithmsStep
             self.next(AlgorithmsStep)
+
         elif button.id == "prev":
             from tui.steps.tasks import TasksStep
             self.prev(TasksStep)
+
         elif button.id.startswith("add-"):
             self.__add_lib()
+
         elif button.id.startswith("remove-"):
             index = int(event.button.id.split("-")[1])
             self.__remove_lib(index)
@@ -152,10 +167,6 @@ class LibrariesStep(StepScreen):
                 already_used.append(sel.value)
 
         self.__already_used = already_used
-        # self.notify(f"Already used libraries: {self.__already_used}\n"
-        #             f"Available libraries: {self.__available_libs}\n"
-        #             f"Total libraries: {self.__lib_counter}",
-        #             title="Libraries Update", timeout=10, markup=False)
 
     def __update_next_button(self) -> None:
         next_button = self.query_one("#next", Button)
