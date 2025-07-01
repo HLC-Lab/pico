@@ -46,15 +46,15 @@ def lib_get_libraries(env_name: str) -> dict:
 
 # --------------- AlgorithmsStep utilities --------------- #
 
-def alg_get_list(lib_name: str, coll_name: str) -> dict:
-    return load_json("algorithms", lib_name, f"{coll_name}.json", panic=False)
+def alg_get_list(std_type: str, lib_name: str, coll_name: str) -> dict:
+    return load_json("algorithms", std_type, lib_name, f"{coll_name}.json", panic=False)
 
 # WARN: I think this is slow, as it loads the whole file each time.
 # Consider caching when using get_alg_list() in AlgorithmStep and delete this.
-def alg_get_algo(lib_name: str, coll_name: str, algo_name: str) -> dict:
-    coll_algos = alg_get_list(lib_name, coll_name)
+def alg_get_algo(std_type: str, lib_name: str, coll_name: str, algo_name: str) -> dict:
+    coll_algos = alg_get_list(std_type, lib_name, coll_name)
     if algo_name not in coll_algos:
-        raise ValueError(f"Algorithm {algo_name} not found in {lib_name}/{coll_name}.json")
+        raise ValueError(f"Algorithm {algo_name} not found in {std_type}/{lib_name}/{coll_name}.json")
 
     return coll_algos[algo_name]
 

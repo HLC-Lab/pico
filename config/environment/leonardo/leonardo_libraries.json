@@ -89,6 +89,48 @@
         "MPI_LIB_COMPILER": "icx",
         "MPI_LIB_COMPILER_VERSION": "2021.10"
       }
+    },
+    "NCCL 2.19.1": {
+      "desc": "NVIDIA Collective Communications Library (NCCL) is a library that optimizes collective communication primitives for NVIDIA GPUs.",
+      "standard": "nccl",
+      "lib_type": "nccl",
+      "version": "2.19.1",
+      "compiler": "nvcc",
+      "load": {
+        "type": "module",
+        "module": "nccl/2.19.1-1--gcc--12.2.0-cuda-12.1"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.1"
+        }
+      }
+    },
+    "NCCL 2.19.3": {
+      "desc": "NVIDIA Collective Communications Library (NCCL) is a library that optimizes collective communication primitives for NVIDIA GPUs.",
+      "standard": "nccl",
+      "lib_type": "nccl",
+      "version": "2.19.3",
+      "compiler": "nvcc",
+      "load": {
+        "type": "module",
+        "module": "nccl/2.19.3-1--gcc--12.2.0-cuda-12.1"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.1"
+        }
+      }
     }
   }
 }

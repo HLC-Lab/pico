@@ -1,0 +1,31 @@
+{
+  "k_bruck_over": {
+    "desc": "Libswing external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "additional_parameters": {
+      "radix": {
+        "desc": "Radix of the K-nomial tree",
+        "required": true,
+        "type": "int"
+      }
+    },
+    "tags": [
+      "k_bruck",
+      "cuda",
+      "additional_parameter",
+      "external"
+    ]
+  }
+}

@@ -406,7 +406,7 @@ class TaskConfig:
 
     def validate_gpu_tasks(self, session) -> bool:
         gpu_tasks = self.list_tasks.get(TestType.GPU, [])
-        if not session.compile_config.use_gpu_buffers and gpu_tasks:
+        if not session.test.use_gpu_buffers and gpu_tasks:
             return False
         if len(set(gpu_tasks)) != len(gpu_tasks):
             return False
@@ -465,38 +465,6 @@ class TaskConfig:
 
         return True
 
-    # INFO: Not currently used.
-    #
-    # def add_task(self, session, task: int, test_type: TestType) -> bool:
-    #     if test_type == TestType.CPU:
-    #         return self.__add_cpu_task(session, task)
-    #     elif test_type == TestType.GPU:
-    #         return self.__add_gpu_task(session, task)
-    #
-    # def __add_cpu_task(self, session, task: int) -> bool:
-    #     if not (
-    #         task >= 1 and
-    #         (not session.environment.slurm or task <= session.environment.partition.cpus_per_node) and
-    #         task not in self.list_tasks.get(TestType.CPU, [])
-    #     ):
-    #         return False
-    #
-    #     self.list_tasks.setdefault(TestType.CPU, []).append(task)
-    #     return True
-    #
-    #
-    # def __add_gpu_task(self, session, task: int) -> bool:
-    #     if not (
-    #         session.environment.slurm and
-    #         session.compile_config.use_gpu_buffers and
-    #         1 < task < session.environment.partition.gpus_per_node
-    #         and task not in self.list_tasks.get(TestType.GPU, [])
-    #     ):
-    #         return False
-    #
-    #     self.list_tasks.setdefault(TestType.GPU, []).append(task)
-    #     return True
-
 
 class LoadType(Enum):
     DEFAULT = 'default'
@@ -519,9 +487,8 @@ class LoadType(Enum):
         return self.value
 
 class StdType(Enum):
-    MPI = 'mpi'
-    NCCL = 'nccl'
-    RCCL = 'rccl'
+    MPI = 'MPI'
+    NCCL = 'NCCL'
     UNKNOWN = 'unknown'
 
     @classmethod
@@ -531,13 +498,37 @@ class StdType(Enum):
             return cls.MPI
         elif value == 'nccl':
             return cls.NCCL
-        elif value == 'rccl':
-            return cls.RCCL
         else:
             return cls.UNKNOWN
 
     def __str__(self) -> str:
         return self.value
+
+
+class LibType(Enum):
+    OPEN_MPI = 'Open-MPI'
+    MPICH = 'MPICH'
+    CRAY_MPICH = 'Cray-MPICH'
+    NCCL = 'NCCL'
+    UNKNOWN = 'unknown'
+
+    @classmethod
+    def from_str(cls, value: str):
+        value = value.lower()
+        if value == 'open-mpi':
+            return cls.OPEN_MPI
+        elif value == 'mpich':
+            return cls.MPICH
+        elif value == 'cray-mpich':
+            return cls.CRAY_MPICH
+        elif value == 'nccl':
+            return cls.NCCL
+        else:
+            return cls.UNKNOWN
+
+    def __str__(self) -> str:
+        return self.value
+
 
 
 @dataclass
@@ -686,9 +677,8 @@ class AlgorithmSelection:
 class LibrarySelection:
     name: str = ''
     desc: str = ''
-    # TODO: Bring lib type and standard into a single field, adding also algo selection method
     standard: StdType = StdType.UNKNOWN
-    lib_type: Optional[str] = None
+    lib_type: LibType = LibType.UNKNOWN
     version: str = ''
     compiler: str = ''
     gpu_support: GPUSupport = field(default_factory=lambda: GPUSupport())
@@ -709,13 +699,7 @@ class LibrarySelection:
         version = lib_json.get('version', '')
         compiler = lib_json.get('compiler', '')
         standard = StdType.from_str(lib_json.get('standard', ''))
-        library = None
-
-        if standard == StdType.MPI:
-            library = lib_json.get('lib_type')
-        elif standard in (StdType.NCCL, StdType.RCCL):
-            library = str(standard)
-
+        library = LibType.from_str(lib_json.get('lib_type', ''))
         gpu_support = GPUSupport.from_dict(lib_json.get('gpu', {}))
 
         lib_load = LibraryLoad()
@@ -733,12 +717,10 @@ class LibrarySelection:
         )
 
     def validate(self, validate_algo=False) -> bool:
-        if not (self.name and self.desc and self.version and
-                self.compiler and self.standard != StdType.UNKNOWN):
+        if not (self.name and self.desc and self.version and self.compiler and 
+                self.standard != StdType.UNKNOWN and self.lib_type != LibType.UNKNOWN):
             return False
-        if self.standard == StdType.MPI and not self.lib_type:
-            return False
-        if self.standard in (StdType.NCCL, StdType.RCCL) and not self.gpu_support.gpu:
+        if self.standard == StdType.NCCL and not self.gpu_support.gpu:
             return False
         if not (self.lib_load.validate() and self.gpu_support.validate()):
             return False
@@ -761,20 +743,7 @@ class LibrarySelection:
         return True
 
 
-    def get_type(self) -> str:
-        if self.standard == StdType.MPI:
-            if not self.lib_type:
-                raise ValueError("lib_type must be set for MPI libraries")
-            return self.lib_type
-        elif self.standard in (StdType.NCCL, StdType.RCCL):
-            return str(self.standard)
-        else:
-            raise ValueError(f"Unknown standard type: {self.standard}")
-
     def get_id_name(self) -> str:
-        """
-            Returns a sanitized version of the library name suitable for use as an identifier.
-        """
         return self.name.replace(' ','_').replace('.','_').replace('-','_').lower()
 
 

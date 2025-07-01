@@ -10,11 +10,9 @@ from packaging import version
 
 
 class AlgorithmsStep(StepScreen):
-    __libs: List[Tuple]
     __collectives: List[str]
 
     def compose(self) -> ComposeResult:
-        self.__libs = [(lib.name, lib.get_type(), lib.get_id_name(), lib.pico_backend) for lib in self.session.libraries]
         self.__collectives = [str(key) for key in self.session.libraries[0].algorithms.keys()]
 
         yield Header(show_clock=True)
@@ -25,22 +23,31 @@ class AlgorithmsStep(StepScreen):
             for pane_num, coll in enumerate(self.__collectives):
                 with TabPane(title=f"({pane_num+1}) {coll.capitalize()}", id=f"tab-{coll}"):
                     columns = []
-                    for idx, (lib_name, lib_type, lib_name_id, pico) in enumerate(self.__libs):
-                        lib_version = self.session.libraries[idx].version
-                        algos = alg_get_list(lib_type, coll)
-                        # BUG: Selection screen crashes, moreover chechboxes are not scrollable
-                        if pico:
-                            pico_algos = alg_get_list("PicoLib-MPI", coll)
-                            algos.update(pico_algos)
-                        columns.append(Vertical(*[
+                    for lib in self.session.libraries:
+                        lib_id = lib.get_id_name()
+                        lib_version = lib.version
+                        std_algos = alg_get_list(str(lib.standard), str(lib.lib_type), coll)
+                        regular_checks = [
                             Checkbox(
-                                f"({lib_name}) {key}",
-                                id=f"{coll}-{key}-{lib_name_id}"
+                                f"({lib.name}) {key}",
+                                id=f"{coll}-{key}-{lib_id}"
                             )
-                            for key, meta in algos.items()
-                            if (ver := meta.get("version", None))
-                            and version.parse(ver) <= version.parse(lib_version)
-                        ]))
+                            for key, meta in std_algos.items()
+                            if (ver := meta.get("version")) and version.parse(ver) <= version.parse(lib_version)
+                        ]
+
+                        pico_checks = []
+                        if lib.pico_backend:
+                            pico_algos = alg_get_list(str(lib.standard), "PicoLib", coll)
+                            pico_checks = [
+                                Checkbox(
+                                    f"({lib.name}) {key} (PICO custom)",
+                                    id=f"{coll}-{key}-{lib_id}-pico"
+                                )
+                                for key in pico_algos.keys()
+                            ]
+                        columns.append(Vertical(*regular_checks, *pico_checks))
+
                     yield Horizontal(*columns)
 
         yield self.navigation_buttons()
@@ -52,7 +59,7 @@ class AlgorithmsStep(StepScreen):
         for lib in self.session.libraries:
             for key in lib.algorithms:
                 lib.algorithms[key].clear()
-        self.__libs_ok = { lib[2] : False for lib in self.__libs }
+        self.__libs_ok = { lib.get_id_name() : False for lib in self.session.libraries }
         self.__coll_ok = { coll: False for coll in self.__collectives }
 
 
@@ -97,19 +104,30 @@ class AlgorithmsStep(StepScreen):
                 if not cb.id:
                     raise ValueError("Checkbox ID is missing. This should not happen.")
 
-                coll_str, algo_key, lib_id = cb.id.split("-", 2)
-                collective = CollectiveType.from_str(coll_str)
+                parts = cb.id.split("-")
+
+                # Detect PICO suffix
+                if len(parts) == 4 and parts[-1] == "pico":
+                    coll_str, algo_key, lib_id, _ = parts
+                    pico = True
+                elif len(parts) == 3:
+                    coll_str, algo_key, lib_id = parts
+                    pico = False
+                else:
+                    raise ValueError(f"Unexpected checkbox id format: {cb.id!r}")
+
+                coll = CollectiveType.from_str(coll_str)
 
                 library = next(
                     lib for lib in self.session.libraries
                     if lib.get_id_name() == lib_id
                 )
 
-                algo_data = alg_get_algo( library.get_type(), coll_str, algo_key )
+                algo_data = alg_get_algo(str(library.standard), str(library.lib_type) if not pico else "PicoLib", coll_str, algo_key )
                 if not algo_data:
-                    raise ValueError(f"Algorithm {algo_key} not found in {library.get_type}/{coll_str}.json")
+                    raise ValueError(f"Algorithm {algo_key} not found in {library.lib_type}/{coll_str}.json")
 
-                library.algorithms[collective].append(
+                library.algorithms[coll].append(
                     AlgorithmSelection.from_dict(algo_key, coll_str, algo_data)
                 )
 
@@ -144,7 +162,7 @@ class AlgorithmsStep(StepScreen):
             found = any(
                 cb.value
                 for cb in self.query(Checkbox)
-                if cb.id and cb.id.endswith(f"-{lib}")
+                if cb.id and (cb.id.endswith(f"-{lib}") or cb.id.endswith(f"-{lib}-pico"))
             )
             if found:
                 self.__libs_ok[lib] = True

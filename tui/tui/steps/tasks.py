@@ -147,6 +147,9 @@ class TasksStep(StepScreen):
             from tui.steps.configure import ConfigureStep
             self.prev(ConfigureStep)
         elif event.button.id == "next":
+            if self.session.test.use_gpu_buffers and not self.__already_used.get('gpu', False):
+                self.notify("You must add at least one GPU task.", title="Error", severity="error", timeout=10)
+                return
             self.session.tasks.list_tasks_from_dict(self.__already_used)
             if self.session.tasks.validate(self.session):
                 from tui.steps.libraries import LibrariesStep

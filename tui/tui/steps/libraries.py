@@ -83,6 +83,8 @@ class LibrariesStep(StepScreen):
         self.session.libraries = []
         self.__lib_data = lib_get_libraries(self.session.environment.name)
         self.__available_libs = list(self.__lib_data.get('LIBRARY', {}).keys())
+        if not self.session.test.use_gpu_buffers:
+            self.__available_libs = [ lib for lib in self.__available_libs if "nccl" not in lib.lower() ]
         self.__already_used = []
         self.__next_lib_id = 0
         self.__add_lib()
