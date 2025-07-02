@@ -1,6 +1,6 @@
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
-from textual.widgets import Select, Static, Header, Footer, Button, Checkbox, Switch
+from textual.widgets import Select, Static, Header, Footer, Button, Checkbox, Switch, Input
 from .base import StepScreen
 from config_loader import lib_get_libraries
 from textual.reactive import reactive
@@ -19,12 +19,11 @@ class LibRow(Horizontal):
         opts = [(lib, lib) for lib in self.available_libs if lib not in self.used_libs]
         yield Horizontal(
             Select(opts, prompt="Library", id=f"lib-sel-{self.index}", classes="field"),
-            Horizontal(
-                Switch(id=f"pico-backend-{self.index}", disabled=True),
-                Button("–", id=f"remove-{self.index}", disabled=(self.index == 1)),
-                Button("+", id=f"add-{self.index}", disabled=True),
-                classes="switch-and-button-end"
-            ),
+            Input(id=f"cpu-tasks-{self.index}", placeholder="CPU tasks", classes="field"),
+            Input(id=f"gpu-tasks-{self.index}", placeholder="GPU tasks", classes="field"),
+            Switch(id=f"pico-backend-{self.index}", disabled=True),
+            Button("–", id=f"remove-{self.index}", disabled=(self.index == 1)),
+            Button("+", id=f"add-{self.index}", disabled=True),
             classes="row-task"
         )
 
@@ -83,8 +82,6 @@ class LibrariesStep(StepScreen):
         self.session.libraries = []
         self.__lib_data = lib_get_libraries(self.session.environment.name)
         self.__available_libs = list(self.__lib_data.get('LIBRARY', {}).keys())
-        if not self.session.test.use_gpu_buffers:
-            self.__available_libs = [ lib for lib in self.__available_libs if "nccl" not in lib.lower() ]
         self.__already_used = []
         self.__next_lib_id = 0
         self.__add_lib()
@@ -131,8 +128,8 @@ class LibrariesStep(StepScreen):
             self.next(AlgorithmsStep)
 
         elif button.id == "prev":
-            from tui.steps.tasks import TasksStep
-            self.prev(TasksStep)
+            from tui.steps.configure import ConfigureStep
+            self.prev(ConfigureStep)
 
         elif button.id.startswith("add-"):
             self.__add_lib()

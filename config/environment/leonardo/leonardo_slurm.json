@@ -11,7 +11,7 @@
           "required": false,
           "desc": "Default QOS for boost partition.",
           "nodes_limit": {
-            "min": 1,
+            "min": 2,
             "max": 64
           },
           "time_limit": "24:00:00"
@@ -33,7 +33,7 @@
           "required": true,
           "desc": "QOS for debugging jobs.",
           "nodes_limit": {
-            "min": 1,
+            "min": 2,
             "max": 2
           },
           "time_limit": "00:30:00"
@@ -42,7 +42,7 @@
           "required": true,
           "desc": "QOS for long running jobs.",
           "nodes_limit": {
-            "min": 1,
+            "min": 2,
             "max": 3
           },
           "time_limit": "4-00:00:00"
@@ -59,7 +59,7 @@
           "required": false,
           "desc": "Default QOS for data centric partition.",
           "nodes_limit": {
-            "min": 1,
+            "min": 2,
             "max": 16
           },
           "time_limit": "24:00:00"
@@ -80,7 +80,7 @@
           "required": true,
           "desc": "QOS for debugging jobs in data centric partition.",
           "nodes_limit": {
-            "min": 1,
+            "min": 2,
             "max": 2
           },
           "time_limit": "00:30:00"
@@ -89,7 +89,7 @@
           "required": true,
           "desc": "QOS for long running jobs in data centric partition.",
           "nodes_limit": {
-            "min": 1,
+            "min": 2,
             "max": 3
           },
           "time_limit": "4-00:00:00"

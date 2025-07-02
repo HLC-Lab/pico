@@ -11,7 +11,7 @@
           "required": false,
           "desc": "Default QOS for standard GPU partition.",
           "nodes_limit": {
-            "min": 1,
+            "min": 2,
             "max": 1024
           },
           "time_limit": "2-00:00:00"

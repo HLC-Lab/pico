@@ -28,21 +28,6 @@ def parse_duration(s: str):
     return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
 
 
-class limits:
-    """ Helper class to store limits for check """
-    min_nodes: int
-    max_nodes: int
-    max_cpu_tasks: int
-    max_gpu_tasks: int
-    max_time: str 
-
-    def __init__(self, min_nodes: int, max_nodes: int, max_cpu_tasks: int, max_gpu_tasks: int, max_time: str):
-        self.min_nodes = min_nodes
-        self.max_nodes = max_nodes
-        self.max_cpu_tasks = max_cpu_tasks
-        self.max_gpu_tasks = max_gpu_tasks
-        self.max_time = max_time
-
 @dataclass
 class QosSelection:
     """
@@ -294,146 +279,98 @@ class TestDimension:
             self.sizes_elements = [size // dtype_size for size in self.sizes_bytes]
 
 
-@dataclass
-class TestConfig:
-    compile_only: bool = False
-    use_gpu_buffers: bool = False
-    debug_mode: bool = False
-    dry_run: bool = False
-    dimensions: Optional[TestDimension] = field(default_factory=lambda: TestDimension())
-    inject_params: Optional[str] = None
-
-    def validate(self) -> bool:
-        if self.compile_only:
-            if self.dry_run or self.dimensions:
-                return False
-        else:
-            if not (self.dimensions and self.dimensions.validate()):
-                return False
-
-        return True
-
-    #TODO: Improve the dimension handling
-    def get_summary(self) -> str:
-        summary = []
-        if self.compile_only:
-            summary.append("Compile Only")
-        if self.use_gpu_buffers:
-            summary.append("Use GPU Buffers")
-        if self.debug_mode:
-            summary.append("Debug Mode")
-        if self.dry_run:
-            summary.append("Dry Run")
-        if self.dimensions:
-            sizes = self.dimensions.get_printable_sizes()
-            seg_sizes = self.dimensions.get_printable_sizes(get_segment_sizes=True)
-            summary.append(f"Dimensions: {', '.join(sizes)}")
-            summary.append(f"Segment Sizes: {', '.join(seg_sizes)}")
-            summary.append(f"Data Type: {self.dimensions.dtype}")
-        if self.inject_params:
-            summary.append(f"Inject Params: {self.inject_params}")
-        return ', '.join(summary) if summary else "No test configuration set"
-
-class TestType(Enum):
-    CPU = 'cpu'
-    GPU = 'gpu'
-    def __str__(self) -> str:
-        return self.value
+class OutputLevel(Enum):
+    FULL = 'full'
+    STATISTICS = 'statistics'
+    MINIMAL = 'minimal'
+    SUMMARY = 'summary'
 
     @classmethod
     def from_str(cls, value: str):
-        if value.lower() == 'cpu':
-            return cls.CPU
-        elif value.lower() == 'gpu':
-            return cls.GPU
+        value = value.lower()
+        if value == 'full':
+            return cls.FULL
+        elif value == 'statistics':
+            return cls.STATISTICS
+        elif value == 'minimal':
+            return cls.MINIMAL
+        elif value == 'summary':
+            return cls.SUMMARY
         else:
-            raise ValueError(f"Unknown test type: {value}")
+            raise ValueError(f"Unknown output level: {value}")
+
+    def __str__(self) -> str:
+        return self.value
+
+    def get_help(self) -> str:
+        if self == OutputLevel.FULL:
+            return "Full output with detailed results. Every test time of each task for each iteration is saved."
+        elif self == OutputLevel.STATISTICS:
+            return "Saves only max, min, mean and stddev for each iteration."
+        elif self == OutputLevel.MINIMAL:
+            return "Saves only max for each iteration."
+        elif self == OutputLevel.SUMMARY:
+            return "Saves only statistics summary of the whole test, no iteration data is saved."
+        else:
+            return "Unknown output level."
 
 @dataclass
-class TaskConfig:
+class TestConfig:
+    compile_only: bool = False
+    debug_mode: bool = False
+    dry_run: bool = False
+    compress: bool = False
+    delete: bool = False
     number_of_nodes: int = 1
-    list_tasks: Dict[TestType, List[int]] = field(default_factory=dict)
+    output_level: Optional[OutputLevel] = None
+    inject_params: Optional[str] = None
+    dimensions: Optional[TestDimension] = field(default_factory=lambda: TestDimension())
     test_time: Optional[str] = None
     exclude_nodes: Optional[str] = None
     job_dependency: Optional[Union[str, int]] = None
 
-    def get_summary(self) -> str:
-        summary = []
-        if self.number_of_nodes > 1:
-            summary.append(f"Nodes: {self.number_of_nodes}")
-        if self.test_time:
-            summary.append(f"Test Time: {self.test_time}")
-        if self.exclude_nodes:
-            summary.append(f"Exclude Nodes: {self.exclude_nodes}")
-        if self.job_dependency:
-            summary.append(f"Job Dependency: {self.job_dependency}")
-        tasks = []
-        for test_type, task_list in self.list_tasks.items():
-            if task_list:
-                tasks.append(f"{test_type}: {', '.join(map(str, task_list))}")
-        if tasks:
-            summary.append("Tasks: " + ', '.join(tasks))
-        return ', '.join(summary) if summary else "No task configuration set"
-
     def validate(self, session) -> bool:
-        cpu_tasks = self.list_tasks.get(TestType.CPU, [])
-        gpu_tasks = self.list_tasks.get(TestType.GPU, [])
-        if not (cpu_tasks or gpu_tasks):
-            return False
-        if gpu_tasks and not self.validate_gpu_tasks(session):
-            return False
-        if cpu_tasks and not self.validate_cpu_tasks(session):
-            return False
-        if not self.validate_nodes(session, self.number_of_nodes):
-            return False
-        if not self.validate_time(session, self.test_time):
+        if self.compile_only:
+            if self.number_of_nodes != 1:
+                return False
+            if (self.test_time or self.exclude_nodes or
+                self.job_dependency or self.dimensions or
+                self.dry_run or self.compress or
+                self.delete or self.output_level):
+                return False
+            return True
+
+        if not (self.output_level and isinstance(self.output_level, OutputLevel)):
             return False
 
-        return True
-
-    def validate_cpu_tasks(self, session) -> bool:
-        cpu_tasks = self.list_tasks.get(TestType.CPU, [])
-        if len(set(cpu_tasks)) != len(cpu_tasks):
+        if self.delete and not self.compress:
             return False
-        if any (t < 1 for t in cpu_tasks):
+
+        if not (self.dimensions and self.dimensions.validate()):
             return False
         if session.environment.slurm:
-            max_cpu = session.environment.partition.cpus_per_node
-            if any(t > max_cpu for t in cpu_tasks):
+            if not self.validate_nodes(session, self.number_of_nodes):
+                return False
+            if not self.validate_time(session, self.test_time):
+                return False
+        else:
+            if self.number_of_nodes != 1:
+                return False
+            if self.test_time or self.exclude_nodes or self.job_dependency:
                 return False
 
         return True
 
-    def validate_gpu_tasks(self, session) -> bool:
-        gpu_tasks = self.list_tasks.get(TestType.GPU, [])
-        if not session.test.use_gpu_buffers and gpu_tasks:
-            return False
-        if len(set(gpu_tasks)) != len(gpu_tasks):
-            return False
-        if any (t < 1 for t in gpu_tasks):
-            return False
-        max_gpu = session.environment.partition.gpus_per_node
-        if any(t > max_gpu for t in gpu_tasks):
-            return False
-
-        return True
-
-    def list_tasks_from_dict(self, task_dict: Dict[str, list[int]]) -> None:
-        for key, tasks in task_dict.items():
-            try:
-                test_type = TestType.from_str(key)
-                self.list_tasks[test_type] = tasks
-            except ValueError as e:
-                raise ValueError(f"Invalid test type in task_dict: {key}") from e
-
     @staticmethod
     def validate_nodes(session, n_nodes) -> bool:
-        try:
+        if isinstance(n_nodes, str):
+            if not (n_nodes and n_nodes.isdigit()):
+                return False
             n_nodes = int(n_nodes)
-        except (ValueError, TypeError):
-            return False
 
         if session.environment.slurm:
+            if not (session.environment.partition and session.environment.partition.qos):
+                return False
             min_nodes = session.environment.partition.qos.nodes_limit.get('min', 1)
             max_nodes = session.environment.partition.qos.nodes_limit.get('max', 1)
             if not (min_nodes <= n_nodes <= max_nodes):
@@ -445,6 +382,8 @@ class TaskConfig:
 
     @staticmethod
     def validate_time(session, test_time) -> bool:
+        if test_time is None:
+            return False
         if session.environment.slurm:
             min_time = parse_duration('00:00:01')
             max_time = parse_duration(session.environment.partition.qos.time_limit)
@@ -464,6 +403,52 @@ class TaskConfig:
             return False
 
         return True
+
+    def get_summary(self) -> str:
+        summary = []
+        summary.append(f"Nodes: {self.number_of_nodes}")
+        if self.dry_run:
+            summary.append("Dry Run")
+        if self.compile_only:
+            summary.append("Compile Only")
+        if self.debug_mode:
+            summary.append("Debug Mode")
+        if self.test_time:
+            summary.append(f"Test Time: {self.test_time}")
+        if self.exclude_nodes:
+            summary.append(f"Exclude Nodes: {self.exclude_nodes}")
+        if self.job_dependency:
+            summary.append(f"Job Dependency: {self.job_dependency}")
+        if self.inject_params:
+            summary.append(f"Inject Params: {self.inject_params}")
+        if self.dimensions:
+            sizes = self.dimensions.get_printable_sizes()
+            seg_sizes = self.dimensions.get_printable_sizes(get_segment_sizes=True)
+            summary.append(f"Dimensions: {', '.join(sizes)}")
+            summary.append(f"Segment Sizes: {', '.join(seg_sizes)}")
+            summary.append(f"Data Type: {self.dimensions.dtype}")
+        if self.output_level:
+            summary.append(f"Output Level: {self.output_level}")
+        if self.compress:
+            summary.append("Compression Enabled")
+            if self.delete:
+                summary.append("Delete Unompressed files after Test")
+        return ', '.join(summary) if summary else "No test configuration set"
+
+class TestType(Enum):
+    CPU = 'cpu'
+    GPU = 'gpu'
+    def __str__(self) -> str:
+        return self.value
+
+    @classmethod
+    def from_str(cls, value: str):
+        if value.lower() == 'cpu':
+            return cls.CPU
+        elif value.lower() == 'gpu':
+            return cls.GPU
+        else:
+            raise ValueError(f"Unknown test type: {value}")
 
 
 class LoadType(Enum):
@@ -751,7 +736,6 @@ class LibrarySelection:
 class SessionConfig:
     environment: EnvironmentSelection = field(default_factory=lambda: EnvironmentSelection())
     test: TestConfig = field(default_factory=lambda: TestConfig())
-    tasks: TaskConfig = field(default_factory=lambda: TaskConfig())
     libraries: List[LibrarySelection] = field(default_factory=list)
 
     @staticmethod
@@ -805,11 +789,10 @@ class SessionConfig:
     def get_summary(self) -> str:
         env = self.environment.get_summary()
         test = self.test.get_summary()
-        tasks = self.tasks.get_summary()
         libs = "\n".join(lib.get_summary() for lib in self.libraries)
 
         return f"Environment: {env}\n\n" \
                f"Test Configuration:\n{test}\n\n" \
-               f"Task Configuration:\n{tasks}\n\n" \
                f"Libraries:\n{libs}"
+
 
