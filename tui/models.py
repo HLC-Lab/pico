@@ -435,22 +435,6 @@ class TestConfig:
                 summary.append("Delete Unompressed files after Test")
         return ', '.join(summary) if summary else "No test configuration set"
 
-class TestType(Enum):
-    CPU = 'cpu'
-    GPU = 'gpu'
-    def __str__(self) -> str:
-        return self.value
-
-    @classmethod
-    def from_str(cls, value: str):
-        if value.lower() == 'cpu':
-            return cls.CPU
-        elif value.lower() == 'gpu':
-            return cls.GPU
-        else:
-            raise ValueError(f"Unknown test type: {value}")
-
-
 class LoadType(Enum):
     DEFAULT = 'default'
     MODULE = 'module'
@@ -657,11 +641,28 @@ class AlgorithmSelection:
             tags=tags
         )
 
+class TestType(Enum):
+    CPU = 'cpu'
+    GPU = 'gpu'
+
+    def __str__(self) -> str:
+        return self.value
+
+    @classmethod
+    def from_str(cls, value: str):
+        if value.lower() == 'cpu':
+            return cls.CPU
+        elif value.lower() == 'gpu':
+            return cls.GPU
+        else:
+            raise ValueError(f"Unknown test type: {value}")
+
 
 @dataclass
 class LibrarySelection:
     name: str = ''
     desc: str = ''
+    tests: Dict[TestType, List[int]] = field(default_factory=dict)
     standard: StdType = StdType.UNKNOWN
     lib_type: LibType = LibType.UNKNOWN
     version: str = ''
@@ -673,6 +674,10 @@ class LibrarySelection:
 
     def get_summary(self) -> str:
         summary = f"Library: {self.name}\n" 
+        if self.tests.get(TestType.CPU, False):
+            summary += f"CPU Tests: {', '.join(map(str, self.tests.get(TestType.CPU, [])))}\n"
+        if self.tests.get(TestType.GPU, False):
+            summary += f"GPU Tests: {', '.join(map(str, self.tests.get(TestType.GPU, [])))}\n"
         if self.algorithms:
             algos = ', '.join(f"{coll}: {[algo.name for algo in algos]}" for coll, algos in self.algorithms.items())
             summary += f"Algorithms: {algos}\n"
@@ -701,14 +706,31 @@ class LibrarySelection:
             lib_load=lib_load
         )
 
+    # def validate(self, validate_algo=False, r=False) -> bool:
     def validate(self, validate_algo=False) -> bool:
         if not (self.name and self.desc and self.version and self.compiler and 
                 self.standard != StdType.UNKNOWN and self.lib_type != LibType.UNKNOWN):
+            #if r: raise  ValueError("1")
             return False
         if self.standard == StdType.NCCL and not self.gpu_support.gpu:
+            #if r: raise  ValueError("2")
             return False
         if not (self.lib_load.validate() and self.gpu_support.validate()):
+            #if r: raise  ValueError("3")
             return False
+        if not self.tests:
+            #if r: raise  ValueError("4")
+            return False
+        if self.tests.get(TestType.CPU, []) and self.standard == StdType.NCCL:
+            #if r: raise  ValueError("5")
+            return False
+        if self.tests.get(TestType.GPU, []):
+            if not self.gpu_support.gpu:
+                #if r: raise  ValueError("6")
+                return False
+            if not self.gpu_support.gpu_load or not self.gpu_support.gpu_load.validate():
+                #if r: raise  ValueError("7")
+                return False
 
         if validate_algo:
             to_delete = []
@@ -719,11 +741,13 @@ class LibrarySelection:
             for coll in to_delete:
                 del self.algorithms[coll]
                 if not self.algorithms:
+                    #if r: raise  ValueError("8")
                     return False
 
             for coll, algos in self.algorithms.items():
                 for algo in algos:
                     if algo.coll != coll or not algo.validate():
+                        #if r: raise  ValueError("9")
                         return False
         return True
 
@@ -732,6 +756,7 @@ class LibrarySelection:
         return self.name.replace(' ','_').replace('.','_').replace('-','_').lower()
 
 
+#TODO: Maybe is better to modify libraries to be a dict with library names as keys?
 @dataclass
 class SessionConfig:
     environment: EnvironmentSelection = field(default_factory=lambda: EnvironmentSelection())

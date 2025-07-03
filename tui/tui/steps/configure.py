@@ -224,7 +224,10 @@ class ConfigureStep(StepScreen):
             if not self.session.test.dimensions:
                 self.session.test.dimensions = TestDimension(dtype=dtype if isinstance(dtype, CDtype) else CDtype.UNKNOWN)
 
-        self.__enable_qos_dep_widgets()
+        #NOTE: To avoid zeroing inputs when changing output level or data types
+        if event.select.id not in ("data-type-select", "output-select"):
+            self.__enable_qos_dep_widgets()
+
         self.__update_test_selections()
         self.__label_selection_list()
         self.__update_next()
@@ -488,7 +491,7 @@ class ConfigureStep(StepScreen):
         #WARN: Hardcoded bug fix, to debug after
         if env.name == "local":
             should_enable = False
-        self.notify("Should enable is " + str(should_enable))
+        # self.notify("Should enable is " + str(should_enable))
 
         for wid in qos_dep_wid:
             if isinstance(wid, Input):
