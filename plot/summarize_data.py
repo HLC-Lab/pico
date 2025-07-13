@@ -96,7 +96,7 @@ def parse_filename(filename):
     """
     Parse the filename to extract the array dimension, algorithm name, and data type.
     Expected format: <array_dim>_<algo_name>_<dtype>.csv
-    Example: 512_swing_static_over_int32.csv
+    Example: 512_bine_static_over_int32.csv
     """
     # Dirty, but do not want to waste time on regex
     # Mannaggia a Lorenzo che non ha messo il datatype nel filename
@@ -197,7 +197,7 @@ def aggregate_results(results_dir: os.PathLike, metadata: pd.DataFrame, target_t
                     'notes': meta_row['notes'],
                     'mpi_lib': meta_row['mpi_lib'],
                     'mpi_lib_version': meta_row['mpi_lib_version'],
-                    'libswing_version': meta_row['libswing_version']
+                    'libbine_version': meta_row['libbine_version']
                 }
                 all_results.append(result)
     return pd.DataFrame(all_results)

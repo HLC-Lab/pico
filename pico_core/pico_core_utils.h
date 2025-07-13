@@ -1,5 +1,5 @@
-#ifndef BENCH_UTILS_H
-#define BENCH_UTILS_H
+#ifndef PICO_CORE_UTILS_H
+#define PICO_CORE_UTILS_H
 
 #include <mpi.h>
 #include <stdio.h>
@@ -10,24 +10,24 @@
 #include "libbine.h"
 
 #if defined(__GNUC__) || defined(__clang__)
-  #define BENCH_UNLIKELY(x) __builtin_expect(!!(x), 0)
+  #define PICO_CORE_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
-  #define BENCH_UNLIKELY(x) (x)
+  #define PICO_CORE_UNLIKELY(x) (x)
 #endif // defined(__GNUC__) || defined(__clang__)
 
 // Used to print algorithm and collective when in debug mode
 #ifndef DEBUG
-  #define BENCH_DEBUG_PRINT_STR(name)
-  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier) do {} while(0)
+  #define PICO_CORE_DEBUG_PRINT_STR(name)
+  #define PICO_CORE_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier) do {} while(0)
 #else
-  #define BENCH_DEBUG_PRINT_STR(name)           \
+  #define PICO_CORE_DEBUG_PRINT_STR(name)           \
     do{                                         \
       int my_r;                                 \
       MPI_Comm_rank(MPI_COMM_WORLD, &my_r);     \
       if(my_r == 0){ printf("%s\n", name); }    \
     } while(0)
 
-  #define BENCH_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier)      \
+  #define PICO_CORE_DEBUG_PRINT_BUFFERS(result, expected, count, dtype, comm, use_barrier)      \
     do {                                                                                    \
     print_buffers(NULL, (result), (expected), 0, (count), (dtype), (comm), (use_barrier));  \
     } while(0)
@@ -35,17 +35,17 @@
 
 #define CHECK_STR(var, name, ret)              \
   if(strcmp(var, name) == 0) {                 \
-    BENCH_DEBUG_PRINT_STR(name);               \
+    PICO_CORE_DEBUG_PRINT_STR(name);               \
     return ret;                                \
   }
 
-#define BENCH_MAX_PATH_LENGTH 512
-#define BENCH_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
-#define BENCH_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
+#define PICO_CORE_MAX_PATH_LENGTH 512
+#define PICO_CORE_BASE_EPSILON_FLOAT 1e-6    // Base epsilon for float
+#define PICO_CORE_BASE_EPSILON_DOUBLE 1e-15  // Base epsilon for double
 
-#define BENCH_MAX_ALLOC_NAME_LEN ( MPI_MAX_PROCESSOR_NAME + 64 )
-#define BENCH_HEADER_LUMI "MPI_Rank,allocation,xname\n"
-#define BENCH_HEADER_DEFAULT "MPI_Rank,allocation\n"
+#define PICO_CORE_MAX_ALLOC_NAME_LEN ( MPI_MAX_PROCESSOR_NAME + 64 )
+#define PICO_CORE_HEADER_LUMI "MPI_Rank,allocation,xname\n"
+#define PICO_CORE_HEADER_DEFAULT "MPI_Rank,allocation\n"
 
 extern size_t bine_allreduce_segsize;
 
@@ -74,7 +74,7 @@ typedef enum{
 /**
  * @enum output_level_t
  *
- * @brief Defines the output level of data saving for benchmark's results.
+ * @brief Defines the output level of data saving for pico_coremark's results.
  * */
 typedef enum{
   ALL = 0,
@@ -177,8 +177,8 @@ typedef struct {
   } function;
 
   output_level_t output_level;    /**< Specifies the output level for data saving. */
-  char output_data_file[BENCH_MAX_PATH_LENGTH];   /**< Path to the output directory. */
-  char alloc_file[BENCH_MAX_PATH_LENGTH];         /**< Path to the data directory. */
+  char output_data_file[PICO_CORE_MAX_PATH_LENGTH];   /**< Path to the output directory. */
+  char alloc_file[PICO_CORE_MAX_PATH_LENGTH];         /**< Path to the data directory. */
 } test_routine_t;
 
 
@@ -188,7 +188,7 @@ typedef struct {
 
 #ifdef CUDA_AWARE
 
-#define BENCH_CUDA_CHECK(cmd, err) do {                 \
+#define PICO_CORE_CUDA_CHECK(cmd, err) do {                 \
   err = cmd;                                            \
   if( err != cudaSuccess ) {                            \
     fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n",  \
@@ -213,7 +213,7 @@ int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t ty
 
 
 //-----------------------------------------------------------------------------------------------
-//                                MAIN BENCHMARK LOOP FUNCTIONS
+//                                MAIN PICO_COREMARK LOOP FUNCTIONS
 //-----------------------------------------------------------------------------------------------
 
 
@@ -245,7 +245,7 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times, \
     ret = test_routine.function.COLLECTIVE;                          \
     end_time = MPI_Wtime();                                          \
     times[i] = end_time - start_time;                                \
-    if(BENCH_UNLIKELY(ret != MPI_SUCCESS)) {                         \
+    if(PICO_CORE_UNLIKELY(ret != MPI_SUCCESS)) {                         \
       fprintf(stderr, "Error: " #OP_NAME " failed. Aborting...");    \
       return ret;                                                    \
     }                                                                \
@@ -294,13 +294,13 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
   do {                                                                        \
     if(dtype != MPI_DOUBLE && dtype != MPI_FLOAT) {                          \
       if(memcmp((result), (expected), (count) * type_size) != 0) {           \
-        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (1));  \
+        PICO_CORE_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (1));  \
         fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
     } else {                                                                  \
       if(are_equal_eps((result), (expected), (count), dtype, comm) == -1) {  \
-        BENCH_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (1));  \
+        PICO_CORE_DEBUG_PRINT_BUFFERS((result), (expected), (count), (dtype), (comm), (1));  \
         fprintf(stderr, "Error: results are not valid. Aborting...");       \
         ret = -1;                                                             \
       }                                                                       \
@@ -359,7 +359,7 @@ int get_command_line_arguments(int argc, char** argv, size_t *array_count,
  * @brief Retrieves the data saving options based on environment variables.
  *
  * This function reads the `OUTPUT_LEVEL` environment variable to determine
- * the data saving options for the benchmark results as well as the
+ * the data saving options for the pico_coremark results as well as the
  * `OUTPUT_DIR` and `DATA_DIR` environment variables to set the output
  * directory and data directory respectively.
  *
@@ -519,4 +519,4 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
 #endif // DEBUG
 
-#endif // BENCH_TOOLS_H
+#endif // PICO_CORE_TOOLS_H

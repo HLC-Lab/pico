@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(description='Plot sinfo summary')
 parser.add_argument('--min_ranks', type=int, help='Minimum number of ranks to consider')
 parser.add_argument('--collective', type=str, help='Collective to consider', default="allreduce")
 parser.add_argument('--algo_baseline', type=str, help='Baseline algorithm to consider', default="rabenseifner")
-parser.add_argument('--algo_bine', type=str, help='Bine algorithm to consider', default="swing_bandwidth")
+parser.add_argument('--algo_bine', type=str, help='Bine algorithm to consider', default="bine_bandwidth")
 args = parser.parse_args()
 
 df_leo = pd.read_csv('leonardo_' + args.collective + '_' + args.algo_baseline + '_vs_' + args.algo_bine + '.csv')

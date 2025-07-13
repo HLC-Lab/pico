@@ -99,64 +99,64 @@ def get_tracer_out(args, compute_max=False):
         small = 0
         big = 0
         if coll_to_search == "allreduce":
-            bine = float(t[t["ALGORITHM"] == "swing_latency"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_latency"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "recursive_doubling"]["EXTERNAL"].iloc[0])
             if bine != 0 and sota != 0:
                 small = bine / sota
                 samples_small += 1
-            bine = float(t[t["ALGORITHM"] == "swing_bandwidth"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_bandwidth"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "rabenseifner"]["EXTERNAL"].iloc[0]) 
             if bine != 0 and sota != 0:
                 big = bine / sota
                 samples_big += 1
         elif coll_to_search == "allgather":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_halving"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "distance_halving"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:    
                 big = bine / sota      
                 samples_big += 1      
         elif coll_to_search == "reduce_scatter":
-            bine = float(t[t["ALGORITHM"] == "swing_doubling"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_doubling"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "distance_doubling"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 big = bine / sota
                 samples_big += 1
         elif coll_to_search == "alltoall":
-            bine = float(t[t["ALGORITHM"] == "swing"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "bruck"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 big = bine / sota
                 samples_big += 1
         elif coll_to_search == "bcast":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_halving"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 small = bine / sota
                 samples_small += 1
-            bine = float(t[t["ALGORITHM"] == "swing_bdw_doubling_halving"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_bdw_doubling_halving"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "binomial_bdw_halving_doubling"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 big = bine / sota
                 samples_big += 1
         elif coll_to_search == "reduce":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_halving"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 small = bine / sota
                 samples_small += 1
-            bine = float(t[t["ALGORITHM"] == "swing_bdw_halving_doubling"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_bdw_halving_doubling"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "binomial_bdw_halving_doubling"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 big = bine / sota 
                 samples_big += 1           
         elif coll_to_search == "reduce_scatter":
             bine = float(t[t["ALGORITHM"] == "distance_doubling"]["EXTERNAL"].iloc[0])
-            sota = float(t[t["ALGORITHM"] == "swing_doubling"]["EXTERNAL"].iloc[0])            
+            sota = float(t[t["ALGORITHM"] == "bine_doubling"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 big = bine / sota   
                 samples_big += 1         
         elif coll_to_search == "scatter":
-            bine = float(t[t["ALGORITHM"] == "swing_halving"]["EXTERNAL"].iloc[0])
+            bine = float(t[t["ALGORITHM"] == "bine_halving"]["EXTERNAL"].iloc[0])
             sota = float(t[t["ALGORITHM"] == "binomial_halving"]["EXTERNAL"].iloc[0])            
             if bine != 0 and sota != 0:
                 big = bine / sota   
@@ -213,7 +213,7 @@ def get_summaries_df(args):
     return df
 
 def algo_name_to_family(algo_name, system):
-    if algo_name.lower().startswith("swing"):
+    if algo_name.lower().startswith("bine"):
         return "Bine"    
     if system == "fugaku":
         if "recursive-doubling" in algo_name.lower():

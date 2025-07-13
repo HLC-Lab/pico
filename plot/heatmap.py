@@ -54,8 +54,8 @@ def get_summaries(args):
             filtered_metadata = filtered_metadata[filtered_metadata["notes"].isnull()]
 
         if args.system == "leonardo":
-            # Discard OMPI_SWING
-            filtered_metadata = filtered_metadata[~filtered_metadata["mpi_lib"].str.contains("OMPI_SWING", case=False)]
+            # Discard OMPI_BINE
+            filtered_metadata = filtered_metadata[~filtered_metadata["mpi_lib"].str.contains("OMPI_BINE", case=False)]
             
         if filtered_metadata.empty:
             print(f"Metadata file {metadata_file} does not contain the requested data. Exiting.", file=sys.stderr)
@@ -94,7 +94,7 @@ def get_summaries_df(args):
     return df
 
 def algo_name_to_family(algo_name, system):
-    if algo_name.lower().startswith("swing"):
+    if algo_name.lower().startswith("bine"):
         return "Bine"    
     if system == "fugaku":
         if "recursive-doubling" in algo_name.lower():

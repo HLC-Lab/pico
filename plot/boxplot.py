@@ -98,7 +98,7 @@ def get_summaries_df(args, coll):
     return df
 
 def algo_name_to_family(algo_name, system):
-    if algo_name.lower().startswith("swing"):
+    if algo_name.lower().startswith("bine"):
         return "Bine"    
     if system == "fugaku":
         if "recursive-doubling" in algo_name.lower():

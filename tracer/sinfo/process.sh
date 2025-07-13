@@ -1,7 +1,7 @@
 #!/bin/bash
 COLLECTIVE="allreduce"
 ALGO_BINOMIAL="rabenseifner"
-ALGO_BINE="swing_bandwidth"
+ALGO_BINE="bine_bandwidth"
 
 for system in "leonardo" "lumi"
 do

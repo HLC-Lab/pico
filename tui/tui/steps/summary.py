@@ -7,7 +7,7 @@ from textual.containers import Horizontal, Vertical
 from textual.app import ComposeResult
 from tui.steps.base import StepScreen
 from textual.screen import Screen
-from config_loader import SWING_DIR
+from config_loader import BINE_DIR
 
 SAVE_MSG =  "███████╗ █████╗ ██╗   ██╗███████╗  ██████╗ \n"\
             "██╔════╝██╔══██╗██║   ██║██╔════╝  ╚════██╗\n"\
@@ -16,7 +16,7 @@ SAVE_MSG =  "███████╗ █████╗ ██╗   ██╗�
             "███████║██║  ██║ ╚████╔╝ ███████╗    ██╗   \n"\
             "╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝    ╚═╝   \n"
 
-TEST_DIR = SWING_DIR / "tests"
+TEST_DIR = BINE_DIR / "tests"
 
 class SaveScreen(Screen):
     BINDINGS = [

@@ -23,7 +23,7 @@ def sort_key(algo: str):
         return (0, algo)
     elif not algo.endswith("over"):
         return (1, algo)
-    elif "swing" not in algo:
+    elif "bine" not in algo:
         return (2, algo)
     else:
         return (3, algo)
@@ -86,7 +86,7 @@ def normalize_dataset(data: pd.DataFrame, mpi_lib : str, base : str | None = Non
                 library is used.
     """
     if base is None:
-        if mpi_lib in ['OMPI', 'OMPI_SWING']:
+        if mpi_lib in ['OMPI', 'OMPI_BINE']:
             base = 'default_ompi'
         elif mpi_lib in ['MPICH', 'CRAY_MPICH']:
             base = 'default_mpich'
@@ -327,8 +327,8 @@ def main():
     parser.add_argument("--datatype", required=False, help="Data type to graph, defaults to all the presents")
     parser.add_argument("--algorithm", required=False, help="Algorithm to graph, defaults to all the presents")
     parser.add_argument("--collective", required=False, help="Collective type to graph, defaults to all the presents")
-    parser.add_argument("--filter-by", required=False, help="Filter algorithms name by substrings (e.g swing,ompi,mpich)")
-    parser.add_argument("--filter-out", required=False, help="Filter out algorithms name by substrings (e.g swing,ompi,mpich)")
+    parser.add_argument("--filter-by", required=False, help="Filter algorithms name by substrings (e.g bine,ompi,mpich)")
+    parser.add_argument("--filter-out", required=False, help="Filter out algorithms name by substrings (e.g bine,ompi,mpich)")
     parser.add_argument("--min-dim", required=False, help="Minimum array dimension to consider")
     parser.add_argument("--max-dim", required=False, help="Maximum array dimension to consider")
     parser.add_argument("--normalize-by", required=False, help="Algorithm to normalize the data by (default is the default algorithm for the MPI library)")
@@ -348,7 +348,7 @@ def main():
     mpi_tasks = nnodes * df['tasks_per_node'].iloc[0]
 
     drop_cols = ['array_dim','nnodes','system','timestamp','test_id','MPI_Op',
-                 'notes','mpi_lib','mpi_lib_version','libswing_version', 'tasks_per_node']
+                 'notes','mpi_lib','mpi_lib_version','libbine_version', 'tasks_per_node']
     df.drop(columns=drop_cols, inplace=True)
 
     if args.collective is not None:

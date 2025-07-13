@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <mpi.h>
 
-#include "bench_utils.h"
+#include "pico_core_utils.h"
 
 int gather_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
                              size_t type_size, MPI_Comm comm) {
@@ -35,14 +35,14 @@ int gather_allocator_cuda(void **d_sbuf, void **d_rbuf, void **d_rbuf_gt, size_t
   MPI_Comm_rank(comm, &rank);
   cudaError_t err;
 
-  BENCH_CUDA_CHECK(cudaMalloc(d_sbuf, (count / (size_t) comm_sz) * type_size), err);
+  PICO_CORE_CUDA_CHECK(cudaMalloc(d_sbuf, (count / (size_t) comm_sz) * type_size), err);
 
   if (rank == 0){
-    BENCH_CUDA_CHECK(cudaMalloc(d_rbuf, count * type_size), err);
-    BENCH_CUDA_CHECK(cudaMemset(*d_rbuf, 0, count * type_size), err);
+    PICO_CORE_CUDA_CHECK(cudaMalloc(d_rbuf, count * type_size), err);
+    PICO_CORE_CUDA_CHECK(cudaMemset(*d_rbuf, 0, count * type_size), err);
 
-    BENCH_CUDA_CHECK(cudaMalloc(d_rbuf_gt, count * type_size), err);
-    BENCH_CUDA_CHECK(cudaMemset(*d_rbuf_gt, 0, count * type_size), err);
+    PICO_CORE_CUDA_CHECK(cudaMalloc(d_rbuf_gt, count * type_size), err);
+    PICO_CORE_CUDA_CHECK(cudaMemset(*d_rbuf_gt, 0, count * type_size), err);
   }
 
   return 0; // Success

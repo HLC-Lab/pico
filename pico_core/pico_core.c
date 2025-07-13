@@ -4,7 +4,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "bench_utils.h"
+#include "pico_core_utils.h"
 #include "libbine.h"
 
 int main(int argc, char *argv[]) {

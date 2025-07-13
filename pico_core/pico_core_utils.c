@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 
-#include "bench_utils.h"
+#include "pico_core_utils.h"
 
 /**
  * @brief Converts a string to a `coll_t` enum value.
@@ -105,7 +105,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_bdw_remap_segmented_over", allreduce_bine_bdw_remap_segmented);
   CHECK_STR(algorithm, "bine_block_by_block_any_even", allreduce_bine_block_by_block_any_even);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Allreduce");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;
 }
 
@@ -131,7 +131,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_2_blocks_over", allgather_bine_2_blocks);
   CHECK_STR(algorithm, "bine_2_blocks_dtype_over", allgather_bine_2_blocks_dtype);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Allgather");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
 }
 
@@ -146,7 +146,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
 static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_over", alltoall_bine);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Alltoall");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Alltoall");
   return alltoall_wrapper;
 }
 
@@ -168,7 +168,7 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   // CHECK_STR(algorithm, "bine_bdw_static_reversed_over", bcast_bine_bdw_static_reversed);
   CHECK_STR(algorithm, "bine_bdw_remap_over", bcast_bine_bdw_remap);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Bcast");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
 }
 
@@ -184,7 +184,7 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
 static inline gather_func_ptr get_gather_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_over", gather_bine);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Gather");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Gather");
   return gather_wrapper;
 }
 
@@ -201,7 +201,7 @@ static inline reduce_func_ptr get_reduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_lat_over", reduce_bine_lat);
   CHECK_STR(algorithm, "bine_bdw_over", reduce_bine_bdw);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Reduce");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Reduce");
   return reduce_wrapper;
 }
 
@@ -224,7 +224,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "bine_block_by_block_over", reduce_scatter_bine_block_by_block);
   CHECK_STR(algorithm, "bine_block_by_block_any_even", reduce_scatter_bine_block_by_block_any_even);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Reduce_scatter");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;
 }
 
@@ -239,7 +239,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
 static inline scatter_func_ptr get_scatter_function (const char *algorithm){
   CHECK_STR(algorithm, "bine_over", scatter_bine);
 
-  BENCH_DEBUG_PRINT_STR("MPI_Scatter");
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Scatter");
   return scatter_wrapper;
 }
 
@@ -319,7 +319,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
 
   // if(rank == 0){
-  //   char data_filename[128], data_fullpath[BENCH_MAX_PATH_LENGTH];
+  //   char data_filename[128], data_fullpath[PICO_CORE_MAX_PATH_LENGTH];
   //   if(bine_allreduce_segsize != 0){
   //     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%ld_%s.csv",
   //              count, algorithm, bine_allreduce_segsize, type_string);
@@ -339,7 +339,7 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
   //
   // // Save to file allocations (it uses MPI parallel I/O operations)
   // char alloc_filename[128] = "alloc.csv";
-  // char alloc_fullpath[BENCH_MAX_PATH_LENGTH];
+  // char alloc_fullpath[PICO_CORE_MAX_PATH_LENGTH];
   // if(concatenate_path(outputdir, alloc_filename, alloc_fullpath) == -1){
   //   line = __LINE__;
   //   goto err_hndl;
@@ -407,31 +407,31 @@ int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t ty
 
   switch (coll) {
     case ALLREDUCE:
-      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case ALLGATHER:
-      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyHostToDevice), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyHostToDevice), err);
       break;
     case ALLTOALL:
-      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case BCAST:
       if (rank == 0) {
-        BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+        PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       }
       break;
     case GATHER:
-      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyHostToDevice), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyHostToDevice), err);
       break;
     case REDUCE:
-      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case REDUCE_SCATTER;
-      BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case SCATTER:
       if (rank == 0) {
-        BENCH_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+        PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       }
       break;
     default:
@@ -451,34 +451,34 @@ int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t ty
 
   switch (coll) {
     case ALLREDUCE:
-      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case ALLGATHER:
-      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case ALLTOALL:
-      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case BCAST:
       if (rank != 0) {
-        BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+        PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
     case GATHER:
       if (rank == 0) {
-        BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+        PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
     case REDUCE:
       if (rank == 0) {
-        BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+        PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
     case REDUCE_SCATTER;
-      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyDeviceToHost), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case SCATTER:
-      BENCH_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyDeviceToHost), err);
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, (count / (size_t) comm_sz) * type_size, cudaMemcpyDeviceToHost), err);
       break;
     default:
       fprintf(stderr, "Error: Unsupported collective type. Aborting...");
@@ -807,7 +807,7 @@ static inline void trim_newline(char *str) {
 int write_allocations_to_file(const char* filename, MPI_Comm comm) {
   int rank, comm_sz, name_len;
   const char *location = NULL;
-  char processor_name[MPI_MAX_PROCESSOR_NAME], local_entry[BENCH_MAX_ALLOC_NAME_LEN];
+  char processor_name[MPI_MAX_PROCESSOR_NAME], local_entry[PICO_CORE_MAX_ALLOC_NAME_LEN];
   char* gather_buffer = NULL;
   
   MPI_Comm_rank(comm, &rank);
@@ -838,15 +838,15 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm) {
   }
 
   if (rank == 0) {
-    gather_buffer = malloc(comm_sz * BENCH_MAX_ALLOC_NAME_LEN * sizeof(char));
+    gather_buffer = malloc(comm_sz * PICO_CORE_MAX_ALLOC_NAME_LEN * sizeof(char));
     if (gather_buffer == NULL) {
       fprintf(stderr, "Error: Unable to allocate gather_buffer.\n");
       return -1;
     }
   }
 
-  MPI_Gather(local_entry, BENCH_MAX_ALLOC_NAME_LEN, MPI_CHAR,
-              gather_buffer, BENCH_MAX_ALLOC_NAME_LEN, MPI_CHAR,
+  MPI_Gather(local_entry, PICO_CORE_MAX_ALLOC_NAME_LEN, MPI_CHAR,
+              gather_buffer, PICO_CORE_MAX_ALLOC_NAME_LEN, MPI_CHAR,
               0, comm);
 
   if (rank == 0) {
@@ -857,13 +857,13 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm) {
       return -1;
     }
     if (strcmp(location, "lumi") == 0) {
-      fprintf(output_file, "%s", BENCH_HEADER_LUMI);
+      fprintf(output_file, "%s", PICO_CORE_HEADER_LUMI);
     } else {
-      fprintf(output_file, "%s", BENCH_HEADER_DEFAULT);
+      fprintf(output_file, "%s", PICO_CORE_HEADER_DEFAULT);
     }
 
     for (int i = 0; i < comm_sz; i++) {
-      char *entry = gather_buffer + i * BENCH_MAX_ALLOC_NAME_LEN;
+      char *entry = gather_buffer + i * PICO_CORE_MAX_ALLOC_NAME_LEN;
       int actual_length = strlen(entry);
       fprintf(output_file, "%.*s", actual_length, entry);
     }
@@ -937,7 +937,7 @@ int concatenate_path(const char *dir_path, const char *filename, char *fullpath)
     return -1;
   }
 
-  if(dir_path_len + filename_len + 2 > BENCH_MAX_PATH_LENGTH) {
+  if(dir_path_len + filename_len + 2 > PICO_CORE_MAX_PATH_LENGTH) {
     fprintf(stderr, "Combined path length exceeds buffer size.");
     return -1;
   }
@@ -963,7 +963,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     float *b1 = (float *) buf_1;
     float *b2 = (float *) buf_2;
 
-    float epsilon = comm_sz * BENCH_BASE_EPSILON_FLOAT * 100.0f;
+    float epsilon = comm_sz * PICO_CORE_BASE_EPSILON_FLOAT * 100.0f;
 
     for(size_t i = 0; i < count; i++) {
       if(fabs(b1[i] - b2[i]) > epsilon) {
@@ -974,7 +974,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     double *b1 = (double *) buf_1;
     double *b2 = (double *) buf_2;
 
-    double epsilon = comm_sz * BENCH_BASE_EPSILON_DOUBLE * 100.0;
+    double epsilon = comm_sz * PICO_CORE_BASE_EPSILON_DOUBLE * 100.0;
 
     for(size_t i = 0; i < count; i++) {
       if(fabs(b1[i] - b2[i]) > epsilon) {
