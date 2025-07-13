@@ -4,7 +4,7 @@
     "created": "2024-01-30",
     "last_modified": "2024-04-10",
     "authors": [
-      "Saverio Pasqualoni"
+      "Daniele De Sensi e Saverio Pasqualoni"
     ],
     "description": "MPI collective algorithm configuration file for the test selection script"
   },
