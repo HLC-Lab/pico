@@ -1,6 +1,6 @@
 {
   "k_bruck_over": {
-    "desc": "Libswing external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+    "desc": "Libbine external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
     "version": "1.0.0",
     "constraints": [
       {

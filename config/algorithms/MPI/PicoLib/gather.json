@@ -1,6 +1,6 @@
 {
-  "swing_over": {
-    "desc": "Libswing external swing algorithm. It uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+  "bine_over": {
+    "desc": "Libbine external bine algorithm. It uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -33,7 +33,7 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "external"
     ]
   }

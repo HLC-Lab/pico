@@ -1,6 +1,6 @@
 {
-  "swing_over": {
-    "desc": "Libswing external swing algorithm.",
+  "bine_over": {
+    "desc": "Libbine external bine algorithm.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -33,7 +33,7 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "external"
     ]
   }

@@ -1,6 +1,6 @@
 {
   "scatter_allgather_over": {
-    "desc": "Libswing external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
+    "desc": "Libbine external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -20,8 +20,8 @@
       "external"
     ]
   },
-  "swing_lat_over": {
-    "desc": "Libswing external swing latency optimal algorithm. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+  "bine_lat_over": {
+    "desc": "Libbine external bine latency optimal algorithm. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -45,14 +45,14 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_lat",
-      "swing",
+      "bine_lat",
+      "bine",
       "latency_optimal",
       "external"
     ]
   },
-  "swing_lat_reversed_over": {
-    "desc": "Libswing external swing latency optimal algorithm with reversed peer selection. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+  "bine_lat_reversed_over": {
+    "desc": "Libbine external bine latency optimal algorithm with reversed peer selection. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -76,14 +76,14 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_lat_reversed",
-      "swing",
+      "bine_lat_reversed",
+      "bine",
       "latency_optimal",
       "external"
     ]
   },
-  "swing_lat_new_over": {
-    "desc": "New libswing external swing latency optimal algorithm.",
+  "bine_lat_new_over": {
+    "desc": "New libbine external bine latency optimal algorithm.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -98,14 +98,14 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_lat_new",
-      "swing",
+      "bine_lat_new",
+      "bine",
       "latency_optimal",
       "external"
     ]
   },
-  "swing_lat_i_new_over": {
-    "desc": "New libswing external swing latency optimal algorithm with isend.",
+  "bine_lat_i_new_over": {
+    "desc": "New libbine external bine latency optimal algorithm with isend.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -120,14 +120,14 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_lat_i_new",
-      "swing",
+      "bine_lat_i_new",
+      "bine",
       "latency_optimal",
       "external"
     ]
   },
-  "swing_bdw_static_over": {
-    "desc": "Libswing external swing bandwidth optimal algorithm with static bitmaps. This algorithm is a combination of a swing scatter and a swing allgather and utilizes static bitmaps. It does not utilizes standard collectives written elsewere since for the allgather phase it calculates which rank needs to send and which don't to avoid wasteful communications. It works only if `comm` is a power of 2 less or equal to 256 and root is 0. Also count must be greater than comm_sz.",
+  "bine_bdw_static_over": {
+    "desc": "Libbine external bine bandwidth optimal algorithm with static bitmaps. This algorithm is a combination of a bine scatter and a bine allgather and utilizes static bitmaps. It does not utilizes standard collectives written elsewere since for the allgather phase it calculates which rank needs to send and which don't to avoid wasteful communications. It works only if `comm` is a power of 2 less or equal to 256 and root is 0. Also count must be greater than comm_sz.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -164,16 +164,16 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_bdw_static",
-      "swing",
+      "bine_bdw_static",
+      "bine",
       "bandwidth_optimal",
       "suboptimal",
       "static",
       "external"
     ]
   },
-  "swing_bdw_remap_over": {
-    "desc": "Libswing external swing bandwidth optimal algorithm. This algorithm is a combination of a swing scatter and a swing allgather.",
+  "bine_bdw_remap_over": {
+    "desc": "Libbine external bine bandwidth optimal algorithm. This algorithm is a combination of a bine scatter and a bine allgather.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -206,9 +206,9 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_bdw_remap",
+      "bine_bdw_remap",
       "remap",
-      "swing",
+      "bine",
       "bandwidth_optimal",
       "external"
     ]

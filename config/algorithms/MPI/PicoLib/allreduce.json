@@ -1,6 +1,6 @@
 {
   "recursive_doubling_over": {
-    "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages",
+    "desc": "Libbine external recursive doubling algorithm. This algorithm is used for small to medium messages",
     "version": "1.0.0",
     "selection": "pico",
     "tags": [
@@ -10,7 +10,7 @@
     ]
   },
   "ring_over": {
-    "desc": "Libswing external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
+    "desc": "Libbine external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -30,7 +30,7 @@
     ]
   },
   "rabenseifner_over": {
-    "desc": "Libswing external Rabenseifner algorithm. Not to be used if `count`<`comm_sz` and for non commutative `op`. This algorithm is used for medium to large messages",
+    "desc": "Libbine external Rabenseifner algorithm. Not to be used if `count`<`comm_sz` and for non commutative `op`. This algorithm is used for medium to large messages",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -50,18 +50,18 @@
       "large_sizes"
     ]
   },
-  "swing_lat_over": {
-    "desc": "Libswing external swing latency optimal algorithm. This algorithm is used for small to medium messages",
+  "bine_lat_over": {
+    "desc": "Libbine external bine latency optimal algorithm. This algorithm is used for small to medium messages",
     "version": "1.0.0",
     "selection": "pico",
     "tags": [
-      "swing_lat",
-      "swing",
+      "bine_lat",
+      "bine",
       "latency_optimal"
     ]
   },
-  "swing_bdw_static_over": {
-    "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+  "bine_bdw_static_over": {
+    "desc": "Libbine external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -89,15 +89,15 @@
       }
     ],
     "tags": [
-      "swing_bdw_static",
-      "swing",
+      "bine_bdw_static",
+      "bine",
       "bandwidth_optimal",
       "static",
       "suboptimal"
     ]
   },
-  "swing_bdw_remap_over": {
-    "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers.",
+  "bine_bdw_remap_over": {
+    "desc": "Libbine external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -121,14 +121,14 @@
       }
     ],
     "tags": [
-      "swing_bdw_remap",
-      "swing",
+      "bine_bdw_remap",
+      "bine",
       "bandwidth_optimal",
       "remap"
     ]
   },
-  "swing_bdw_remap_segmented_over": {
-    "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
+  "bine_bdw_remap_segmented_over": {
+    "desc": "Libbine external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -152,8 +152,8 @@
       }
     ],
     "tags": [
-      "swing_bdw_remap_segmented",
-      "swing",
+      "bine_bdw_remap_segmented",
+      "bine",
       "is_segmented",
       "bandwidth_optimal",
       "remap"

@@ -1,6 +1,6 @@
 {
   "recursive_distance_doubling_over": {
-    "desc": "Libswing external recursive distance doubling algorithm. It works only with power of 2 processes",
+    "desc": "Libbine external recursive distance doubling algorithm. It works only with power of 2 processes",
     "version": "1.0.0",
     "constraints": [
       {
@@ -29,7 +29,7 @@
     ]
   },
   "recursive_halving_over": {
-    "desc": "Libswing external recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
+    "desc": "Libbine external recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
     "version": "1.0.0",
     "constraints": [
       {
@@ -51,7 +51,7 @@
     ]
   },
   "ring_over": {
-    "desc": "Libswing external ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
+    "desc": "Libbine external ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
     "version": "1.0.0",
     "constraints": [
       {
@@ -72,7 +72,7 @@
     ]
   },
   "butterfly_over": {
-    "desc": "Libswing external butterfly algorithm. This algorithm is used for small messages",
+    "desc": "Libbine external butterfly algorithm. This algorithm is used for small messages",
     "version": "1.0.0",
     "constraints": [
       {
@@ -93,8 +93,8 @@
       "external"
     ]
   },
-  "swing_static_over": {
-    "desc": "Libswing external swing static algorithm. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+  "bine_static_over": {
+    "desc": "Libbine external bine static algorithm. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
     "version": "1.0.0",
     "constraints": [
       {
@@ -122,7 +122,7 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "static",
       "suboptimal",
       "medium_sizes",
@@ -130,8 +130,8 @@
       "external"
     ]
   },
-  "swing_send_remap_over": {
-    "desc": "Libswing external swing remap send algorithm. Works only with power of 2 processes.",
+  "bine_send_remap_over": {
+    "desc": "Libbine external bine remap send algorithm. Works only with power of 2 processes.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -155,14 +155,14 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "remap",
       "send",
       "external"
     ]
   },
-  "swing_permute_remap_over": {
-    "desc": "Libswing external swing remap memcpy algorithm. Works only with power of 2 processes.",
+  "bine_permute_remap_over": {
+    "desc": "Libbine external bine remap memcpy algorithm. Works only with power of 2 processes.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -186,14 +186,14 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "remap",
       "memcpy",
       "external"
     ]
   },
-  "swing_block_by_block_over": {
-    "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+  "bine_block_by_block_over": {
+    "desc": "Libbine external bine block by block algorithm. Works only for power of 2 processes",
     "version": "1.0.0",
     "constraints": [
       {
@@ -217,13 +217,13 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "block_by_block",
       "external"
     ]
   },
-  "swing_block_by_block_any_even": {
-    "desc": "Libswing external swing block by block algorithm. Works only any even processes",
+  "bine_block_by_block_any_even": {
+    "desc": "Libbine external bine block by block algorithm. Works only any even processes",
     "version": "1.0.0",
     "constraints": [
       {
@@ -247,7 +247,7 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "block_by_block",
       "external"
     ]

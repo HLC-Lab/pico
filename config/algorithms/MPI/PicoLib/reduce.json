@@ -1,6 +1,6 @@
 {
-  "swing_lat_over": {
-    "desc": "Libswing external swing latency optimal algorithm.",
+  "bine_lat_over": {
+    "desc": "Libbine external bine latency optimal algorithm.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -24,14 +24,14 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_lat",
-      "swing",
+      "bine_lat",
+      "bine",
       "latency_optimal",
       "external"
     ]
   },
-  "swing_bdw_over": {
-    "desc": "Libswing external swing bandwidth optimal algorithm.",
+  "bine_bdw_over": {
+    "desc": "Libbine external bine bandwidth optimal algorithm.",
     "version": "1.0.0",
     "constraints": [
       {
@@ -64,8 +64,8 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing_bdw",
-      "swing",
+      "bine_bdw",
+      "bine",
       "bandwidth_optimal",
       "external"
     ]

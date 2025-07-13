@@ -1,6 +1,6 @@
 {
   "k_bruck_over": {
-    "desc": "Libswing external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+    "desc": "Libbine external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
     "version": "1.0.0",
     "constraints": [
       {
@@ -29,7 +29,7 @@
     ]
   },
   "recursive_doubling_over": {
-    "desc": "Libswing external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+    "desc": "Libbine external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -59,7 +59,7 @@
     ]
   },
   "ring_over": {
-    "desc": "Libswing external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
+    "desc": "Libbine external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -80,7 +80,7 @@
     ]
   },
   "sparbit_over": {
-    "desc": "Libswing external sparse bit algorithm. Comm_sz must be greater or equal to count.",
+    "desc": "Libbine external sparse bit algorithm. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -99,8 +99,8 @@
       "external"
     ]
   },
-  "swing_block_by_block_over": {
-    "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+  "bine_block_by_block_over": {
+    "desc": "Libbine external bine block by block algorithm. Works only for power of 2 processes",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -124,14 +124,14 @@
       }
     ],
     "tags": [
-      "swing_block_by_block",
+      "bine_block_by_block",
       "block_by_block",
-      "swing",
+      "bine",
       "external"
     ]
   },
-  "swing_block_by_block_over_any_even": {
-    "desc": "Libswing external swing block by block algorithm. Works for any number of even processes",
+  "bine_block_by_block_over_any_even": {
+    "desc": "Libbine external bine block by block algorithm. Works for any number of even processes",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -155,14 +155,14 @@
       }
     ],
     "tags": [
-      "swing_block_by_block",
+      "bine_block_by_block",
       "block_by_block",
-      "swing",
+      "bine",
       "external"
     ]
   },
-  "swing_permute_static_over": {
-    "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
+  "bine_permute_static_over": {
+    "desc": "Libbine external bine static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -190,16 +190,16 @@
       }
     ],
     "tags": [
-      "swing_static",
-      "swing",
+      "bine_static",
+      "bine",
       "permute",
       "static",
       "suboptimal",
       "external"
     ]
   },
-  "swing_send_static_over": {
-    "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses an additional send to the first step to order the buffer for the remapping of the ranks (send contiguous buffers).",
+  "bine_send_static_over": {
+    "desc": "Libbine external bine static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses an additional send to the first step to order the buffer for the remapping of the ranks (send contiguous buffers).",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -227,15 +227,15 @@
       }
     ],
     "tags": [
-      "swing_static",
-      "swing",
+      "bine_static",
+      "bine",
       "static",
       "suboptimal",
       "external"
     ]
   },
-  "swing_permute_remap_over": {
-    "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. This version remaps rank to allow the sending of contiguous buffers. Count must be greater or equal to comm_sz.",
+  "bine_permute_remap_over": {
+    "desc": "Libbine external bine remap algorithm. Works only for power of 2 processes less or equal to 256. This version remaps rank to allow the sending of contiguous buffers. Count must be greater or equal to comm_sz.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -263,14 +263,14 @@
       }
     ],
     "tags": [
-      "swing_remap",
+      "bine_remap",
       "permute",
-      "swing",
+      "bine",
       "external"
     ]
   },
-  "swing_send_remap_over": {
-    "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+  "bine_send_remap_over": {
+    "desc": "Libbine external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -294,13 +294,13 @@
       }
     ],
     "tags": [
-      "swing_remap",
-      "swing",
+      "bine_remap",
+      "bine",
       "external"
     ]
   },
-  "swing_2_blocks_over": {
-    "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
+  "bine_2_blocks_over": {
+    "desc": "Libbine external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -324,13 +324,13 @@
       }
     ],
     "tags": [
-      "swing",
+      "bine",
       "cuda",
       "external"
     ]
   },
-  "swing_2_blocks_dtype_over": {
-    "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
+  "bine_2_blocks_dtype_over": {
+    "desc": "Libbine external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
     "version": "1.0.0",
     "selection": "pico",
     "constraints": [
@@ -354,7 +354,7 @@
       }
     ],
     "tags": [
-      "swing",
+      "bine",
       "dtype",
       "cuda",
       "external"

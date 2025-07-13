@@ -1,6 +1,6 @@
 {
-  "swing_over": {
-    "desc": "Libswing external alltoall algorithm. This algorithm is used for small to medium messages",
+  "bine_over": {
+    "desc": "Libbine external alltoall algorithm. This algorithm is used for small to medium messages",
     "version": "1.0.0",
     "constraints": [
       {
@@ -24,7 +24,7 @@
     ],
     "selection": "pico",
     "tags": [
-      "swing",
+      "bine",
       "external"
     ]
   }
