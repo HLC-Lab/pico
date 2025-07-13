@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 #endif
 
-#include "libswing.h"
+#include "libbine.h"
 
 #if defined(__GNUC__) || defined(__clang__)
   #define BENCH_UNLIKELY(x) __builtin_expect(!!(x), 0)
@@ -47,7 +47,7 @@
 #define BENCH_HEADER_LUMI "MPI_Rank,allocation,xname\n"
 #define BENCH_HEADER_DEFAULT "MPI_Rank,allocation\n"
 
-extern size_t swing_allreduce_segsize;
+extern size_t bine_allreduce_segsize;
 
 //-----------------------------------------------------------------------------------------------
 //                        ENUM FOR TEST DESCRIPTION

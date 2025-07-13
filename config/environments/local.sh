@@ -1,5 +1,5 @@
 # Variables always needed
-export SWINGCC=mpicc
+export BINECC=mpicc
 export RUN=mpiexec
 export RUNFLAGS="--map-by :OVERSUBSCRIBE"
 export PARTITION_GPUS_PER_NODE=1
@@ -9,8 +9,8 @@ export GPU_LIB='CUDA'
 export GPU_LIB_VERSION='11.8.0'
 
 # MPI library specific variables
-export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING
-if [[ "$MPI_LIB" == "OMPI_SWING" ]]; then
+export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_BINE
+if [[ "$MPI_LIB" == "OMPI_BINE" ]]; then
     export PATH=/opt/ompi_test/bin:$PATH
     export LD_LIBRARY_PATH=/opt/ompi_test/lib:$LD_LIBRARY_PATH
     export MANPATH=/opt/ompi_test/share/man:$MANPATH
@@ -31,7 +31,7 @@ fi
 
 # Load test dependnt environment variables
 load_other_env_var(){
-    if [[ "$MPI_LIB" == "OMPI_SWING" || "$MPI_LIB" == "OMPI" ]]; then
+    if [[ "$MPI_LIB" == "OMPI_BINE" || "$MPI_LIB" == "OMPI" ]]; then
         if [[ "$GPU_AWARENESS" == "no" ]]; then
             export OMPI_MCA_btl="^smcuda"
             export OMPI_MCA_mpi_cuda_support=0

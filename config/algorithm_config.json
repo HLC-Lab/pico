@@ -151,7 +151,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 0,
         "tags": [
@@ -163,7 +163,7 @@
         "desc": "Open MPI linear algorithm from `basic` module, consists in a Reduce to rank 0 followed by a Bcast. Both Reduce and Bcast are the one from the `basic` module. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 1,
         "tags": [
@@ -177,7 +177,7 @@
         "desc": "Open MPI non-overlapping algorithm, consists in a Reduce to rank 0 followed by a Bcast. Utilizes default Reduce and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 2,
         "tags": [
@@ -191,7 +191,7 @@
         "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 3,
         "tags": [
@@ -205,7 +205,7 @@
         "desc": "Open MPI ring algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 4,
         "constraints": [
@@ -229,7 +229,7 @@
         "desc": "Open MPI ring segmented algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 5,
         "additional_parameters": {
@@ -265,7 +265,7 @@
         "desc": "Open MPI Rabenseifner algorithm. Not to be used if `count`<`comm_sz`. Not to be used if `op` is not commutative. If used on not commutative `op` defaults to `OMPI_LINEAR`. This algorithm is used for medium to large messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 6,
         "constraints": [
@@ -290,7 +290,7 @@
         "desc": "Open MPI allgather reduce algorithm. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "5.0.0",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 7,
         "tags": [
@@ -301,25 +301,25 @@
           "internal"
         ]
       },
-      "swing_lat_ompi": {
-        "desc": "Open MPI internal swing latency optimal algorithm of `OMPI_SWING`. This algorithm is used for small to medium messages",
+      "bine_lat_ompi": {
+        "desc": "Open MPI internal bine latency optimal algorithm of `OMPI_bine`. This algorithm is used for small to medium messages",
         "library": {
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 8,
         "tags": [
-          "swing_lat",
-          "swing",
+          "bine_lat",
+          "bine",
           "latency_optimal",
           "small_sizes",
           "medium_sizes",
           "internal"
         ]
       },
-      "swing_bdw_memcpy_ompi": {
-        "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version leverages a memcpy operation to send a contiguous buffer. This algorithm is used for medium to large messages",
+      "bine_bdw_memcpy_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version leverages a memcpy operation to send a contiguous buffer. This algorithm is used for medium to large messages",
         "library": {
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 9,
         "constraints": [
@@ -343,8 +343,8 @@
           }
         ],
         "tags": [
-          "swing_bdw_memcpy",
-          "swing",
+          "bine_bdw_memcpy",
+          "bine",
           "bandwidth_optimal",
           "suboptimal",
           "memcpy",
@@ -353,10 +353,10 @@
           "internal"
         ]
       },
-      "swing_bdw_dt_1_ompi": {
-        "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation but requires the heap allocation, creation and destruction of 2*`comm_sz` derived datatypes. This algorithm is used for medium to large messages",
+      "bine_bdw_dt_1_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation but requires the heap allocation, creation and destruction of 2*`comm_sz` derived datatypes. This algorithm is used for medium to large messages",
         "library": {
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 10,
         "constraints": [
@@ -380,8 +380,8 @@
           }
         ],
         "tags": [
-          "swing_bdw_dt_1",
-          "swing",
+          "bine_bdw_dt_1",
+          "bine",
           "bandwidth_optimal",
           "suboptimal",
           "derived_datatypes",
@@ -390,10 +390,10 @@
           "internal"
         ]
       },
-      "swing_bdw_dt_2_ompi": {
-        "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation and receive the message to a continuous buffer. Does not require the heap allocation of datatype array since it utilizes a single stack allocated one, overwriting it each time. This algorithm is used for medium to large messages",
+      "bine_bdw_dt_2_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation and receive the message to a continuous buffer. Does not require the heap allocation of datatype array since it utilizes a single stack allocated one, overwriting it each time. This algorithm is used for medium to large messages",
         "library": {
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 11,
         "constraints": [
@@ -417,8 +417,8 @@
           }
         ],
         "tags": [
-          "swing_bdw_dt_2",
-          "swing",
+          "bine_bdw_dt_2",
+          "bine",
           "bandwidth_optimal",
           "suboptimal",
           "derived_datatypes",
@@ -427,10 +427,10 @@
           "internal"
         ]
       },
-      "swing_bdw_segmented_ompi": {
-        "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version utilizes many pipelined asyncrhonous send/recv operation to overlap communication and reduction. It requires an additional parameter `segsize`. This algorithm is used for medium to large messages",
+      "bine_bdw_segmented_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version utilizes many pipelined asyncrhonous send/recv operation to overlap communication and reduction. It requires an additional parameter `segsize`. This algorithm is used for medium to large messages",
         "library": {
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 12,
         "additional_parameters": {
@@ -462,8 +462,8 @@
           }
         ],
         "tags": [
-          "swing_bdw_segmented",
-          "swing",
+          "bine_bdw_segmented",
+          "bine",
           "bandwidth_optimal",
           "suboptimal",
           "segmented",
@@ -473,10 +473,10 @@
           "internal"
         ]
       },
-      "swing_bdw_static_ompi": {
-        "desc": "Open MPI internal swing bandwidth optimal algorithm of `OMPI_SWING`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+      "bine_bdw_static_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
         "library": {
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 13,
         "constraints": [
@@ -504,8 +504,8 @@
           }
         ],
         "tags": [
-          "swing_bdw_static",
-          "swing",
+          "bine_bdw_static",
+          "bine",
           "bandwidth_optimal",
           "static",
           "medium_sizes",
@@ -514,9 +514,9 @@
         ]
       },
       "recursive_doubling_over": {
-        "desc": "Libswing external recursive doubling algorithm. This algorithm is used for small to medium messages",
+        "desc": "Libbine external recursive doubling algorithm. This algorithm is used for small to medium messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -528,9 +528,9 @@
         ]
       },
       "ring_over": {
-        "desc": "Libswing external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
+        "desc": "Libbine external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -552,9 +552,9 @@
         ]
       },
       "rabenseifner_over": {
-        "desc": "Libswing external Rabenseifner algorithm. Not to be used if `count`<`comm_sz` and for non commutative `op`. This algorithm is used for medium to large messages",
+        "desc": "Libbine external Rabenseifner algorithm. Not to be used if `count`<`comm_sz` and for non commutative `op`. This algorithm is used for medium to large messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -577,24 +577,24 @@
           "external"
         ]
       },
-      "swing_lat_over": {
-        "desc": "Libswing external swing latency optimal algorithm. This algorithm is used for small to medium messages",
+      "bine_lat_over": {
+        "desc": "Libbine external bine latency optimal algorithm. This algorithm is used for small to medium messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_lat",
-          "swing",
+          "bine_lat",
+          "bine",
           "latency_optimal",
           "external"
         ]
       },
-      "swing_bdw_static_over": {
-        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+      "bine_bdw_static_over": {
+        "desc": "Libbine external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -623,18 +623,18 @@
           }
         ],
         "tags": [
-          "swing_bdw_static",
-          "swing",
+          "bine_bdw_static",
+          "bine",
           "bandwidth_optimal",
           "static",
           "suboptimal",
           "external"
         ]
       },
-      "swing_bdw_remap_over": {
-        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers.",
+      "bine_bdw_remap_over": {
+        "desc": "Libbine external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -659,17 +659,17 @@
           }
         ],
         "tags": [
-          "swing_bdw_remap",
-          "swing",
+          "bine_bdw_remap",
+          "bine",
           "bandwidth_optimal",
           "remap",
           "external"
         ]
       },
-      "swing_block_by_block_any_even": {
-        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with even processes. This version sends each data block/segment individually. It segments the message into segments of size `segsize  = count / comm_sz` ",
+      "bine_block_by_block_any_even": {
+        "desc": "Libbine external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with even processes. This version sends each data block/segment individually. It segments the message into segments of size `segsize  = count / comm_sz` ",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -694,17 +694,17 @@
           }
         ],
         "tags": [
-          "swing_block_by_block",
-          "swing",
+          "bine_block_by_block",
+          "bine",
           "bandwidth_optimal",
           "remap",
           "external"
         ]
       },
-      "swing_bdw_remap_segmented_over": {
-        "desc": "Libswing external swing bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
+      "bine_bdw_remap_segmented_over": {
+        "desc": "Libbine external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -720,8 +720,8 @@
           }
         ],
         "tags": [
-          "swing_bdw_remap_segmented",
-          "swing",
+          "bine_bdw_remap_segmented",
+          "bine",
           "is_segmented",
           "bandwidth_optimal",
           "remap",
@@ -913,7 +913,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -936,7 +936,7 @@
         "desc": " Open MPI linear algorithm, consists in a Gather to rank 0 of the whole message followed by a Bcast. Utilizes default Gather and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -961,7 +961,7 @@
         "desc": "Open MPI K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -996,7 +996,7 @@
         "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. When invoked on non power of 2 processes, it will fallback to k_bruck with `radix=2`",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 3,
         "constraints": [
@@ -1030,7 +1030,7 @@
         "desc": "Open MPI ring algorithm. This algorithm is used for large messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -1054,7 +1054,7 @@
         "desc": "Open MPI neighbor exchange algorithm. This algorithm is used for large messages. Works only for even number of processes. When invoked on odd number of processes, it will fallback to ring",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 5,
         "constraints": [
@@ -1087,7 +1087,7 @@
         "desc": "Open MPI two processes algorithm. Works only for 2 processes",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 6,
         "constraints": [
@@ -1116,9 +1116,9 @@
         ]
       },
       "k_bruck_over": {
-        "desc": "Libswing external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+        "desc": "Libbine external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -1148,9 +1148,9 @@
         ]
       },
       "recursive_doubling_over": {
-        "desc": "Libswing external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+        "desc": "Libbine external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1181,9 +1181,9 @@
         ]
       },
       "ring_over": {
-        "desc": "Libswing external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
+        "desc": "Libbine external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1205,9 +1205,9 @@
         ]
       },
       "sparbit_over": {
-        "desc": "Libswing external sparse bit algorithm. Comm_sz must be greater or equal to count.",
+        "desc": "Libbine external sparse bit algorithm. Comm_sz must be greater or equal to count.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1227,10 +1227,10 @@
           "external"
         ]
       },
-      "swing_block_by_block_over": {
-        "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+      "bine_block_by_block_over": {
+        "desc": "Libbine external bine block by block algorithm. Works only for power of 2 processes",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1255,16 +1255,16 @@
           }
         ],
         "tags": [
-          "swing_block_by_block",
+          "bine_block_by_block",
           "block_by_block",
-          "swing",
+          "bine",
           "external"
         ]
       },
-      "swing_block_by_block_over_any_even": {
-        "desc": "Libswing external swing block by block algorithm. Works for any number of even processes",
+      "bine_block_by_block_over_any_even": {
+        "desc": "Libbine external bine block by block algorithm. Works for any number of even processes",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1289,16 +1289,16 @@
           }
         ],
         "tags": [
-          "swing_block_by_block",
+          "bine_block_by_block",
           "block_by_block",
-          "swing",
+          "bine",
           "external"
         ]
       },
-      "swing_permute_static_over": {
-        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
+      "bine_permute_static_over": {
+        "desc": "Libbine external bine static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses a memcpy at the end of the send/recv operation to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1327,18 +1327,18 @@
           }
         ],
         "tags": [
-          "swing_static",
-          "swing",
+          "bine_static",
+          "bine",
           "permute",
           "static",
           "suboptimal",
           "external"
         ]
       },
-      "swing_send_static_over": {
-        "desc": "Libswing external swing static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses an additional send to the first step to order the buffer for the remapping of the ranks (send contiguous buffers).",
+      "bine_send_static_over": {
+        "desc": "Libbine external bine static algorithm. Works only for power of 2 processes, less or equal to 256. Comm_sz must be greater or equal to count. This version uses an additional send to the first step to order the buffer for the remapping of the ranks (send contiguous buffers).",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1367,17 +1367,17 @@
           }
         ],
         "tags": [
-          "swing_static",
-          "swing",
+          "bine_static",
+          "bine",
           "static",
           "suboptimal",
           "external"
         ]
       },
-      "swing_permute_remap_over": {
-        "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes less or equal to 256. This version remaps rank to allow the sending of contiguous buffers. Count must be greater or equal to comm_sz.",
+      "bine_permute_remap_over": {
+        "desc": "Libbine external bine remap algorithm. Works only for power of 2 processes less or equal to 256. This version remaps rank to allow the sending of contiguous buffers. Count must be greater or equal to comm_sz.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1406,16 +1406,16 @@
           }
         ],
         "tags": [
-          "swing_remap",
+          "bine_remap",
           "permute",
-          "swing",
+          "bine",
           "external"
         ]
       },
-      "swing_send_remap_over": {
-        "desc": "Libswing external swing remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+      "bine_send_remap_over": {
+        "desc": "Libbine external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1440,15 +1440,15 @@
           }
         ],
         "tags": [
-          "swing_remap",
-          "swing",
+          "bine_remap",
+          "bine",
           "external"
         ]
       },
-      "swing_2_blocks_over": {
-        "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
+      "bine_2_blocks_over": {
+        "desc": "Libbine external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1473,15 +1473,15 @@
           }
         ],
         "tags": [
-          "swing",
+          "bine",
           "cuda",
           "external"
         ]
       },
-      "swing_2_blocks_dtype_over": {
-        "desc": "Libswing external swing algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other swing allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
+      "bine_2_blocks_dtype_over": {
+        "desc": "Libbine external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "cvar": "auto",
         "dynamic_rule": 0,
@@ -1506,7 +1506,7 @@
           }
         ],
         "tags": [
-          "swing",
+          "bine",
           "dtype",
           "cuda",
           "external"
@@ -1683,7 +1683,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -1706,7 +1706,7 @@
         "desc": "Launches all non-blocking send/recv pairs and wait for them to complete.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -1730,7 +1730,7 @@
         "desc": "For comm size P, implemented as P rounds of blocking MPI_Sendrecv",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -1763,7 +1763,7 @@
         "desc": "An algorithm exploiting network packet quantization to achieve O(log) time complexity. Typically best for very small message sizes.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -1787,7 +1787,7 @@
         "desc": "Keep N non-blocking MPI_Isend/Irecv pairs in flight at all times. N is set by the coll_tuned_alltoall_max_requests MCA variable.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -1811,7 +1811,7 @@
         "desc": "An implementation tailored for alltoall between 2 ranks, otherwise it is not used.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -1840,10 +1840,10 @@
           "internal"
         ]
       },
-      "swing_over": {
-        "desc": "Libswing external alltoall algorithm. This algorithm is used for small to medium messages",
+      "bine_over": {
+        "desc": "Libbine external alltoall algorithm. This algorithm is used for small to medium messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -1868,7 +1868,7 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "external"
         ]
       }
@@ -1972,7 +1972,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 0,
         "tags": [
@@ -1984,7 +1984,7 @@
         "desc": "Open MPI linear algorithm, consists in root performing comm_sz - 1 send operations, one to each other process. All other processes perform a single receive operation. It can crash for big tests",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 1,
         "tags": [
@@ -1997,7 +1997,7 @@
         "desc": "Open MPI chain algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process of a chain topology. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_chain` is responsible for the segmentation and the check/creation of the chain topology.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "additional_parameters": {
           "segsize": {
@@ -2026,7 +2026,7 @@
         "desc": "Open MPI pipeline algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process into a pipeline. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_pipeline` is responsible for the segmentation and the check/creation of the pipelined topology.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "additional_parameters": {
           "segsize": {
@@ -2049,7 +2049,7 @@
         "desc": "Open MPI split‐binary tree broadcast. It divides the overall message into two halves and then uses a binary‐tree–based dissemination within each half, followed by a final exchange to “stitch” the two halves together where every process finds its pair in the other branch of the tree. Uses the additional parameter `segsize` to further segment the communications. If message is to small it will fallback to `chain_ompi`.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "additional_parameters": {
           "segsize": {
@@ -2071,7 +2071,7 @@
         "desc": "Open MPI binary tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binary tree topology and for the segmentation of the message.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "additional_parameters": {
           "segsize": {
@@ -2093,7 +2093,7 @@
         "desc": "Open MPI binomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binomial tree topology and for the segmentation of the message.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "additional_parameters": {
           "segsize": {
@@ -2115,7 +2115,7 @@
         "desc": "Open MPI k-nomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the k-nomial tree topology and for the segmentation of the message. It requires an additional parameter `radix`.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "additional_parameters": {
           "radix": {
@@ -2142,7 +2142,7 @@
         "desc": "Open MPI scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -2175,7 +2175,7 @@
         "desc": "Open MPI scatter allgather ring algorithm. It consists of a binomial tree scatter followed by a ring allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -2205,9 +2205,9 @@
         ]
       },
       "scatter_allgather_over": {
-        "desc": "Libswing external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
+        "desc": "Libbine external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2228,10 +2228,10 @@
           "external"
         ]
       },
-      "swing_lat_over": {
-        "desc": "Libswing external swing latency optimal algorithm. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+      "bine_lat_over": {
+        "desc": "Libbine external bine latency optimal algorithm. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2256,16 +2256,16 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_lat",
-          "swing",
+          "bine_lat",
+          "bine",
           "latency_optimal",
           "external"
         ]
       },
-      "swing_lat_reversed_over": {
-        "desc": "Libswing external swing latency optimal algorithm with reversed peer selection. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+      "bine_lat_reversed_over": {
+        "desc": "Libbine external bine latency optimal algorithm with reversed peer selection. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2290,16 +2290,16 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_lat_reversed",
-          "swing",
+          "bine_lat_reversed",
+          "bine",
           "latency_optimal",
           "external"
         ]
       },
-      "swing_lat_new_over": {
-        "desc": "New libswing external swing latency optimal algorithm.",
+      "bine_lat_new_over": {
+        "desc": "New libbine external bine latency optimal algorithm.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2315,16 +2315,16 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_lat_new",
-          "swing",
+          "bine_lat_new",
+          "bine",
           "latency_optimal",
           "external"
         ]
       },
-      "swing_lat_i_new_over": {
-        "desc": "New libswing external swing latency optimal algorithm with isend.",
+      "bine_lat_i_new_over": {
+        "desc": "New libbine external bine latency optimal algorithm with isend.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2340,16 +2340,16 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_lat_i_new",
-          "swing",
+          "bine_lat_i_new",
+          "bine",
           "latency_optimal",
           "external"
         ]
       },
-      "swing_bdw_static_over": {
-        "desc": "Libswing external swing bandwidth optimal algorithm with static bitmaps. This algorithm is a combination of a swing scatter and a swing allgather and utilizes static bitmaps. It does not utilizes standard collectives written elsewere since for the allgather phase it calculates which rank needs to send and which don't to avoid wasteful communications. It works only if `comm` is a power of 2 less or equal to 256 and root is 0. Also count must be greater than comm_sz.",
+      "bine_bdw_static_over": {
+        "desc": "Libbine external bine bandwidth optimal algorithm with static bitmaps. This algorithm is a combination of a bine scatter and a bine allgather and utilizes static bitmaps. It does not utilizes standard collectives written elsewere since for the allgather phase it calculates which rank needs to send and which don't to avoid wasteful communications. It works only if `comm` is a power of 2 less or equal to 256 and root is 0. Also count must be greater than comm_sz.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2387,18 +2387,18 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_bdw_static",
-          "swing",
+          "bine_bdw_static",
+          "bine",
           "bandwidth_optimal",
           "suboptimal",
           "static",
           "external"
         ]
       },
-      "swing_bdw_remap_over": {
-        "desc": "Libswing external swing bandwidth optimal algorithm. This algorithm is a combination of a swing scatter and a swing allgather.",
+      "bine_bdw_remap_over": {
+        "desc": "Libbine external bine bandwidth optimal algorithm. This algorithm is a combination of a bine scatter and a bine allgather.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2432,9 +2432,9 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_bdw_remap",
+          "bine_bdw_remap",
           "remap",
-          "swing",
+          "bine",
           "bandwidth_optimal",
           "external"
         ]
@@ -2514,7 +2514,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -2537,7 +2537,7 @@
         "desc": "Open MPI linear algorithm. It consists in the root receiving messages from all other processes.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -2560,7 +2560,7 @@
         "desc": "Open MPI binomial tree based algorithm.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -2583,7 +2583,7 @@
         "desc": "Open MPI linear synchronous algorithm. It consists in the root receiving messages from all other processes, but synchronizing messages by having them segmented by `segsize`. It can crash for big tests",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -2603,10 +2603,10 @@
           "internal"
         ]
       },
-      "swing_over": {
-        "desc": "Libswing external swing algorithm. It uses a binomial tree pattern of communication choosing its peer utilizing `swing` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+      "bine_over": {
+        "desc": "Libbine external bine algorithm. It uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2640,7 +2640,7 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "external"
         ]
       }
@@ -2709,7 +2709,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 0,
         "tags": [
@@ -2721,7 +2721,7 @@
         "desc": "Open MPI linear algorithm.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 1,
         "tags": [
@@ -2733,7 +2733,7 @@
         "desc": "Open MPI chain algorithm.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 2,
         "tags": [
@@ -2746,7 +2746,7 @@
         "desc": "Open MPI pipeline algorithm.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 3,
         "tags": [
@@ -2759,7 +2759,7 @@
         "desc": "Open MPI binary tree reduce.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 4,
         "tags": [
@@ -2771,7 +2771,7 @@
         "desc": "Open MPI binomial tree reduce.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 5,
         "tags": [
@@ -2783,7 +2783,7 @@
         "desc": "Open MPI in order reduce.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "dynamic_rule": 6,
         "tags": [
@@ -2795,7 +2795,7 @@
         "desc": "Open MPI Rabenseifner reduce.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -2814,10 +2814,10 @@
           "internal"
         ]
       },
-      "swing_lat_over": {
-        "desc": "Libswing external swing latency optimal algorithm.",
+      "bine_lat_over": {
+        "desc": "Libbine external bine latency optimal algorithm.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2842,16 +2842,16 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_lat",
-          "swing",
+          "bine_lat",
+          "bine",
           "latency_optimal",
           "external"
         ]
       },
-      "swing_bdw_over": {
-        "desc": "Libswing external swing bandwidth optimal algorithm.",
+      "bine_bdw_over": {
+        "desc": "Libbine external bine bandwidth optimal algorithm.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -2885,8 +2885,8 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing_bdw",
-          "swing",
+          "bine_bdw",
+          "bine",
           "bandwidth_optimal",
           "external"
         ]
@@ -3044,7 +3044,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3067,7 +3067,7 @@
         "desc": "Open MPI non-overlapping algorithm. Consists in a Reduce to rank 0 followed by a Scatterv. Utilizes default Reduce and Scatterv algorithm selection. This algorithm is used for small messages. It can crash for big tests",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3092,7 +3092,7 @@
         "desc": "Open MPI recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3117,7 +3117,7 @@
         "desc": "Open MPI ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3141,7 +3141,7 @@
         "desc": "Open MPI butterfly algorithm. This algorithm is used for small messages",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3163,9 +3163,9 @@
         ]
       },
       "recursive_distance_doubling_over": {
-        "desc": "Libswing external recursive distance doubling algorithm. It works only with power of 2 processes",
+        "desc": "Libbine external recursive distance doubling algorithm. It works only with power of 2 processes",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3195,9 +3195,9 @@
         ]
       },
       "recursive_halving_over": {
-        "desc": "Libswing external recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
+        "desc": "Libbine external recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3220,9 +3220,9 @@
         ]
       },
       "ring_over": {
-        "desc": "Libswing external ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
+        "desc": "Libbine external ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3244,9 +3244,9 @@
         ]
       },
       "butterfly_over": {
-        "desc": "Libswing external butterfly algorithm. This algorithm is used for small messages",
+        "desc": "Libbine external butterfly algorithm. This algorithm is used for small messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3268,10 +3268,10 @@
           "external"
         ]
       },
-      "swing_static_over": {
-        "desc": "Libswing external swing static algorithm. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
+      "bine_static_over": {
+        "desc": "Libbine external bine static algorithm. Works only with power of 2 processes, less or equal to 256. This version utilizes static bitmaps reordered to be contigous. This algorithm is used for medium to large messages",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3300,7 +3300,7 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "static",
           "suboptimal",
           "medium_sizes",
@@ -3308,10 +3308,10 @@
           "external"
         ]
       },
-      "swing_send_remap_over": {
-        "desc": "Libswing external swing remap send algorithm. Works only with power of 2 processes.",
+      "bine_send_remap_over": {
+        "desc": "Libbine external bine remap send algorithm. Works only with power of 2 processes.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3336,16 +3336,16 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "remap",
           "send",
           "external"
         ]
       },
-      "swing_permute_remap_over": {
-        "desc": "Libswing external swing remap memcpy algorithm. Works only with power of 2 processes.",
+      "bine_permute_remap_over": {
+        "desc": "Libbine external bine remap memcpy algorithm. Works only with power of 2 processes.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3370,16 +3370,16 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "remap",
           "memcpy",
           "external"
         ]
       },
-      "swing_block_by_block_over": {
-        "desc": "Libswing external swing block by block algorithm. Works only for power of 2 processes",
+      "bine_block_by_block_over": {
+        "desc": "Libbine external bine block by block algorithm. Works only for power of 2 processes",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3404,15 +3404,15 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "block_by_block",
           "external"
         ]
       },
-      "swing_block_by_block_any_even": {
-        "desc": "Libswing external swing block by block algorithm. Works only any even processes",
+      "bine_block_by_block_any_even": {
+        "desc": "Libbine external bine block by block algorithm. Works only any even processes",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3437,7 +3437,7 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "block_by_block",
           "external"
         ]
@@ -3517,7 +3517,7 @@
         "desc": "Open MPI default algorithm selection",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3540,7 +3540,7 @@
         "desc": "Open MPI linear algorithm.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3563,7 +3563,7 @@
         "desc": "Open MPI binomial tree based algorithm.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3586,7 +3586,7 @@
         "desc": "Open MPI linear nb algorithm.",
         "library": {
           "ompi": "4.1.5",
-          "ompi_swing": "5.0.0"
+          "ompi_bine": "5.0.0"
         },
         "constraints": [
           {
@@ -3606,10 +3606,10 @@
           "internal"
         ]
       },
-      "swing_over": {
-        "desc": "Libswing external swing algorithm.",
+      "bine_over": {
+        "desc": "Libbine external bine algorithm.",
         "library": {
-          "libswing": "1.0.0"
+          "libbine": "1.0.0"
         },
         "constraints": [
           {
@@ -3643,7 +3643,7 @@
         "cvar": "auto",
         "dynamic_rule": 0,
         "tags": [
-          "swing",
+          "bine",
           "external"
         ]
       }

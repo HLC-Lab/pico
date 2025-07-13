@@ -1,10 +1,10 @@
 # Variables always needed
-export SWINGCC=mpicc
+export BINECC=mpicc
 export RUN=srun
 
 # Account/partition specific variables
 export PARTITION=boost_usr_prod
-export ACCOUNT=IscrB_SWING
+export ACCOUNT=IscrB_BINE
 if [[ "$PARTITION" == "boost_usr_prod" ]]; then
     export PARTITION_GPUS_PER_NODE=4
     export PARTITION_CPUS_PER_NODE=32
@@ -29,8 +29,8 @@ export GPU_LIB='CUDA'
 export GPU_LIB_VERSION='12.1'
 
 # MPI library specific variables
-export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_SWING (beware that OMPI_SWING must be manually installed in the home directory)
-if [ "$MPI_LIB" == "OMPI_SWING" ]; then
+export MPI_LIB='OMPI'    # Possible values: OMPI, OMPI_BINE (beware that OMPI_BINE must be manually installed in the home directory)
+if [ "$MPI_LIB" == "OMPI_BINE" ]; then
     export PATH=$HOME/bin:$PATH
     export LD_LIBRARY_PATH=$HOME/lib:$LD_LIBRARY_PATH
     export MANPATH=$HOME/share/man:$MANPATH

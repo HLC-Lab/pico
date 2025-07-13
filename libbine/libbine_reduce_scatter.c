@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <limits.h>
 
-#include "libswing.h"
-#include "libswing_utils.h"
-#include "libswing_utils_bitmaps.h"
+#include "libbine.h"
+#include "libbine_utils.h"
+#include "libbine_utils_bitmaps.h"
 
 int reduce_scatter_recursivehalving(const void *sbuf, void *rbuf, const int rcounts[],
                                     MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
@@ -557,7 +557,7 @@ int reduce_scatter_ring( const void *sbuf, void *rbuf, const int rcounts[],
   return MPI_SUCCESS;
 
  error_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
   (void)line;  // silence compiler warning
   if(NULL != displs) free(displs);
   if(NULL != accumbuf_free) free(accumbuf_free);
@@ -755,7 +755,7 @@ cleanup_and_return:
   return err;
 }
 
-int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[],
+int reduce_scatter_bine_static(const void *sbuf, void *rbuf, const int rcounts[],
                                 MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
   int i, rank, size, steps, w_size, err = MPI_SUCCESS;
@@ -790,7 +790,7 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
   /* Current implementation only handles power-of-two number of processes.*/
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static reduce scatter works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static reduce scatter works only with po2 ranks!");
     return MPI_ERR_SIZE;
   }
 
@@ -898,7 +898,7 @@ int reduce_scatter_swing_static(const void *sbuf, void *rbuf, const int rcounts[
   return err;
 }
 
-int reduce_scatter_swing_send_remap(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                     MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
@@ -977,7 +977,7 @@ err_hndl:
   return err;
 }
 
-int reduce_scatter_swing_permute_remap(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                        MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
@@ -1058,7 +1058,7 @@ err_hndl:
 }
 
 
-int reduce_scatter_swing_block_by_block(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                         MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
@@ -1168,7 +1168,7 @@ err_hndl:
   return err;
 }
 
-int reduce_scatter_swing_block_by_block_any_even(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_block_by_block_any_even(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                                  MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
@@ -1295,7 +1295,7 @@ err_hndl:
 
 // NOTE: Not fully implemented
 //
-// int reduce_scatter_swing_dtypes(const void *sbuf, void *rbuf, const int rcounts[],
+// int reduce_scatter_bine_dtypes(const void *sbuf, void *rbuf, const int rcounts[],
 //                                     MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 // {
 //   int i, rank, size, steps, w_size, err = MPI_SUCCESS;
@@ -1331,7 +1331,7 @@ err_hndl:
 //   /* Current implementation only handles power-of-two number of processes.*/
 //   steps = log_2(size);
 //   if(!is_power_of_two(size) || steps < 1) {
-//     SWING_DEBUG_PRINT("ERROR! Swing static reduce scatter works only with po2 ranks!");
+//     BINE_DEBUG_PRINT("ERROR! bine static reduce scatter works only with po2 ranks!");
 //     return MPI_ERR_SIZE;
 //   }
 //

@@ -497,7 +497,7 @@ validate_args() {
             return 1
         fi
 
-        local file_path="$SWING_DIR/config/test/${collective}.json"
+        local file_path="$BINE_DIR/config/test/${collective}.json"
         if [ ! -f "$file_path" ]; then
             error "--collectives must be a comma-separated list. No '${collective}.json' file found in config/test/"
             usage "general"
@@ -536,7 +536,7 @@ source_environment() {
     source "$env_file" || { error "Failed to source environment script for '${LOCATION}'."; return 1; }
 
     local required_vars=(
-        SWINGCC
+        BINECC
         RUN
         MPI_LIB
         MPI_LIB_VERSION
@@ -587,16 +587,16 @@ load_modules(){
 # Activate virtual environment and install required packages
 ###############################################################################
 activate_virtualenv() {
-    if [ -f "$HOME/.swing_venv/bin/activate" ]; then
-        source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment." ; return 1; }
-        success "Virtual environment 'swing_venv' activated."
+    if [ -f "$HOME/.bine_venv/bin/activate" ]; then
+        source "$HOME/.bine_venv/bin/activate" || { error "Failed to activate virtual environment." ; return 1; }
+        success "Virtual environment 'bine_venv' activated."
     else
-        warning "Virtual environment 'swing_venv' does not exist. Creating it..."
+        warning "Virtual environment 'bine_venv' does not exist. Creating it..."
 
-        python3 -m venv "$HOME/.swing_venv" || { error "Failed to create virtual environment." ; return 1; }
-        source "$HOME/.swing_venv/bin/activate" || { error "Failed to activate virtual environment after creation." ; return 1; }
+        python3 -m venv "$HOME/.bine_venv" || { error "Failed to create virtual environment." ; return 1; }
+        source "$HOME/.bine_venv/bin/activate" || { error "Failed to activate virtual environment after creation." ; return 1; }
 
-        success "Virtual environment 'swing_venv' created and activated."
+        success "Virtual environment 'bine_venv' created and activated."
     fi
 
     if [[ "$LOCATION" != "mare_nostrum" ]]; then
@@ -732,7 +732,7 @@ print_sanity_checks() {
 
     inform "System Information:"
     echo "  • MPI Library:           $MPI_LIB $MPI_LIB_VERSION"
-    echo "  • Libswing Version:      $LIBSWING_VERSION"
+    echo "  • Libbine Version:      $LIBBINE_VERSION"
     echo "  • GPU awareness:         $GPU_AWARENESS"
     if [[ "$GPU_AWARENESS" == "yes" ]]; then
         echo "  • GPU per node:          $CURRENT_TASKS_PER_NODE"
@@ -799,7 +799,7 @@ update_algorithm() {
     local algo="$1"
     local cvar_indx="$2"
     case "$MPI_LIB" in
-        "OMPI_SWING" | "OMPI")
+        "OMPI_BINE" | "OMPI")
             success "Updating dynamic rule file for algorithm $algo..."
             python3 "$ALGO_CHANGE_SCRIPT" "$algo" || cleanup
             export OMPI_MCA_coll_tuned_dynamic_rules_filename="${DYNAMIC_RULE_FILE}"

@@ -34,7 +34,7 @@ for config in ${TEST_CONFIG_FILES[@]//,/ }; do
                 fi
 
                 # Run script to parse and generate test environment variables
-                python3 $SWING_DIR/config/parse_test.py || exit 1
+                python3 $BINE_DIR/config/parse_test.py || exit 1
                 source $TEST_ENV
                 load_other_env_var
                 success "📄 Test configuration ${TEST_CONFIG} parsed (CPU, ntasks=${CURRENT_TASKS_PER_NODE})"
@@ -43,7 +43,7 @@ for config in ${TEST_CONFIG_FILES[@]//,/ }; do
                 if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
                     export DATA_DIR="$OUTPUT_DIR/$iter"
                     mkdir -p "$DATA_DIR"
-                    python3 $SWING_DIR/results/generate_metadata.py $iter || exit 1
+                    python3 $BINE_DIR/results/generate_metadata.py $iter || exit 1
                     success "📂 Metadata of $DATA_DIR created"
                 fi
 
@@ -66,7 +66,7 @@ for config in ${TEST_CONFIG_FILES[@]//,/ }; do
             export BENCH_EXEC=$BENCH_EXEC_GPU
 
             # Run script to parse and generate test environment variables
-            python3 $SWING_DIR/config/parse_test.py || exit 1
+            python3 $BINE_DIR/config/parse_test.py || exit 1
             source $TEST_ENV
             load_other_env_var
             success "📄 Test configuration ${TEST_CONFIG} parsed (GPU, gpus per node=${CURRENT_TASKS_PER_NODE})"
@@ -75,7 +75,7 @@ for config in ${TEST_CONFIG_FILES[@]//,/ }; do
             if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
                 export DATA_DIR="$OUTPUT_DIR/$iter"
                 mkdir -p "$DATA_DIR"
-                python3 $SWING_DIR/results/generate_metadata.py $iter || exit 1
+                python3 $BINE_DIR/results/generate_metadata.py $iter || exit 1
                 success "📂 Metadata of $DATA_DIR created"
             fi
 
@@ -106,7 +106,7 @@ fi
 #               ANALYZE ALLOCATION AND GENERATE COMMUNICATION TRACE                #
 ####################################################################################
 if [[ $LOCATION != "local" ]]; then
-    python $SWING_DIR/tracer/trace_communications.py --alloc "$OUTPUT_DIR/alloc.csv" --location $LOCATION --save
+    python $BINE_DIR/tracer/trace_communications.py --alloc "$OUTPUT_DIR/alloc.csv" --location $LOCATION --save
     success "📊 Trace of communications generated"
 
     squeue -j $SLURM_JOB_ID

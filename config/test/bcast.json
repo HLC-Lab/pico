@@ -1,5 +1,5 @@
 {
-  "libswing_version": "1.0.0",
+  "libbine_version": "1.0.0",
   "collective": "BCAST",
   "MPI_Op": "MPI_SUM",
   "tags": {

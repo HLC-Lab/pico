@@ -99,11 +99,11 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "recursive_doubling_over", allreduce_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allreduce_ring);
   CHECK_STR(algorithm, "rabenseifner_over", allreduce_rabenseifner);
-  CHECK_STR(algorithm, "swing_lat_over", allreduce_swing_lat);
-  CHECK_STR(algorithm, "swing_bdw_static_over", allreduce_swing_bdw_static);
-  CHECK_STR(algorithm, "swing_bdw_remap_over", allreduce_swing_bdw_remap);
-  CHECK_STR(algorithm, "swing_bdw_remap_segmented_over", allreduce_swing_bdw_remap_segmented);
-  CHECK_STR(algorithm, "swing_block_by_block_any_even", allreduce_swing_block_by_block_any_even);
+  CHECK_STR(algorithm, "bine_lat_over", allreduce_bine_lat);
+  CHECK_STR(algorithm, "bine_bdw_static_over", allreduce_bine_bdw_static);
+  CHECK_STR(algorithm, "bine_bdw_remap_over", allreduce_bine_bdw_remap);
+  CHECK_STR(algorithm, "bine_bdw_remap_segmented_over", allreduce_bine_bdw_remap_segmented);
+  CHECK_STR(algorithm, "bine_block_by_block_any_even", allreduce_bine_block_by_block_any_even);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;
@@ -122,14 +122,14 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
-  CHECK_STR(algorithm, "swing_block_by_block_over_any_even", allgather_swing_block_by_block_any_even);
-  CHECK_STR(algorithm, "swing_block_by_block_over", allgather_swing_block_by_block);
-  CHECK_STR(algorithm, "swing_permute_static_over", allgather_swing_permute_static);
-  CHECK_STR(algorithm, "swing_send_static_over", allgather_swing_send_static);
-  CHECK_STR(algorithm, "swing_permute_remap_over", allgather_swing_permute_remap);
-  CHECK_STR(algorithm, "swing_send_remap_over", allgather_swing_send_remap);
-  CHECK_STR(algorithm, "swing_2_blocks_over", allgather_swing_2_blocks);
-  CHECK_STR(algorithm, "swing_2_blocks_dtype_over", allgather_swing_2_blocks_dtype);
+  CHECK_STR(algorithm, "bine_block_by_block_over_any_even", allgather_bine_block_by_block_any_even);
+  CHECK_STR(algorithm, "bine_block_by_block_over", allgather_bine_block_by_block);
+  CHECK_STR(algorithm, "bine_permute_static_over", allgather_bine_permute_static);
+  CHECK_STR(algorithm, "bine_send_static_over", allgather_bine_send_static);
+  CHECK_STR(algorithm, "bine_permute_remap_over", allgather_bine_permute_remap);
+  CHECK_STR(algorithm, "bine_send_remap_over", allgather_bine_send_remap);
+  CHECK_STR(algorithm, "bine_2_blocks_over", allgather_bine_2_blocks);
+  CHECK_STR(algorithm, "bine_2_blocks_dtype_over", allgather_bine_2_blocks_dtype);
 
   BENCH_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
@@ -144,7 +144,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
 * defauls to the internal alltoall function.
 */
 static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
-  CHECK_STR(algorithm, "swing_over", alltoall_swing);
+  CHECK_STR(algorithm, "bine_over", alltoall_bine);
 
   BENCH_DEBUG_PRINT_STR("MPI_Alltoall");
   return alltoall_wrapper;
@@ -160,13 +160,13 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
 */
 static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
   CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
-  CHECK_STR(algorithm, "swing_lat_over", bcast_swing_lat);
-  CHECK_STR(algorithm, "swing_lat_reversed_over", bcast_swing_lat_reversed);
-  CHECK_STR(algorithm, "swing_lat_new_over", bcast_swing_lat_new);
-  CHECK_STR(algorithm, "swing_lat_i_new_over", bcast_swing_lat_i_new);
-  CHECK_STR(algorithm, "swing_bdw_static_over", bcast_swing_bdw_static);
-  // CHECK_STR(algorithm, "swing_bdw_static_reversed_over", bcast_swing_bdw_static_reversed);
-  CHECK_STR(algorithm, "swing_bdw_remap_over", bcast_swing_bdw_remap);
+  CHECK_STR(algorithm, "bine_lat_over", bcast_bine_lat);
+  CHECK_STR(algorithm, "bine_lat_reversed_over", bcast_bine_lat_reversed);
+  CHECK_STR(algorithm, "bine_lat_new_over", bcast_bine_lat_new);
+  CHECK_STR(algorithm, "bine_lat_i_new_over", bcast_bine_lat_i_new);
+  CHECK_STR(algorithm, "bine_bdw_static_over", bcast_bine_bdw_static);
+  // CHECK_STR(algorithm, "bine_bdw_static_reversed_over", bcast_bine_bdw_static_reversed);
+  CHECK_STR(algorithm, "bine_bdw_remap_over", bcast_bine_bdw_remap);
 
   BENCH_DEBUG_PRINT_STR("MPI_Bcast");
   return bcast_wrapper;
@@ -182,7 +182,7 @@ static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
 * defauls to the internal gather function.
 */
 static inline gather_func_ptr get_gather_function(const char *algorithm) {
-  CHECK_STR(algorithm, "swing_over", gather_swing);
+  CHECK_STR(algorithm, "bine_over", gather_bine);
 
   BENCH_DEBUG_PRINT_STR("MPI_Gather");
   return gather_wrapper;
@@ -198,8 +198,8 @@ static inline gather_func_ptr get_gather_function(const char *algorithm) {
 * defauls to the internal reduce function.
 */
 static inline reduce_func_ptr get_reduce_function(const char *algorithm) {
-  CHECK_STR(algorithm, "swing_lat_over", reduce_swing_lat);
-  CHECK_STR(algorithm, "swing_bdw_over", reduce_swing_bdw);
+  CHECK_STR(algorithm, "bine_lat_over", reduce_bine_lat);
+  CHECK_STR(algorithm, "bine_bdw_over", reduce_bine_bdw);
 
   BENCH_DEBUG_PRINT_STR("MPI_Reduce");
   return reduce_wrapper;
@@ -218,11 +218,11 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "recursive_distance_doubling_over", reduce_scatter_recursive_distance_doubling);
   CHECK_STR(algorithm, "ring_over", reduce_scatter_ring);
   CHECK_STR(algorithm, "butterfly_over", reduce_scatter_butterfly);
-  CHECK_STR(algorithm, "swing_static_over", reduce_scatter_swing_static);
-  CHECK_STR(algorithm, "swing_send_remap_over", reduce_scatter_swing_send_remap);
-  CHECK_STR(algorithm, "swing_permute_remap_over", reduce_scatter_swing_permute_remap);  
-  CHECK_STR(algorithm, "swing_block_by_block_over", reduce_scatter_swing_block_by_block);
-  CHECK_STR(algorithm, "swing_block_by_block_any_even", reduce_scatter_swing_block_by_block_any_even);
+  CHECK_STR(algorithm, "bine_static_over", reduce_scatter_bine_static);
+  CHECK_STR(algorithm, "bine_send_remap_over", reduce_scatter_bine_send_remap);
+  CHECK_STR(algorithm, "bine_permute_remap_over", reduce_scatter_bine_permute_remap);  
+  CHECK_STR(algorithm, "bine_block_by_block_over", reduce_scatter_bine_block_by_block);
+  CHECK_STR(algorithm, "bine_block_by_block_any_even", reduce_scatter_bine_block_by_block_any_even);
 
   BENCH_DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;
@@ -237,7 +237,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
 * defauls to the internal scatter function.
 */
 static inline scatter_func_ptr get_scatter_function (const char *algorithm){
-  CHECK_STR(algorithm, "swing_over", scatter_swing);
+  CHECK_STR(algorithm, "bine_over", scatter_bine);
 
   BENCH_DEBUG_PRINT_STR("MPI_Scatter");
   return scatter_wrapper;
@@ -309,10 +309,10 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
     if(segsize == NULL) {
       return -1;
     }
-    swing_allreduce_segsize = (size_t) strtoll(segsize, NULL, 10);
+    bine_allreduce_segsize = (size_t) strtoll(segsize, NULL, 10);
   }
 
-  test_routine->segsize = swing_allreduce_segsize;
+  test_routine->segsize = bine_allreduce_segsize;
 
   return 0;
 }
@@ -320,9 +320,9 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
   // if(rank == 0){
   //   char data_filename[128], data_fullpath[BENCH_MAX_PATH_LENGTH];
-  //   if(swing_allreduce_segsize != 0){
+  //   if(bine_allreduce_segsize != 0){
   //     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%ld_%s.csv",
-  //              count, algorithm, swing_allreduce_segsize, type_string);
+  //              count, algorithm, bine_allreduce_segsize, type_string);
   //   } else {
   //     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%s.csv",
   //              count, algorithm, type_string);

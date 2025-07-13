@@ -3,12 +3,12 @@
 #include <stdio.h>
 #include <limits.h>
 
-#include "libswing.h"
-#include "libswing_utils.h"
+#include "libbine.h"
+#include "libbine_utils.h"
 
-#define SWING_MIN(a, b) ((a) < (b) ? (a) : (b))
+#define BINE_MIN(a, b) ((a) < (b) ? (a) : (b))
 
-int reduce_swing_lat(const void *sendbuf, void *recvbuf, size_t count,
+int reduce_bine_lat(const void *sendbuf, void *recvbuf, size_t count,
                      MPI_Datatype dt, MPI_Op op, int root, MPI_Comm comm)
 {
   int size, rank, dtsize, vrank, mask, err = MPI_SUCCESS;
@@ -75,7 +75,7 @@ err_hndl:
 }
 
 
-int reduce_swing_bdw(const void *sendbuf, void *recvbuf, size_t count,
+int reduce_bine_bdw(const void *sendbuf, void *recvbuf, size_t count,
                      MPI_Datatype dt, MPI_Op op, int root, MPI_Comm comm)
 {
   assert(root == 0); // TODO: Generalize
@@ -134,7 +134,7 @@ int reduce_swing_bdw(const void *sendbuf, void *recvbuf, size_t count,
     int send_block_last = send_block_first + inverse_mask - 1;
     sindex[step] = count_per_rank * send_block_first + (send_block_first < rem ? send_block_first : rem);
     scount[step] = count_per_rank * (send_block_last - send_block_first + 1)
-                   + (SWING_MIN(send_block_last, rem) - SWING_MIN(send_block_first, rem))
+                   + (BINE_MIN(send_block_last, rem) - BINE_MIN(send_block_first, rem))
                    + (send_block_last < rem ? 1 : 0);
 
     // Compute recv block boundaries inline
@@ -142,7 +142,7 @@ int reduce_swing_bdw(const void *sendbuf, void *recvbuf, size_t count,
     int recv_block_last = recv_block_first + inverse_mask - 1;
     rindex[step] = count_per_rank * recv_block_first + (recv_block_first < rem ? recv_block_first : rem);
     rcount[step] = count_per_rank * (recv_block_last - recv_block_first + 1)
-                  + (SWING_MIN(recv_block_last, rem) - SWING_MIN(recv_block_first, rem))
+                  + (BINE_MIN(recv_block_last, rem) - BINE_MIN(recv_block_first, rem))
                   + (recv_block_last < rem ? 1 : 0);
 
     err = MPI_Sendrecv(resbuf + sindex[step] * dtsize, scount[step], dt, partner, step,

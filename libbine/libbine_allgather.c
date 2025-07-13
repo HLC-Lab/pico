@@ -4,9 +4,9 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include "libswing.h"
-#include "libswing_utils.h"
-#include "libswing_utils_bitmaps.h"
+#include "libbine.h"
+#include "libbine_utils.h"
+#include "libbine_utils_bitmaps.h"
 
 
 
@@ -25,7 +25,7 @@ int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sd
    * Current implementation only handles power-of-two number of processes.
    */
   if(!is_power_of_two(size)) {
-    SWING_DEBUG_PRINT("ERROR! Recoursive doubling allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! Recoursive doubling allgather works only with po2 ranks!");
     goto err_hndl;
   }
 
@@ -75,7 +75,7 @@ int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sd
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
@@ -106,8 +106,8 @@ int allgather_k_bruck(const void *sbuf, size_t scount, MPI_Datatype sdtype,
     rsize = datatype_span(rdtype, (size_t)rcount * (size - rank), &rgap);
     
 #ifdef CUDA_AWARE
-    SWING_CUDA_CHECK(cudaMalloc((void**)&tmp_buf, rsize));
-    SWING_CUDA_CHECK(cudaMemset(tmp_buf, 0, rsize));
+    BINE_CUDA_CHECK(cudaMalloc((void**)&tmp_buf, rsize));
+    BINE_CUDA_CHECK(cudaMemset(tmp_buf, 0, rsize));
 #else
     tmp_buf = (char *) malloc(rsize);
 #endif
@@ -195,7 +195,7 @@ err_hndl:
   if( NULL != reqs ) {
     cleanup_reqs(&req_manager);
   }
-  SWING_DEBUG_PRINT( "\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  BINE_DEBUG_PRINT( "\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
   if(tmp_buf != NULL) {
     free(tmp_buf);
     tmp_buf = NULL;
@@ -260,7 +260,7 @@ int allgather_ring(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
   (void)line;  // silence compiler warning
   return err;
 }
@@ -397,12 +397,12 @@ int allgather_sparbit(const void *sbuf, size_t scount, MPI_Datatype sdtype, void
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
   (void)line;  // silence compiler warning
   return err;
 }
 
-int allgather_swing_block_by_block(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
   int *s_bitmap = NULL, *r_bitmap = NULL;
@@ -415,7 +415,7 @@ int allgather_swing_block_by_block(const void *sbuf, size_t scount, MPI_Datatype
 
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
 
@@ -475,7 +475,7 @@ int allgather_swing_block_by_block(const void *sbuf, size_t scount, MPI_Datatype
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
   (void)line;  // silence compiler warning
   if(requests != NULL) free(requests);
   if(s_bitmap != NULL) free(s_bitmap);
@@ -484,7 +484,7 @@ err_hndl:
 }
 
 
-int allgather_swing_block_by_block_any_even(const void *sendbuf, size_t sendcount, MPI_Datatype sendtype,
+int allgather_bine_block_by_block_any_even(const void *sendbuf, size_t sendcount, MPI_Datatype sendtype,
                                             void* recvbuf, size_t recvcount, MPI_Datatype recvtype, MPI_Comm comm)
 {
   assert(sendcount == recvcount); // TODO: Implement the case where sendcount != recvcount
@@ -555,7 +555,7 @@ err_hndl:
   return err;
 }
 
-int allgather_swing_permute_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_bine_permute_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
@@ -572,7 +572,7 @@ int allgather_swing_permute_static(const void *sbuf, size_t scount, MPI_Datatype
    */
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
   
@@ -628,13 +628,13 @@ int allgather_swing_permute_static(const void *sbuf, size_t scount, MPI_Datatype
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
 
 
-int allgather_swing_send_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_bine_send_static(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                                 void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
@@ -652,7 +652,7 @@ int allgather_swing_send_static(const void *sbuf, size_t scount, MPI_Datatype sd
    */
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
   
@@ -711,13 +711,13 @@ int allgather_swing_send_static(const void *sbuf, size_t scount, MPI_Datatype sd
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
 
 
-int allgather_swing_permute_remap(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_bine_permute_remap(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS;
@@ -734,7 +734,7 @@ int allgather_swing_permute_remap(const void *sbuf, size_t scount, MPI_Datatype 
    */
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
   
@@ -797,13 +797,13 @@ int allgather_swing_permute_remap(const void *sbuf, size_t scount, MPI_Datatype 
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
 
 
-int allgather_swing_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_bine_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS;
@@ -819,7 +819,7 @@ int allgather_swing_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdt
    */
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
 
@@ -878,13 +878,13 @@ int allgather_swing_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdt
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
 
 
-int allgather_swing_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
@@ -901,7 +901,7 @@ int allgather_swing_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtyp
    */
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
 
@@ -985,13 +985,13 @@ int allgather_swing_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtyp
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
 
 
-int allgather_swing_2_blocks_dtype(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+int allgather_bine_2_blocks_dtype(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
@@ -1008,7 +1008,7 @@ int allgather_swing_2_blocks_dtype(const void *sbuf, size_t scount, MPI_Datatype
    */
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
-    SWING_DEBUG_PRINT("ERROR! Swing static allgather works only with po2 ranks!");
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
 
@@ -1108,7 +1108,7 @@ int allgather_swing_2_blocks_dtype(const void *sbuf, size_t scount, MPI_Datatype
   return MPI_SUCCESS;
 
 err_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   return err;
 }
@@ -1127,8 +1127,8 @@ err_hndl:
 //
 //   char* tmp_buffer;
 // #ifdef CUDA_AWARE
-//   SWING_CUDA_CHECK(cudaMalloc((void**)&tmp_buffer, block_size * num_blocks));
-//   SWING_CUDA_CHECK(cudaMemset(tmp_buffer, 0, block_size * num_blocks));
+//   BINE_CUDA_CHECK(cudaMalloc((void**)&tmp_buffer, block_size * num_blocks));
+//   BINE_CUDA_CHECK(cudaMemset(tmp_buffer, 0, block_size * num_blocks));
 // #else
 //   tmp_buffer = (char*) malloc(block_size * num_blocks);
 // #endif
@@ -1149,7 +1149,7 @@ err_hndl:
 //
 // // AUXILIARY FUNCTION USED TO FIND PERMUTATIONS
 //
-// int allgather_swing_find_permutation(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
+// int allgather_bine_find_permutation(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
 //   void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm) {
 //
 //   int rank, size, step, steps, send_rank, recv_rank;
@@ -1190,7 +1190,7 @@ err_hndl:
 //
 // // ALLGATHER IMPLEMENTATION USING PERMUTATION PRECOMPUTED
 //
-// int allgather_swing_permute_require(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
+// int allgather_bine_permute_require(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
 //   void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm, int* permutation) {
 //
 //   int rank, size, step, steps, send_rank, recv_rank;

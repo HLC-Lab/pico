@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <limits.h>
 
-#include "libswing.h"
-#include "libswing_utils.h"
-#include "libswing_utils_bitmaps.h"
+#include "libbine.h"
+#include "libbine_utils.h"
+#include "libbine_utils_bitmaps.h"
 
 /*
  * NOTE: Taken from Open MPI base module and rewritten using MPI API for benchmarking
@@ -51,7 +51,7 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
 
   if(count < (size_t)comm_size) {
     if(rank == 0) {
-      SWING_DEBUG_PRINT("Error: count < comm_size");
+      BINE_DEBUG_PRINT("Error: count < comm_size");
     }
     return MPI_ERR_COUNT;
   }
@@ -175,17 +175,17 @@ cleanup_and_return:
 }
 
 /*
- * @brief bcast_swing_lat: broadcast buf from root to all processes using 
- * a binomial tree communication pattern with swing `pi` peer selection.
+ * @brief bcast_bine_lat: broadcast buf from root to all processes using 
+ * a binomial tree communication pattern with bine `pi` peer selection.
  *
  * For now only works with comm_sz = 2^k and root = 0, but logic will be
  * extended to work with any root.
  */
-int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+int bcast_bine_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
   int size, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
   char *received = NULL;
-  MPI_Request requests[SWING_MAX_STEPS];
+  MPI_Request requests[BINE_MAX_STEPS];
   int request_count = 0;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
@@ -266,18 +266,18 @@ int bcast_swing_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_C
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   if(NULL!= received)     free(received);
 
   return err;
 }
 
-int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+int bcast_bine_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
   int size, rank, steps, recv_step = -1, line, err = MPI_SUCCESS;
   char *received = NULL;
-  MPI_Request requests[SWING_MAX_STEPS];
+  MPI_Request requests[BINE_MAX_STEPS];
   int request_count = 0;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
@@ -358,14 +358,14 @@ int bcast_swing_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int ro
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
   if(NULL!= received)     free(received);
 
   return err;
 }
 
-int bcast_swing_lat_new(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+int bcast_bine_lat_new(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS, btnb_vrank;
   int vrank, mask, recvd;
@@ -400,7 +400,7 @@ int bcast_swing_lat_new(void *buf, size_t count, MPI_Datatype dtype, int root, M
   return MPI_SUCCESS;
 }
 
-int bcast_swing_lat_i_new(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+int bcast_bine_lat_i_new(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS, btnb_vrank;
   int vrank, mask, recvd, req_count = 0, steps;
@@ -447,14 +447,14 @@ err_hndl:
 }
 
  /*
- * @brief bcast_swing_bdw_static: it's composed by a scatter and allgather phases.
- * Both phases utilizes swing communication pattern. The scatter phase is done using
+ * @brief bcast_bine_bdw_static: it's composed by a scatter and allgather phases.
+ * Both phases utilizes bine communication pattern. The scatter phase is done using
  * a binomial tree scatter and the allgather phase is done using a recursive doubling.
  *
  * For now only works with size = 2^k,<=256, root = 0, and count <= comm_sz.
  * Logic will be extended to work with any root.
  */
-int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
+int bcast_bine_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm)
 {
   int size, rank, step, steps, recv_step = -1;
   int dtype_size, line, err = MPI_SUCCESS;
@@ -463,7 +463,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
   ptrdiff_t r_offset = 0, s_offset = 0, lb, extent;
   const int *s_bitmap, *r_bitmap;
   char *received = NULL;
-  MPI_Request requests[SWING_MAX_STEPS]; // Array to store all request handles
+  MPI_Request requests[BINE_MAX_STEPS]; // Array to store all request handles
   int request_count = 0;           // Count of active requests
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
@@ -529,7 +529,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
                                big_blocks, small_blocks);
 
   
-  // Gets rearranged contiguous bitmaps from "libswing_utils_bitmaps.c"
+  // Gets rearranged contiguous bitmaps from "libbine_utils_bitmaps.c"
   if(get_static_bitmap(&s_bitmap, &r_bitmap, steps, size, rank) == -1){
     line = __LINE__;
     err = MPI_ERR_UNKNOWN;
@@ -633,7 +633,7 @@ int bcast_swing_bdw_static(void *buf, size_t count, MPI_Datatype dtype, int root
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void) line; // silence compiler warning
   if(NULL!= received)     free(received);
 
@@ -641,7 +641,7 @@ cleanup_and_return:
 }
 
 
-int bcast_swing_bdw_remap(void *buffer, size_t count, MPI_Datatype dt, int root, MPI_Comm comm){
+int bcast_bine_bdw_remap(void *buffer, size_t count, MPI_Datatype dt, int root, MPI_Comm comm){
   assert(root == 0); // TODO: Generalize
   int size, rank, dtsize, err = MPI_SUCCESS;
   MPI_Comm_size(comm, &size);
@@ -758,7 +758,7 @@ err_hndl:
 
 // NOTE: Not fully implemented
 //
-// int bcast_swing_bdw_static_reversed(void *buf, size_t count, MPI_Datatype dtype,
+// int bcast_bine_bdw_static_reversed(void *buf, size_t count, MPI_Datatype dtype,
 //                                     int root, MPI_Comm comm)
 // {
 //   int size, rank, vrank, dest, pos, inv_pos;
@@ -767,7 +767,7 @@ err_hndl:
 //   int *tree = NULL, *inv_tree = NULL;
 //   int request_count = 0;
 //   ptrdiff_t lb, extent;
-//   MPI_Request requests[SWING_MAX_STEPS];
+//   MPI_Request requests[BINE_MAX_STEPS];
 //   MPI_Comm_size(comm, &size);
 //   MPI_Comm_rank(comm, &rank);
 //
@@ -862,7 +862,7 @@ err_hndl:
 //   return MPI_SUCCESS;
 //
 // cleanup_and_return:
-//   SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+//   BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
 //   (void) line; // silence compiler warning
 //   if(NULL!= tree)     free(tree);
 //   if(NULL!= inv_tree) free(inv_tree);

@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <limits.h>
 
-#include "libswing.h"
-#include "libswing_utils.h"
+#include "libbine.h"
+#include "libbine_utils.h"
 
-int scatter_swing(const void *sendbuf, size_t sendcount, MPI_Datatype dt,
+int scatter_bine(const void *sendbuf, size_t sendcount, MPI_Datatype dt,
                   void *recvbuf, size_t recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm)
 {
   assert(sendcount == recvcount); // TODO: Implement the case where sendcount != recvcount

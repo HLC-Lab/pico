@@ -42,7 +42,7 @@
       ],
       "total_steps": "log(p, 2)"
     },
-    "swing_latency": {
+    "bine_latency": {
       "parameters": {
         "num_ranks": "p",
         "buffer_size": "n",
@@ -52,7 +52,7 @@
       },
       "phases": [
         {
-          "desc": "recursive_doubling_swing",
+          "desc": "recursive_doubling_bine",
           "steps": "log(p, 2)",
           "send_to": "fi(r, s, p)",
           "message_size": "n"
@@ -84,7 +84,7 @@
       ],
       "total_steps": "2 * log(p, 2)"
     },
-    "swing_bandwidth": {
+    "bine_bandwidth": {
       "parameters": {
         "num_ranks": "p",
         "buffer_size": "n",
@@ -127,7 +127,7 @@
       ],
       "total_steps": "log(p, 2)"
     },
-    "swing": {
+    "bine": {
       "parameters": {
         "num_ranks": "p",
         "buffer_size": "n",
@@ -182,7 +182,7 @@
       ],
       "total_steps": "log(p, 2)"
     },
-    "swing_doubling": {
+    "bine_doubling": {
       "parameters": {
         "num_ranks": "p",
         "buffer_size": "n",
@@ -218,7 +218,7 @@
       ],
       "total_steps": "log(p, 2)"
     },
-    "swing_halving": {
+    "bine_halving": {
       "parameters": {
         "num_ranks": "p",
         "buffer_size": "n",
@@ -274,7 +274,7 @@
       ],
       "total_steps": "log(p, 2)"
     },
-    "swing_doubling": {
+    "bine_doubling": {
       "parameters": {
         "num_ranks": "p",
         "buffer_size": "n",
@@ -310,7 +310,7 @@
       ],
       "total_steps": "log(p, 2)"
     },
-    "swing_halving": {
+    "bine_halving": {
       "parameters": {
         "num_ranks": "p",
         "buffer_size": "n",

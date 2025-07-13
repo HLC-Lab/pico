@@ -11,7 +11,7 @@ require_cvars = [ "mpich", "cray_mpich"]
 test_config_schema = {
     "type": "object",
     "properties": {
-        "libswing_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "libbine_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
         "collective": {"type": "string", "enum": ["ALLREDUCE", "ALLTOALL", "ALLGATHER", "BCAST", "GATHER", "REDUCE", "REDUCE_SCATTER", "SCATTER"]},
         "MPI_Op": {"type": "string"},
         "tags": {
@@ -33,7 +33,7 @@ test_config_schema = {
             "additionalProperties": False
         }
     },
-    "required": ["libswing_version", "collective", "MPI_Op", "tags", "specific"],
+    "required": ["libbine_version", "collective", "MPI_Op", "tags", "specific"],
     "additionalProperties": False
 }
 
@@ -87,7 +87,7 @@ def check_skip(algo_constraints) -> bool:
 
 
 
-def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version) -> bool:
+def check_library_dependencies(algo_data, mpi_type, mpi_version, libbine_version) -> bool:
     """
     Check if the algorithm's library dependencies are met.
 
@@ -100,7 +100,7 @@ def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_versio
 
     library_dependencies = algo_data["library"]
 
-    if "libswing" in library_dependencies and version.parse(library_dependencies["libswing"]) <= version.parse(libswing_version):
+    if "libbine" in library_dependencies and version.parse(library_dependencies["libbine"]) <= version.parse(libbine_version):
         return True
 
     if mpi_type.lower() in library_dependencies and version.parse(library_dependencies[mpi_type.lower()]) <= version.parse(mpi_version):
@@ -113,7 +113,7 @@ def check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_versio
 def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_type: str, mpi_version: str, cuda: str):
     """Get algorithms that match the test configuration."""
     collective = test_config["collective"]
-    libswing_version = test_config["libswing_version"]
+    libbine_version = test_config["libbine_version"]
     include_tags = test_config["tags"]["include"]
     exclude_tags = test_config["tags"]["exclude"]
     include_specific = test_config["specific"]["include"]
@@ -131,7 +131,7 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
 
     for algo_name, algo_data in algorithm_config["collective"][collective].items():
         # Check if the algorithm satisfies the library dependencies and comm_sz constraints.
-        if not check_library_dependencies(algo_data, mpi_type, mpi_version, libswing_version):
+        if not check_library_dependencies(algo_data, mpi_type, mpi_version, libbine_version):
             continue
         if "constraints" in algo_data and not check_comm_sz(algo_data["constraints"], comm_sz):
             continue
@@ -191,7 +191,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, is_segmen
         mpi_op = test_config["MPI_Op"]
     else:
         mpi_op = "null"
-    libswing_version = test_config.get("libswing_version", "")
+    libbine_version = test_config.get("libbine_version", "")
     algo_names = " ".join(matching_algorithms)
     skip_names = " ".join(skip_algorithms)
     segmented = " ".join(is_segmented)
@@ -203,7 +203,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, is_segmen
             f.write(f"export COLLECTIVE_TYPE='{collective}'\n")
             f.write(f"export ALGOS='{algo_names}'\n")
             f.write(f"export SKIP='{skip_names}'\n")
-            f.write(f"export LIBSWING_VERSION='{libswing_version}'\n")
+            f.write(f"export LIBbine_VERSION='{libbine_version}'\n")
             f.write(f"export MPI_OP='{mpi_op}'\n")
             f.write(f"export IS_SEGMENTED=({segmented})\n")
             if cvars_str:

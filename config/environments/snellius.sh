@@ -1,5 +1,5 @@
 # Variables always needed
-export SWINGCC=mpicc
+export BINECC=mpicc
 export RUN=srun
 export RUNFLAGS=--mpi=pmix
 
@@ -13,8 +13,8 @@ if [[ "$PARTITION" == "rome" ]]; then
     export PARTITION_CPUS_PER_NODE=32
 fi
 
-export MPI_LIB="OMPI_SWING"
-if [ "$MPI_LIB" == "OMPI_SWING" ]; then
+export MPI_LIB="OMPI_BINE"
+if [ "$MPI_LIB" == "OMPI_BINE" ]; then
     export PATH=$HOME/bin:$PATH
     export LD_LIBRARY_PATH=$HOME/lib:$LD_LIBRARY_PATH
     export MANPATH=$HOME/share/man:$MANPATH

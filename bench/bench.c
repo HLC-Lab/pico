@@ -5,7 +5,7 @@
 #include <inttypes.h>
 
 #include "bench_utils.h"
-#include "libswing.h"
+#include "libbine.h"
 
 int main(int argc, char *argv[]) {
   MPI_Init(NULL, NULL);
@@ -131,13 +131,13 @@ int main(int argc, char *argv[]) {
     PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
   } else {
     // Use custom reduce since you can have iter < comm_sz (it can crash for rabenseifner type reduce)
-    reduce_swing_lat(times, highest, (size_t) iter, MPI_DOUBLE, MPI_MAX, 0, comm);
+    reduce_bine_lat(times, highest, (size_t) iter, MPI_DOUBLE, MPI_MAX, 0, comm);
   }
 
   if (rank == 0) {
-    if (swing_allreduce_segsize != 0) {
+    if (bine_allreduce_segsize != 0) {
       printf("-------------------------------------------------------------------------------------------------------------------\n");
-      printf("   %-30s\n    Last Iter Time: %15" PRId64"ns     %10ld elements of %s dtype\t%6d iter\t%8ld segsize\n", algorithm, (int64_t) (highest[iter-1] * 1e9), count, type_string, iter, swing_allreduce_segsize);
+      printf("   %-30s\n    Last Iter Time: %15" PRId64"ns     %10ld elements of %s dtype\t%6d iter\t%8ld segsize\n", algorithm, (int64_t) (highest[iter-1] * 1e9), count, type_string, iter, bine_allreduce_segsize);
     } else {
       printf("-----------------------------------------------------------------------------------------------\n");
       printf("   %-30s\n    Last Iter Time: %15" PRId64"ns     %10ld elements of %s dtype\t%6d iter\n", algorithm, (int64_t) (highest[iter-1] * 1e9), count, type_string, iter);

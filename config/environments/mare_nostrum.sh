@@ -1,5 +1,5 @@
 # Variables always needed
-export SWINGCC=mpicc
+export BINECC=mpicc
 export RUN=srun
 
 # Account/partition specific variables

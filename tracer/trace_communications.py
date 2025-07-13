@@ -242,7 +242,7 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
 
     return final_count
 
-def tree_coll_lat(rank_to_cell, swing: bool, doubling: bool):
+def tree_coll_lat(rank_to_cell, bine: bool, doubling: bool):
     comm_sz = len(rank_to_cell)
     steps = int(log(comm_sz, 2))
     external_bytes, internal_bytes = 0, 0
@@ -255,7 +255,7 @@ def tree_coll_lat(rank_to_cell, swing: bool, doubling: bool):
         recvd = recvd2.copy()
         for rank in range(comm_sz):
             if recvd[rank] == 1:
-                if swing:
+                if bine:
                     if doubling:
                         send_to = fi(rank, step, comm_sz)
                     else:
@@ -275,7 +275,7 @@ def tree_coll_lat(rank_to_cell, swing: bool, doubling: bool):
 
     return internal_bytes, external_bytes
 
-def create_recv_step_array(rank_to_cell, swing : bool, first_halving : bool):
+def create_recv_step_array(rank_to_cell, bine : bool, first_halving : bool):
     comm_sz = len(rank_to_cell)
     steps = int(log(comm_sz, 2))
     recvd = [0] * comm_sz
@@ -295,7 +295,7 @@ def create_recv_step_array(rank_to_cell, swing : bool, first_halving : bool):
         for rank in range(comm_sz):
             if recvd[rank] != 1:
                 continue
-            if swing:
+            if bine:
                 if first_halving:
                     send_to = fi(rank, steps - step - 1, comm_sz)
                 else:
@@ -312,18 +312,18 @@ def create_recv_step_array(rank_to_cell, swing : bool, first_halving : bool):
 
     return recv_step
 
-def coll_bdw(rank_to_cell, swing : bool, first_halving: bool, reduce: bool):
+def coll_bdw(rank_to_cell, bine : bool, first_halving: bool, reduce: bool):
     comm_sz = len(rank_to_cell)
     steps = int(log(comm_sz, 2))
     external_bytes, internal_bytes = 0, 0
-    recv_step = create_recv_step_array(rank_to_cell, swing, first_halving)
+    recv_step = create_recv_step_array(rank_to_cell, bine, first_halving)
 
     # Scatter Phase
     for step in range(steps):
         message_size = 1 / (2 ** (step + 1))
         for rank in range(comm_sz):
             if recv_step[rank] == step:
-                if swing:
+                if bine:
                     if first_halving:
                         recv_from = fi(rank, steps - step - 1, comm_sz)
                     else:
@@ -346,7 +346,7 @@ def coll_bdw(rank_to_cell, swing : bool, first_halving: bool, reduce: bool):
             if recv_step[rank] == steps - step - 1 and not reduce:
                 continue
 
-            if swing:
+            if bine:
                 if first_halving:
                     send_to = fi(rank, step, comm_sz)
                 else:
@@ -364,7 +364,7 @@ def coll_bdw(rank_to_cell, swing : bool, first_halving: bool, reduce: bool):
 
     return internal_bytes, external_bytes
 
-def scatter(rank_to_cell, swing : bool, doubling: bool):
+def scatter(rank_to_cell, bine : bool, doubling: bool):
     comm_sz = len(rank_to_cell)
     steps = int(log(comm_sz, 2))
     external_bytes, internal_bytes = 0, 0
@@ -380,7 +380,7 @@ def scatter(rank_to_cell, swing : bool, doubling: bool):
 
         for rank in range(comm_sz):
             if recvd[rank] == 1:
-                if swing:
+                if bine:
                     if doubling:
                         send_to = fi(rank, step, comm_sz)
                     else:
@@ -477,32 +477,32 @@ def main():
     for coll in collectives:
         if coll == "BCAST":
             count = {
-                "binomial_doubling": tree_coll_lat(rank_to_cell, swing=False, doubling=True),
-                "binomial_halving": tree_coll_lat(rank_to_cell, swing=False, doubling=False),
-                "swing_doubling": tree_coll_lat(rank_to_cell, swing=True, doubling=True),
-                "swing_halving": tree_coll_lat(rank_to_cell, swing=True, doubling=False),
-                "swing_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=True, first_halving=False, reduce=False),
-                "swing_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=True, first_halving=True, reduce=False),
-                "binomial_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=False, first_halving=False, reduce=False),
-                "binomial_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=False, first_halving=True, reduce=False)
+                "binomial_doubling": tree_coll_lat(rank_to_cell, bine=False, doubling=True),
+                "binomial_halving": tree_coll_lat(rank_to_cell, bine=False, doubling=False),
+                "bine_doubling": tree_coll_lat(rank_to_cell, bine=True, doubling=True),
+                "bine_halving": tree_coll_lat(rank_to_cell, bine=True, doubling=False),
+                "bine_bdw_doubling_halving": coll_bdw(rank_to_cell, bine=True, first_halving=False, reduce=False),
+                "bine_bdw_halving_doubling": coll_bdw(rank_to_cell, bine=True, first_halving=True, reduce=False),
+                "binomial_bdw_doubling_halving": coll_bdw(rank_to_cell, bine=False, first_halving=False, reduce=False),
+                "binomial_bdw_halving_doubling": coll_bdw(rank_to_cell, bine=False, first_halving=True, reduce=False)
             }
         elif coll == "REDUCE":
             count = {
-                "binomial_doubling": tree_coll_lat(rank_to_cell, swing=False, doubling=True),
-                "binomial_halving": tree_coll_lat(rank_to_cell, swing=False, doubling=False),
-                "swing_doubling": tree_coll_lat(rank_to_cell, swing=True, doubling=True),
-                "swing_halving": tree_coll_lat(rank_to_cell, swing=True, doubling=False),
-                "swing_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=True, first_halving=False, reduce=True),
-                "swing_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=True, first_halving=True, reduce=True),
-                "binomial_bdw_halving_doubling": coll_bdw(rank_to_cell, swing=False, first_halving=False, reduce=True),
-                "binomial_bdw_doubling_halving": coll_bdw(rank_to_cell, swing=False, first_halving=True, reduce=True)
+                "binomial_doubling": tree_coll_lat(rank_to_cell, bine=False, doubling=True),
+                "binomial_halving": tree_coll_lat(rank_to_cell, bine=False, doubling=False),
+                "bine_doubling": tree_coll_lat(rank_to_cell, bine=True, doubling=True),
+                "bine_halving": tree_coll_lat(rank_to_cell, bine=True, doubling=False),
+                "bine_bdw_halving_doubling": coll_bdw(rank_to_cell, bine=True, first_halving=False, reduce=True),
+                "bine_bdw_doubling_halving": coll_bdw(rank_to_cell, bine=True, first_halving=True, reduce=True),
+                "binomial_bdw_halving_doubling": coll_bdw(rank_to_cell, bine=False, first_halving=False, reduce=True),
+                "binomial_bdw_doubling_halving": coll_bdw(rank_to_cell, bine=False, first_halving=True, reduce=True)
             }
         elif coll == "SCATTER":
             count = {
-                "binomial_doubling": scatter(rank_to_cell, swing=False, doubling=True),
-                "binomial_halving": scatter(rank_to_cell, swing=False, doubling=False),
-                "swing_doubling": scatter(rank_to_cell, swing=True, doubling=True),
-                "swing_halving": scatter(rank_to_cell, swing=True, doubling=False)
+                "binomial_doubling": scatter(rank_to_cell, bine=False, doubling=True),
+                "binomial_halving": scatter(rank_to_cell, bine=False, doubling=False),
+                "bine_doubling": scatter(rank_to_cell, bine=True, doubling=True),
+                "bine_halving": scatter(rank_to_cell, bine=True, doubling=False)
             }
         else:
             coll_comm_pattern = load_communication_pattern(args.comm).get(coll, {})

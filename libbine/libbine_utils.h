@@ -1,7 +1,7 @@
-#ifndef LIBSWING_UTILS_H
-#define LIBSWING_UTILS_H
+#ifndef LIBBINE_UTILS_H
+#define LIBBINE_UTILS_H
 
-#define SWING_MAX_STEPS 20
+#define BINE_MAX_STEPS 20
 
 #ifdef CUDA_AWARE
 #include <cuda_runtime.h>
@@ -17,17 +17,17 @@
 #include <stddef.h>
 
 #ifdef DEBUG
-#define SWING_DEBUG_PRINT(fmt, ...) \
+#define BINE_DEBUG_PRINT(fmt, ...) \
   do { fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 #else
-#define SWING_DEBUG_PRINT(fmt, ...) \
+#define BINE_DEBUG_PRINT(fmt, ...) \
   do {} while (0)
 #endif
 #if defined(__GNUC__) || defined(__clang__)
 
-#define SWING_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define BINE_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
-#define SWING_UNLIKELY(x) (x)
+#define BINE_UNLIKELY(x) (x)
 #endif // defined(__GNUC__) || defined(__clang__)
 
 #ifdef CUDA_AWARE
@@ -36,12 +36,12 @@
 #define COPY_BUFF_DIFF_DT(...) copy_buffer_different_dt(__VA_ARGS__)
 #endif
 
-static int rhos[SWING_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
+static int rhos[BINE_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
 
-static int smallest_negabinary[SWING_MAX_STEPS] = {0, 0, -2, -2, -10, -10, -42, -42,
+static int smallest_negabinary[BINE_MAX_STEPS] = {0, 0, -2, -2, -10, -10, -42, -42,
           -170, -170, -682, -682, -2730, -2730, -10922, -10922, -43690, -43690, -174762, -174762};
-static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
+static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
           341, 341, 1365, 1365, 5461, 5461, 21845, 21845, 87381, 87381, 349525};
 
 /**
@@ -69,7 +69,7 @@ static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
 
 #ifdef CUDA_AWARE
 
-#define SWING_CUDA_CHECK(cmd) do {                         \
+#define BINE_CUDA_CHECK(cmd) do {                         \
   cudaError_t e = cmd;                              \
   if( e != cudaSuccess ) {                          \
     fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n",             \
@@ -82,7 +82,7 @@ static int largest_negabinary[SWING_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
 static inline int copy_buffer_different_dt_cuda(const void *input_buffer, size_t scount,
   const MPI_Datatype sdtype, void *output_buffer,
   size_t rcount, const MPI_Datatype rdtype) {
-  if(SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
+  if(BINE_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
   return MPI_ERR_UNKNOWN;
   }
 
@@ -95,11 +95,11 @@ static inline int copy_buffer_different_dt_cuda(const void *input_buffer, size_t
   size_t r_size = (size_t) rdtype_size * rcount;
 
   if(r_size < s_size) {
-    SWING_CUDA_CHECK(cudaMemcpy(output_buffer, input_buffer, r_size, cudaMemcpyDeviceToDevice));
+    BINE_CUDA_CHECK(cudaMemcpy(output_buffer, input_buffer, r_size, cudaMemcpyDeviceToDevice));
     return MPI_ERR_TRUNCATE;      // Indicate truncation
   }
 
-  SWING_CUDA_CHECK(cudaMemcpy(output_buffer, input_buffer, s_size, cudaMemcpyDeviceToDevice));   // Perform the memory copy
+  BINE_CUDA_CHECK(cudaMemcpy(output_buffer, input_buffer, s_size, cudaMemcpyDeviceToDevice));   // Perform the memory copy
 
   return MPI_SUCCESS;
 }
@@ -108,17 +108,17 @@ static inline int copy_buffer_different_dt_cuda(const void *input_buffer, size_t
 
 
 /**
- * @brief Computes the destination rank for a given process in a swing
+ * @brief Computes the destination rank for a given process in a bine
  * algorithm step.
  *
  * This function calculates the rank to which a process will communicate
- * based on the swing algorithm, ensuring the result is within the valid
+ * based on the bine algorithm, ensuring the result is within the valid
  * range of ranks.
  *
  * @param rank The rank of the current process.
- * @param step The current step in the swing algorithm.
+ * @param step The current step in the bine algorithm.
  * @param comm_sz The total number of processes in the communicator.
- * @return The destination rank after applying the swing algorithm, a
+ * @return The destination rank after applying the bine algorithm, a
  *         value in [0, comm_sz - 1].
  */
 static inline int pi(int rank, int step, int comm_sz) {
@@ -170,7 +170,7 @@ static inline void get_indexes(int rank, int step, const int n_steps, const int 
  */
 static inline int copy_buffer(const void *input_buffer, void *output_buffer,
                               size_t count, const MPI_Datatype datatype) {
-  if(SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || count <= 0)) {
+  if(BINE_UNLIKELY(input_buffer == NULL || output_buffer == NULL || count <= 0)) {
     return MPI_ERR_UNKNOWN;
   }
 
@@ -202,7 +202,7 @@ static inline int copy_buffer(const void *input_buffer, void *output_buffer,
 static inline int copy_buffer_different_dt (const void *input_buffer, size_t scount,
                                             const MPI_Datatype sdtype, void *output_buffer,
                                             size_t rcount, const MPI_Datatype rdtype) {
-  if(SWING_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
+  if(BINE_UNLIKELY(input_buffer == NULL || output_buffer == NULL || scount <= 0 || rcount <= 0)) {
     return MPI_ERR_UNKNOWN;
   }
 
@@ -272,7 +272,7 @@ static inline int is_power_of_two(int value) {
  * @returns The log_2 of value or -1 for negative value.
  */
 static inline int log_2(int value) {
-  if(SWING_UNLIKELY(1 > value)) {
+  if(BINE_UNLIKELY(1 > value)) {
     return -1;
   }
   int log = sizeof(int)*8 - 1 - __builtin_clz(value); 
@@ -292,7 +292,7 @@ static inline int log_2(int value) {
  */
 static inline int next_poweroftwo(int value)
 {
-  if(SWING_UNLIKELY(0 > value)) {
+  if(BINE_UNLIKELY(0 > value)) {
     return -1;
   }
 
@@ -432,7 +432,7 @@ static inline unsigned int mirror_perm(unsigned int x, int nbits)
  */
 static inline int reorder_blocks(void *buffer, size_t block_size,
                                   int *block_permutation, int num_blocks) {
-  if(SWING_UNLIKELY(buffer == NULL || block_permutation == NULL || num_blocks <= 0)) {
+  if(BINE_UNLIKELY(buffer == NULL || block_permutation == NULL || num_blocks <= 0)) {
     return MPI_ERR_ARG;
   }
 
@@ -502,7 +502,7 @@ static inline int rounddown(int num, int factor)
     return num * factor;    /* floor(num / factor) * factor */
 }
 static uint32_t binary_to_negabinary(int32_t bin) {
-    if(SWING_UNLIKELY(bin > 0x55555555)) return -1;
+    if(BINE_UNLIKELY(bin > 0x55555555)) return -1;
     const uint32_t mask = 0xAAAAAAAA;
     return (mask + bin) ^ mask;
 }
@@ -664,12 +664,12 @@ static inline uint32_t get_nu(uint32_t rank, uint32_t size){
 //
 //
 // typedef enum{
-//   LIBSWING_DOUBLING = 0,
-//   LIBSWING_HALVING
-// }swing_direction_t;
+//   LIBBINE_DOUBLING = 0,
+//   LIBBINE_HALVING
+// }bine_direction_t;
 //
 //
-// static inline int build_tree(int *tree, int root, int rank, int size, int *recv_step, swing_direction_t direction) {
+// static inline int build_tree(int *tree, int root, int rank, int size, int *recv_step, bine_direction_t direction) {
 //   int step, dest, idx = 0;
 //   int steps = log_2(size);
 //   char *received = NULL;
@@ -687,7 +687,7 @@ static inline uint32_t get_nu(uint32_t rank, uint32_t size){
 //     for (int proc = 0; proc < size; proc++) {
 //       if (!received[proc]) continue;
 //
-//       dest = (direction == LIBSWING_DOUBLING) ? pi(proc, step, size) : pi(proc, steps - step - 1, size);
+//       dest = (direction == LIBBINE_DOUBLING) ? pi(proc, step, size) : pi(proc, steps - step - 1, size);
 //       received[dest] = 1;
 //       tree[idx++] = dest;
 //       if (dest == rank) {
@@ -723,7 +723,7 @@ static inline uint32_t get_nu(uint32_t rank, uint32_t size){
 //   halv_tree[halv_idx++] = root;
 //
 //   for (step = 0; step < steps; step++) {
-//     // swing doubling tree
+//     // bine doubling tree
 //     for (int proc = 0; proc < size; proc++) {
 //       if (!received[proc]) continue;
 //
@@ -737,7 +737,7 @@ static inline uint32_t get_nu(uint32_t rank, uint32_t size){
 //         *pos = idx - 1;
 //       }
 //     }
-//     // swing halving tree
+//     // bine halving tree
 //     for (int proc = 0; proc < size; proc++) {
 //       if (!received_halv[proc]) continue;
 //
@@ -760,7 +760,7 @@ static inline uint32_t get_nu(uint32_t rank, uint32_t size){
 // }
 //
 //
-// static inline int libswing_indexed_datatype(MPI_Datatype *new_dtype, const int *bitmap, int adj_size, int w_size,
+// static inline int libbine_indexed_datatype(MPI_Datatype *new_dtype, const int *bitmap, int adj_size, int w_size,
 //                                              const size_t small_block_count, const int split_rank,
 //                                              MPI_Datatype old_dtype, int *block_len, int *disp){
 //   int index = 0, disp_counter = 0;
@@ -783,5 +783,5 @@ static inline uint32_t get_nu(uint32_t rank, uint32_t size){
 //   return MPI_SUCCESS;
 // }
 
-#endif // LIBSWING_UTILS_H
+#endif // LIBBINE_UTILS_H
 

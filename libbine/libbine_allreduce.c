@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <limits.h>
 
-#include "libswing.h"
-#include "libswing_utils.h"
-#include "libswing_utils_bitmaps.h"
+#include "libbine.h"
+#include "libbine_utils.h"
+#include "libbine_utils_bitmaps.h"
 
-size_t swing_allreduce_segsize = 0;
+size_t bine_allreduce_segsize = 0;
 
 int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
                                 MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
@@ -123,7 +123,7 @@ int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
   return MPI_SUCCESS;
 
   error_hndl:
-    SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
+    BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n", __FILE__, line, rank, ret);
     (void)line;  // silence compiler warning
     if(NULL != inplacebuf_free) free(inplacebuf_free);
     return ret;
@@ -304,7 +304,7 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   return MPI_SUCCESS;
 
  error_hndl:
-  SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
   MPI_Request_free(&reqs[0]);
   MPI_Request_free(&reqs[1]);
   (void)line;  // silence compiler warning
@@ -313,7 +313,7 @@ int allreduce_ring(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtyp
   return ret;
 }
 
-int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtype, MPI_Op op, MPI_Comm comm) {
+int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype dtype, MPI_Op op, MPI_Comm comm) {
   int rank, size;
   int ret, line; // for error handling
   char *tmpsend, *tmprecv, *inplacebuf_free = NULL;
@@ -427,7 +427,7 @@ int allreduce_swing_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype
   return MPI_SUCCESS;
 
   error_hndl:
-    SWING_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
+    BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
     (void)line;  // silence compiler warning
     if(NULL != inplacebuf_free) free(inplacebuf_free);
     return ret;
@@ -688,7 +688,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
   return err;
 }
 
-int allreduce_swing_bdw_static(const void *send_buf, void *recv_buf, size_t count,
+int allreduce_bine_bdw_static(const void *send_buf, void *recv_buf, size_t count,
                                MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
   int size, rank, dest, err = MPI_SUCCESS; 
   int steps, step, split_rank;
@@ -812,7 +812,7 @@ cleanup_and_return:
 }
 
 
-int allreduce_swing_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
+int allreduce_bine_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
                               MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
   int size, rank, dest, steps, step, err = MPI_SUCCESS;
   int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
@@ -917,7 +917,7 @@ cleanup_and_return:
   return err;
 }
 
-int allreduce_swing_block_by_block_any_even(const void *sbuf, void *rbuf, size_t count, 
+int allreduce_bine_block_by_block_any_even(const void *sbuf, void *rbuf, size_t count, 
                                             MPI_Datatype dt, MPI_Op op, MPI_Comm comm) {
   int size, rank, dtsize, err = MPI_SUCCESS;
   MPI_Comm_size(comm, &size);
@@ -1085,7 +1085,7 @@ err_hndl:
 
 }
 
-int allreduce_swing_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t count, 
+int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t count, 
                                         MPI_Datatype dtype, MPI_Op op, MPI_Comm comm) {
   int size, rank, dest, steps, step, err = MPI_SUCCESS;
   int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
@@ -1114,7 +1114,7 @@ int allreduce_swing_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t cou
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
 
-  segsize = swing_allreduce_segsize;
+  segsize = bine_allreduce_segsize;
   segcount = segsize / extent;      // Number of elements in a segment
   if (segsize == 0) {
     segcount = count;
@@ -1303,7 +1303,7 @@ cleanup_and_return:
 }
 
 // WARNING: Old version, only working for powers of two number of processes
-//int allreduce_swing_bdw_remap_segmented(const void *send_buf, void *recv_buf, size_t count,
+//int allreduce_bine_bdw_remap_segmented(const void *send_buf, void *recv_buf, size_t count,
 //                                        MPI_Datatype dtype, MPI_Op op, MPI_Comm comm){
 //  int size, rank, dest, steps, step, err = MPI_SUCCESS;
 //  int *r_count = NULL, *s_count = NULL, *r_index = NULL, *s_index = NULL;
@@ -1327,7 +1327,7 @@ cleanup_and_return:
 //  MPI_Type_get_extent(dtype, &lb, &extent);
 //  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
 //
-//  segsize = swing_allreduce_segsize;
+//  segsize = bine_allreduce_segsize;
 //  segcount = segsize / extent;      // Number of elements in a segment
 //  if (segsize == 0) {
 //    segcount = count / size;
@@ -1462,12 +1462,12 @@ cleanup_and_return:
 //}
 
 #ifdef CUDA_AWARE
-// TODO: add allreduce_swing_bdw_hier_gpu
+// TODO: add allreduce_bine_bdw_hier_gpu
 #endif
 
 // NOTE: Not fully implemented
 //
-// int allreduce_swing_bdw_segmented(const void *send_buf, void *recv_buf, size_t count, MPI_Datatype dtype,
+// int allreduce_bine_bdw_segmented(const void *send_buf, void *recv_buf, size_t count, MPI_Datatype dtype,
 //                                   MPI_Op op, MPI_Comm comm, uint32_t segsize)
 // { 
 //   int size, rank, dest, steps;
@@ -1608,9 +1608,9 @@ cleanup_and_return:
 //   for(step = steps - 1; step >= 0; step--) {
 //     dest = pi(rank, step, size);
 //
-//     libswing_indexed_datatype(&s_ind_dtype, s_bitmap + bitmap_offset, size, w_size,
+//     libbine_indexed_datatype(&s_ind_dtype, s_bitmap + bitmap_offset, size, w_size,
 //                               small_block_count, split_rank, dtype, block_len, disp);
-//     libswing_indexed_datatype(&r_ind_dtype, r_bitmap + bitmap_offset, size, w_size,
+//     libbine_indexed_datatype(&r_ind_dtype, r_bitmap + bitmap_offset, size, w_size,
 //                               small_block_count, split_rank, dtype, block_len, disp);
 //
 //     MPI_Sendrecv(recv_buf, 1, r_ind_dtype, dest, 0, recv_buf, 1, s_ind_dtype, dest, 0, comm, MPI_STATUS_IGNORE);

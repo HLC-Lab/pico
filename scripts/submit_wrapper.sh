@@ -4,10 +4,10 @@ source scripts/utils.sh
 
 # 1. Set default values for the variables (are defined in `utils.sh`)
 if [[ -n "${BASH_SOURCE[0]}" ]]; then
-    export SWING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    export BINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 else
     echo "Warning: BASH_SOURCE is not set. Using current working directory as fallback."
-    export SWING_DIR="$(pwd)"
+    export BINE_DIR="$(pwd)"
 fi
 
 export TASKS_PER_NODE=$DEFAULT_TASKS_PER_NODE
@@ -59,13 +59,13 @@ compile_code || exit 1
 [[ "$COMPILE_ONLY" == "yes" ]] && success "Compile only mode. Exiting..." && exit 0
 
 # 8. Defines env dependant variables
-export ALGORITHM_CONFIG_FILE="$SWING_DIR/config/algorithm_config.json"
-export LOCATION_DIR="$SWING_DIR/results/$LOCATION"
-export OUTPUT_DIR="$SWING_DIR/results/$LOCATION/$TIMESTAMP"
-export BENCH_EXEC_CPU=$SWING_DIR/bin/bench
-[[ "$GPU_AWARENESS" == "yes" ]] && export BENCH_EXEC_GPU=$SWING_DIR/bin/bench_cuda
-export ALGO_CHANGE_SCRIPT=$SWING_DIR/selector/change_dynamic_rules.py
-export DYNAMIC_RULE_FILE=$SWING_DIR/selector/ompi_dynamic_rules.txt
+export ALGORITHM_CONFIG_FILE="$BINE_DIR/config/algorithm_config.json"
+export LOCATION_DIR="$BINE_DIR/results/$LOCATION"
+export OUTPUT_DIR="$BINE_DIR/results/$LOCATION/$TIMESTAMP"
+export BENCH_EXEC_CPU=$BINE_DIR/bin/bench
+[[ "$GPU_AWARENESS" == "yes" ]] && export BENCH_EXEC_GPU=$BINE_DIR/bin/bench_cuda
+export ALGO_CHANGE_SCRIPT=$BINE_DIR/selector/change_dynamic_rules.py
+export DYNAMIC_RULE_FILE=$BINE_DIR/selector/ompi_dynamic_rules.txt
 
 # 9. Create output directories if not in debug mode or dry run
 if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
@@ -105,6 +105,6 @@ else
         [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]] && SLURM_PARAMS+=" --exclusive --output=$OUTPUT_DIR/slurm_%j.out --error=$OUTPUT_DIR/slurm_%j.err" || SLURM_PARAMS+=" --output=debug_%j.out"
         export SLURM_PARAMS="$SLURM_PARAMS"
         inform "Sbatching job with parameters: $SLURM_PARAMS"
-        sbatch $SLURM_PARAMS "$SWING_DIR/scripts/run_test_suite.sh"
+        sbatch $SLURM_PARAMS "$BINE_DIR/scripts/run_test_suite.sh"
     fi
 fi
