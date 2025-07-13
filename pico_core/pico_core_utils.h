@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 Saverio Pasqualoni
+ * Licensed under the MIT License
+ */
+
 #ifndef PICO_CORE_UTILS_H
 #define PICO_CORE_UTILS_H
 

@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 """
 Defines the Router widget and imports all step screens.
 """

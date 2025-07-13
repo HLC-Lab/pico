@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 Saverio Pasqualoni
+ * Licensed under the MIT License
+ */
+
 #ifndef LIBBINE_UTILS_BITMAPS_H
 #define LIBBINE_UTILS_BITMAPS_H
 

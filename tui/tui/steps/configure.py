@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 from textual import on
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static, Select, Switch, Footer, Header, Button, Input, SelectionList, Label

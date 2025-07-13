@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 import json
 from packaging import version
 from jsonschema.validators import validate

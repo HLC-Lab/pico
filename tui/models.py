@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from typing import Union, Optional, Dict, List, Any, cast

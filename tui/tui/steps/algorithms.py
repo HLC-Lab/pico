@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical

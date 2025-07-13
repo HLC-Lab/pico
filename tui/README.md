@@ -1,3 +1,6 @@
+# WARN
+THIS README IS OUTDATED BUT CAN BE STILL USED TO HAVE A ROUGH IDEA OF THE GENERAL TUI WORKFLOW
+
 # Benchmarking TUI
 
 A Textual-based terminal UI to configure and launch collective benchmarking jobs.  

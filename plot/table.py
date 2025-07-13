@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 import os, sys, argparse
 import pandas as pd
 import matplotlib.pyplot as plt

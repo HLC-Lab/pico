@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.widgets import Select, Static, Header, Footer, Button, Checkbox, Switch, Input, Label

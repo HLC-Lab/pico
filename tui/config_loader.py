@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Saverio Pasqualoni
+# Licensed under the MIT License
+
 """
 Configuration loader utilities.
 Provides functions to read JSON config files for environments and MPI libraries.
