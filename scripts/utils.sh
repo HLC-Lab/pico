@@ -127,7 +127,6 @@ EOF
 }
 
 usage_gpu() {
-warning "As of now, only Allgather is supported with GPU aware MPI."
 inform "GPU options:"
       cat <<EOF
   --gpu-awareness     Test GPU aware MPI. Library tested must be GPU aware.
