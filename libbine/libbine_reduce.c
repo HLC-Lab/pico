@@ -120,10 +120,10 @@ int reduce_bine_bdw(const void *sendbuf, void *recvbuf, size_t count,
   remapped_rank = remap_rank(size, rank);
 
   /***** Reduce_scatter *****/
-  rindex = malloc(sizeof(*rindex) * steps);
-  sindex = malloc(sizeof(*sindex) * steps);
-  rcount = malloc(sizeof(*rcount) * steps);
-  scount = malloc(sizeof(*scount) * steps);
+  rindex = malloc(sizeof(int) * steps);
+  sindex = malloc(sizeof(int) * steps);
+  rcount = malloc(sizeof(int) * steps);
+  scount = malloc(sizeof(int) * steps);
   step = 0;
   while(mask < size){
     int partner;
