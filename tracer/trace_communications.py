@@ -7,7 +7,7 @@ import re
 import sys
 import os
 import argparse
-from math import log
+from math import log, ceil
 from pprint import pprint
 
 def load_communication_pattern(filename):
@@ -190,7 +190,7 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
     num_ranks = len(rank_to_cell)
 
     # Globals to expose to the eval expressions.
-    eval_globals = {"fi": fi}
+    eval_globals = {"fi": fi, "ceil": ceil}
 
     # Iterate over each algorithm defined under ALLREDUCE.
     for algorithm, alg_data in comm_pattern.items():
@@ -236,7 +236,7 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
                     subs[rank_sym] = rank
                     send_to = int(eval(send_to_code, eval_globals, subs))
 
-                    if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
+                    if rank_to_cell.get(rank) != rank_to_cell.get(send_to):                        
                         external_bytes += message_size
                     else:
                         internal_bytes += message_size
@@ -459,6 +459,81 @@ def print_group_mapping(rank_to_cell) -> None:
     print("Num Cells:", len(cell_to_rank))
     print("=" * 100)
 
+def compute_extra_bytes_recursive_doubling(rank_to_cell):
+    rank_to_cell_shrunk = rank_to_cell.copy()
+    extra_internal = 0
+    extra_external = 0
+    # For recursive_doubling and bine_latency
+    # extra_ranks are those greater than the largest power of 2 less than the number of ranks.
+    largest_power_of_2 = 1 << (len(rank_to_cell).bit_length() - 1)
+    extra_ranks = len(rank_to_cell) - largest_power_of_2
+    # Even ranks less than 2 * extra_ranks send their data to (rank + 1), and
+    # sets new rank to -1.
+    # Odd ranks less than 2 * extra_ranks receive data from (rank - 1),
+    # apply appropriate operation, and set new rank to rank/2
+    for rank in range (0, 2*extra_ranks):
+        if rank % 2 == 0:
+            send_to = rank + 1
+
+            if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
+                extra_external += 2 # We consider two (send at the beginning, and receive at the end)
+            else:
+                extra_internal += 2 # We consider two (send at the beginning, and receive at the end)
+    
+    # Renumber ranks in rank_to_cell so that the even ranks smaller than 2*extra_ranks are removed
+    rank_to_cell_shrunk = {rank: cell for rank, cell in rank_to_cell.items() if rank >= 2 * extra_ranks or rank % 2 != 0}
+    # Now renumber them so that they are contiguous
+    rank_to_cell_shrunk = {new_rank: cell for new_rank, (old_rank, cell) in enumerate(rank_to_cell_shrunk.items())}
+    return rank_to_cell_shrunk, extra_internal, extra_external
+
+def compute_extra_bytes_rabenseifner(rank_to_cell):
+    rank_to_cell_shrunk = rank_to_cell.copy()
+    extra_internal = 0
+    extra_external = 0
+    # extra_ranks are those greater than the largest power of 2 less than the number of ranks.
+    largest_power_of_2 = 1 << (len(rank_to_cell).bit_length() - 1)
+    extra_ranks = len(rank_to_cell) - largest_power_of_2
+    # Even ranks less than 2 * extra_ranks send their data to (rank + 1), and
+    # sets new rank to -1.
+    # Odd ranks less than 2 * extra_ranks receive data from (rank - 1),
+    # apply appropriate operation, and set new rank to rank/2
+    for rank in range (0, 2*extra_ranks):
+        if rank % 2 != 0:
+            send_to = rank + 1
+            # Odd processes:
+            # - Sendrecv of half buffer, and send of half buffer at the beginning
+            # - Recv full buffer
+            extra_bytes = (1/2 + 1/2)
+        else:
+            send_to = rank - 1
+            # Even processes:
+            # - Sendrecv of half buffer, and receive of half buffer at the beginning
+            # - Send full buffer
+            extra_bytes = (1/2 + 1)
+
+        if rank_to_cell.get(rank) != rank_to_cell.get(send_to):
+            extra_external += extra_bytes
+        else:
+            extra_internal += extra_bytes
+    
+    # Renumber ranks in rank_to_cell so that the odd ranks smaller than 2*extra_ranks are removed
+    rank_to_cell_shrunk = {rank: cell for rank, cell in rank_to_cell.items() if rank >= 2 * extra_ranks or rank % 2 == 0}
+    # Now renumber them so that they are contiguous
+    rank_to_cell_shrunk = {new_rank: cell for new_rank, (old_rank, cell) in enumerate(rank_to_cell_shrunk.items())}
+    return rank_to_cell_shrunk, extra_internal, extra_external
+
+def compute_extra_bytes(rank_to_cell, algorithm):
+    if algorithm == "recursive_doubling" or algorithm == "bine_latency":
+        return compute_extra_bytes_recursive_doubling(rank_to_cell)
+    elif algorithm == "rabenseifner":
+        return compute_extra_bytes_rabenseifner(rank_to_cell)
+    elif algorithm == "bine_bandwidth":
+        if len(rank_to_cell) % 2 == 0:
+            # For even ranks we do not need extra bytes
+            return rank_to_cell, 0, 0
+        else:
+            return compute_extra_bytes_rabenseifner(rank_to_cell)
+
 def main():
     args = parse_arguments()
 
@@ -469,15 +544,14 @@ def main():
     allocation = load_allocation(args.alloc, args.location, args.hostname_only)
     node_to_cell = load_topology(args.map, args.location)
     rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location, args.hostname_only)
-
-    if len(rank_to_cell) & (len(rank_to_cell) - 1) != 0:
-        print(f"Number of ranks ({len(rank_to_cell)}) is not a power of 2.", file=sys.stderr)
-        return 1
-
     rows = []
 
     collectives = args.coll.split(",")
     for coll in collectives:
+        if (len(rank_to_cell) & (len(rank_to_cell) - 1) != 0) and coll != "ALLREDUCE":
+            print(f"Number of ranks ({len(rank_to_cell)}) is not a power of 2.", file=sys.stderr)
+            return 1
+                
         if coll == "BCAST":
             count = {
                 "binomial_doubling": tree_coll_lat(rank_to_cell, bine=False, doubling=True),
@@ -507,9 +581,24 @@ def main():
                 "bine_doubling": scatter(rank_to_cell, bine=True, doubling=True),
                 "bine_halving": scatter(rank_to_cell, bine=True, doubling=False)
             }
+        elif coll == "ALLREDUCE":
+            patterns = load_communication_pattern(args.comm).get(coll, {})
+            # Loop over patterns and count bytes for each algorithm
+            count = {}
+            for algorithm, alg_data in patterns.items():
+                extra_internal, extra_external = 0, 0
+                if algorithm == "ring":
+                    internal, external = count_inter_cell_bytes({algorithm : alg_data}, rank_to_cell)[algorithm]
+                else:
+                    if len(rank_to_cell) & (len(rank_to_cell) - 1) != 0:
+                        rank_to_cell_shrunk, extra_internal, extra_external = compute_extra_bytes(rank_to_cell, algorithm)
+                    else:
+                        rank_to_cell_shrunk = rank_to_cell
+                    internal, external = count_inter_cell_bytes({algorithm : alg_data}, rank_to_cell_shrunk)[algorithm]
+                
+                count[algorithm] = (internal + extra_internal, external + extra_external)    
         else:
-            coll_comm_pattern = load_communication_pattern(args.comm).get(coll, {})
-            count = count_inter_cell_bytes(coll_comm_pattern, rank_to_cell)
+            count = count_inter_cell_bytes(load_communication_pattern(args.comm).get(coll, {}), rank_to_cell)
 
         print("\n\n" + "=" * 40)
         print(f"\t{coll.lower()}")

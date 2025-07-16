@@ -74,5 +74,40 @@ for system in ["Leonardo", "LUMI"]:
     plt.figure()
     sns.scatterplot(data=newdf, x='Nodes', y='Reduction', hue="System", style="System", size="Groups", markers=["o", "s"], s=100)
     # x logscale
-    plt.xscale("log")
+    #plt.xscale("log")
+    plt.ylim(top=50)
     plt.savefig("scatter_" + system + "_min_" + str(args.min_ranks) + "_" + args.collective + "_" + args.algo_baseline + "_vs_" + args.algo_bine + ".pdf", bbox_inches="tight")
+
+#################
+# Multi-Boxplot #
+#################
+# Does a boxplot for each "Nodes" value, using "Reduction" as y-axis
+# Only considers number of nodes which are powers of 2
+newdf = df[df["Nodes"].apply(lambda x: (x & (x - 1)) == 0)]  # Keep only powers of 2
+# Keep only Nodes >= args.min_ranks
+if args.min_ranks:
+    newdf = newdf[newdf["Nodes"] >= args.min_ranks]
+
+# Print the number of allocations for both LUMI and Leonardo
+print("Number of allocations for LUMI: ", len(newdf[newdf["System"] == "LUMI"]))
+print("Number of allocations for Leonardo: ", len(newdf[newdf["System"] == "Leonardo"]))
+
+newdf = newdf.sort_values(by="Nodes")  # Sort by Nodes
+rcParams['figure.figsize'] = 8*0.8,4.5*0.6
+plt.clf()
+plt.figure()
+sns.boxplot(data=newdf, x='Nodes', y='Reduction', hue="System", showmeans=True, showfliers=False, meanprops=mean_props)
+# x logscale
+#plt.xscale("log")
+plt.ylim(top=40)
+# set grid style
+plt.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
+plt.legend(title=None, loc='lower left', fontsize=10)
+# Draw a horizontal line at y=33
+plt.axhline(y=33, color='r', linestyle='--', label='Theoretical Upper Bound')
+plt.xlabel("Number of Nodes")
+plt.ylabel("Global Links Traffic Reduction (%)")
+#plt.title("Reduction of Global Links Traffic")
+# Remove legend title
+# Save as PDF
+plt.savefig("multi_box_min_" + str(args.min_ranks) + "_" + args.collective + "_" + args.algo_baseline + "_vs_" + args.algo_bine + ".pdf", bbox_inches="tight")

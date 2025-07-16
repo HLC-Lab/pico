@@ -95,13 +95,13 @@
       "phases": [
         {
           "desc": "reduce_scatter",
-          "steps": "log(p, 2)",
+          "steps": "ceil(log(p, 2))",
           "send_to": "fi(r, s, p)",
           "message_size": "n / (2 ** (s + 1))"
         },
         {
           "desc": "allgather",
-          "steps": "log(p, 2)",
+          "steps": "ceil(log(p, 2))",
           "send_to": "fi(r, (k - s - 1), p)",
           "message_size": "n / (2 ** (k - s))"
         }
