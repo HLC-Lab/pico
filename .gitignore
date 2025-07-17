@@ -18,4 +18,5 @@ tracer/sinfo_leonardo/
 tracer/sinfo_lumi
 tracer/*.pdf
 tracer/sinfo_summary.csv
+tracer/sinfo/*.pdf
 **/__pycache__/

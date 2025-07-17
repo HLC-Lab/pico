@@ -80,19 +80,33 @@ def get_tracer_out(args, compute_max=False):
     samples_big = 0
     # Loop over the summaries
     for nodes, summary in summaries.items():
-        if not os.path.exists(summary + "/traced_alloc.csv"):        
-            command = [
-                "python3", "tracer/trace_communications.py",
-                "--location", args.system,
-                "--alloc", summary + "/alloc.csv",
-                "--comm", "tracer/algo_patterns.json",
-                "--save"
-            ]
+        traced_file = summary + "/traced_alloc.csv"
+        if os.path.exists(summary + "/alloc.csv"):
+            if not os.path.exists(summary + "/traced_alloc.csv"):        
+                command = [
+                    "python3", "tracer/trace_communications.py",
+                    "--location", args.system,
+                    "--alloc", summary + "/alloc.csv",
+                    "--comm", "tracer/algo_patterns.json",
+                    "--save"
+                ]
 
-            subprocess.run(command, stdout=subprocess.DEVNULL)
+                subprocess.run(command, stdout=subprocess.DEVNULL)
+        else:
+            traced_file = summary + "/traced_alloc_" + str(nodes) + ".csv"
+            if not os.path.exists(traced_file):        
+                command = [
+                    "python3", "tracer/trace_communications.py",
+                    "--location", args.system,
+                    "--alloc", summary + "/alloc_" + str(nodes) + ".csv",
+                    "--comm", "tracer/algo_patterns.json",
+                    "--save"
+                ]
+
+                subprocess.run(command, stdout=subprocess.DEVNULL)
 
         # Add
-        t = pd.read_csv(summary + "/traced_alloc.csv")
+        t = pd.read_csv(traced_file)
         # Filter by collective type
         coll_to_search = args.collective.lower()
         if coll_to_search == "gather":

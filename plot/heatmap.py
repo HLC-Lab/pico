@@ -480,7 +480,7 @@ def main():
     plt.xticks(rotation=0)   
 
     # Make dir if it does not exist
-    outdir = "plot/" + args.system + "_hm/" + args.collective + "/"
+    outdir = "plot/" + args.system + "/heatmaps/" + args.collective + "/"
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 

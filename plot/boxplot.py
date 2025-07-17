@@ -430,11 +430,11 @@ def main():
     plt.ylabel("")
 
     # Make dir if it does not exist
-    outdir = "plot/best_box/"
+    outdir = "plot/" + args.system + "/"
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     
-    outfile = outdir + "/" + args.system + ".pdf"
+    outfile = outdir + "/boxplot.pdf"
     # Save as PDF
     plt.savefig(outfile, bbox_inches="tight")
     
