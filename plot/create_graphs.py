@@ -74,7 +74,7 @@ def draw_errorbars(ax, data, sorted_algos, std_threshold, threshold_mode='absolu
                 raise ValueError("Invalid threshold_mode. Use 'absolute' or 'relative'.")
 
 
-def normalize_dataset(data: pd.DataFrame, mpi_lib : str, base : str | None = None) -> pd.DataFrame:
+def normalize_dataset(data: pd.DataFrame, mpi_lib : str, gpu_lib : str, base : str | None = None) -> pd.DataFrame:
     """
     Normalize the dataset by dividing the mean execution time of each algorithm
     by the mean execution time of the base algorithm.
@@ -90,11 +90,13 @@ def normalize_dataset(data: pd.DataFrame, mpi_lib : str, base : str | None = Non
     """
     if base is None:
         if mpi_lib in ['OMPI', 'OMPI_BINE']:
-            base = 'default_ompi'
+            if gpu_lib == 'CUDA':
+                base = 'allreduce_nccl_pat'
+            else:
+                base = 'default_ompi'
         elif mpi_lib in ['MPICH', 'CRAY_MPICH']:
             base = 'default_mpich'
-        else:
-            base = 'allreduce_nccl_pat'
+            
 
     grouped_data = data.groupby('buffer_size')
 
@@ -350,6 +352,7 @@ def main():
     mpi_lib = df['mpi_lib'].iloc[0]
     nnodes = df['nnodes'].iloc[0]
     mpi_tasks = nnodes * df['tasks_per_node'].iloc[0]
+    gpu_lib = df['gpu_lib'].iloc[0]
 
     drop_cols = ['array_dim','nnodes','system','timestamp','test_id','MPI_Op',
                  'notes','mpi_lib','mpi_lib_version','libbine_version', 'tasks_per_node']
@@ -385,7 +388,7 @@ def main():
     for datatype, group in df.groupby('datatype'):
         for collective, subgroup in group.groupby('collective_type'):
             generate_lineplot(subgroup, system_name, collective, nnodes, datatype, timestamp, mpi_tasks);
-            normalized_data = normalize_dataset(subgroup, mpi_lib, args.normalize_by)
+            normalized_data = normalize_dataset(subgroup, mpi_lib, gpu_lib, args.normalize_by)
             generate_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp, mpi_tasks)
             generate_cut_barplot(normalized_data, system_name, collective, nnodes, datatype, timestamp, mpi_tasks)
 

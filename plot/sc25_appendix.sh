@@ -1,4 +1,31 @@
 #!/bin/bash
+#############################
+# Non-power of 2 node count #
+#############################
+for dir in "results/leonardo/2025_06_04___15_12_34" "results/lumi/2025_04_12___00_29_36" "results/mare_nostrum/2025_06_05___20_58_44"
+do
+    python3 plot/summarize_data.py --result-dir $dir &> /dev/null
+    python3 plot/create_graphs.py --summary-file $dir"/aggregated_results_summary.csv"
+done
+
+########
+# GPUs #
+########
+for dir in "results/mare_nostrum/2025_04_14___04_39_29"
+do
+    python3 plot/summarize_data.py --result-dir $dir &> /dev/null
+    python3 plot/create_graphs.py --summary-file $dir"/aggregated_results_summary.csv"
+    # Get the last path of the directory
+    last_path=$(basename "$dir")
+    # Move the generated plots to the paper_appendix directory
+    mkdir -p plot/paper_appendix/mare_nostrum/gpu
+    mv plot/mare_nostrum/*$last_path* plot/paper_appendix/mare_nostrum/gpu/
+done
+
+###############################################################
+# Detailed plots expanding the heatmaps/boxplots in the paper #
+###############################################################
+
 # A list of summary files to process
 summary_files=(
     "results/fugaku/2025_03_26___19_49_06/aggregated_results_summary.csv"
@@ -38,8 +65,11 @@ for summary_file in "${summary_files[@]}"; do
     python3 plot/create_graphs.py --summary-file "$summary_file"
 done
 
-# Move them to the paper_appendix directory
+##################################################
+# Move all plots to the paper_appendix directory #
+##################################################
 for SYSTEM in "leonardo" "fugaku" "lumi" "mare_nostrum"; do
     mkdir -p plot/paper_appendix/$SYSTEM
     mv plot/$SYSTEM/*.png plot/paper_appendix/$SYSTEM/
 done
+
