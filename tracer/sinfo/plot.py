@@ -93,20 +93,20 @@ print("Number of allocations for LUMI: ", len(newdf[newdf["System"] == "LUMI"]))
 print("Number of allocations for Leonardo: ", len(newdf[newdf["System"] == "Leonardo"]))
 
 newdf = newdf.sort_values(by="Nodes")  # Sort by Nodes
-rcParams['figure.figsize'] = 8*0.8,4.5*0.6
+rcParams['figure.figsize'] = 8*0.8,4.5*0.4
 plt.clf()
 plt.figure()
 sns.boxplot(data=newdf, x='Nodes', y='Reduction', hue="System", showmeans=True, showfliers=False, meanprops=mean_props)
 # x logscale
 #plt.xscale("log")
-plt.ylim(top=40)
+plt.ylim(top=40, bottom=-40)
 # set grid style
 plt.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
 plt.legend(title=None, loc='lower left', fontsize=10)
 # Draw a horizontal line at y=33
 plt.axhline(y=33, color='r', linestyle='--', label='Theoretical Upper Bound')
 plt.xlabel("Number of Nodes")
-plt.ylabel("Global Links Traffic Reduction (%)")
+plt.ylabel("Global Links\nTraffic Reduction (%)")
 #plt.title("Reduction of Global Links Traffic")
 # Remove legend title
 # Save as PDF
