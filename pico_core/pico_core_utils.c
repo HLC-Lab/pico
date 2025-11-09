@@ -175,6 +175,8 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
 */
 static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
 #ifndef PICO_NCCL
+  CHECK_STR(algorithm, "linear_over", bcast_linear);
+  CHECK_STR(algorithm, "binomial_over", bcast_binomial);
   CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
   CHECK_STR(algorithm, "bine_lat_over", bcast_bine_lat);
   CHECK_STR(algorithm, "bine_lat_reversed_over", bcast_bine_lat_reversed);
@@ -347,6 +349,33 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
   }
 
   test_routine->segsize = bine_allreduce_segsize;
+
+#ifdef PICO_FAULT_INJECTION
+  const char *fault_type_str, *internal_comm_size_str;
+  fault_type_str = getenv("FAULT_TYPE");
+  internal_comm_size_str = getenv("INTERNAL_COMM_SIZE");
+  if (fault_type_str == NULL || internal_comm_size_str == NULL) {
+    fprintf(stderr, "Error: FAULT_TYPE or INTERNAL_COMM_SIZE environment variables not set. Aborting...");
+    return -1;
+  }
+  if (strcmp(fault_type_str, "ROLLBACK") == 0) {
+    test_routine->fault_injection_config.fault_type = PICO_ROLLBACK;
+  } else if (strcmp(fault_type_str, "RECOVER") == 0) {
+    test_routine->fault_injection_config.fault_type = PICO_RECOVER;
+  } else if (strcmp(fault_type_str, "FAILURE") == 0) {
+    test_routine->fault_injection_config.fault_type = PICO_FAILURE;
+  } else {
+    fprintf(stderr, "Error: Invalid FAULT_TYPE value. Aborting...");
+    return -1;
+  }
+  test_routine->fault_injection_config.internal_comm_size = (size_t) strtoll(internal_comm_size_str, NULL, 10);
+  int comm_sz;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+  if (test_routine->fault_injection_config.internal_comm_size >= (size_t) comm_sz) {
+    fprintf(stderr, "Error: INTERNAL_COMM_SIZE must be less than the communicator size. Aborting...");
+    return -1;
+  }
+#endif
 
   return 0;
 }

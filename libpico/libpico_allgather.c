@@ -193,6 +193,9 @@ int allgather_k_bruck(const void *sbuf, size_t scount, MPI_Datatype sdtype,
   }
 
   if(tmp_buf != NULL) free(tmp_buf);
+  if( NULL != reqs ) {
+    cleanup_reqs(&req_manager);
+  }
   return MPI_SUCCESS;
 
 err_hndl:

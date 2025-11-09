@@ -8,6 +8,37 @@
 #if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
 #include <string.h>
 
+/**
+ * @brief Enable/disable tracking of nesting structure.
+ * 
+ * 0 = disabled (no stack, no parent→child edges)
+ * 1 = enabled (record structure only; no extra timing overhead)
+ *
+ * Default: 1
+ */
+#ifndef LIBPICO_NESTING
+#define LIBPICO_NESTING 1
+#endif
+
+#if LIBPICO_NESTING
+  /* Max nesting depth; safe upper bound is number of tags */
+  #ifndef LIBPICO_MAX_NESTING
+  #define LIBPICO_MAX_NESTING LIBPICO_MAX_TAGS
+  #endif
+
+  /* Children adjacency bitset: for each parent, a set of child indices */
+  enum { LIBPICO_CHILD_MASK_WORDS = (LIBPICO_MAX_TAGS + 63) / 64 };
+
+  static unsigned long long pico_children[LIBPICO_MAX_TAGS][LIBPICO_CHILD_MASK_WORDS];
+  static int  pico_stack[LIBPICO_MAX_NESTING];
+  static int  pico_sp = 0;  /* stack pointer (0 = empty) */
+
+  /* Set parent->child edge (idempotent) */
+  static inline void pico_set_edge(int parent, int child) {
+    pico_children[parent][(unsigned)child >> 6] |= (1ull << ((unsigned)child & 63));
+  }
+#endif /* LIBPICO_NESTING */
+
 // ------------------------------------------------------------------------------------------------
 //                                   INTERNAL DATA STRUCTURES
 // ------------------------------------------------------------------------------------------------
@@ -129,6 +160,20 @@ int libpico_tag_begin(const char *tag) {
     return -1;
   }
 
+#if LIBPICO_NESTING
+  /* Record structure: if there is a current parent, add parent->child edge */
+  if (pico_sp > 0) {
+    int parent = pico_stack[pico_sp - 1];
+    pico_set_edge(parent, idx);
+  }
+  /* Push this tag on the call stack */
+  if (pico_sp >= LIBPICO_MAX_NESTING) {
+    fprintf(stderr, "Error: nesting exceeds LIBPICO_MAX_NESTING=%d\n", LIBPICO_MAX_NESTING);
+    return -1;
+  }
+  pico_stack[pico_sp++] = idx;
+#endif
+
   if (pico_tags[idx].depth < 0) {
     fprintf(stderr, "Error: Tag '%s' has invalid depth '%d' before beginning.\n", 
             tag, pico_tags[idx].depth);
@@ -163,6 +208,14 @@ int libpico_tag_end(const char *tag) {
   if (pico_tags[idx].depth == 0){
     pico_tags[idx].accum += MPI_Wtime() - pico_tags[idx].last_start;
   }
+
+#if LIBPICO_NESTING
+  if (pico_sp <= 0 || pico_stack[pico_sp - 1] != idx) {
+    fprintf(stderr, "Error: unbalanced nesting for tag '%s'\n", tag);
+    return -1;
+  }
+  pico_sp--;
+#endif
   return 0;
 }
 
@@ -204,6 +257,10 @@ void libpico_init_tags(void) {
   libpico_initialize_all_bindings();
   libpico_handles_built = 0;
   libpico_name_pool_off = 0;
+#if LIBPICO_NESTING
+  pico_sp = 0;
+  memset(pico_children, 0, sizeof pico_children);
+#endif
 }
 
 

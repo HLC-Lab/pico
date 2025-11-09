@@ -93,6 +93,23 @@ typedef enum{
 
 
 //-----------------------------------------------------------------------------------------------
+//                         FAULT INJECTION
+//-----------------------------------------------------------------------------------------------
+
+#ifdef PICO_FAULT_INJECTION
+typedef enum {
+  PICO_ROLLBACK = 0,
+  PICO_RECOVER,
+  PICO_FAILURE
+} fault_injection_t;
+
+typedef struct {
+  fault_injection_t fault_type;
+  size_t internal_comm_size;
+} fault_injection_config_t;
+#endif
+
+//-----------------------------------------------------------------------------------------------
 //                         ALLOCATOR FUNCTIONS
 //-----------------------------------------------------------------------------------------------
 
@@ -183,6 +200,10 @@ typedef struct {
   allocator_func_ptr allocator_cuda; /**< Pointer to the CUDA memory allocator function. */
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
   size_t segsize; /**< Size of the segment for segmented collectives. */
+
+#ifdef PICO_FAULT_INJECTION
+  fault_injection_config_t fault_injection_config; /**< Configuration for fault injection. */
+#endif
 
   /** Union of function pointers for custom collective functions. */
   union {

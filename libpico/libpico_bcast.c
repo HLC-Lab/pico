@@ -11,6 +11,165 @@
 #include "libpico.h"
 #include "libpico_utils.h"
 
+
+/**
+ * Open MPI linear bcast function copied from
+ * https://github.com/open-mpi/ompi/blob/3a2e90895e15822912002be1e9aea8032c4c0bae/ompi/mca/coll/base/coll_base_bcast.c#L638
+ */
+int
+bcast_linear(void *buff, size_t count, MPI_Datatype datatype, int root,
+             MPI_Comm comm) 
+{
+    int i, size, rank, err;
+    request_manager_t req_manager = {NULL, 0};
+    MPI_Request *reqs = NULL;
+
+    MPI_Comm_rank (comm, &rank);
+    MPI_Comm_size (comm, &size);
+
+    if (1 == size) return MPI_SUCCESS;
+
+    /* Non-root receive the data. */
+
+    if (rank != root) {
+        return MPI_Recv(buff, count, datatype, root, 0, comm, MPI_STATUS_IGNORE);
+    }
+
+    /* Root sends data to all others. */
+    reqs = alloc_reqs(&req_manager, size - 1);
+    if( NULL == reqs ) {
+        return MPI_ERR_NO_MEM;
+    }
+
+    for (i = 0; i < size; ++i) {
+        if (i == rank) {
+            continue;
+        }
+
+        err = MPI_Isend(buff, count, datatype, i, 0, comm, &reqs[i < rank ? i : i - 1]);
+        if (MPI_SUCCESS != err) { goto err_hndl; }
+    }
+    --i;
+
+    /* Wait for them all.  If there's an error, note that we don't
+     * care what the error was -- just that there *was* an error.  The
+     * PML will finish all requests, even if one or more of them fail.
+     * i.e., by the end of this call, all the requests are free-able.
+     * So free them anyway -- even if there was an error. 
+     * Note we still need to get the actual error, as collective 
+     * operations cannot return MPI_ERR_IN_STATUS.
+     */
+
+    err = MPI_Waitall(i, reqs, MPI_STATUSES_IGNORE);
+ err_hndl:
+    if( NULL != reqs ) {
+      cleanup_reqs(&req_manager);
+    }
+    /* All done */
+    return err;
+}
+
+
+/**
+ * MPICH binomial bcast function copied from
+ * https://github.com/pmodels/mpich/blob/6e5a2adfeb8a37a89a96bc646e375062c15dc9cd/src/mpi/coll/bcast/bcast_intra_binomial.c
+ */
+int bcast_binomial(void *buffer, size_t count, MPI_Datatype datatype, int root, MPI_Comm comm_ptr)
+{
+    int rank, comm_size, src, dst;
+    int relative_rank, mask;
+    int mpi_errno = MPI_SUCCESS;
+    MPI_Aint nbytes = 0, lb;
+    MPI_Status *status_p;
+    status_p = MPI_STATUS_IGNORE;
+    MPI_Aint type_size;
+
+    MPI_Comm_size(comm_ptr, &comm_size);
+    MPI_Comm_rank(comm_ptr, &rank);
+
+
+    MPI_Type_get_extent(datatype, &lb, &type_size);
+
+    nbytes = type_size * count;
+    if (nbytes == 0)
+        goto fn_exit;   /* nothing to do */
+
+
+
+    relative_rank = (rank >= root) ? rank - root : rank - root + comm_size;
+
+    /* Use short message algorithm, namely, binomial tree */
+
+    /* Algorithm:
+     * This uses a fairly basic recursive subdivision algorithm.
+     * The root sends to the process comm_size/2 away; the receiver becomes
+     * a root for a subtree and applies the same process.
+     *
+     * So that the new root can easily identify the size of its
+     * subtree, the (subtree) roots are all powers of two (relative
+     * to the root) If m = the first power of 2 such that 2^m >= the
+     * size of the communicator, then the subtree at root at 2^(m-k)
+     * has size 2^k (with special handling for subtrees that aren't
+     * a power of two in size).
+     *
+     * Do subdivision.  There are two phases:
+     * 1. Wait for arrival of data.  Because of the power of two nature
+     * of the subtree roots, the source of this message is always the
+     * process whose relative rank has the least significant 1 bit CLEARED.
+     * That is, process 4 (100) receives from process 0, process 7 (111)
+     * from process 6 (110), etc.
+     * 2. Forward to my subtree
+     *
+     * Note that the process that is the tree root is handled automatically
+     * by this code, since it has no bits set.  */
+
+    mask = 0x1;
+    while (mask < comm_size) {
+        if (relative_rank & mask) {
+            src = rank - mask;
+            if (src < 0)
+                src += comm_size;
+            mpi_errno = MPI_Recv(buffer, count, datatype, src, 0, comm_ptr, status_p);
+            if (mpi_errno != MPI_SUCCESS) {
+                goto fn_fail;
+            }
+            break;
+        }
+        mask <<= 1;
+    }
+
+    /* This process is responsible for all processes that have bits
+     * set from the LSB up to (but not including) mask.  Because of
+     * the "not including", we start by shifting mask back down one.
+     *
+     * We can easily change to a different algorithm at any power of two
+     * by changing the test (mask > 1) to (mask > block_size)
+     *
+     * One such version would use non-blocking operations for the last 2-4
+     * steps (this also bounds the number of MPI_Requests that would
+     * be needed).  */
+
+    mask >>= 1;
+    while (mask > 0) {
+        if (relative_rank + mask < comm_size) {
+            dst = rank + mask;
+            if (dst >= comm_size)
+                dst -= comm_size;
+            mpi_errno = MPI_Send(buffer, count, datatype, dst, 0, comm_ptr);
+            if (mpi_errno != MPI_SUCCESS) {
+                goto fn_fail;
+            }
+        }
+        mask >>= 1;
+    }
+
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
 /*
  * NOTE: Taken from Open MPI base module and rewritten using MPI API for benchmarking
  * reasons.
