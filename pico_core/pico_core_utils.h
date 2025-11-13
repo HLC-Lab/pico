@@ -88,26 +88,9 @@ typedef enum{
 typedef enum{
   ALL = 0,
   STATISTICS,
+  MINIMAL,
   SUMMARIZED
 }output_level_t;
-
-
-//-----------------------------------------------------------------------------------------------
-//                         FAULT INJECTION
-//-----------------------------------------------------------------------------------------------
-
-#ifdef PICO_FAULT_INJECTION
-typedef enum {
-  PICO_ROLLBACK = 0,
-  PICO_RECOVER,
-  PICO_FAILURE
-} fault_injection_t;
-
-typedef struct {
-  fault_injection_t fault_type;
-  size_t internal_comm_size;
-} fault_injection_config_t;
-#endif
 
 //-----------------------------------------------------------------------------------------------
 //                         ALLOCATOR FUNCTIONS
@@ -201,10 +184,6 @@ typedef struct {
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
   size_t segsize; /**< Size of the segment for segmented collectives. */
 
-#ifdef PICO_FAULT_INJECTION
-  fault_injection_config_t fault_injection_config; /**< Configuration for fault injection. */
-#endif
-
   /** Union of function pointers for custom collective functions. */
   union {
     allreduce_func_ptr allreduce;
@@ -273,7 +252,6 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
 //-----------------------------------------------------------------------------------------------
 //                                MAIN PICO_COREMARK LOOP FUNCTIONS
 //-----------------------------------------------------------------------------------------------
-
 
 #ifndef PICO_NCCL
  /**

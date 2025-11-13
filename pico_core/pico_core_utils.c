@@ -350,33 +350,6 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
 
   test_routine->segsize = bine_allreduce_segsize;
 
-#ifdef PICO_FAULT_INJECTION
-  const char *fault_type_str, *internal_comm_size_str;
-  fault_type_str = getenv("FAULT_TYPE");
-  internal_comm_size_str = getenv("INTERNAL_COMM_SIZE");
-  if (fault_type_str == NULL || internal_comm_size_str == NULL) {
-    fprintf(stderr, "Error: FAULT_TYPE or INTERNAL_COMM_SIZE environment variables not set. Aborting...");
-    return -1;
-  }
-  if (strcmp(fault_type_str, "ROLLBACK") == 0) {
-    test_routine->fault_injection_config.fault_type = PICO_ROLLBACK;
-  } else if (strcmp(fault_type_str, "RECOVER") == 0) {
-    test_routine->fault_injection_config.fault_type = PICO_RECOVER;
-  } else if (strcmp(fault_type_str, "FAILURE") == 0) {
-    test_routine->fault_injection_config.fault_type = PICO_FAILURE;
-  } else {
-    fprintf(stderr, "Error: Invalid FAULT_TYPE value. Aborting...");
-    return -1;
-  }
-  test_routine->fault_injection_config.internal_comm_size = (size_t) strtoll(internal_comm_size_str, NULL, 10);
-  int comm_sz;
-  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
-  if (test_routine->fault_injection_config.internal_comm_size >= (size_t) comm_sz) {
-    fprintf(stderr, "Error: INTERNAL_COMM_SIZE must be less than the communicator size. Aborting...");
-    return -1;
-  }
-#endif
-
   return 0;
 }
 
@@ -459,10 +432,13 @@ int get_data_saving_options(test_routine_t *test_routine, size_t count,
 
   if(strcmp(output_level, "all") == 0) {
     test_routine->output_level = ALL;
-  } else if(strcmp(output_level, "statistics") == 0) {
-    test_routine->output_level = STATISTICS;
-  } else if(strcmp(output_level, "summarized") == 0) {
-    test_routine->output_level = SUMMARIZED;
+  // TODO:
+  // } else if(strcmp(output_level, "statistics") == 0) {
+  //   test_routine->output_level = STATISTICS;
+  // } else if(strcmp(output_level, "summarized") == 0) {
+  //   test_routine->output_level = SUMMARIZED;
+  } else if(strcmp(output_level, "minimal") == 0) {
+    test_routine->output_level = MINIMAL;
   } else {
     fprintf(stderr, "Error: Invalid OUTPUT_LEVEL value. Aborting...");
     return -1;
@@ -893,7 +869,7 @@ static inline int write_all_output_to_file(const char *fullpath, double *highest
 *
 * @note Time is saved in ns (i.e. 10^-9 s).
 */
-static inline int write_summarized_output_to_file(const char *fullpath, double *highest, int iter){
+static inline int write_minimal_output_to_file(const char *fullpath, double *highest, int iter){
   FILE *output_file = fopen(fullpath, "w");
   if(output_file == NULL) {
     fprintf(stderr, "Error: Opening file %s for writing", fullpath);
@@ -924,8 +900,8 @@ int write_output_to_file(test_routine_t test_routine, double *highest, double *a
       return write_all_output_to_file(test_routine.output_data_file, highest, all_times, iter);
     case STATISTICS:
       return write_statistics_output_to_file(test_routine.output_data_file, highest, iter);
-    case SUMMARIZED:
-      return write_summarized_output_to_file(test_routine.output_data_file, highest, iter);
+    case MINIMAL:
+      return write_minimal_output_to_file(test_routine.output_data_file, highest, iter);
     default:
       fprintf(stderr, "Error: Output level not recognized. Aborting...");
       return -1;

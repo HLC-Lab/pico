@@ -52,6 +52,20 @@ merge_run_lists() {
   echo "${ordered[*]}"
 }
 
+filter_run_list_by_max_nodes() {
+  local run_list="$1"
+  local max_nodes="$2"
+  local filtered=()
+  for pair in $run_list; do
+    local nodes="${pair##*:}"
+    [[ -z "$nodes" ]] && continue
+    if (( nodes <= max_nodes )); then
+      filtered+=("$pair")
+    fi
+  done
+  echo "${filtered[*]}"
+}
+
 declare -A BEST_BINE_ALLGATHER_RUNS=()
 BEST_BINE_ALLGATHER_RUNS[leonardo]="$(merge_run_lists \
   "2025_03_28___16_48_20:2048 2025_03_28___17_42_08:1024 2025_03_28___18_19_43:512" \
@@ -63,6 +77,15 @@ declare -A BEST_BINE_ALLGATHER_OUTPUTS=(
   [leonardo]="plot/leonardo/heatmaps/allgather/leonardo_allgather_best_bine_variant_2048.pdf"
   [mare_nostrum]=""
   [lumi]=""
+)
+
+declare -A BEST_BINE_ALLGATHER_RUNS_64=()
+if [[ -n "${BEST_BINE_ALLGATHER_RUNS[leonardo]:-}" ]]; then
+  BEST_BINE_ALLGATHER_RUNS_64[leonardo]="$(filter_run_list_by_max_nodes "${BEST_BINE_ALLGATHER_RUNS[leonardo]}" 64)"
+fi
+
+declare -A BEST_BINE_ALLGATHER_OUTPUTS_64=(
+  [leonardo]="plot/leonardo/heatmaps/allgather/leonardo_allgather_best_bine_variant_64.pdf"
 )
 
 declare -A BEST_BINE_REDUCE_SCATTER_RUNS=()
@@ -195,4 +218,5 @@ else
 fi
 
 run_best_bine_plot "ALLGATHER" "${BEST_BINE_ALLGATHER_RUNS[$SYSTEM]:-}" "${BEST_BINE_ALLGATHER_OUTPUTS[$SYSTEM]:-}"
+run_best_bine_plot "ALLGATHER" "${BEST_BINE_ALLGATHER_RUNS_64[$SYSTEM]:-}" "${BEST_BINE_ALLGATHER_OUTPUTS_64[$SYSTEM]:-}"
 run_best_bine_plot "REDUCE_SCATTER" "${BEST_BINE_REDUCE_SCATTER_RUNS[$SYSTEM]:-}" "${BEST_BINE_REDUCE_SCATTER_OUTPUTS[$SYSTEM]:-}"

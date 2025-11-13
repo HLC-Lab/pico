@@ -186,11 +186,11 @@ int main(int argc, char *argv[]) {
 
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
-# ifndef PICO_NCCL
+#ifndef PICO_NCCL
   if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, comm, iter, times) != 0){
-# else
+#else
   if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, nccl_comm, stream, iter, times) != 0){
-# endif 
+#endif // PICO_NCCL
     line = __LINE__;
     goto err_hndl;
   }
