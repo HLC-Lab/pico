@@ -198,8 +198,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
     PICO_TAG_BEGIN("local-kernel");
 #ifdef PICO_MPI_CUDA_AWARE
     local_inverse = inverse_rank(GPU_ON_NODE, local_rank);
-    err = reduce_wrapper_grops_inoutsplit(recv_buff_head, result_buff_head + reduce_offset * extent,
-                                          sbuf + (disps[local_inverse * node_size] + reduce_recv_offset) * extent, seg_size, GPU_ON_NODE - 1, dtype, op);
+    err = reduce_wrapper_grops_inoutsplit(recv_buff_head + reduce_recv_offset * extent, result_buff_head + reduce_offset * extent,
+                                          sbuf + (disps[local_inverse * node_size] + reduce_offset) * extent, seg_size, GPU_ON_NODE - 1, dtype, op);
     if (err != MPI_SUCCESS)
       goto cleanup;
 #else
@@ -225,8 +225,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
   PICO_TAG_BEGIN("local-kernel");
 #ifdef PICO_MPI_CUDA_AWARE
   local_inverse = inverse_rank(GPU_ON_NODE, local_rank);
-  err = reduce_wrapper_grops_inoutsplit(recv_buff_head, result_buff_head + reduce_offset * extent,
-                                          sbuf + (disps[local_inverse * node_size] + reduce_recv_offset) * extent, seg_size, GPU_ON_NODE - 1, dtype, op);
+  err = reduce_wrapper_grops_inoutsplit(recv_buff_head + reduce_recv_offset * extent, result_buff_head + reduce_offset * extent,
+                                          sbuf + (disps[local_inverse * node_size] + reduce_offset) * extent, seg_size, GPU_ON_NODE - 1, dtype, op);
   if (err != MPI_SUCCESS)
     goto cleanup;
 #else
