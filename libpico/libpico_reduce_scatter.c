@@ -139,11 +139,38 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
 
   /* printf("seg_size %d seg_num %d\n", seg_size, seg_num);
   fflush(stdout); */
+  size_t reduce_offset = 0, reduce_recv_offset = 0;
   send_req_index = 0;
-  for (size_t seg_ind = 0; seg_ind < send_size; seg_ind += seg_size)
+  recv_req_index = 0;
+  recv_index = 0;
+  for (i = 0; i < GPU_ON_NODE; i++)
   {
+    peer = node_offset + i;
+    if (peer == rank)
+      continue;
+
+    local_inverse = inverse_rank(GPU_ON_NODE, i);
+
+    err = MPI_Isend(sbuf + (disps[local_inverse * node_size]) * extent, seg_size, dtype, peer, 0, comm, &send_req[send_req_index]);
+    if (err != MPI_SUCCESS)
+      goto cleanup;
+
+    err = MPI_Irecv(recv_buff_head + recv_index * extent, seg_size, dtype, peer, 0, comm, &recv_req[recv_req_index]);
+    if (err != MPI_SUCCESS)
+      goto cleanup;
+
+    send_req_index++;
+    recv_req_index++;
+    recv_index += seg_size;
+  }
+
+  for (size_t seg_ind = seg_size; seg_ind < send_size; seg_ind += seg_size)
+  {
+    err = MPI_Waitall(recv_req_index, recv_req, MPI_STATUSES_IGNORE);
+    if (err != MPI_SUCCESS)
+      goto cleanup;
+
     recv_req_index = 0;
-    recv_index = 0;
     for (i = 0; i < GPU_ON_NODE; i++)
     {
       peer = node_offset + i;
@@ -168,13 +195,11 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
       recv_index += seg_size;
     }
 
-    err = MPI_Waitall(recv_req_index, recv_req, MPI_STATUSES_IGNORE);
-    if (err != MPI_SUCCESS)
-      goto cleanup;
     PICO_TAG_BEGIN("local-kernel");
-#ifdef PICO_MPI_CUDA_AWARE  
+#ifdef PICO_MPI_CUDA_AWARE
     local_inverse = inverse_rank(GPU_ON_NODE, local_rank);
-    err = reduce_wrapper_grops_inoutsplit(recv_buff_head, result_buff_head + seg_ind * extent, sbuf + (disps[local_inverse * node_size] + seg_ind) * extent, seg_size, GPU_ON_NODE - 1, dtype, op);
+    err = reduce_wrapper_grops_inoutsplit(recv_buff_head, result_buff_head + reduce_offset * extent,
+                                          sbuf + (disps[local_inverse * node_size] + reduce_recv_offset) * extent, seg_size, GPU_ON_NODE - 1, dtype, op);
     if (err != MPI_SUCCESS)
       goto cleanup;
 #else
@@ -182,23 +207,45 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
     {
       /*printf("reduce value %d\n", i * recv_size + seg_ind);
       fflush(stdout);*/
-      err = MPI_Reduce_local(recv_buff_head + (i * seg_size) * extent, result_buff_head + seg_ind * extent, seg_size, dtype, op);
+      err = MPI_Reduce_local(recv_buff_head + (i * seg_size + reduce_recv_offset) * extent, result_buff_head + reduce_offset * extent, seg_size, dtype, op);
       if (MPI_SUCCESS != err)
       {
         goto cleanup;
       }
     }
 #endif
+    reduce_recv_offset += (GPU_ON_NODE - 1) * seg_size;
+    reduce_offset += seg_size;
     PICO_TAG_END("local-kernel");
   }
+
+  err = MPI_Waitall(recv_req_index, recv_req, MPI_STATUSES_IGNORE);
+  if (err != MPI_SUCCESS)
+    goto cleanup;
+  PICO_TAG_BEGIN("local-kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+  local_inverse = inverse_rank(GPU_ON_NODE, local_rank);
+  err = reduce_wrapper_grops_inoutsplit(recv_buff_head, result_buff_head + reduce_offset * extent,
+                                          sbuf + (disps[local_inverse * node_size] + reduce_recv_offset) * extent, seg_size, GPU_ON_NODE - 1, dtype, op);
+  if (err != MPI_SUCCESS)
+    goto cleanup;
+#else
+  for (i = 0; i < GPU_ON_NODE - 1; i++)
+  {
+    err = MPI_Reduce_local(recv_buff_head + (i * seg_size + reduce_recv_offset) * extent, result_buff_head + reduce_offset * extent, seg_size, dtype, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto cleanup;
+    }
+  }
+#endif
+  PICO_TAG_END("local-kernel");
+
   PICO_TAG_END("local-comunication");
   err = MPI_Waitall(send_req_index, send_req, MPI_STATUSES_IGNORE);
   if (err != MPI_SUCCESS)
     goto cleanup;
 
-  /*err = COPY_BUFF_DIFF_DT(result_buff_head + 2 * extent, rcounts[rank],
-                            dtype, rbuf, rcounts[rank], dtype);
-  return MPI_SUCCESS;*/
   PICO_TAG_BEGIN("globbal-comunication");
   /* recursive doubling globbal */
   int g_send_index, g_recv_index, g_last_index;
