@@ -1301,6 +1301,8 @@ export_lib_identity() {
     export MPI_LIB="$(_get_var "LIB_${i}_MPI_LIB")"
     export MPI_LIB_VERSION="$(_get_var "LIB_${i}_MPI_LIB_VERSION")"
     export PICOCC="$(_get_var "LIB_${i}_PICOCC")"
+    export GPU_LIB="$(_get_var "LIB_${i}_GPU_LIB")"
+    export GPU_LIB_VERSION="$(_get_var "LIB_${i}_GPU_LIB_VERSION")"
 }
 export -f export_lib_identity
 
