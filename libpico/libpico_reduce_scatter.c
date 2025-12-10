@@ -289,19 +289,28 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
       recv_index = send_index + send_size;
     }
 
-    if (send_size > 0)
+    if (send_size > 0 && recv_size > 0)
     {
-      err = MPI_Isend(result_buff_head + send_index * extent, send_size, dtype, peer, 0, comm, &send_req[send_req_index]);
+      err = MPI_Sendrecv(result_buff_head + send_index * extent, send_size, dtype, peer, 0, recv_buff_head, recv_size, dtype, peer, 0, comm, MPI_STATUS_IGNORE);
       if (err != MPI_SUCCESS)
         goto cleanup;
-
-      send_req_index++;
     }
-    if (recv_size > 0)
+    else
     {
-      err = MPI_Recv(recv_buff_head, recv_size, dtype, peer, 0, comm, MPI_STATUS_IGNORE);
-      if (err != MPI_SUCCESS)
-        goto cleanup;
+      if (send_size > 0)
+      {
+        err = MPI_Isend(result_buff_head + send_index * extent, send_size, dtype, peer, 0, comm, &send_req[send_req_index]);
+        if (err != MPI_SUCCESS)
+          goto cleanup;
+
+        send_req_index++;
+      }
+      if (recv_size > 0)
+      {
+        err = MPI_Recv(recv_buff_head, recv_size, dtype, peer, 0, comm, MPI_STATUS_IGNORE);
+        if (err != MPI_SUCCESS)
+          goto cleanup;
+      }
     }
 
     if (recv_size > 0)
