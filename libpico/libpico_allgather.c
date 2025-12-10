@@ -1655,7 +1655,8 @@ int allgather_bine_block_by_block_any_even(const void *sendbuf, size_t sendcount
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(recvtype, &dtsize);
   MPI_Request *requests = NULL;
-  memcpy((char*) recvbuf + sendcount * rank * dtsize, sendbuf, sendcount * dtsize);
+  COPY_BUFF_DIFF_DT(sendbuf, sendcount, recvtype, (char*) recvbuf + sendcount * rank * dtsize, recvcount, recvtype);
+  //memcpy((char*) recvbuf + sendcount * rank * dtsize, sendbuf, sendcount * dtsize);
 
   int inverse_mask = 0x1 << (int) (log_2(size) - 1);
   int step = 0;
