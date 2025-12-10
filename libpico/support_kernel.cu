@@ -235,6 +235,5 @@ int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *cur
     exit(EXIT_FAILURE);
   }
 
-  cudaDeviceSynchronize();
   return MPI_SUCCESS;
 }
