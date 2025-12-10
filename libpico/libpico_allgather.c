@@ -1587,7 +1587,7 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
 
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
@@ -1758,7 +1758,7 @@ int allgather_bine_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdty
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)vrank * (ptrdiff_t)rcount * rext;
 
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
 
