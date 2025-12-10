@@ -510,6 +510,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
   err = reduce_wrapper_grops(recv_buff_head, result_buff_head, recv_size, GPU_ON_NODE - 1, dtype, op);
   if (err != MPI_SUCCESS)
     goto cleanup;
+  cudaDeviceSynchronize();
 #else
   for (i = 0; i < GPU_ON_NODE - 1; i++)
   {
@@ -593,6 +594,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
       err = reduce_wrapper(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
         goto cleanup;
+      cudaDeviceSynchronize();
 #else
       MPI_Reduce_local(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
 #endif
@@ -787,6 +789,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
       err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
         goto cleanup;
+      cudaDeviceSynchronize();
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
@@ -860,6 +863,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
       err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
         goto cleanup;
+      cudaDeviceSynchronize();
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
@@ -1050,6 +1054,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
       err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
         goto cleanup;
+      cudaDeviceSynchronize();
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
@@ -1124,6 +1129,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
       err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
         goto cleanup;
+      cudaDeviceSynchronize();
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
