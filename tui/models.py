@@ -300,6 +300,8 @@ class OutputLevel(Enum):
             return cls.MINIMAL
         elif value == 'summary':
             return cls.SUMMARY
+        elif value == 'summarized':
+            return cls.SUMMARIZED
         else:
             raise ValueError(f"Unknown output level: {value}")
 
