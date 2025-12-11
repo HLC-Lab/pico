@@ -2030,6 +2030,69 @@ err_hndl:
 }
 
 
+int allgather_bine_permutation(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote, data_exchange;
+  int *permutation = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL;;
+
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  steps = log_2(size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  if(MPI_IN_PLACE != sbuf) {
+    err = COPY_BUFF_DIFF_DT(sbuf, scount, sdtype, rbuf, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+  permutation = (int *) malloc(size * sizeof(int));
+  if(permutation == NULL){
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  memset(permutation, -1, size * sizeof(int));
+  *(permutation + rank) = 0;
+
+  data_exchange = 1;
+  for(int step = steps - 1; step >= 0; step--) {
+    remote = pi(rank, step, size);
+
+    get_permutation(rank, step, steps, size, permutation, data_exchange);
+
+    tmprecv = (char*) rbuf + (ptrdiff_t)data_exchange * (ptrdiff_t)rcount * rext;
+
+    err = MPI_Sendrecv(rbuf, data_exchange * rcount, rdtype, remote, 0, tmprecv, data_exchange * rcount, rdtype, remote, 0, comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    data_exchange <<= 1;
+  }
+
+  err = reorder_blocks_gpu(rbuf, rcount, rdtype, permutation, size);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  if(permutation != NULL) 
+    free(permutation);
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line;  // silence compiler warning
+  if(permutation != NULL) free(permutation);
+  return err;
+}
+
+
 // ---------------------------------------------------
 // MODIFICATIONS INTRODUCTED BY LORENZO
 // 

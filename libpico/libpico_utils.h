@@ -152,6 +152,27 @@ static inline int pi(int rank, int step, int comm_sz) {
 }
 
 
+static inline void get_permutation_aux(int rank, int step, const int n_steps, const int adj_size, int *bitmap, int offset){
+  *(bitmap + rank) = offset;
+  if (step >= n_steps) return;
+
+  int peer;
+  
+  for (int s = step; s < n_steps; s++){
+    peer = pi(rank, s, adj_size);
+    get_permutation_aux(peer, s + 1, n_steps, adj_size, bitmap, offset + (1 << (n_steps - s - 1)));
+  }
+}
+
+
+static inline void get_permutation(int rank, int step, const int n_steps, const int adj_size, int *bitmap, int offset){
+  if (step >= n_steps) return;
+  
+  int peer = pi(rank, step, adj_size);
+  get_permutation_aux(peer, step + 1, n_steps, adj_size, bitmap, offset);
+}
+
+
 
 static inline void get_indexes_aux(int rank, int step, const int n_steps, const int adj_size, int *bitmap){
   if (step >= n_steps) return;
@@ -488,6 +509,89 @@ static inline int reorder_blocks(void *buffer, size_t block_size,
 
   free(temp);
   free(visited);
+
+  return MPI_SUCCESS;
+}
+
+/**
+ * @brief Reorders blocks in a buffer according to a given permutation.
+ *
+ * @param buffer The buffer containing the blocks to reorder.
+ * @param block_size The size of each block in bytes.
+ * @param block_permutation The permutation of the blocks.
+ * @param num_blocks The number of blocks in the buffer.
+ *
+ * @return MPI_SUCCESS on success, or an error code.
+ */
+static inline int reorder_blocks_gpu(void *buffer, size_t block_size, MPI_Datatype dtype,
+                                     int *block_permutation, int num_blocks)
+{
+  if (BINE_UNLIKELY(buffer == NULL || block_permutation == NULL || num_blocks <= 0))
+  {
+    return MPI_ERR_ARG;
+  }
+
+  int err = MPI_SUCCESS;
+  ptrdiff_t lb, ext;
+  char *buf = (char *)buffer;
+  void *temp;
+
+  err = MPI_Type_get_extent(dtype, &lb, &ext);
+  if (MPI_SUCCESS != err)
+  {
+    return err;
+  }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc(temp, block_size * ext));
+#else
+  temp = malloc(block_size * ext);
+#endif
+  char *visited = (char *)calloc(num_blocks, sizeof(int));
+  if (temp == NULL || visited == NULL)
+  {
+    return MPI_ERR_NO_MEM;
+  }
+
+  for (int i = 0; i < num_blocks; ++i)
+  {
+    // Skip if the block is already in its correct position or visited
+    if (visited[i] == 1 || block_permutation[i] == i)
+    {
+      continue;
+    }
+
+    int current = i;
+    // Save the current block to temp (start of the cycle)
+    COPY_BUFF_DIFF_DT(buf + current * block_size * ext, block_size, dtype, temp, block_size, dtype);
+
+    // Follow the cycle and place each block in its final position
+    while (visited[block_permutation[current]] != 1)
+    {
+      int next = block_permutation[current];
+      COPY_BUFF_DIFF_DT(buf + next * block_size * ext, block_size, dtype, buf + current * block_size * ext, block_size, dtype);
+      visited[current] = 1;
+      current = next;
+    }
+
+    // Place the saved block in its final position
+    COPY_BUFF_DIFF_DT(temp, block_size, dtype, buf + current * block_size * ext, block_size, dtype);
+    visited[current] = 1; // Mark the last block as visited
+  }
+
+  if (visited != NULL)
+  {
+    free(visited);
+  }
+
+  if (temp != NULL)
+  {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(temp));
+#else
+    free(temp);
+#endif
+  }
 
   return MPI_SUCCESS;
 }
