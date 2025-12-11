@@ -543,7 +543,7 @@ static inline int reorder_blocks_gpu(void *buffer, size_t block_size, MPI_Dataty
   }
 
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc(temp, block_size * ext));
+  BINE_CUDA_CHECK(cudaMalloc(&temp, block_size * ext));
 #else
   temp = malloc(block_size * ext);
 #endif
