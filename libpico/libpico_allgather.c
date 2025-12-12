@@ -1571,6 +1571,8 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
   char *tmpsend = NULL, *tmprecv = NULL;
   MPI_Request *requests = NULL;
 
+  PICO_TAG_BEGIN("setup");
+
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -1600,15 +1602,21 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
     goto err_hndl;
   }
 
+  PICO_TAG_END("setup");
+  PICO_TAG_BEGIN("comunication");
+
   for(int step = steps - 1; step >= 0; step--) {
     int num_reqs = 0;
     remote = pi(rank, step, size);
 
+    PICO_TAG_BEGIN("bitmap_set");
     memset(s_bitmap, 0, size * sizeof(int));
     memset(r_bitmap, 0, size * sizeof(int));
     get_indexes(rank, step, steps, size, r_bitmap);
     get_indexes(remote, step, steps, size, s_bitmap);
+    PICO_TAG_END("bitmap_set");
 
+    PICO_TAG_BEGIN("block_exchange");
     for(int block = 0; block < size; block++){
       if(s_bitmap[block] != 0){
         tmpsend = (char*)rbuf + (ptrdiff_t)block * (ptrdiff_t)rcount * rext;
@@ -1623,11 +1631,14 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
         num_reqs++;
       }
     }
-
+    PICO_TAG_END("block_exchange");
+    PICO_TAG_BEGIN("wait_requests");
     err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("wait_requests");
   }
 
+  PICO_TAG_END("comunication");
 
   free(s_bitmap);
   free(r_bitmap);
@@ -1727,6 +1738,7 @@ int allgather_bine_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdty
   ptrdiff_t rlb, rext;
   char *tmpsend = NULL, *tmprecv = NULL;
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -1762,6 +1774,8 @@ int allgather_bine_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdty
     err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
+  PICO_TAG_END("setup");
+  PICO_TAG_BEGIN("comunication");
 
   /* Communication step:
      At every step i, rank r:
@@ -1783,13 +1797,16 @@ int allgather_bine_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdty
       sendblocklocation -= distance;
     }
 
+    PICO_TAG_BEGIN("send_reciv");
     /* Sendreceive */
     err = MPI_Sendrecv(tmpsend, step_scount, rdtype, remote, 0, 
                        tmprecv, step_scount, rdtype, remote, 0,
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("send_reciv");
     distance <<=1;
   } 
+  PICO_TAG_END("comunication");
 
   return MPI_SUCCESS;
 
@@ -1809,6 +1826,7 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
   ptrdiff_t rlb, rext;
   char *tmpsend = NULL, *tmprecv = NULL;
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -1835,8 +1853,9 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
     err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
+  PICO_TAG_END("setup");
 
-
+  PICO_TAG_BEGIN("comunication");
   /* Communication step.
    *  At every step i, rank r:
    *  - communication peer is calculated by pi(rank, step, size)
@@ -1869,6 +1888,7 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
     extra_send = (send_index + mask > size) ? ((send_index + mask) - size) : 0;
     send_count = mask - extra_send;
 
+    PICO_TAG_BEGIN("extra comm");
     // warparound communication
     if (extra_recv != 0){
       tmprecv = (char*)rbuf;
@@ -1880,15 +1900,18 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
       err = MPI_Send(tmpsend, extra_send * rcount, rdtype, remote, extra_tag, comm);
       if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     }
+    PICO_TAG_END("extra comm");
 
     // Simple case: no wrap-around
     tmpsend = (char*)rbuf + (ptrdiff_t)send_index * (ptrdiff_t)rcount * rext;
     tmprecv = (char*)rbuf + (ptrdiff_t)recv_index * (ptrdiff_t)rcount * rext;
 
+    PICO_TAG_BEGIN("send_reciv");
     err = MPI_Sendrecv(tmpsend, send_count * rcount, rdtype, remote, 0, 
                        tmprecv, recv_count * rcount, rdtype, remote, 0,
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("send_reciv");
     
     if (extra_recv != 0) {
       err = MPI_Wait(&req, MPI_STATUS_IGNORE);
@@ -1897,6 +1920,7 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
 
     mask <<= 1;
   }
+  PICO_TAG_END("comunication");
 
   return MPI_SUCCESS;
 
@@ -2037,6 +2061,8 @@ int allgather_bine_permutation(const void *sbuf, size_t scount, MPI_Datatype sdt
   ptrdiff_t rlb, rext;
   char *tmprecv = NULL;;
 
+  PICO_TAG_BEGIN("setup");
+
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -2063,19 +2089,26 @@ int allgather_bine_permutation(const void *sbuf, size_t scount, MPI_Datatype sdt
 
   memset(permutation, -1, size * sizeof(int));
   *(permutation + rank) = 0;
+  PICO_TAG_END("setup");
 
+  PICO_TAG_BEGIN("comunication");
   data_exchange = 1;
   for(int step = steps - 1; step >= 0; step--) {
     remote = pi(rank, step, size);
 
+    PICO_TAG_BEGIN("permutation_calc");
     get_permutation(rank, step, steps, size, permutation, data_exchange);
+    PICO_TAG_END("permutation_calc");
 
     tmprecv = (char*) rbuf + (ptrdiff_t)data_exchange * (ptrdiff_t)rcount * rext;
 
+    PICO_TAG_BEGIN("send_reciv");
     err = MPI_Sendrecv(rbuf, data_exchange * rcount, rdtype, remote, 0, tmprecv, data_exchange * rcount, rdtype, remote, 0, comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("send_reciv");
     data_exchange <<= 1;
   }
+  PICO_TAG_END("comunication");
 
   err = reorder_blocks_gpu(rbuf, rcount, rdtype, permutation, size);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
