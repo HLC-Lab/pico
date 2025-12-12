@@ -2092,6 +2092,446 @@ err_hndl:
   return err;
 }
 
+int allgather_bine_block_by_block_hierarcic_v1(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+  int node_size, node_rank, node_offset, local_rank;
+  int num_reqs;
+  int *s_bitmap = NULL, *r_bitmap = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+  MPI_Request *requests = NULL;
+
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  local_rank = rank % GPU_ON_NODE;
+  node_size = size / GPU_ON_NODE;
+  node_offset = rank - local_rank;
+  node_rank = node_offset / GPU_ON_NODE;
+
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  if(MPI_IN_PLACE != sbuf) {
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+  s_bitmap = (int *) malloc(node_size * sizeof(int));
+  r_bitmap = (int *) malloc(node_size * sizeof(int));
+  requests = (MPI_Request *) malloc(size * sizeof(MPI_Request));
+  if(s_bitmap == NULL || r_bitmap == NULL || requests == NULL){
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  // local exchange
+  num_reqs = 0;
+  tmpsend = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+  for (int i = 0; i < GPU_ON_NODE; i++)
+  {
+    if (i == local_rank)
+      continue;
+      
+    tmprecv = (char*)rbuf + (ptrdiff_t)(i + node_offset) * rcount * rext;
+
+    err = MPI_Isend(tmpsend, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+    err = MPI_Irecv(tmprecv, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+  }
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  for(int step = steps - 1; step >= 0; step--) {
+    num_reqs = 0;
+    remote = pi(node_rank, step, node_size);
+
+    memset(s_bitmap, 0, node_size * sizeof(int));
+    memset(r_bitmap, 0, node_size * sizeof(int));
+    get_indexes(node_rank, step, steps, node_size, r_bitmap);
+    get_indexes(remote, step, steps, node_size, s_bitmap);
+
+    remote = remote * GPU_ON_NODE + local_rank;
+
+    for(int block = 0; block < node_size; block++){
+      if(s_bitmap[block] != 0){
+        tmpsend = (char*)rbuf + (ptrdiff_t)block * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+        err = MPI_Isend(tmpsend, rcount * GPU_ON_NODE, rdtype, remote, block, comm, requests + num_reqs);
+        if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+        num_reqs++;
+      }
+      if(r_bitmap[block] != 0){
+        tmprecv = (char*)rbuf + (ptrdiff_t)block * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+        err = MPI_Irecv(tmprecv, rcount * GPU_ON_NODE, rdtype, remote, block, comm, requests + num_reqs);
+        if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+        num_reqs++;
+      }
+    }
+
+    err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  }
+
+
+  free(s_bitmap);
+  free(r_bitmap);
+  free(requests);
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line;  // silence compiler warning
+  if(requests != NULL) free(requests);
+  if(s_bitmap != NULL) free(s_bitmap);
+  if(r_bitmap != NULL) free(r_bitmap);
+  return err;
+}
+
+int allgather_bine_send_remap_hierarcic_v1(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, steps, err = MPI_SUCCESS;
+  int vrank, remote, vremote, sendblocklocation, distance;
+  int node_size, node_rank, node_offset, local_rank;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+  MPI_Request requests[GPU_ON_NODE * 2];
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  local_rank = rank % GPU_ON_NODE;
+  node_size = size / GPU_ON_NODE;
+  node_offset = rank - local_rank;
+  node_rank = node_offset / GPU_ON_NODE;
+
+  /*
+   * Current implementation only handles power-of-two number of processes.
+   */
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  /* Initialization step:
+   * - if I gather the result for another rank, I send my buffer to that rank
+   *   and I receive the data from the rank at the inverse permutation
+   * - if I gather the result for myself, I copy the data from the send buffer
+   */
+  vrank = (int) remap_rank((uint32_t) node_size, (uint32_t) node_rank);
+  int node_to_rank = vrank * GPU_ON_NODE + local_rank;
+  if(vrank != node_rank) {
+    tmprecv = (char*) rbuf + (ptrdiff_t)node_to_rank * (ptrdiff_t)rcount * rext;
+    err = MPI_Sendrecv(sbuf, scount, sdtype, get_sender_rec(node_size, node_rank) * GPU_ON_NODE + local_rank, 0,
+                       tmprecv, rcount, rdtype, node_to_rank, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  }
+  else{
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) rbuf + (ptrdiff_t)node_to_rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+  // local exchange
+  int num_reqs = 0;
+  tmpsend = (char*) rbuf + (ptrdiff_t)node_to_rank * (ptrdiff_t)rcount * rext;
+  for (int i = 0; i < GPU_ON_NODE; i++)
+  {
+    if (i == local_rank)
+      continue;
+      
+    tmprecv = (char*)rbuf + (ptrdiff_t)(i + node_to_rank - local_rank) * rcount * rext;
+
+    err = MPI_Isend(tmpsend, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+    err = MPI_Irecv(tmprecv, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+  }
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  /* Communication step:
+     At every step i, rank r:
+     - exchanges message with rank remote = (r ^ 2^i).
+  */
+  distance = 0x1;
+  sendblocklocation = vrank;
+  for(int step = steps - 1; step >= 0; step--) {
+    size_t step_scount = rcount * distance * GPU_ON_NODE;
+    remote = pi(node_rank, step, node_size);
+    vremote = (int) remap_rank((uint32_t) node_size, (uint32_t) remote);
+    node_to_rank = remote * GPU_ON_NODE + local_rank;
+
+    if(vrank < vremote){
+      tmpsend = (char*)rbuf + (ptrdiff_t)sendblocklocation * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)rbuf + (ptrdiff_t)(sendblocklocation + distance) * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+    } else {
+      tmpsend = (char*)rbuf + (ptrdiff_t)sendblocklocation * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)rbuf + (ptrdiff_t)(sendblocklocation - distance) * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+      sendblocklocation -= distance;
+    }
+
+    /* Sendreceive */
+    err = MPI_Sendrecv(tmpsend, step_scount, rdtype, node_to_rank, 0, 
+                       tmprecv, step_scount, rdtype, node_to_rank, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    distance <<=1;
+  } 
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line;  // silence compiler warning
+  return err;
+}
+
+int allgather_bine_2_blocks_hierarcic_v1(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+  int mask, my_first, recv_index, send_index, num_reqs;
+  int send_count, recv_count, extra_send, extra_recv, extra_tag;
+  int node_size, node_rank, node_offset, local_rank;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+  MPI_Request requests[GPU_ON_NODE * 2];
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  local_rank = rank % GPU_ON_NODE;
+  node_size = size / GPU_ON_NODE;
+  node_offset = rank - local_rank;
+  node_rank = node_offset / GPU_ON_NODE;
+
+  /*
+   * Current implementation only handles power-of-two number of processes.
+   */
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  /* Initialization step:
+     - if send buffer is not MPI_IN_PLACE, copy send buffer to block  of
+     receive buffer
+  */
+  if(MPI_IN_PLACE != sbuf) {
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+  // local exchange
+  num_reqs = 0;
+  tmpsend = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+  for (int i = 0; i < GPU_ON_NODE; i++)
+  {
+    if (i == local_rank)
+      continue;
+      
+    tmprecv = (char*)rbuf + (ptrdiff_t)(i + node_offset) * rcount * rext;
+
+    err = MPI_Isend(tmpsend, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+    err = MPI_Irecv(tmprecv, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+  }
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  
+  /* Communication step.
+   *  At every step i, rank r:
+   *  - communication peer is calculated by pi(rank, step, size)
+   *  - if the step is even, even ranks send the next `mask` blocks and
+   *  odd ranks send the previous `mask` blocks.
+   *  - if the step is odd, even ranks send the previous `mask` blocks and
+   *  odd ranks send the next `mask` blocks.
+   */
+  mask = 0x1;
+  my_first = node_rank;
+  extra_tag = 1;
+  for(int step = 0; step < steps; step++) {
+    MPI_Request req;
+    remote = pi(node_rank, step, node_size) * GPU_ON_NODE + local_rank;
+    send_index = my_first;
+
+    // Calculate the send and receive indexes by alternating send/recv direction.
+    if ((step & 1) == (node_rank & 1)) {
+        recv_index = (send_index + mask + node_size) % node_size;
+    } else {
+        recv_index = (send_index - mask + node_size) % node_size;
+        my_first = recv_index;
+    }
+
+    // Control if the previously calculated indexes imply out of bound
+    // send/recv. If so, split the communication with an extra send/recv.
+    extra_recv = (recv_index + mask > node_size) ? ((recv_index + mask) - node_size) : 0;
+    recv_count = mask - extra_recv;
+
+    extra_send = (send_index + mask > node_size) ? ((send_index + mask) - node_size) : 0;
+    send_count = mask - extra_send;
+
+    // warparound communication
+    if (extra_recv != 0){
+      tmprecv = (char*)rbuf;
+      err = MPI_Irecv(tmprecv, extra_recv * rcount * GPU_ON_NODE, rdtype, remote, extra_tag, comm, &req);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+    if (extra_send != 0){
+      tmpsend = (char*)rbuf;
+      err = MPI_Send(tmpsend, extra_send * rcount * GPU_ON_NODE, rdtype, remote, extra_tag, comm);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+
+    // Simple case: no wrap-around
+    tmpsend = (char*)rbuf + (ptrdiff_t)send_index * (ptrdiff_t)rcount * rext * GPU_ON_NODE;
+    tmprecv = (char*)rbuf + (ptrdiff_t)recv_index * (ptrdiff_t)rcount * rext * GPU_ON_NODE;
+
+    err = MPI_Sendrecv(tmpsend, send_count * rcount * GPU_ON_NODE, rdtype, remote, 0, 
+                       tmprecv, recv_count * rcount * GPU_ON_NODE, rdtype, remote, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    
+    if (extra_recv != 0) {
+      err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    }
+
+    mask <<= 1;
+  }
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line;  // silence compiler warning
+  return err;
+}
+
+int allgather_bine_permutation_hierarcic_v1(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote, data_exchange;
+  int node_size, node_rank, node_offset, local_rank, num_reqs;
+  int *permutation = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL, *tmpsend = NULL;
+  MPI_Request requests[GPU_ON_NODE * 2];
+
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  local_rank = rank % GPU_ON_NODE;
+  node_size = size / GPU_ON_NODE;
+  node_offset = rank - local_rank;
+  node_rank = node_offset / GPU_ON_NODE;
+
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  tmpsend = (char*) rbuf + (ptrdiff_t)local_rank * (ptrdiff_t)rcount * rext;
+  if(MPI_IN_PLACE != sbuf) {
+    err = COPY_BUFF_DIFF_DT(sbuf, scount, sdtype, tmpsend, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+  // local exchange
+  num_reqs = 0;
+  for (int i = 0; i < GPU_ON_NODE; i++)
+  {
+    if (i == local_rank)
+      continue;
+      
+    tmprecv = (char*)rbuf + (ptrdiff_t)i * rcount * rext;
+
+    err = MPI_Isend(tmpsend, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+    err = MPI_Irecv(tmprecv, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+  }
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  permutation = (int *) malloc(node_size * sizeof(int));
+  if(permutation == NULL){
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  memset(permutation, -1, node_size * sizeof(int));
+  *(permutation + node_rank) = 0;
+
+  data_exchange = 1;
+  for(int step = steps - 1; step >= 0; step--) {
+    remote = pi(node_rank, step, node_size) * GPU_ON_NODE + local_rank;
+
+    get_permutation(node_rank, step, steps, node_size, permutation, data_exchange);
+
+    tmprecv = (char*) rbuf + (ptrdiff_t)data_exchange * (ptrdiff_t)rcount * rext * GPU_ON_NODE;
+
+    err = MPI_Sendrecv(rbuf, data_exchange * rcount * GPU_ON_NODE, rdtype, remote, 0,
+                       tmprecv, data_exchange * rcount * GPU_ON_NODE, rdtype, remote, 0, comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    data_exchange <<= 1;
+  }
+
+  err = reorder_blocks_gpu(rbuf, rcount * GPU_ON_NODE, rdtype, permutation, node_size);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  if(permutation != NULL) 
+    free(permutation);
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line;  // silence compiler warning
+  if(permutation != NULL) free(permutation);
+  return err;
+}
 
 // ---------------------------------------------------
 // MODIFICATIONS INTRODUCTED BY LORENZO

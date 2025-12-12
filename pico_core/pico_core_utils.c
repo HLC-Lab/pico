@@ -142,6 +142,10 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_2_blocks_over", allgather_bine_2_blocks);
   CHECK_STR(algorithm, "bine_2_blocks_dtype_over", allgather_bine_2_blocks_dtype);
   CHECK_STR(algorithm, "bine_permutation_over", allgather_bine_permutation);
+  CHECK_STR(algorithm, "bine_block_by_block_hierarcic_v1_over", allgather_bine_block_by_block_hierarcic_v1);
+  CHECK_STR(algorithm, "bine_send_remap_hierarcic_v1_over", allgather_bine_send_remap_hierarcic_v1);
+  CHECK_STR(algorithm, "bine_2_blocks_hierarcic_v1_over", allgather_bine_2_blocks_hierarcic_v1);
+  CHECK_STR(algorithm, "bine_permutation_hierarcic_v1_over", allgather_bine_permutation_hierarcic_v1);
 
   PICO_CORE_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
