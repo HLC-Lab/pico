@@ -1,0 +1,107 @@
+{
+  "environment": {
+    "desc": "Saverio's laptop.",
+    "name": "local",
+    "slurm": false
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 1,
+    "output_level": "summary",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        32,
+        256,
+        2048,
+        16384,
+        131072
+      ],
+      "sizes_elements": [
+        8,
+        64,
+        512,
+        4096,
+        32768
+      ],
+      "segsizes_bytes": [
+        0
+      ]
+    }
+  },
+  "libraries": [
+    {
+      "name": "Open MPI",
+      "desc": "System's default Open MPI installation",
+      "tests": {
+        "cpu": [
+          8
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "Open-MPI",
+      "version": "5.0.7",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": false
+      },
+      "lib_load": {
+        "type": "default"
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "bcast": [
+          {
+            "name": "linear_over",
+            "coll": "bcast",
+            "desc": "libpico external linear algorithm. This algorithm uses a simple linear pattern of communication where the root sends data to each process one by one. Copied from open mpi linear algorithm.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "tags": [
+              "linear",
+              "external"
+            ]
+          },
+          {
+            "name": "binomial_over",
+            "coll": "bcast",
+            "desc": "libpico external binomial algorithm. This algorithm uses a binomial tree pattern of communication where each process that receives data from the root forwards it to other processes. Copied from MPICH binomial algorithm.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "tags": [
+              "binomial",
+              "external"
+            ]
+          },
+          {
+            "name": "scatter_allgather_over",
+            "coll": "bcast",
+            "desc": "libpico external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "scatter_allgather",
+              "segmented",
+              "external"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

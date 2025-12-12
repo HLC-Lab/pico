@@ -175,6 +175,8 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
 */
 static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
 #ifndef PICO_NCCL
+  CHECK_STR(algorithm, "linear_over", bcast_linear);
+  CHECK_STR(algorithm, "binomial_over", bcast_binomial);
   CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
   CHECK_STR(algorithm, "bine_lat_over", bcast_bine_lat);
   CHECK_STR(algorithm, "bine_lat_reversed_over", bcast_bine_lat_reversed);
@@ -430,10 +432,13 @@ int get_data_saving_options(test_routine_t *test_routine, size_t count,
 
   if(strcmp(output_level, "all") == 0) {
     test_routine->output_level = ALL;
-  } else if(strcmp(output_level, "statistics") == 0) {
-    test_routine->output_level = STATISTICS;
-  } else if(strcmp(output_level, "summarized") == 0) {
-    test_routine->output_level = SUMMARIZED;
+  // TODO:
+  // } else if(strcmp(output_level, "statistics") == 0) {
+  //   test_routine->output_level = STATISTICS;
+  // } else if(strcmp(output_level, "summarized") == 0) {
+  //   test_routine->output_level = SUMMARIZED;
+  } else if(strcmp(output_level, "minimal") == 0) {
+    test_routine->output_level = MINIMAL;
   } else {
     fprintf(stderr, "Error: Invalid OUTPUT_LEVEL value. Aborting...");
     return -1;
@@ -864,7 +869,7 @@ static inline int write_all_output_to_file(const char *fullpath, double *highest
 *
 * @note Time is saved in ns (i.e. 10^-9 s).
 */
-static inline int write_summarized_output_to_file(const char *fullpath, double *highest, int iter){
+static inline int write_minimal_output_to_file(const char *fullpath, double *highest, int iter){
   FILE *output_file = fopen(fullpath, "w");
   if(output_file == NULL) {
     fprintf(stderr, "Error: Opening file %s for writing", fullpath);
@@ -895,8 +900,8 @@ int write_output_to_file(test_routine_t test_routine, double *highest, double *a
       return write_all_output_to_file(test_routine.output_data_file, highest, all_times, iter);
     case STATISTICS:
       return write_statistics_output_to_file(test_routine.output_data_file, highest, iter);
-    case SUMMARIZED:
-      return write_summarized_output_to_file(test_routine.output_data_file, highest, iter);
+    case MINIMAL:
+      return write_minimal_output_to_file(test_routine.output_data_file, highest, iter);
     default:
       fprintf(stderr, "Error: Output level not recognized. Aborting...");
       return -1;

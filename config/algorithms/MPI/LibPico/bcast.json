@@ -1,4 +1,22 @@
 {
+  "linear_over": {
+    "desc": "libpico external linear algorithm. This algorithm uses a simple linear pattern of communication where the root sends data to each process one by one. Copied from open mpi linear algorithm.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "tags": [
+      "linear",
+      "external"
+    ]
+  },
+  "binomial_over": {
+    "desc": "libpico external binomial algorithm. This algorithm uses a binomial tree pattern of communication where each process that receives data from the root forwards it to other processes. Copied from MPICH binomial algorithm.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "tags": [
+      "binomial",
+      "external"
+    ]
+  },
   "scatter_allgather_over": {
     "desc": "libpico external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
     "version": "1.0.0",

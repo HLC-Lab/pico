@@ -8,6 +8,7 @@
 import argparse
 import re
 import sys
+import numpy as np
 from pathlib import Path
 from collections import defaultdict, Counter
 
@@ -246,10 +247,18 @@ def main():
         vals = [s["coll_time_pct"] for s in lst if not s.get("error")]
         nvals = len(vals)
         if nvals:
-            avgv = sum(vals) / nvals
-            minv = min(vals)
-            maxv = max(vals)
-            summary_rows.append((Path(run).name, avgv, minv, maxv, nvals))
+            vals_arr = np.array(vals)
+            avgv = float(vals_arr.mean())
+            minv = float(vals_arr.min())
+            maxv = float(vals_arr.max())
+            q1v = float(np.percentile(vals_arr, 25))
+            q3v = float(np.percentile(vals_arr, 75))
+            median = float(np.median(vals_arr))
+
+            # Add Q1 and Q3 to summary
+            summary_rows.append(
+                (Path(run).name, avgv, minv, median, q1v, q3v, maxv, nvals)
+            )
         # representative rank = highest % collective time
         best = None
         for s in lst:
@@ -292,11 +301,11 @@ def main():
     # Print per-run summary (Avg/Min/Max) if requested
     print("\n" + "=" * 90 + "\n"+ "+" * 90 + "\n" + "=" * 90)
     if args.show_summary:
-        print("\nPer-run summary (avg/min/max collective %):")
-        print(f"{'Run':<20} {'Avg':>8} {'Min':>8} {'Max':>8} {'Ranks':>7}")
-        print("-" * 60)
-        for run, avgv, minv, maxv, nvals in sorted(summary_rows):
-            print(f"{run:<20} {avgv:8.2f} {minv:8.2f} {maxv:8.2f} {nvals:7d}")
+        print("\nPer-run summary (Avg / Min / Median / Q1 / Q3 / Max collective %):")
+        print(f"{'Run':<20} {'Avg':>8} {'Min':>8} {'Median':>8} {'Q1':>8} {'Q3':>8} {'Max':>8} {'Ranks':>7}")
+        print("-" * 85)
+        for run, avgv, minv, median, q1v, q3v, maxv, nvals in sorted(summary_rows):
+            print(f"{run:<20} {avgv:8.2f} {minv: 8.2f} {median:8.2f} {q1v:8.2f} {q3v:8.2f} {maxv:8.2f} {nvals:7d}")
 
 
     print("\n" + "=" * 90 + "\n"+ "+" * 90 + "\n" + "=" * 90)

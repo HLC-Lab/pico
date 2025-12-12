@@ -118,7 +118,7 @@ class ConfigureStep(StepScreen):
             ("Full", OutputLevel.FULL),
             ("Statistics", OutputLevel.STATISTICS),
             ("Minimal", OutputLevel.MINIMAL),
-            ("Summary", OutputLevel.SUMMARY),
+            ("Summarized", OutputLevel.SUMMARIZED),
         ]
 
         buffer_items =  [Selection(f"{label.replace('Byte', '  B')}", self.__parse_size(label), True) for label in self.__buffer_sizes]
@@ -133,7 +133,7 @@ class ConfigureStep(StepScreen):
                 ),
                 Vertical(
                     Static("Output Level", classes="field-label"),
-                    Select( output_lev, id="output-select", prompt="Select Output Level", value=OutputLevel.SUMMARY)
+                    Select( output_lev, id="output-select", prompt="Select Output Level", value=OutputLevel.MINIMAL)
                 ),
                 classes="field-small"
             ),

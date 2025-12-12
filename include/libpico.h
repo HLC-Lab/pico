@@ -73,6 +73,8 @@ int allgather_bine_2_blocks_dtype(ALLGATHER_MPI_ARGS);
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);
 int alltoall_bine(ALLTOALL_MPI_ARGS);
 
+int bcast_linear(BCAST_MPI_ARGS);
+int bcast_binomial(BCAST_MPI_ARGS);
 int bcast_scatter_allgather(BCAST_MPI_ARGS);
 int bcast_bine_lat(BCAST_MPI_ARGS);
 int bcast_bine_lat_reversed(BCAST_MPI_ARGS);
