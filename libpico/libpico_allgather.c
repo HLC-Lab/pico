@@ -1888,7 +1888,7 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
     extra_send = (send_index + mask > size) ? ((send_index + mask) - size) : 0;
     send_count = mask - extra_send;
 
-    PICO_TAG_BEGIN("extra comm");
+    PICO_TAG_BEGIN("extra_comm");
     // warparound communication
     if (extra_recv != 0){
       tmprecv = (char*)rbuf;
@@ -1900,7 +1900,7 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
       err = MPI_Send(tmpsend, extra_send * rcount, rdtype, remote, extra_tag, comm);
       if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     }
-    PICO_TAG_END("extra comm");
+    PICO_TAG_END("extra_comm");
 
     // Simple case: no wrap-around
     tmpsend = (char*)rbuf + (ptrdiff_t)send_index * (ptrdiff_t)rcount * rext;
@@ -1913,10 +1913,12 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     PICO_TAG_END("send_reciv");
     
+    PICO_TAG_BEGIN("wait_extra_req");
     if (extra_recv != 0) {
       err = MPI_Wait(&req, MPI_STATUS_IGNORE);
       if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     }
+    PICO_TAG_END("wait_extra_req");
 
     mask <<= 1;
   }
@@ -2110,8 +2112,10 @@ int allgather_bine_permutation(const void *sbuf, size_t scount, MPI_Datatype sdt
   }
   PICO_TAG_END("comunication");
 
+  PICO_TAG_BEGIN("reorder_block");
   err = reorder_blocks_gpu(rbuf, rcount, rdtype, permutation, size);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("reorder_block");
 
   if(permutation != NULL) 
     free(permutation);
@@ -2135,6 +2139,7 @@ int allgather_bine_block_by_block_hierarcic_v1(const void *sbuf, size_t scount, 
   char *tmpsend = NULL, *tmprecv = NULL;
   MPI_Request *requests = NULL;
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -2168,8 +2173,10 @@ int allgather_bine_block_by_block_hierarcic_v1(const void *sbuf, size_t scount, 
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
   }
+  PICO_TAG_END("setup");
 
   // local exchange
+  PICO_TAG_END("local_comm");
   num_reqs = 0;
   tmpsend = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
   for (int i = 0; i < GPU_ON_NODE; i++)
@@ -2186,20 +2193,27 @@ int allgather_bine_block_by_block_hierarcic_v1(const void *sbuf, size_t scount, 
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     num_reqs++;
   }
+  PICO_TAG_BEGIN("local_req_wait");
   err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_req_wait");
+  PICO_TAG_END("local_comm");
 
+  PICO_TAG_BEGIN("global_comm");
   for(int step = steps - 1; step >= 0; step--) {
     num_reqs = 0;
     remote = pi(node_rank, step, node_size);
 
+    PICO_TAG_BEGIN("bitmap_set");
     memset(s_bitmap, 0, node_size * sizeof(int));
     memset(r_bitmap, 0, node_size * sizeof(int));
     get_indexes(node_rank, step, steps, node_size, r_bitmap);
     get_indexes(remote, step, steps, node_size, s_bitmap);
+    PICO_TAG_END("bitmap_set");
 
     remote = remote * GPU_ON_NODE + local_rank;
 
+    PICO_TAG_BEGIN("block_exchange");
     for(int block = 0; block < node_size; block++){
       if(s_bitmap[block] != 0){
         tmpsend = (char*)rbuf + (ptrdiff_t)block * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
@@ -2214,11 +2228,14 @@ int allgather_bine_block_by_block_hierarcic_v1(const void *sbuf, size_t scount, 
         num_reqs++;
       }
     }
+    PICO_TAG_END("block_exchange");
 
+    PICO_TAG_BEGIN("global_req_wait");
     err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("global_req_wait");
   }
-
+  PICO_TAG_END("global_comm");
 
   free(s_bitmap);
   free(r_bitmap);
@@ -2245,6 +2262,7 @@ int allgather_bine_send_remap_hierarcic_v1(const void *sbuf, size_t scount, MPI_
   char *tmpsend = NULL, *tmprecv = NULL;
   MPI_Request requests[GPU_ON_NODE * 2];
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -2270,6 +2288,7 @@ int allgather_bine_send_remap_hierarcic_v1(const void *sbuf, size_t scount, MPI_
    *   and I receive the data from the rank at the inverse permutation
    * - if I gather the result for myself, I copy the data from the send buffer
    */
+  PICO_TAG_BEGIN("setup_data_exchange");
   vrank = (int) remap_rank((uint32_t) node_size, (uint32_t) node_rank);
   int node_to_rank = vrank * GPU_ON_NODE + local_rank;
   if(vrank != node_rank) {
@@ -2286,7 +2305,10 @@ int allgather_bine_send_remap_hierarcic_v1(const void *sbuf, size_t scount, MPI_
     err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
+  PICO_TAG_END("setup_data_exchange");
+  PICO_TAG_END("setup");
 
+  PICO_TAG_BEGIN("local_exchange");
   // local exchange
   int num_reqs = 0;
   tmpsend = (char*) rbuf + (ptrdiff_t)node_to_rank * (ptrdiff_t)rcount * rext;
@@ -2304,13 +2326,17 @@ int allgather_bine_send_remap_hierarcic_v1(const void *sbuf, size_t scount, MPI_
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     num_reqs++;
   }
+  PICO_TAG_BEGIN("local_request_wait");
   err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_request_wait");
+  PICO_TAG_END("local_exchange");
 
   /* Communication step:
      At every step i, rank r:
      - exchanges message with rank remote = (r ^ 2^i).
   */
+  PICO_TAG_BEGIN("gloabbal_comm");
   distance = 0x1;
   sendblocklocation = vrank;
   for(int step = steps - 1; step >= 0; step--) {
@@ -2328,13 +2354,16 @@ int allgather_bine_send_remap_hierarcic_v1(const void *sbuf, size_t scount, MPI_
       sendblocklocation -= distance;
     }
 
+    PICO_TAG_BEGIN("globbal_comm_sendrecv");
     /* Sendreceive */
     err = MPI_Sendrecv(tmpsend, step_scount, rdtype, node_to_rank, 0, 
                        tmprecv, step_scount, rdtype, node_to_rank, 0,
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("globbal_comm_sendrecv");
     distance <<=1;
   } 
+  PICO_TAG_END("gloabbal_comm");
 
   return MPI_SUCCESS;
 
@@ -2355,6 +2384,7 @@ int allgather_bine_2_blocks_hierarcic_v1(const void *sbuf, size_t scount, MPI_Da
   char *tmpsend = NULL, *tmprecv = NULL;
   MPI_Request requests[GPU_ON_NODE * 2];
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -2386,8 +2416,10 @@ int allgather_bine_2_blocks_hierarcic_v1(const void *sbuf, size_t scount, MPI_Da
     err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
+  PICO_TAG_END("setup");
 
   // local exchange
+  PICO_TAG_BEGIN("locla_comm");
   num_reqs = 0;
   tmpsend = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
   for (int i = 0; i < GPU_ON_NODE; i++)
@@ -2404,8 +2436,11 @@ int allgather_bine_2_blocks_hierarcic_v1(const void *sbuf, size_t scount, MPI_Da
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     num_reqs++;
   }
+  PICO_TAG_BEGIN("local_comm_wait_req");
   err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_comm_wait_req");
+  PICO_TAG_END("locla_comm");
   
   /* Communication step.
    *  At every step i, rank r:
@@ -2415,6 +2450,7 @@ int allgather_bine_2_blocks_hierarcic_v1(const void *sbuf, size_t scount, MPI_Da
    *  - if the step is odd, even ranks send the previous `mask` blocks and
    *  odd ranks send the next `mask` blocks.
    */
+  PICO_TAG_BEGIN("globbal_comm");
   mask = 0x1;
   my_first = node_rank;
   extra_tag = 1;
@@ -2439,6 +2475,7 @@ int allgather_bine_2_blocks_hierarcic_v1(const void *sbuf, size_t scount, MPI_Da
     extra_send = (send_index + mask > node_size) ? ((send_index + mask) - node_size) : 0;
     send_count = mask - extra_send;
 
+    PICO_TAG_BEGIN("extra_request");
     // warparound communication
     if (extra_recv != 0){
       tmprecv = (char*)rbuf;
@@ -2450,23 +2487,29 @@ int allgather_bine_2_blocks_hierarcic_v1(const void *sbuf, size_t scount, MPI_Da
       err = MPI_Send(tmpsend, extra_send * rcount * GPU_ON_NODE, rdtype, remote, extra_tag, comm);
       if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     }
+    PICO_TAG_END("extra_request");
 
     // Simple case: no wrap-around
     tmpsend = (char*)rbuf + (ptrdiff_t)send_index * (ptrdiff_t)rcount * rext * GPU_ON_NODE;
     tmprecv = (char*)rbuf + (ptrdiff_t)recv_index * (ptrdiff_t)rcount * rext * GPU_ON_NODE;
 
+    PICO_TAG_BEGIN("globbal_send_rec");
     err = MPI_Sendrecv(tmpsend, send_count * rcount * GPU_ON_NODE, rdtype, remote, 0, 
                        tmprecv, recv_count * rcount * GPU_ON_NODE, rdtype, remote, 0,
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("globbal_send_rec");
     
+    PICO_TAG_BEGIN("extra_req_wait");
     if (extra_recv != 0) {
       err = MPI_Wait(&req, MPI_STATUS_IGNORE);
       if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     }
+    PICO_TAG_END("extra_req_wait");
 
     mask <<= 1;
   }
+  PICO_TAG_END("globbal_comm");
 
   return MPI_SUCCESS;
 
@@ -2485,6 +2528,7 @@ int allgather_bine_permutation_hierarcic_v1(const void *sbuf, size_t scount, MPI
   char *tmprecv = NULL, *tmpsend = NULL;
   MPI_Request requests[GPU_ON_NODE * 2];
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -2507,7 +2551,9 @@ int allgather_bine_permutation_hierarcic_v1(const void *sbuf, size_t scount, MPI
     err = COPY_BUFF_DIFF_DT(sbuf, scount, sdtype, tmpsend, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
+  PICO_TAG_END("setup");
 
+  PICO_TAG_BEGIN("local_comm");
   // local exchange
   num_reqs = 0;
   for (int i = 0; i < GPU_ON_NODE; i++)
@@ -2524,8 +2570,11 @@ int allgather_bine_permutation_hierarcic_v1(const void *sbuf, size_t scount, MPI
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     num_reqs++;
   }
+  PICO_TAG_BEGIN("local_req_wait");
   err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_req_wait");
+  PICO_TAG_END("local_comm");
 
   permutation = (int *) malloc(node_size * sizeof(int));
   if(permutation == NULL){
@@ -2537,22 +2586,30 @@ int allgather_bine_permutation_hierarcic_v1(const void *sbuf, size_t scount, MPI
   memset(permutation, -1, node_size * sizeof(int));
   *(permutation + node_rank) = 0;
 
+  PICO_TAG_BEGIN("gloabbal_comm");
   data_exchange = 1;
   for(int step = steps - 1; step >= 0; step--) {
     remote = pi(node_rank, step, node_size) * GPU_ON_NODE + local_rank;
 
+    PICO_TAG_BEGIN("calc_perm");
     get_permutation(node_rank, step, steps, node_size, permutation, data_exchange);
+    PICO_TAG_END("calc_perm");
 
     tmprecv = (char*) rbuf + (ptrdiff_t)data_exchange * (ptrdiff_t)rcount * rext * GPU_ON_NODE;
 
+    PICO_TAG_BEGIN("gloabbal_comm_sendrecv");
     err = MPI_Sendrecv(rbuf, data_exchange * rcount * GPU_ON_NODE, rdtype, remote, 0,
                        tmprecv, data_exchange * rcount * GPU_ON_NODE, rdtype, remote, 0, comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("gloabbal_comm_sendrecv");
     data_exchange <<= 1;
   }
+  PICO_TAG_END("gloabbal_comm");
 
+  PICO_TAG_BEGIN("reorder_block");
   err = reorder_blocks_gpu(rbuf, rcount * GPU_ON_NODE, rdtype, permutation, node_size);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("reorder_block");
 
   if(permutation != NULL) 
     free(permutation);
