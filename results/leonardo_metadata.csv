@@ -220,3 +220,5 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_12_03___10_00_23,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,test reduce scatter hierarchical gpu v4 segmented
 2025_12_10___13_03_12,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,test reduce scatter hierarchical gpu v4 segmented sendreciv cudaSincronize onece
 2025_12_10___13_03_12,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,test reduce scatter hierarchical gpu v4 segmented sendreciv cudaSincronize onece
+2025_12_11___14_07_26,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather bine flat test
+2025_12_11___14_07_26,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather bine flat test
