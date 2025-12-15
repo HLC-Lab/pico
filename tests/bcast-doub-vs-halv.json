@@ -1,0 +1,126 @@
+{
+  "environment": {
+    "desc": "Leonardo HPC cluster.",
+    "name": "leonardo",
+    "slurm": true,
+    "python_module": "python/3.11.6--gcc--8.5.0",
+    "other_var": {
+      "UCX_IB_SL": "1"
+    },
+    "partition": {
+      "environment": "leonardo",
+      "desc": "Boost partition with GPU nodes.",
+      "name": "boost_usr_prod",
+      "is_gpu": true,
+      "cpus_per_node": 32,
+      "sockets_per_node": 1,
+      "gpus_per_node": 4,
+      "qos": {
+        "partition": "boost_usr_prod",
+        "environment": "leonardo",
+        "desc": "Default QOS for boost partition.",
+        "name": "default",
+        "is_required": false,
+        "nodes_limit": {
+          "min": 2,
+          "max": 64
+        },
+        "time_limit": "24:00:00"
+      }
+    }
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 32,
+    "output_level": "minimal",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        32,
+        256,
+        2048,
+        16384,
+        131072,
+        1048576,
+        8388608,
+        67108864,
+        536870912
+      ],
+      "sizes_elements": [
+        8,
+        64,
+        512,
+        4096,
+        32768,
+        262144,
+        2097152,
+        16777216,
+        134217728
+      ],
+      "segsizes_bytes": [
+        16384,
+        131072,
+        1048576
+      ]
+    },
+    "test_time": "00:30:00"
+  },
+  "libraries": [
+    {
+      "name": "Open MPI 4.1.6",
+      "desc": "An open source Message Passing Interface implementation.",
+      "tests": {
+        "cpu": [
+          1
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": true,
+        "gpu_load": {
+          "type": "module",
+          "module": "cuda/12.1"
+        }
+      },
+      "lib_load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--gcc--12.2.0"
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "bcast": [
+          {
+            "name": "binomial_ompi",
+            "coll": "bcast",
+            "desc": "Open MPI binomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binomial tree topology and for the segmentation of the message.",
+            "version": "4.1.5",
+            "selection": 6,
+            "tags": [
+              "binomial",
+              "segmented",
+              "additional_parameter"
+            ]
+          },
+          {
+            "name": "binomial_over",
+            "coll": "bcast",
+            "desc": "libpico external binomial algorithm. This algorithm uses a binomial tree pattern of communication where each process that receives data from the root forwards it to other processes. Copied from MPICH binomial algorithm.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "tags": [
+              "binomial",
+              "external"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

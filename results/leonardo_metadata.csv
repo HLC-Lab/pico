@@ -185,3 +185,4 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_06_04___15_12_34,2,200,1,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,MPI_SUM,null
 2025_10_26___12_07_51,0,27,1,ALLREDUCE,OMPI,4.1.6,no,null,null,statistics,,null
 2025_10_26___12_29_36,0,27,1,ALLREDUCE,OMPI,4.1.6,no,null,null,summarized,,null
+2025_12_15___22_48_59,0,32,1,BCAST,OMPI,4.1.6,no,null,null,minimal,,null
