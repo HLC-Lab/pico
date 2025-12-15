@@ -2176,7 +2176,7 @@ int allgather_bine_block_by_block_hierarcic_v1(const void *sbuf, size_t scount, 
   PICO_TAG_END("setup");
 
   // local exchange
-  PICO_TAG_END("local_comm");
+  PICO_TAG_BEGIN("local_comm");
   num_reqs = 0;
   tmpsend = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
   for (int i = 0; i < GPU_ON_NODE; i++)
