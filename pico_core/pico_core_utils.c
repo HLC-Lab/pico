@@ -176,7 +176,8 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
 static inline bcast_func_ptr get_bcast_function(const char *algorithm) {
 #ifndef PICO_NCCL
   CHECK_STR(algorithm, "linear_over", bcast_linear);
-  CHECK_STR(algorithm, "binomial_over", bcast_binomial);
+  CHECK_STR(algorithm, "binomial_halving_over", bcast_binomial_halving);
+  CHECK_STR(algorithm, "binomial_doubling_over", bcast_binomial_doubling);
   CHECK_STR(algorithm, "scatter_allgather_over", bcast_scatter_allgather);
   CHECK_STR(algorithm, "bine_lat_over", bcast_bine_lat);
   CHECK_STR(algorithm, "bine_lat_reversed_over", bcast_bine_lat_reversed);

@@ -62,9 +62,9 @@ For remote clusters, you should mirror one of the existing environment templates
 
 ### 🧭 2. Create a virtual env and launch the TUI
 
-Create and activate a Python virtual environment, then install the required dependencies for the **TUI**:
+Create and activate a Python virtual environment, then install the Python dependencies used by the **TUI** and analysis tools:
 ```bash
-pip install textual rich packaging
+pip install -r requirements.txt
 ```
 
 Start the interactive interface follow the four-step wizard: configure environment, select libraries, choose algorithms, and export.
@@ -127,7 +127,7 @@ scripts/submit_wrapper.sh \
 ### 💻 Dependencies
 - A C/C++ compiler and MPI implementation (Open MPI, MPICH, or Cray MPICH). CUDA-aware MPI or NCCL is optional for GPU runs.
 - (Optional) CUDA toolkit and a compatible NCCL build for GPU collectives.
-- Python 3.9+ with `pip` for the TUI and analysis utilities.
+- Python 3.9+ with `pip` for the TUI and analysis utilities (`pip install -r requirements.txt`).
 - SLURM for cluster submissions; local mode is supported for functional testing.
 - Basic build tools (`make`) and a Bash-compatible shell.
 

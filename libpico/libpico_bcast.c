@@ -71,10 +71,10 @@ bcast_linear(void *buff, size_t count, MPI_Datatype datatype, int root,
 
 
 /**
- * MPICH binomial bcast function copied from
+ * MPICH recursive halving (binomial) bcast function copied from
  * https://github.com/pmodels/mpich/blob/6e5a2adfeb8a37a89a96bc646e375062c15dc9cd/src/mpi/coll/bcast/bcast_intra_binomial.c
  */
-int bcast_binomial(void *buffer, size_t count, MPI_Datatype datatype, int root, MPI_Comm comm_ptr)
+int bcast_binomial_halving(void *buffer, size_t count, MPI_Datatype datatype, int root, MPI_Comm comm_ptr)
 {
     int rank, comm_size, src, dst;
     int relative_rank, mask;
@@ -163,6 +163,63 @@ int bcast_binomial(void *buffer, size_t count, MPI_Datatype datatype, int root, 
         mask >>= 1;
     }
 
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+/**
+ * Binomial (recursive doubling) bcast function.
+ *
+ * Processes propagate the message by doubling the number of informed ranks
+ * at each step. On iteration k, ranks with relative_rank in [0, 2^k) send to
+ * the partner at +2^k; ranks with relative_rank in [2^k, 2^(k+1)) receive.
+ */
+int bcast_binomial_doubling(void *buffer, size_t count, MPI_Datatype datatype, int root, MPI_Comm comm_ptr)
+{
+    int rank, comm_size, src, dst;
+    int relative_rank, mask;
+    int mpi_errno = MPI_SUCCESS;
+    MPI_Aint nbytes = 0, lb;
+    MPI_Status *status_p;
+    status_p = MPI_STATUS_IGNORE;
+    MPI_Aint type_size;
+
+    MPI_Comm_size(comm_ptr, &comm_size);
+    MPI_Comm_rank(comm_ptr, &rank);
+
+    MPI_Type_get_extent(datatype, &lb, &type_size);
+
+    nbytes = type_size * count;
+    if (nbytes == 0)
+        goto fn_exit;   /* nothing to do */
+
+    relative_rank = (rank >= root) ? rank - root : rank - root + comm_size;
+
+    mask = 0x1;
+    while (mask < comm_size) {
+        if (relative_rank < mask) {
+            dst = rank + mask;
+            if (dst >= comm_size)
+                dst -= comm_size;
+            mpi_errno = MPI_Send(buffer, count, datatype, dst, 0, comm_ptr);
+            if (mpi_errno != MPI_SUCCESS) {
+                goto fn_fail;
+            }
+        }
+        else if (relative_rank < (mask << 1)) {
+            src = rank - mask;
+            if (src < 0)
+                src += comm_size;
+            mpi_errno = MPI_Recv(buffer, count, datatype, src, 0, comm_ptr, status_p);
+            if (mpi_errno != MPI_SUCCESS) {
+                goto fn_fail;
+            }
+        }
+        mask <<= 1;
+    }
 
   fn_exit:
     return mpi_errno;
@@ -723,4 +780,3 @@ err_hndl:
   if(NULL!= recvcounts) free(recvcounts);
   return err;
 }
-

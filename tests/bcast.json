@@ -67,12 +67,25 @@
             ]
           },
           {
-            "name": "binomial_over",
+            "name": "binomial_halving_over",
             "coll": "bcast",
-            "desc": "libpico external binomial algorithm. This algorithm uses a binomial tree pattern of communication where each process that receives data from the root forwards it to other processes. Copied from MPICH binomial algorithm.",
+            "desc": "libpico external recursive halving (binomial) algorithm. This algorithm uses a binomial tree pattern of communication where each process that receives data from the root forwards it to other processes. Copied from MPICH binomial algorithm.",
             "version": "1.0.0",
             "selection": "pico",
             "tags": [
+              "recursive_halving",
+              "binomial",
+              "external"
+            ]
+          },
+          {
+            "name": "binomial_doubling_over",
+            "coll": "bcast",
+            "desc": "libpico external binomial doubling algorithm. At each step informed ranks send to a partner at distance 2^k, doubling the number of informed ranks.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "tags": [
+              "doubling",
               "binomial",
               "external"
             ]
