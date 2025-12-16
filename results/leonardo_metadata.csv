@@ -191,3 +191,8 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_12_16___19_00_26,0,64,1,BCAST,OMPI,4.1.6,no,null,null,minimal,,null
 2025_12_16___18_59_21,0,32,1,BCAST,OMPI,4.1.6,no,null,null,minimal,,null
 2025_12_16___19_00_43,0,64,1,BCAST,OMPI,4.1.6,no,null,null,minimal,,null
+2025_12_16___19_28_49,0,128,1,BCAST,OMPI,4.1.6,no,null,null,minimal,,null
+2025_12_16___19_28_49,1,128,2,BCAST,OMPI,4.1.6,no,null,null,minimal,,null
+2025_12_16___19_28_49,2,128,4,BCAST,OMPI,4.1.6,no,null,null,minimal,,null
+2025_12_16___20_20_09,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,hierarchical from GPU fork
+2025_12_16___20_20_09,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,hierarchical from GPU fork
