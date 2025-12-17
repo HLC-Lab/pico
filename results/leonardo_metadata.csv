@@ -228,3 +228,5 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_12_12___13_00_10,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather bine hierarchical v1 test
 2025_12_15___10_36_02,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather bine instrumented
 2025_12_15___10_36_02,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather bine instrumented
+2025_12_15___11_20_47,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather bine instrumented
+2025_12_15___11_20_47,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather bine instrumented
