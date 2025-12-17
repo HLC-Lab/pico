@@ -86,7 +86,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
     seg_num = 1;
   }
 
-  send_req = calloc(max(GPU_ON_NODE, log_2(node_size)) * seg_num, sizeof(MPI_Request));
+  send_req = calloc((GPU_ON_NODE + log_2(node_size)) * seg_num, sizeof(MPI_Request));
   recv_req = calloc(max(GPU_ON_NODE, log_2(node_size)) * seg_num, sizeof(MPI_Request));
   if (send_req == NULL || recv_req == NULL)
   {
@@ -243,9 +243,11 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
   PICO_TAG_END("local-kernel");
 
   PICO_TAG_END("local-comunication");
+  /*
   err = MPI_Waitall(send_req_index, send_req, MPI_STATUSES_IGNORE);
   if (err != MPI_SUCCESS)
     goto cleanup;
+  */
 
   PICO_TAG_BEGIN("globbal-comunication");
   /* recursive doubling globbal */
@@ -254,7 +256,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
   rem_data = node_size >> 1;
   g_send_index = g_recv_index = local_inverse * node_size;
   g_last_index = g_recv_index + node_size;
-  send_req_index = recv_req_index = 0;
+  recv_req_index = 0;
 
   for (dist_mask = 0x1; dist_mask < node_size; dist_mask <<= 1)
   {
