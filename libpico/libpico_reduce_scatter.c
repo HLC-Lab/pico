@@ -2346,14 +2346,21 @@ int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int
     count += recvcounts[i];
   }
 
-  void *tmpbuf = malloc(count * dtsize);
-  void *resbuf = malloc(count * dtsize);
+  void *tmpbuf = NULL, *resbuf = NULL;
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&tmpbuf, count * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&resbuf, count * dtsize));
+#else
+  tmpbuf = malloc(count * dtsize);
+  resbuf = malloc(count * dtsize);
+#endif
   if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
   {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
   }
-  memcpy(resbuf, sendbuf, count * dtsize);
+  COPY_BUFF_DIFF_DT(sendbuf, count, dt, resbuf, count, dt);
+  // memcpy(resbuf, sendbuf, count * dtsize);
 
   int mask = 0x1;
   int inverse_mask = 0x1 << (int)(log_2(size) - 1);
@@ -2388,11 +2395,16 @@ int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int
     {
       goto err_hndl;
     }
+#ifdef PICO_MPI_CUDA_AWARE
+    reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
+    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
     err = MPI_Reduce_local((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
     if (MPI_SUCCESS != err)
     {
       goto err_hndl;
     }
+#endif
 
     mask <<= 1;
     inverse_mask >>= 1;
@@ -2406,8 +2418,13 @@ int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int
                (char *)recvbuf, recvcounts[rank], dt, MPI_ANY_SOURCE, 0,
                comm, &status);
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
   free(tmpbuf);
   free(resbuf);
+#endif
   free(displs);
   free(step_to_send);
   return MPI_SUCCESS;
@@ -2418,9 +2435,17 @@ err_hndl:
   if (NULL != step_to_send)
     free(step_to_send);
   if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
     free(tmpbuf);
+#endif
   if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
     free(resbuf);
+#endif
   return err;
 }
 
@@ -2440,8 +2465,14 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
     count += recvcounts[i];
   }
 
-  void *tmpbuf = malloc(count * dtsize);
-  void *resbuf = malloc(count * dtsize);
+  void *tmpbuf, *resbuf;
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, count * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&resbuf, count * dtsize));
+#else
+  tmpbuf = malloc(count * dtsize);
+  resbuf = malloc(count * dtsize);
+#endif
   if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
   {
     err = MPI_ERR_NO_MEM;
@@ -2452,7 +2483,8 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
   for (int i = 0; i < size; i++)
   {
     int remapped_rank = remap_rank(size, i);
-    memcpy((char *)resbuf + displs[remapped_rank] * dtsize, (char *)sendbuf + displs[i] * dtsize, recvcounts[i] * dtsize);
+    COPY_BUFF_DIFF_DT((char *)sendbuf + displs[i] * dtsize, recvcounts[i], dt, (char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[i], dt);
+    // memcpy((char *)resbuf + displs[remapped_rank] * dtsize, (char *)sendbuf + displs[i] * dtsize, recvcounts[i] * dtsize);
   }
 
   int mask = 0x1;
@@ -2489,11 +2521,16 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
     {
       goto err_hndl;
     }
+#ifdef PICO_MPI_CUDA_AWARE
+    reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
+    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
     err = MPI_Reduce_local((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
     if (MPI_SUCCESS != err)
     {
       goto err_hndl;
     }
+#endif
 
     mask <<= 1;
     inverse_mask >>= 1;
@@ -2501,10 +2538,16 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
   }
 
   // Final memcpy
-  memcpy(recvbuf, (char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[rank] * dtsize);
+  COPY_BUFF_DIFF_DT((char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[rank], dt, recvbuf, recvcounts[rank], dt);
+  // memcpy(recvbuf, (char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[rank] * dtsize);
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
   free(tmpbuf);
   free(resbuf);
+#endif
   free(displs);
   free(step_to_send);
   return MPI_SUCCESS;
@@ -2515,9 +2558,17 @@ err_hndl:
   if (NULL != step_to_send)
     free(step_to_send);
   if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
     free(tmpbuf);
+#endif
   if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
     free(resbuf);
+#endif
   return err;
 }
 
@@ -2539,8 +2590,14 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
     inverse_remapping[remap_rank(size, i)] = i;
   }
 
-  void *tmpbuf = malloc(count * dtsize);
-  void *resbuf = malloc(count * dtsize);
+  void *tmpbuf, *resbuf;
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, count * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&resbuf, count * dtsize));
+#else
+  tmpbuf = malloc(count * dtsize);
+  resbuf = malloc(count * dtsize);
+#endif
   MPI_Request *reqs = NULL;
 
   if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping)
@@ -2548,7 +2605,8 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
   }
-  memcpy(resbuf, sendbuf, count * dtsize);
+  COPY_BUFF_DIFF_DT(sendbuf, count, dt, resbuf, count, dt);
+  // memcpy(resbuf, sendbuf, count * dtsize);
 
   int mask = 0x1;
   int inverse_mask = 0x1 << (int)(log_2(size) - 1);
@@ -2620,11 +2678,21 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
       if (mask << 1 >= size)
       {
         // Last step, received in recvbuf, aggregating from resbuf
+#ifdef PICO_MPI_CUDA_AWARE
+        reduce_wrapper((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+        BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
         err = MPI_Reduce_local((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+#endif
       }
       else
       {
+#ifdef PICO_MPI_CUDA_AWARE
+        reduce_wrapper((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+        BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
         err = MPI_Reduce_local((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+#endif
       }
       if (MPI_SUCCESS != err)
       {
@@ -2644,8 +2712,13 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
   }
 
   free(reqs);
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
   free(tmpbuf);
   free(resbuf);
+#endif
   free(inverse_remapping);
   free(step_to_send);
   free(displs);
@@ -2661,9 +2734,17 @@ err_hndl:
   if (NULL != inverse_remapping)
     free(inverse_remapping);
   if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
     free(tmpbuf);
+#endif
   if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
     free(resbuf);
+#endif
   return err;
 }
 
