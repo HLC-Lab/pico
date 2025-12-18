@@ -440,6 +440,7 @@ int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype 
 int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
                            MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
+  PICO_TAG_BEGIN("mem");
   int *rindex = NULL, *rcount = NULL, *sindex = NULL, *scount = NULL;
   int size, rank;
   MPI_Comm_size(comm, &size);
@@ -450,7 +451,6 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
   //   fflush(stdout);
   // }
 
-  PICO_TAG_BEGIN("init:mem");
   // Find number of steps of scatter-reduce and allgather,
   // biggest power of two smaller or equal to size,
   // size of send_window (number of chunks to send/recv at each step)
@@ -478,7 +478,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     err = copy_buffer((char *)sbuf, (char *)rbuf, count, dtype);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
-  PICO_TAG_END("init:mem");
+  PICO_TAG_END("mem");
 
   /*
    * Step 1. Reduce the number of processes to the nearest lower power of two
@@ -552,10 +552,13 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
       MPI_Reduce_local(tmp_buf, rbuf, count_lhalf, dtype, op);
 
       PICO_TAG_END("reduce");
+
+      PICO_TAG_BEGIN("comm");
       /* Recv the right half from the right neighbor */
       err = MPI_Recv((char *)rbuf + (ptrdiff_t)count_lhalf * extent,
                   count_rhalf, dtype, rank + 1, 0, comm, MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      PICO_TAG_END("comm");
 
       vrank = rank / 2;
     }
@@ -563,6 +566,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     vrank = rank - nprocs_rem;
   }
 
+  PICO_TAG_BEGIN("mem");
   /*
    * Step 2. Reduce-scatter implemented with recursive vector halving and
    * recursive distance doubling. We have p' = 2^{\floor{\log_2 p}}
@@ -583,6 +587,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     err = MPI_ERR_UNKNOWN;
     goto cleanup_and_return;
   }
+  PICO_TAG_END("mem");
 
   if(vrank != -1) {
     step = 0;
@@ -700,6 +705,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
   }
   PICO_TAG_END("comm");
 
+  PICO_TAG_BEGIN("mem");
   cleanup_and_return:
   if(NULL != tmp_buf_raw)
     free(tmp_buf_raw);
@@ -711,6 +717,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     free(rcount);
   if(NULL != scount)
     free(scount);
+  PICO_TAG_END("mem");
   return err;
 }
 
