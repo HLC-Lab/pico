@@ -663,6 +663,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
       /* Translate vdest virtual rank to real rank */
       int dest = (vdest < nprocs_rem) ? vdest * 2 : vdest + nprocs_rem;
 
+  PICO_TAG_BEGIN("comm");
       /*
        * Send rcount[step] elements from rbuf[rindex[step]...]
        * Recv scount[step] elements to rbuf[sindex[step]...]
@@ -673,6 +674,8 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
                       scount[step], dtype, dest, 0, comm, MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
       step--;
+
+  PICO_TAG_END("comm");
     }
   }
 
