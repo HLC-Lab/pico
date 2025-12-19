@@ -204,3 +204,5 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_12_18___04_38_12,0,8,1,ALLREDUCE,OMPI,4.1.6,no,null,null,minimal,,null
 2025_12_18___05_53_40,0,8,1,ALLREDUCE,OMPI,4.1.6,no,null,null,minimal,,null
 2025_12_18___15_54_03,0,8,1,ALLREDUCE,OMPI,4.1.6,no,null,null,minimal,,null
+2025_12_19___20_01_32,0,16,1,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,from GPU fork
+2025_12_19___20_01_32,1,16,1,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,from GPU fork
