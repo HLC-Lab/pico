@@ -234,4 +234,7 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_12_17___11_02_47,1,32,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather bine with 32 node 128 rank
 2025_12_17___12_28_18,0,32,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather bine with 32 node 128 rank
 2025_12_17___12_28_18,1,32,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather bine with 32 node 128 rank
-
+2025_12_17___12_56_05,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,test reduce scatter hierarchical gpu v4 segmented 
+2025_12_17___12_56_05,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,test reduce scatter hierarchical gpu v4 segmented
+2025_12_19___15_16_52,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,test bine send remap hierarchical v1
+2025_12_19___15_16_52,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,test bine send remap hierarchical v1
