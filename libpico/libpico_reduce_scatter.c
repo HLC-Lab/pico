@@ -2713,14 +2713,17 @@ int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void 
 
   void *tmpbuf, *resbuf, *perm_buff;
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, local_rcount[local_rank] * (GPU_ON_NODE - 1) * dtsize));
-  BINE_CUDA_CHECK(cudaMalloc(&resbuf, local_rcount[local_rank] * dtsize));
-  BINE_CUDA_CHECK(cudaMalloc(&perm_buff, perm_buff_size * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, (local_rcount[local_rank] * GPU_ON_NODE + perm_buff_size) * dtsize));
+  //BINE_CUDA_CHECK(cudaMalloc(&resbuf, local_rcount[local_rank] * dtsize));
+  //BINE_CUDA_CHECK(cudaMalloc(&perm_buff, perm_buff_size * dtsize));
 #else
-  tmpbuf = malloc(local_rcount[local_rank] * (GPU_ON_NODE - 1) * dtsize);
-  resbuf = malloc(local_rcount[local_rank] * dtsize);
-  perm_buff = malloc(perm_buff_size * dtsize);
+  tmpbuf = malloc((local_rcount[local_rank] * GPU_ON_NODE + perm_buff_size) * dtsize);
+  //resbuf = malloc(local_rcount[local_rank] * dtsize);
+  //perm_buff = malloc(perm_buff_size * dtsize);
 #endif
+
+  resbuf = tmpbuf + (ptrdiff_t)local_rcount[local_rank] * (GPU_ON_NODE - 1) * (ptrdiff_t)dtsize;
+  perm_buff = resbuf + (ptrdiff_t)local_rcount[local_rank] * (ptrdiff_t)dtsize;
   if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == perm_buff || perm_buff_size <= 0)
   {
     err = MPI_ERR_NO_MEM;
@@ -2869,12 +2872,12 @@ int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void 
 
 #ifdef PICO_MPI_CUDA_AWARE
   BINE_CUDA_CHECK(cudaFree(tmpbuf));
-  BINE_CUDA_CHECK(cudaFree(resbuf));
-  BINE_CUDA_CHECK(cudaFree(perm_buff));
+  //BINE_CUDA_CHECK(cudaFree(resbuf));
+  //BINE_CUDA_CHECK(cudaFree(perm_buff));
 #else
   free(tmpbuf);
-  free(resbuf);
-  free(perm_buff);
+  //free(resbuf);
+  //free(perm_buff);
 #endif
   free(displs);
   free(step_to_send);
@@ -2891,7 +2894,7 @@ err_hndl:
 #else
     free(tmpbuf);
 #endif
-  if (NULL != resbuf)
+  /*if (NULL != resbuf)
 #ifdef PICO_MPI_CUDA_AWARE
     BINE_CUDA_CHECK(cudaFree(resbuf));
 #else
@@ -2902,7 +2905,7 @@ err_hndl:
     BINE_CUDA_CHECK(cudaFree(perm_buff));
 #else
     free(perm_buff);
-#endif
+#endif*/
   return err;
 }
 
