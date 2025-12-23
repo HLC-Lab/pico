@@ -20,7 +20,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
 {
   int i, rank, size, err = MPI_SUCCESS;
   ptrdiff_t extent, true_extent, lb, recv_buffer_size, result_buffer_size, gap = 0;
-  char *recv_temp_buff = NULL, *result_temp_buff = NULL;
+  char *recv_tmp_buff = NULL, *result_tmp_buff = NULL;
   char *recv_buff_head, *result_buff_head;
   int data_sub_group, local_inverse, local_rank;
   int node_rank, node_size, peer_node;
@@ -105,13 +105,13 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
   PICO_TAG_BEGIN("buffer-allocation");
   /* allocate temporar buffer */
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_temp_buff, recv_buffer_size));
-  BINE_CUDA_CHECK(cudaMalloc((void **)&result_temp_buff, result_buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_tmp_buff, recv_buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&result_tmp_buff, result_buffer_size));
 #else
-  recv_temp_buff = (char *)malloc(recv_buffer_size);
-  result_temp_buff = (char *)malloc(result_buffer_size);
+  recv_tmp_buff = (char *)malloc(recv_buffer_size);
+  result_tmp_buff = (char *)malloc(result_buffer_size);
 
-  if (recv_temp_buff == NULL || result_temp_buff == NULL)
+  if (recv_tmp_buff == NULL || result_tmp_buff == NULL)
   {
     err = MPI_ERR_NO_MEM;
     goto cleanup;
@@ -121,8 +121,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
   PICO_TAG_END("buffer-allocation");
   PICO_TAG_BEGIN("local-comunication");
 
-  recv_buff_head = recv_temp_buff - gap;
-  result_buff_head = result_temp_buff - gap;
+  recv_buff_head = recv_tmp_buff - gap;
+  result_buff_head = result_tmp_buff - gap;
 
   /* recursive doubling local */
   recv_size = send_size = data_sub_group;
@@ -375,15 +375,15 @@ cleanup:
   if (NULL != send_req)
     free(send_req);
 #ifdef PICO_MPI_CUDA_AWARE
-  if (NULL != recv_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(recv_temp_buff));
-  if (NULL != result_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(result_temp_buff));
+  if (NULL != recv_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(recv_tmp_buff));
+  if (NULL != result_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(result_tmp_buff));
 #else
-  if (NULL != recv_temp_buff)
-    free(recv_temp_buff);
-  if (NULL != result_temp_buff)
-    free(result_temp_buff);
+  if (NULL != recv_tmp_buff)
+    free(recv_tmp_buff);
+  if (NULL != result_tmp_buff)
+    free(result_tmp_buff);
 #endif
   return err;
 }
@@ -393,7 +393,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
 {
   int i, rank, size, err = MPI_SUCCESS;
   ptrdiff_t extent, true_extent, lb, recv_buffer_size, result_buffer_size, gap = 0;
-  char *recv_temp_buff, *result_temp_buff;
+  char *recv_tmp_buff, *result_tmp_buff;
   char *recv_buff_head, *result_buff_head;
   int data_sub_group, local_inverse, local_rank;
   int node_rank, node_size, peer_node;
@@ -455,13 +455,13 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
   PICO_TAG_BEGIN("buffer-allocation");
   /* allocate temporar buffer */
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_temp_buff, recv_buffer_size));
-  BINE_CUDA_CHECK(cudaMalloc((void **)&result_temp_buff, result_buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_tmp_buff, recv_buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&result_tmp_buff, result_buffer_size));
 #else
-  recv_temp_buff = (char *)malloc(recv_buffer_size);
-  result_temp_buff = (char *)malloc(result_buffer_size);
+  recv_tmp_buff = (char *)malloc(recv_buffer_size);
+  result_tmp_buff = (char *)malloc(result_buffer_size);
 
-  if (recv_temp_buff == NULL || result_temp_buff == NULL)
+  if (recv_tmp_buff == NULL || result_tmp_buff == NULL)
   {
     err = MPI_ERR_NO_MEM;
     goto cleanup;
@@ -471,8 +471,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
   PICO_TAG_END("buffer-allocation");
   PICO_TAG_BEGIN("local-comunication");
 
-  recv_buff_head = recv_temp_buff - gap;
-  result_buff_head = result_temp_buff - gap;
+  recv_buff_head = recv_tmp_buff - gap;
+  result_buff_head = result_tmp_buff - gap;
 
   /* recursive doubling local */
   recv_size = send_size = data_sub_group;
@@ -639,15 +639,15 @@ cleanup:
   if (NULL != disps)
     free(disps);
 #ifdef PICO_MPI_CUDA_AWARE
-  if (NULL != recv_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(recv_temp_buff));
-  if (NULL != result_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(result_temp_buff));
+  if (NULL != recv_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(recv_tmp_buff));
+  if (NULL != result_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(result_tmp_buff));
 #else
-  if (NULL != recv_temp_buff)
-    free(recv_temp_buff);
-  if (NULL != result_temp_buff)
-    free(result_temp_buff);
+  if (NULL != recv_tmp_buff)
+    free(recv_tmp_buff);
+  if (NULL != result_tmp_buff)
+    free(result_tmp_buff);
 #endif
   return err;
 }
@@ -659,7 +659,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
   size_t dcount;
   ptrdiff_t extent, true_extent, lb, buffer_size, gap = 0;
   ptrdiff_t *disps = NULL;
-  char *recv_temp_buff, *result_temp_buff;
+  char *recv_tmp_buff, *result_tmp_buff;
   char *recv_buff_head, *result_buff_head;
 
   err = MPI_Comm_size(comm, &size);
@@ -698,13 +698,13 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
 
   /* allocate temporar buffer */
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_temp_buff, buffer_size));
-  BINE_CUDA_CHECK(cudaMalloc((void **)&result_temp_buff, buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_tmp_buff, buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&result_tmp_buff, buffer_size));
 #else
-  recv_temp_buff = (char *)malloc(buffer_size);
-  result_temp_buff = (char *)malloc(buffer_size);
+  recv_tmp_buff = (char *)malloc(buffer_size);
+  result_tmp_buff = (char *)malloc(buffer_size);
 
-  if (recv_temp_buff == NULL || result_temp_buff == NULL)
+  if (recv_tmp_buff == NULL || result_tmp_buff == NULL)
   {
     err = MPI_ERR_NO_MEM;
     goto cleanup;
@@ -712,8 +712,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
 
 #endif
 
-  recv_buff_head = recv_temp_buff - gap;
-  result_buff_head = result_temp_buff - gap;
+  recv_buff_head = recv_tmp_buff - gap;
+  result_buff_head = result_tmp_buff - gap;
 
   err = COPY_BUFF_DIFF_DT(sbuf, dcount, dtype, result_buff_head, dcount, dtype);
   if (err != MPI_SUCCESS)
@@ -903,15 +903,15 @@ cleanup:
   if (NULL != disps)
     free(disps);
 #ifdef PICO_MPI_CUDA_AWARE
-  if (NULL != recv_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(recv_temp_buff));
-  if (NULL != result_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(result_temp_buff));
+  if (NULL != recv_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(recv_tmp_buff));
+  if (NULL != result_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(result_tmp_buff));
 #else
-  if (NULL != recv_temp_buff)
-    free(recv_temp_buff);
-  if (NULL != result_temp_buff)
-    free(result_temp_buff);
+  if (NULL != recv_tmp_buff)
+    free(recv_tmp_buff);
+  if (NULL != result_tmp_buff)
+    free(result_tmp_buff);
 #endif
   return err;
 }
@@ -923,7 +923,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
   size_t dcount;
   ptrdiff_t extent, true_extent, lb, buffer_size, gap = 0;
   ptrdiff_t *disps = NULL;
-  char *recv_temp_buff, *result_temp_buff;
+  char *recv_tmp_buff, *result_tmp_buff;
   char *recv_buff_head, *result_buff_head;
 
   err = MPI_Comm_size(comm, &size);
@@ -962,13 +962,13 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
 
   /* allocate temporar buffer */
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_temp_buff, buffer_size));
-  BINE_CUDA_CHECK(cudaMalloc((void **)&result_temp_buff, buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_tmp_buff, buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&result_tmp_buff, buffer_size));
 #else
-  recv_temp_buff = (char *)malloc(buffer_size);
-  result_temp_buff = (char *)malloc(buffer_size);
+  recv_tmp_buff = (char *)malloc(buffer_size);
+  result_tmp_buff = (char *)malloc(buffer_size);
 
-  if (recv_temp_buff == NULL || result_temp_buff == NULL)
+  if (recv_tmp_buff == NULL || result_tmp_buff == NULL)
   {
     err = MPI_ERR_NO_MEM;
     goto cleanup;
@@ -976,8 +976,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
 
 #endif
 
-  recv_buff_head = recv_temp_buff - gap;
-  result_buff_head = result_temp_buff - gap;
+  recv_buff_head = recv_tmp_buff - gap;
+  result_buff_head = result_tmp_buff - gap;
 
   err = COPY_BUFF_DIFF_DT(sbuf, dcount, dtype, result_buff_head, dcount, dtype);
   if (err != MPI_SUCCESS)
@@ -1182,15 +1182,15 @@ cleanup:
   if (NULL != disps)
     free(disps);
 #ifdef PICO_MPI_CUDA_AWARE
-  if (NULL != recv_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(recv_temp_buff));
-  if (NULL != result_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(result_temp_buff));
+  if (NULL != recv_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(recv_tmp_buff));
+  if (NULL != result_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(result_tmp_buff));
 #else
-  if (NULL != recv_temp_buff)
-    free(recv_temp_buff);
-  if (NULL != result_temp_buff)
-    free(result_temp_buff);
+  if (NULL != recv_tmp_buff)
+    free(recv_tmp_buff);
+  if (NULL != result_tmp_buff)
+    free(result_tmp_buff);
 #endif
   return err;
 }
@@ -1202,7 +1202,7 @@ int reduce_scatter_recursive_doubling_gpu(const void *sbuf, void *rbuf, const in
   size_t dcount;
   ptrdiff_t extent, true_extent, lb, buffer_size, gap = 0;
   ptrdiff_t *disps = NULL;
-  char *recv_temp_buff, *result_temp_buff;
+  char *recv_tmp_buff, *result_tmp_buff;
   char *recv_buff_head, *result_buff_head;
 
   err = MPI_Comm_size(comm, &size);
@@ -1241,13 +1241,13 @@ int reduce_scatter_recursive_doubling_gpu(const void *sbuf, void *rbuf, const in
 
   /* allocate temporar buffer */
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_temp_buff, buffer_size));
-  BINE_CUDA_CHECK(cudaMalloc((void **)&result_temp_buff, buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_tmp_buff, buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&result_tmp_buff, buffer_size));
 #else
-  recv_temp_buff = (char *)malloc(buffer_size);
-  result_temp_buff = (char *)malloc(buffer_size);
+  recv_tmp_buff = (char *)malloc(buffer_size);
+  result_tmp_buff = (char *)malloc(buffer_size);
 
-  if (recv_temp_buff == NULL || result_temp_buff == NULL)
+  if (recv_tmp_buff == NULL || result_tmp_buff == NULL)
   {
     err = MPI_ERR_NO_MEM;
     goto cleanup;
@@ -1255,8 +1255,8 @@ int reduce_scatter_recursive_doubling_gpu(const void *sbuf, void *rbuf, const in
 
 #endif
 
-  recv_buff_head = recv_temp_buff - gap;
-  result_buff_head = result_temp_buff - gap;
+  recv_buff_head = recv_tmp_buff - gap;
+  result_buff_head = result_tmp_buff - gap;
 
   err = COPY_BUFF_DIFF_DT(sbuf, dcount, dtype, result_buff_head, dcount, dtype);
   if (err != MPI_SUCCESS)
@@ -1364,15 +1364,15 @@ cleanup:
   if (NULL != disps)
     free(disps);
 #ifdef PICO_MPI_CUDA_AWARE
-  if (NULL != recv_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(recv_temp_buff));
-  if (NULL != result_temp_buff)
-    BINE_CUDA_CHECK(cudaFree(result_temp_buff));
+  if (NULL != recv_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(recv_tmp_buff));
+  if (NULL != result_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(result_tmp_buff));
 #else
-  if (NULL != recv_temp_buff)
-    free(recv_temp_buff);
-  if (NULL != result_temp_buff)
-    free(result_temp_buff);
+  if (NULL != recv_tmp_buff)
+    free(recv_tmp_buff);
+  if (NULL != result_tmp_buff)
+    free(result_tmp_buff);
 #endif
   return err;
 }
