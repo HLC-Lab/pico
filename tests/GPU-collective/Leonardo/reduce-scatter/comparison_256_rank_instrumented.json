@@ -1,0 +1,474 @@
+{
+  "environment": {
+    "desc": "Leonardo HPC cluster.",
+    "name": "leonardo",
+    "slurm": true,
+    "python_module": "python/3.11.6--gcc--8.5.0",
+    "other_var": {
+      "UCX_IB_SL": "1"
+    },
+    "partition": {
+      "environment": "leonardo",
+      "desc": "Boost partition with GPU nodes.",
+      "name": "boost_usr_prod",
+      "is_gpu": true,
+      "cpus_per_node": 32,
+      "sockets_per_node": 1,
+      "gpus_per_node": 4,
+      "qos": {
+        "partition": "boost_usr_prod",
+        "environment": "leonardo",
+        "desc": "Default QOS for boost partition.",
+        "name": "default",
+        "is_required": false,
+        "nodes_limit": {
+          "min": 2,
+          "max": 64
+        },
+        "time_limit": "24:00:00"
+      }
+    }
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 4,
+    "output_level": "summarized",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        2048,
+        16384,
+        131072,
+        1048576,
+        8388608,
+        67108864,
+        536870912
+      ],
+      "sizes_elements": [
+        512,
+        4096,
+        32768,
+        262144,
+        2097152,
+        16777216,
+        134217728
+      ],
+      "segsizes_bytes": [
+        16384,
+        131072,
+        1048576
+      ]
+    },
+    "test_time": "02:00:00"
+  },
+  "libraries": [
+    {
+      "name": "Open MPI 4.1.6",
+      "desc": "An open source Message Passing Interface implementation.",
+      "tests": {
+        "cpu": [
+          4
+        ],
+        "gpu": [
+          4
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": true,
+        "gpu_support_native": true,
+        "gpu_load": {
+          "type": "module",
+          "module": "cuda/12.1"
+        }
+      },
+      "lib_load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--gcc--12.2.0"
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "reduce_scatter": [
+          {
+            "name": "default_ompi",
+            "coll": "reduce_scatter",
+            "desc": "Open MPI default algorithm selection",
+            "version": "4.1.5",
+            "selection": 0,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "default"
+            ]
+          },
+          {
+            "name": "recursive_distance_doubling_gpu_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_distance_doubling",
+              "external"
+            ]
+          },
+          {
+            "name": "recursive_distance_doubling_hierarchical_v1_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_distance_doubling",
+              "external"
+            ]
+          },
+          {
+            "name": "recursive_distance_doubling_hierarchical_v2_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_distance_doubling",
+              "external"
+            ]
+          },
+          {
+            "name": "recursive_distance_doubling_hierarchical_v3_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_distance_doubling",
+              "external"
+            ]
+          },
+          {
+            "name": "recursive_distance_doubling_hierarchical_v4_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_distance_doubling",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_send_remap_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine remap send algorithm. Works only with power of 2 processes.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "remap",
+              "send",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_send_remap_hierarchical_v1_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine remap send algorithm hierarchical. Works only with power of 2 processes.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "remap",
+              "send",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_permute_remap_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine remap memcpy algorithm. Works only with power of 2 processes.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "remap",
+              "memcpy",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_permute_remap_hierarchical_v1_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine remap memcpy algorithm hierarchical. Works only with power of 2 processes.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "remap",
+              "memcpy",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "block_by_block",
+              "external"
+            ]
+          },{
+            "name": "bine_block_by_block_hierarchical_v1_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine block by block algorithm hierarchical. Works only for power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "block_by_block",
+              "external"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
