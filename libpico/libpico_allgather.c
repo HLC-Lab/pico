@@ -238,7 +238,7 @@ int allgather_recursivedoubling_hierarchy_v3(const void *sbuf, size_t scount, MP
       goto err_hndl;
     }
   }
-  PICO_TAG_BEGIN("globbal_comm/recv_from_excluded_node");
+  PICO_TAG_END("globbal_comm/recv_from_excluded_node");
 
   // exchange data in sub group
   PICO_TAG_BEGIN("globbal_comm/exchange");
@@ -330,6 +330,7 @@ int allgather_recursivedoubling_hierarchy_v3(const void *sbuf, size_t scount, MP
     }
   }
   PICO_TAG_END("globbal_comm/send_to_excluded_node");
+  PICO_TAG_END("globbal_comm");
   // end globbal
 
 #if defined PICO_MPI_CUDA_AWARE && !defined GPU_NATIV_SUPPORT
@@ -409,7 +410,7 @@ int allgather_recursivedoubling_hierarchy_v2(const void *sbuf, size_t scount, MP
   local_sub_group = floor_power_of_two(GPU_ON_NODE);
   remaning_local = GPU_ON_NODE - local_sub_group;
   send_block_location = rank;
-  PICO_TAG_BEGIN("local_comm/setup");
+  PICO_TAG_END("local_comm/setup");
 
   // share data betwin excluded local rank
   PICO_TAG_BEGIN("local_comm/recv_from_excluded_rank");
@@ -531,7 +532,7 @@ int allgather_recursivedoubling_hierarchy_v2(const void *sbuf, size_t scount, MP
   node_sub_group = floor_power_of_two(node_size);
   remaining_node = node_size - node_sub_group;
   dist_mask = ~0;
-  PICO_TAG_BEGIN("globbal_comm/setup");
+  PICO_TAG_END("globbal_comm/setup");
 
   // share data betwin extra node and node in the group
   // printf("rank %d group %d\n", rank, group_rank);
@@ -648,7 +649,7 @@ int allgather_recursivedoubling_hierarchy_v2(const void *sbuf, size_t scount, MP
       }
     }
   }
-  PICO_TAG_BEGIN("globbal_comm/send_to_excluded_node");
+  PICO_TAG_END("globbal_comm/send_to_excluded_node");
   PICO_TAG_END("globbal_comm");
   // end globbal
 
@@ -838,7 +839,7 @@ int allgather_recursivedoubling_hierarchy_v1(const void *sbuf, size_t scount, MP
       }
     }
   }
-  PICO_TAG_BEGIN("local_comm/send_to_excluded_rank");
+  PICO_TAG_END("local_comm/send_to_excluded_rank");
   PICO_TAG_END("local_comm");
   // end local comunication
 
@@ -1083,7 +1084,7 @@ int allgather_recursivedoubling_nontowpower(const void *sbuf, size_t scount, MPI
   remaining_node = size - sub_group_size;
   lower_block_data = rank;
   upper_block_data = rank;
-  PICO_TAG_BEGIN("setup");
+  PICO_TAG_END("setup");
 
   // bind remaining rank to rank in sub group
   PICO_TAG_BEGIN("recv_from_extra_rank");
