@@ -362,6 +362,37 @@
       "external"
     ]
   },
+  "bine_permute_remap_hierarchical_v2_over": {
+    "desc": "libpico external bine remap memcpy algorithm hierarchical. Works only with power of 2 processes. Cycling buffer for permutation calc",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "bine",
+      "remap",
+      "memcpy",
+      "external"
+    ]
+  },
   "bine_block_by_block_over": {
     "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
     "version": "1.0.0",
