@@ -110,6 +110,7 @@ int reduce_scatter_bine_permute_remap(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_bine_permute_remap_hierarchical_v1(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_bine_block_by_block(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_bine_block_by_block_any_even(REDUCE_SCATTER_MPI_ARGS);
+int reduce_scatter_bine_block_by_block_hierarchical_v1(REDUCE_SCATTER_MPI_ARGS);
 
 int scatter_linear(SCATTER_MPI_ARGS);
 int scatter_bine(SCATTER_MPI_ARGS);

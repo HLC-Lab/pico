@@ -265,6 +265,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "bine_block_by_block_any_even", reduce_scatter_bine_block_by_block_any_even);
   CHECK_STR(algorithm, "bine_send_remap_hierarchical_v1_over", reduce_scatter_bine_send_remap_hierarchical_v1);
   CHECK_STR(algorithm, "bine_permute_remap_hierarchical_v1_over", reduce_scatter_bine_permute_remap_hierarchical_v1);  
+  CHECK_STR(algorithm, "bine_block_by_block_hierarchical_v1_over", reduce_scatter_bine_block_by_block_hierarchical_v1);
 
   PICO_CORE_DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;
