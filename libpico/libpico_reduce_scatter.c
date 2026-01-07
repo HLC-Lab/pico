@@ -2797,7 +2797,7 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
 
   PICO_TAG_BEGIN("setup");
   int count = 0;
-  int partner, recv_reqc, send_reqc;
+  int partner, recv_reqc;
   PICO_TAG_BEGIN("setup/alloc_suport_buff");
   int *displs = (int *)malloc(size * sizeof(int));
   int *step_to_send = (int *)malloc(size * sizeof(int));
@@ -2868,7 +2868,7 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
 
   // Permute memcpy
   PICO_TAG_BEGIN("local_com");
-  recv_reqc = send_reqc = 0;
+  recv_reqc = 0;
   int buf_sel = 0;
   MPI_Request perm_send_req = MPI_REQUEST_NULL;
   for (int i = 0; i < GPU_ON_NODE; i++)
@@ -2913,7 +2913,6 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
       {
         goto err_hndl;
       }
-      send_reqc++;
     }
     buf_sel ^= 1;
     PICO_TAG_END("local_com/exchange");
@@ -2930,7 +2929,7 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
   }
   BINE_CUDA_CHECK(cudaDeviceSynchronize());
 #else
-  for (int i = 0; i < recv_reqc; i++)
+  for (int i = 0; i < GPU_ON_NODE - 1; i++)
   {
     err = MPI_Reduce_local(tmpbuf + (ptrdiff_t)i * (ptrdiff_t)local_rcount[local_rank] * (ptrdiff_t)dtsize,
                            resbuf, local_rcount[local_rank], dt, op);
@@ -3014,6 +3013,12 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
     block_first_mask >>= 1;
   }
   PICO_TAG_END("globbal_com");
+
+  err = MPI_Wait(&perm_send_req, MPI_STATUS_IGNORE);
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
 
   // Final memcpy
   PICO_TAG_BEGIN("copy_result");
