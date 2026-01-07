@@ -240,3 +240,9 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2025_12_19___15_16_52,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,test bine send remap hierarchical v1
 2025_12_22___15_01_16,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,test reduce_scatter_bine_block_by_block_hierarchical_v1
 2025_12_22___15_01_16,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,test reduce_scatter_bine_block_by_block_hierarchical_v1
+2026_01_07___11_31_32,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine block by block comparison
+2026_01_07___11_31_32,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine block by block comparison
+2026_01_07___11_45_47,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine permute remap comparison
+2026_01_07___11_45_47,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap comparison
+2026_01_07___12_24_57,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine permute remap instrumented
+2026_01_07___12_24_57,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap instrumented
