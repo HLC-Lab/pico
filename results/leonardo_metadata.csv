@@ -246,3 +246,7 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2026_01_07___11_45_47,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap comparison
 2026_01_07___12_24_57,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine permute remap instrumented
 2026_01_07___12_24_57,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap instrumented
+2026_01_07___16_05_10,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine permute remap comparison
+2026_01_07___16_05_10,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap comparison
+2026_01_07___16_57_58,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine permute remap instrumented
+2026_01_07___16_57_58,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap instrumented

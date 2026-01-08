@@ -2882,10 +2882,10 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
     for (int j = 0; j < node_size; j++)
     {
       int remapped_rank = get_sender_rec(node_size, j) * GPU_ON_NODE + i;
-      PICO_TAG_BEGIN("local_com/permutation_send");
+      PICO_TAG_BEGIN("local_com/calc_permutation");
       COPY_BUFF_DIFF_DT((char *)sendbuf + (ptrdiff_t)displs[remapped_rank] * (ptrdiff_t)dtsize, recvcounts[remapped_rank], dt,
                         (char *)perm_buff[buf_sel] + (ptrdiff_t)perm_offset * (ptrdiff_t)dtsize, recvcounts[remapped_rank], dt);
-      PICO_TAG_END("local_com/permutation_send");
+      PICO_TAG_END("local_com/calc_permutation");
       perm_offset += recvcounts[remapped_rank];
     }
 
@@ -2900,11 +2900,13 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
       recv_reqc++;
     }
 
+    PICO_TAG_BEGIN("local_com/send_perm_wait");
     err = MPI_Wait(&perm_send_req, MPI_STATUS_IGNORE);
     if (MPI_SUCCESS != err)
     {
       goto err_hndl;
     }
+    PICO_TAG_END("local_com/send_perm_wait");
 
     if (local_rcount[i] > 0)
     {
@@ -3158,10 +3160,10 @@ int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void 
     for (int j = 0; j < node_size; j++)
     {
       int remapped_rank = get_sender_rec(node_size, j) * GPU_ON_NODE + i;
-      PICO_TAG_BEGIN("local_com/permutation_send");
+      PICO_TAG_BEGIN("local_com/calc_permutation");
       COPY_BUFF_DIFF_DT((char *)sendbuf + (ptrdiff_t)displs[remapped_rank] * (ptrdiff_t)dtsize, recvcounts[remapped_rank], dt,
                         (char *)perm_buff + (ptrdiff_t)perm_offset * (ptrdiff_t)dtsize, recvcounts[remapped_rank], dt);
-      PICO_TAG_END("local_com/permutation_send");
+      PICO_TAG_END("local_com/calc_permutation");
       perm_offset += recvcounts[remapped_rank];
     }
 
