@@ -3016,11 +3016,13 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
   }
   PICO_TAG_END("globbal_com");
 
+  PICO_TAG_BEGIN("final_send_perm_wait");
   err = MPI_Wait(&perm_send_req, MPI_STATUS_IGNORE);
   if (MPI_SUCCESS != err)
   {
     goto err_hndl;
   }
+  PICO_TAG_END("final_send_perm_wait");
 
   // Final memcpy
   PICO_TAG_BEGIN("copy_result");
