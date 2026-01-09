@@ -249,8 +249,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
     goto cleanup;
   */
 
-  PICO_TAG_BEGIN("globbal_com");
-  /* recursive doubling globbal */
+  PICO_TAG_BEGIN("global_com");
+  /* recursive doubling global */
   int g_send_index, g_recv_index, g_last_index;
   send_index = recv_index = 0;
   rem_data = node_size >> 1;
@@ -292,7 +292,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
       recv_index = send_index + send_size;
     }
 
-    PICO_TAG_BEGIN("globbal_com/data_exchange");
+    PICO_TAG_BEGIN("global_com/data_exchange");
     if (send_size > 0 && recv_size > 0)
     {
       err = MPI_Sendrecv(result_buff_head + send_index * extent, send_size, dtype, peer, 0, recv_buff_head, recv_size, dtype, peer, 0, comm, MPI_STATUS_IGNORE);
@@ -316,11 +316,11 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
           goto cleanup;
       }
     }
-    PICO_TAG_END("globbal_com/data_exchange");
+    PICO_TAG_END("global_com/data_exchange");
 
     if (recv_size > 0)
     {
-      PICO_TAG_BEGIN("globbal-kernel");
+      PICO_TAG_BEGIN("global-kernel");
       // todo: make gpu compatible
 #ifdef PICO_MPI_CUDA_AWARE
       err = reduce_wrapper(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
@@ -330,7 +330,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
 #else
       MPI_Reduce_local(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
 #endif
-      PICO_TAG_END("globbal-kernel");
+      PICO_TAG_END("global-kernel");
     }
 
     send_index = recv_index;
@@ -342,7 +342,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rb
   if (err != MPI_SUCCESS)
     goto cleanup;
 
-  PICO_TAG_END("globbal_com");
+  PICO_TAG_END("global_com");
 
   PICO_TAG_BEGIN("reorder_data");
   int inverse = inverse_rank(size, rank);
@@ -529,8 +529,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
   err = MPI_Waitall(req_index, send_req, MPI_STATUSES_IGNORE);
   if (err != MPI_SUCCESS)
     goto cleanup;
-  PICO_TAG_BEGIN("globbal_com");
-  /* recursive doubling globbal */
+  PICO_TAG_BEGIN("global_com");
+  /* recursive doubling global */
   int g_send_index, g_recv_index, g_last_index;
   send_index = recv_index = 0;
   rem_data = node_size >> 1;
@@ -592,7 +592,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
         goto cleanup;
       }
 
-      PICO_TAG_BEGIN("globbal-kernel");
+      PICO_TAG_BEGIN("global-kernel");
       // todo: make gpu compatible
 #ifdef PICO_MPI_CUDA_AWARE
       err = reduce_wrapper(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
@@ -602,7 +602,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
 #else
       MPI_Reduce_local(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
 #endif
-      PICO_TAG_END("globbal-kernel");
+      PICO_TAG_END("global-kernel");
     }
 
     send_index = recv_index;
@@ -610,7 +610,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rb
     g_last_index = g_recv_index + rem_data;
     rem_data >>= 1;
   }
-  PICO_TAG_END("globbal_com");
+  PICO_TAG_END("global_com");
 
   PICO_TAG_BEGIN("reorder_data");
   int inverse = inverse_rank(size, rank);
@@ -819,8 +819,8 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
   }
   PICO_TAG_END("local_com");
 
-  /* recursive doubling globbal */
-  PICO_TAG_BEGIN("globbal_com");
+  /* recursive doubling global */
+  PICO_TAG_BEGIN("global_com");
   for (dist_mask = 0x1; dist_mask < node_size; dist_mask <<= 1)
   {
     peer_node = node_rank ^ dist_mask;
@@ -856,7 +856,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
     }
 
     // printf("rank %d send size %d reciv size %d send index %d reciv index %d dist %d\n", rank, send_size, recv_size, send_index, recv_index, dist_mask);
-    PICO_TAG_BEGIN("globbal_com/exchange");
+    PICO_TAG_BEGIN("global_com/exchange");
     if (recv_size > 0)
     {
       err = MPI_Irecv(recv_buff_head + disps[recv_index] * extent, recv_size, dtype, peer, 0, comm, &req);
@@ -869,20 +869,20 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
       if (err != MPI_SUCCESS)
         goto cleanup;
     }
-    PICO_TAG_END("globbal_com/exchange");
+    PICO_TAG_END("global_com/exchange");
 
     if (recv_size > 0)
     {
-      PICO_TAG_BEGIN("globbal_com/wait_recv");
+      PICO_TAG_BEGIN("global_com/wait_recv");
       err = MPI_Wait(&req, MPI_STATUS_IGNORE);
       if (MPI_SUCCESS != err)
       {
         goto cleanup;
       }
-      PICO_TAG_END("globbal_com/wait_recv");
+      PICO_TAG_END("global_com/wait_recv");
 
       // todo: make gpu compatible
-      PICO_TAG_BEGIN("globbal_com/kernel");
+      PICO_TAG_BEGIN("global_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
       err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
@@ -891,14 +891,14 @@ int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rb
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
-      PICO_TAG_END("globbal_com/kernel");
+      PICO_TAG_END("global_com/kernel");
     }
 
     send_index = recv_index;
     last_index = recv_index + rem_data;
     rem_data >>= 1;
   }
-  PICO_TAG_END("globbal_com");
+  PICO_TAG_END("global_com");
 
   PICO_TAG_BEGIN("reorder_data");
   int inverse = inverse_rank(size, rank);
@@ -1023,7 +1023,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
   PICO_TAG_END("setup");
 
   PICO_TAG_BEGIN("local_com");
-  /* recursive doubling globbal */
+  /* recursive doubling global */
   int rem_data = size >> 1;
   int dist_mask, last_index = size, peer;
   int send_index = 0, recv_index = 0;
@@ -1110,7 +1110,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
   PICO_TAG_END("local_com");
   // printf("rank %d (send_index %d last_index %d)\n", rank, send_index, last_index);
 
-  PICO_TAG_BEGIN("globbal_com");
+  PICO_TAG_BEGIN("global_com");
   /* recursive doubling local */
   int local_peer, node_offset;
   node_offset = node_rank * GPU_ON_NODE;
@@ -1147,7 +1147,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
       }
     }
 
-    PICO_TAG_BEGIN("globbal_com/exchange");
+    PICO_TAG_BEGIN("global_com/exchange");
     if (recv_size > 0)
     {
       err = MPI_Irecv(recv_buff_head + disps[recv_index] * extent, recv_size, dtype, peer, 0, comm, &req);
@@ -1160,20 +1160,20 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
       if (err != MPI_SUCCESS)
         goto cleanup;
     }
-    PICO_TAG_END("globbal_com/exchange");
+    PICO_TAG_END("global_com/exchange");
 
     if (recv_size > 0)
     {
-      PICO_TAG_BEGIN("globbal_com/wait_recv");
+      PICO_TAG_BEGIN("global_com/wait_recv");
       err = MPI_Wait(&req, MPI_STATUS_IGNORE);
       if (MPI_SUCCESS != err)
       {
         goto cleanup;
       }
-      PICO_TAG_END("globbal_com/wait_recv");
+      PICO_TAG_END("global_com/wait_recv");
 
       // todo: make gpu compatible
-      PICO_TAG_BEGIN("globbal_com/kernel");
+      PICO_TAG_BEGIN("global_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
       err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
@@ -1182,14 +1182,14 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
-      PICO_TAG_END("globbal_com/kernel");
+      PICO_TAG_END("global_com/kernel");
     }
 
     send_index = recv_index;
     last_index = recv_index + rem_data;
     rem_data >>= 1;
   }
-  PICO_TAG_END("globbal_com");
+  PICO_TAG_END("global_com");
 
   PICO_TAG_BEGIN("reorder_data");
   int inverse_node = inverse_rank(node_size, node_rank);
@@ -2517,7 +2517,7 @@ int reduce_scatter_bine_send_remap_hierarchical_v1(const void *sendbuf, void *re
   /*COPY_BUFF_DIFF_DT(resbuf, recvcounts[rank], dt, recvbuf, recvcounts[rank], dt);
   return MPI_SUCCESS; */
 
-  PICO_TAG_BEGIN("globbal_com");
+  PICO_TAG_BEGIN("global_com");
   int res_first_node = local_rank * node_size;
   int mask = 0x1;
   int inverse_mask = 0x1 << (int)(log_2(node_size) - 1);
@@ -2552,17 +2552,17 @@ int reduce_scatter_bine_send_remap_hierarchical_v1(const void *sendbuf, void *re
     recv_block_first_rem = recv_block_first + res_first_node;
     recv_block_last_rem = recv_block_last + res_first_node;
     recv_count = displs[recv_block_last_rem] - displs[recv_block_first_rem] + recvcounts[recv_block_last_rem];
-    PICO_TAG_BEGIN("globbal_com/send_recv");
+    PICO_TAG_BEGIN("global_com/send_recv");
     err = MPI_Sendrecv((char *)resbuf + (displs[send_block_first_rem] - displs[res_first_node]) * dtsize, send_count, dt, partner * GPU_ON_NODE + local_rank, 0,
                        (char *)tmpbuf, recv_count, dt, partner * GPU_ON_NODE + local_rank, 0, comm, MPI_STATUS_IGNORE);
-    PICO_TAG_END("globbal_com/send_recv");
+    PICO_TAG_END("global_com/send_recv");
     if (MPI_SUCCESS != err)
     {
       goto err_hndl;
     }
     reduction_addres = (char *)resbuf + (displs[recv_block_first_rem] - displs[res_first_node]) * dtsize;
 
-    PICO_TAG_BEGIN("globbal_com/kernel");
+    PICO_TAG_BEGIN("global_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
     err = reduce_wrapper((char *)tmpbuf, reduction_addres, recv_count, dt, op);
     if (MPI_SUCCESS != err)
@@ -2577,7 +2577,7 @@ int reduce_scatter_bine_send_remap_hierarchical_v1(const void *sendbuf, void *re
       goto err_hndl;
     }
 #endif
-    PICO_TAG_END("globbal_com/kernel");
+    PICO_TAG_END("global_com/kernel");
 
     mask <<= 1;
     inverse_mask >>= 1;
@@ -2587,7 +2587,7 @@ int reduce_scatter_bine_send_remap_hierarchical_v1(const void *sendbuf, void *re
       recv_block_first_rem, recv_block_last_rem, send_count, recv_count, recv_block_first_rem, displs[send_block_first_rem] - displs[res_first_node], displs[recv_block_first_rem] - displs[res_first_node]);
     fflush(stdout);*/
   }
-  PICO_TAG_END("globbal_com");
+  PICO_TAG_END("global_com");
 
   // Final send
   // Whom I have been remapped to? I.e., who is going to send me my data? Just do a recv from any
@@ -2944,7 +2944,7 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
   PICO_TAG_END("local_com/kernel");
   PICO_TAG_END("local_com");
 
-  PICO_TAG_BEGIN("globbal_com");
+  PICO_TAG_BEGIN("global_com");
   int send_block_first, send_block_last, recv_block_first = local_rank, recv_block_last;
   int res_first_node = local_rank * node_size;
   int mask = 0x1;
@@ -2984,16 +2984,16 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
     fflush(stdout);
     */
 
-    PICO_TAG_BEGIN("globbal_com/send_recv");
+    PICO_TAG_BEGIN("global_com/send_recv");
     err = MPI_Sendrecv((char *)resbuf + (displs[send_block_first] - displs[res_first_node]) * dtsize, send_count, dt, partner * GPU_ON_NODE + local_rank, 0,
                        (char *)tmpbuf, recv_count, dt, partner * GPU_ON_NODE + local_rank, 0, comm, MPI_STATUS_IGNORE);
-    PICO_TAG_END("globbal_com/send_recv");
+    PICO_TAG_END("global_com/send_recv");
     if (MPI_SUCCESS != err)
     {
       goto err_hndl;
     }
     reduction_addres = (char *)resbuf + (displs[recv_block_first] - displs[res_first_node]) * dtsize;
-    PICO_TAG_BEGIN("globbal_com/kernel");
+    PICO_TAG_BEGIN("global_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
     err = reduce_wrapper((char *)tmpbuf, reduction_addres, recv_count, dt, op);
     if (MPI_SUCCESS != err)
@@ -3008,13 +3008,13 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
       goto err_hndl;
     }
 #endif
-    PICO_TAG_END("globbal_com/kernel");
+    PICO_TAG_END("global_com/kernel");
 
     mask <<= 1;
     inverse_mask >>= 1;
     block_first_mask >>= 1;
   }
-  PICO_TAG_END("globbal_com");
+  PICO_TAG_END("global_com");
 
   PICO_TAG_BEGIN("final_send_perm_wait");
   err = MPI_Wait(&perm_send_req, MPI_STATUS_IGNORE);
@@ -3215,7 +3215,7 @@ int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void 
   PICO_TAG_END("local_com/kernel");
   PICO_TAG_END("local_com");
 
-  PICO_TAG_BEGIN("globbal_com");
+  PICO_TAG_BEGIN("global_com");
   int send_block_first, send_block_last, recv_block_first = local_rank, recv_block_last;
   int res_first_node = local_rank * node_size;
   int mask = 0x1;
@@ -3255,16 +3255,16 @@ int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void 
     fflush(stdout);
     */
 
-    PICO_TAG_BEGIN("globbal_com/send_recv");
+    PICO_TAG_BEGIN("global_com/send_recv");
     err = MPI_Sendrecv((char *)resbuf + (displs[send_block_first] - displs[res_first_node]) * dtsize, send_count, dt, partner * GPU_ON_NODE + local_rank, 0,
                        (char *)tmpbuf, recv_count, dt, partner * GPU_ON_NODE + local_rank, 0, comm, MPI_STATUS_IGNORE);
-    PICO_TAG_END("globbal_com/send_recv");
+    PICO_TAG_END("global_com/send_recv");
     if (MPI_SUCCESS != err)
     {
       goto err_hndl;
     }
     reduction_addres = (char *)resbuf + (displs[recv_block_first] - displs[res_first_node]) * dtsize;
-    PICO_TAG_BEGIN("globbal_com/kernel");
+    PICO_TAG_BEGIN("global_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
     err = reduce_wrapper((char *)tmpbuf, reduction_addres, recv_count, dt, op);
     if (MPI_SUCCESS != err)
@@ -3279,13 +3279,13 @@ int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void 
       goto err_hndl;
     }
 #endif
-    PICO_TAG_END("globbal_com/kernel");
+    PICO_TAG_END("global_com/kernel");
 
     mask <<= 1;
     inverse_mask >>= 1;
     block_first_mask >>= 1;
   }
-  PICO_TAG_END("globbal_com");
+  PICO_TAG_END("global_com");
 
   // Final memcpy
   PICO_TAG_BEGIN("copy_result");
