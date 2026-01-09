@@ -67,7 +67,7 @@
         1048576
       ]
     },
-    "test_time": "00:20:00"
+    "test_time": "00:45:00"
   },
   "libraries": [
     {
@@ -100,6 +100,39 @@
       "pico_backend": true,
       "algorithms": {
         "reduce_scatter": [
+          {
+            "name": "bine_permute_remap_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine remap memcpy algorithm. Works only with power of 2 processes.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "remap",
+              "memcpy",
+              "external"
+            ]
+          },
           {
             "name": "bine_permute_remap_hierarchical_v1_over",
             "coll": "reduce_scatter",
