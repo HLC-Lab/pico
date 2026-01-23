@@ -1022,7 +1022,7 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
   local_rank = rank % GPU_ON_NODE;
   PICO_TAG_END("setup");
 
-  PICO_TAG_BEGIN("local_com");
+  PICO_TAG_BEGIN("global_com");
   /* recursive doubling global */
   int rem_data = size >> 1;
   int dist_mask, last_index = size, peer;
@@ -1064,6 +1064,88 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
     }
 
     // printf("rank %d send size %d reciv size %d send index %d reciv index %d dist %d\n", rank, send_size, recv_size, send_index, recv_index, dist_mask);
+
+    PICO_TAG_BEGIN("global_com/exchange");
+    if (recv_size > 0)
+    {
+      err = MPI_Irecv(recv_buff_head + disps[recv_index] * extent, recv_size, dtype, peer, 0, comm, &req);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+    }
+    if (send_size > 0)
+    {
+      err = MPI_Send(result_buff_head + disps[send_index] * extent, send_size, dtype, peer, 0, comm);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+    }
+    PICO_TAG_END("global_com/exchange");
+
+    if (recv_size > 0)
+    {
+      PICO_TAG_BEGIN("global_com/wait_recv");
+      err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        goto cleanup;
+      }
+      PICO_TAG_END("local_com/wait_recv");
+
+      // todo: make gpu compatible
+      PICO_TAG_BEGIN("global_com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+      err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+      cudaDeviceSynchronize();
+#else
+      MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
+#endif
+      PICO_TAG_END("global_com/kernel");
+    }
+
+    send_index = recv_index;
+    last_index = recv_index + rem_data;
+    rem_data >>= 1;
+  }
+  PICO_TAG_END("global_com");
+  // printf("rank %d (send_index %d last_index %d)\n", rank, send_index, last_index);
+
+  PICO_TAG_BEGIN("local_com");
+  /* recursive doubling local */
+  int local_peer, node_offset;
+  node_offset = node_rank * GPU_ON_NODE;
+  for (dist_mask = 0x1; dist_mask < GPU_ON_NODE; dist_mask <<= 1)
+  {
+    local_peer = local_rank ^ dist_mask;
+    peer = node_offset + local_peer;
+
+    // printf("(rnak %d local rank %d) <-> (peer %d local peer %d) dist %d\n", rank, local_rank, peer, local_peer, dist_mask);
+    send_size = recv_size = 0;
+
+    if (local_rank < local_peer)
+    {
+      send_index = recv_index + rem_data;
+      for (i = send_index; i < last_index; ++i)
+      {
+        send_size += rcounts[i];
+      }
+      for (i = recv_index; i < send_index; ++i)
+      {
+        recv_size += rcounts[i];
+      }
+    }
+    else
+    {
+      recv_index = send_index + rem_data;
+      for (i = send_index; i < recv_index; ++i)
+      {
+        send_size += rcounts[i];
+      }
+      for (i = recv_index; i < last_index; ++i)
+      {
+        recv_size += rcounts[i];
+      }
+    }
 
     PICO_TAG_BEGIN("local_com/exchange");
     if (recv_size > 0)
@@ -1108,88 +1190,6 @@ int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rb
     rem_data >>= 1;
   }
   PICO_TAG_END("local_com");
-  // printf("rank %d (send_index %d last_index %d)\n", rank, send_index, last_index);
-
-  PICO_TAG_BEGIN("global_com");
-  /* recursive doubling local */
-  int local_peer, node_offset;
-  node_offset = node_rank * GPU_ON_NODE;
-  for (dist_mask = 0x1; dist_mask < GPU_ON_NODE; dist_mask <<= 1)
-  {
-    local_peer = local_rank ^ dist_mask;
-    peer = node_offset + local_peer;
-
-    // printf("(rnak %d local rank %d) <-> (peer %d local peer %d) dist %d\n", rank, local_rank, peer, local_peer, dist_mask);
-    send_size = recv_size = 0;
-
-    if (local_rank < local_peer)
-    {
-      send_index = recv_index + rem_data;
-      for (i = send_index; i < last_index; ++i)
-      {
-        send_size += rcounts[i];
-      }
-      for (i = recv_index; i < send_index; ++i)
-      {
-        recv_size += rcounts[i];
-      }
-    }
-    else
-    {
-      recv_index = send_index + rem_data;
-      for (i = send_index; i < recv_index; ++i)
-      {
-        send_size += rcounts[i];
-      }
-      for (i = recv_index; i < last_index; ++i)
-      {
-        recv_size += rcounts[i];
-      }
-    }
-
-    PICO_TAG_BEGIN("global_com/exchange");
-    if (recv_size > 0)
-    {
-      err = MPI_Irecv(recv_buff_head + disps[recv_index] * extent, recv_size, dtype, peer, 0, comm, &req);
-      if (err != MPI_SUCCESS)
-        goto cleanup;
-    }
-    if (send_size > 0)
-    {
-      err = MPI_Send(result_buff_head + disps[send_index] * extent, send_size, dtype, peer, 0, comm);
-      if (err != MPI_SUCCESS)
-        goto cleanup;
-    }
-    PICO_TAG_END("global_com/exchange");
-
-    if (recv_size > 0)
-    {
-      PICO_TAG_BEGIN("global_com/wait_recv");
-      err = MPI_Wait(&req, MPI_STATUS_IGNORE);
-      if (MPI_SUCCESS != err)
-      {
-        goto cleanup;
-      }
-      PICO_TAG_END("global_com/wait_recv");
-
-      // todo: make gpu compatible
-      PICO_TAG_BEGIN("global_com/kernel");
-#ifdef PICO_MPI_CUDA_AWARE
-      err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
-      if (err != MPI_SUCCESS)
-        goto cleanup;
-      cudaDeviceSynchronize();
-#else
-      MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
-#endif
-      PICO_TAG_END("global_com/kernel");
-    }
-
-    send_index = recv_index;
-    last_index = recv_index + rem_data;
-    rem_data >>= 1;
-  }
-  PICO_TAG_END("global_com");
 
   PICO_TAG_BEGIN("reorder_data");
   int inverse_node = inverse_rank(node_size, node_rank);
