@@ -2400,7 +2400,7 @@ int allgather_bine_block_by_block_hierarcic_v2(const void *sbuf, size_t scount, 
   PICO_TAG_BEGIN("setup/bitmap_setup");
   s_bitmap = (int *) malloc(node_size * sizeof(int));
   r_bitmap = (int *) malloc(node_size * sizeof(int));
-  requests = (MPI_Request *) malloc(size * sizeof(MPI_Request));
+  requests = (MPI_Request *) malloc(size * 2 * sizeof(MPI_Request));
   if(s_bitmap == NULL || r_bitmap == NULL || requests == NULL){
     line = __LINE__;
     err = MPI_ERR_NO_MEM;
@@ -2426,13 +2426,13 @@ int allgather_bine_block_by_block_hierarcic_v2(const void *sbuf, size_t scount, 
     PICO_TAG_BEGIN("global_comm/block_exchange");
     for(int block = 0; block < node_size; block++){
       if(s_bitmap[block] != 0){
-        tmpsend = (char*)rbuf + (ptrdiff_t)block * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+        tmpsend = (char*)rbuf + (ptrdiff_t)(block * GPU_ON_NODE + local_rank) * (ptrdiff_t)rcount * rext;
         err = MPI_Isend(tmpsend, rcount, rdtype, remote, block, comm, requests + num_reqs);
         if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
         num_reqs++;
       }
       if(r_bitmap[block] != 0){
-        tmprecv = (char*)rbuf + (ptrdiff_t)block * GPU_ON_NODE * (ptrdiff_t)rcount * rext;
+        tmprecv = (char*)rbuf + (ptrdiff_t)(block * GPU_ON_NODE + local_rank) * (ptrdiff_t)rcount * rext;
         err = MPI_Irecv(tmprecv, rcount, rdtype, remote, block, comm, requests + num_reqs);
         if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
         num_reqs++;
@@ -2455,7 +2455,7 @@ int allgather_bine_block_by_block_hierarcic_v2(const void *sbuf, size_t scount, 
     if (i == local_rank)
       continue;
 
-    for (int j = 0; i < node_size; j++)
+    for (int j = 0; j < node_size; j++)
     {
       tmpsend = (char*) rbuf + (ptrdiff_t)(j * GPU_ON_NODE + local_rank) * (ptrdiff_t)rcount * rext;
       tmprecv = (char*) rbuf + (ptrdiff_t)(j * GPU_ON_NODE + i) * rcount * rext;
