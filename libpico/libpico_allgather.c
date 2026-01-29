@@ -2708,7 +2708,7 @@ int allgather_bine_send_remap_hierarcic_v2(const void *sbuf, size_t scount, MPI_
   } 
   PICO_TAG_END("gloabbal_comm");
 
-    PICO_TAG_BEGIN("local_exchange");
+  PICO_TAG_BEGIN("local_exchange");
   // local exchange
   int num_reqs = 0;
   tmpsend = global_temp;
@@ -3002,6 +3002,173 @@ err_hndl:
   BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
   (void)line;  // silence compiler warning
   if(permutation != NULL) free(permutation);
+  return err;
+}
+
+int allgather_bine_permutation_hierarcic_v2(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                                            void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote, data_exchange;
+  int node_size, node_rank, node_offset, local_rank, num_reqs;
+  int *permutation = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL, *tmpsend = NULL;
+  void *perm_buff = NULL;
+  MPI_Request requests[GPU_ON_NODE * 2];
+
+  PICO_TAG_BEGIN("setup");
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  local_rank = rank % GPU_ON_NODE;
+  node_size = size / GPU_ON_NODE;
+  node_offset = rank - local_rank;
+  node_rank = node_offset / GPU_ON_NODE;
+
+  steps = log_2(node_size);
+  if (!is_power_of_two(size) || steps < 1)
+  {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent(rdtype, &rlb, &rext);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&perm_buff, size * rcount * rext));
+#else
+  perm_buff = malloc(size * rcount * rext);
+#endif
+  if (perm_buff == NULL)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+  tmpsend = perm_buff + local_rank * node_size * rcount * rext;
+  COPY_BUFF_DIFF_DT(sbuf, rcount, rdtype, tmpsend, rcount, rdtype);
+
+  PICO_TAG_END("setup");
+
+  permutation = (int *)malloc(node_size * sizeof(int));
+  if (permutation == NULL)
+  {
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  memset(permutation, -1, node_size * sizeof(int));
+  *(permutation + node_rank) = 0;
+
+  PICO_TAG_BEGIN("gloabbal_comm");
+  data_exchange = 1;
+  for (int step = steps - 1; step >= 0; step--)
+  {
+    remote = pi(node_rank, step, node_size) * GPU_ON_NODE + local_rank;
+
+    PICO_TAG_BEGIN("gloabbal_comm/calc_perm");
+    get_permutation(node_rank, step, steps, node_size, permutation, data_exchange);
+    PICO_TAG_END("gloabbal_comm/calc_perm");
+
+    tmprecv = (char *)tmpsend + (ptrdiff_t)data_exchange * (ptrdiff_t)rcount * rext;
+
+    PICO_TAG_BEGIN("gloabbal_comm/sendrecv");
+    err = MPI_Sendrecv(tmpsend, data_exchange * rcount, rdtype, remote, 0,
+                       tmprecv, data_exchange * rcount, rdtype, remote, 0, comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+    PICO_TAG_END("gloabbal_comm/sendrecv");
+    data_exchange <<= 1;
+  }
+  PICO_TAG_END("gloabbal_comm");
+
+  err = reorder_blocks_gpu(tmpsend, rcount, rdtype, permutation, node_size);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+  PICO_TAG_BEGIN("local_exchange");
+  // local exchange
+  num_reqs = 0;
+  for (int i = 0; i < GPU_ON_NODE; i++)
+  {
+    if (i == local_rank)
+      continue;
+
+    tmprecv = (char *)perm_buff + (ptrdiff_t)i * node_size * rcount * rext;
+
+    err = MPI_Isend(tmpsend, node_size * rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+    num_reqs++;
+    err = MPI_Irecv(tmprecv, node_size * rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+    num_reqs++;
+  }
+  PICO_TAG_BEGIN("local_exchange/request_wait");
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+  PICO_TAG_END("local_exchange/request_wait");
+
+  PICO_TAG_BEGIN("local_exchange/reorder");
+#ifdef PICO_MPI_CUDA_AWARE
+  reorder_kernel_wrapper(perm_buff, rbuf, rcount, size, rdtype);
+  BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+  for(int i = 0; i < size; i++) {
+    int elem_local_rank = i % GPU_ON_NODE;
+    int elem_node_rank = i / GPU_ON_NODE;
+    COPY_BUFF_DIFF_DT(perm_buff + i * rcount * rext, rcount, rdtype, 
+      rbuf + ((elem_local_rank * node_size + elem_node_rank) * rcount) * rext, rcount, rdtype);
+  }
+#endif
+  PICO_TAG_END("local_exchange/reorder");
+  PICO_TAG_END("local_exchange");
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(perm_buff));
+#else
+  free(perm_buff);
+#endif
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line; // silence compiler warning
+  if (permutation != NULL)
+    free(permutation);
+  if (perm_buff != NULL)
+  {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(perm_buff));
+#else
+    free(perm_buff);
+#endif
+  }
+
   return err;
 }
 

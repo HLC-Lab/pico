@@ -80,6 +80,7 @@ int allgather_bine_send_remap_hierarcic_v1(ALLGATHER_MPI_ARGS);
 int allgather_bine_send_remap_hierarcic_v2(ALLGATHER_MPI_ARGS);
 int allgather_bine_2_blocks_hierarcic_v1(ALLGATHER_MPI_ARGS);
 int allgather_bine_permutation_hierarcic_v1(ALLGATHER_MPI_ARGS);
+int allgather_bine_permutation_hierarcic_v2(ALLGATHER_MPI_ARGS);
 
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);
 int alltoall_bine(ALLTOALL_MPI_ARGS);
