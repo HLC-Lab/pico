@@ -4,12 +4,12 @@
 #define GLOBAL_IDX (blockIdx.x * blockDim.x + threadIdx.x)
 
 #define MAKE_KERNEL_OP(type, name, OP)                                                             \
-  __global__ void name(type *inbuff, type *outbuff, const type *currentbuff, int size, int groups) \
+  __global__ void name(type *inbuff, type *outbuff, const type *currentbuff, int comm_size, int groups) \
   {                                                                                                \
     __shared__ type support_buff[MAX_THERAD];                                                      \
     int gidx = GLOBAL_IDX, lidx = threadIdx.x;                                                     \
     int offset = 0;                                                                                \
-    if (gidx < size)                                                                               \
+    if (gidx < comm_size)                                                                               \
     {                                                                                              \
       if (groups > 1)                                                                              \
       {                                                                                            \
@@ -18,7 +18,7 @@
         for (int i = 0; i < groups; i++)                                                           \
         {                                                                                          \
           support_buff[lidx] = OP(inbuff[gidx + offset], support_buff[lidx]);                      \
-          offset += size;                                                                          \
+          offset += comm_size;                                                                          \
         }                                                                                          \
         outbuff[gidx] = support_buff[lidx];                                                        \
       }                                                                                            \
@@ -40,17 +40,17 @@
 #define BOR_OP(a, b) ((a) | (b))
 #define BXOR_OP(a, b) ((a) ^ (b))
 
-#define MAKE_KERNEL_PERM(type, name)                                     \
-  __global__ void name(type *inbuff, type *outbuff, int count, int size) \
-  {                                                                      \
-    int gidx = GLOBAL_IDX;                                               \
-    int node_size = size / GPU_ON_NODE;                                  \
-    int elem = gidx % count;                                             \
-    int rank = gidx / count;                                             \
-    int local_rank = rank % GPU_ON_NODE;                                 \
-    int node_rank = rank / GPU_ON_NODE;                                  \
-    int dest = (node_rank * node_size + local_rank) * count + elem;      \
-    outbuff[dest] = inbuff[gidx];                                        \
+#define MAKE_KERNEL_PERM(type, name)                                          \
+  __global__ void name(type *inbuff, type *outbuff, int count, int comm_size) \
+  {                                                                           \
+    int gidx = GLOBAL_IDX;                                                    \
+    int node_size = comm_size / GPU_ON_NODE;                                  \
+    int elem = gidx % count;                                                  \
+    int rank = gidx / count;                                                  \
+    int local_rank = rank % GPU_ON_NODE;                                      \
+    int node_rank = rank / GPU_ON_NODE;                                       \
+    int dest = (local_rank * node_size + node_rank) * count + elem;           \
+    outbuff[dest] = inbuff[gidx];                                             \
   }
 
 // int8
@@ -228,11 +228,13 @@ kernel_func_reorder reorderute_kernels[R_TYPE_NUM] = {
     (kernel_func_reorder)reorder_int,
     (kernel_func_reorder)reorder_float,
     (kernel_func_reorder)reorder_double,
-    (kernel_func_reorder)reorder_char};
+    (kernel_func_reorder)reorder_char,
+    NULL
+  };
 
 int reduce_wrapper(void *inbuff, void *inoutbuff, int count, MPI_Datatype dtype, MPI_Op op)
 {
-  // call reduce_wrapper_grops_inoutsplit with sanem value for both outbuff and currentbuff with group size to count and 1 group
+  // call reduce_wrapper_grops_inoutsplit with sanem value for both outbuff and currentbuff with group comm_size to count and 1 group
   return reduce_wrapper_grops_inoutsplit(inbuff, inoutbuff, inoutbuff, count, 1, dtype, op);
 }
 
@@ -270,9 +272,9 @@ int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *cur
   return MPI_SUCCESS;
 }
 
-int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int size, MPI_Datatype dtype)
+int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int comm_size, MPI_Datatype dtype)
 {
-  int total_elem = size * elem;
+  int total_elem = comm_size * elem;
   enum ReduceType r_type = mpi_to_redcue_type(dtype);
   int blockSize = total_elem < MAX_THERAD ? total_elem : MAX_THERAD;
   int gridSize = (total_elem + blockSize - 1) / blockSize;
@@ -281,7 +283,7 @@ int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int size, MPI_
   if (kfunc == NULL)
     return MPI_ERR_UNSUPPORTED_OPERATION;
 
-  kfunc<<<gridSize, blockSize>>>(inbuff, outbuff, elem, size);
+  kfunc<<<gridSize, blockSize>>>(inbuff, outbuff, elem, comm_size);
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess)
   {

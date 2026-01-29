@@ -2658,7 +2658,7 @@ int allgather_bine_send_remap_hierarcic_v2(const void *sbuf, size_t scount, MPI_
   vrank = (int) remap_rank((uint32_t) node_size, (uint32_t) node_rank);
   int node_to_rank = vrank * GPU_ON_NODE + local_rank;
   if(vrank != node_rank) {
-    tmprecv = (char*) rbuf + (ptrdiff_t)node_to_rank * (ptrdiff_t)rcount * rext;
+    tmprecv = (char*) perm_buff + (ptrdiff_t)(local_rank * node_size + vrank) * (ptrdiff_t)rcount * rext;
     err = MPI_Sendrecv(sbuf, scount, sdtype, get_sender_rec(node_size, node_rank) * GPU_ON_NODE + local_rank, 0,
                        tmprecv, rcount, rdtype, node_to_rank, 0,
                        comm, MPI_STATUS_IGNORE);
@@ -2666,7 +2666,7 @@ int allgather_bine_send_remap_hierarcic_v2(const void *sbuf, size_t scount, MPI_
   }
   else{
     tmpsend = (char*) sbuf;
-    tmprecv = (char*) rbuf + (ptrdiff_t)node_to_rank * (ptrdiff_t)rcount * rext;
+    tmprecv = (char*) perm_buff + (ptrdiff_t)(local_rank * node_size + vrank) * (ptrdiff_t)rcount * rext;
 
     err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
@@ -2740,7 +2740,7 @@ int allgather_bine_send_remap_hierarcic_v2(const void *sbuf, size_t scount, MPI_
     int elem_local_rank = i % GPU_ON_NODE;
     int elem_node_rank = i / GPU_ON_NODE;
     COPY_BUFF_DIFF_DT(perm_buff + i * rcount * rext, rcount, rdtype, 
-      rbuf + ((elem_node_rank * node_size + elem_local_rank) * rcount) * rext, rcount, rdtype);
+      rbuf + ((elem_local_rank * node_size + elem_node_rank) * rcount) * rext, rcount, rdtype);
   }
 #endif
   PICO_TAG_END("local_exchange/reorder");
