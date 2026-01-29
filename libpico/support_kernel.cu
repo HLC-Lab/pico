@@ -3,30 +3,30 @@
 #define MAX_THERAD 1024
 #define GLOBAL_IDX (blockIdx.x * blockDim.x + threadIdx.x)
 
-#define MAKE_KERNEL_OP(type, name, OP)                                                       \
+#define MAKE_KERNEL_OP(type, name, OP)                                                             \
   __global__ void name(type *inbuff, type *outbuff, const type *currentbuff, int size, int groups) \
-  {                                                                                          \
-    __shared__ type support_buff[MAX_THERAD];                                                \
-    int gidx = GLOBAL_IDX, lidx = threadIdx.x;                                               \
-    int offset = 0;                                                                          \
-    if (gidx < size)                                                                         \
-    {                                                                                        \
-      if (groups > 1)                                                                        \
-      {                                                                                      \
-        support_buff[lidx] = currentbuff[gidx];                                              \
-        __syncthreads();                                                                     \
-        for (int i = 0; i < groups; i++)                                                     \
-        {                                                                                    \
-          support_buff[lidx] = OP(inbuff[gidx + offset], support_buff[lidx]);                \
-          offset += size;                                                                    \
-        }                                                                                    \
-        outbuff[gidx] = support_buff[lidx];                                                  \
-      }                                                                                      \
-      else                                                                                   \
-      {                                                                                      \
-        outbuff[gidx] = OP(inbuff[gidx], currentbuff[gidx]);                                 \
-      }                                                                                      \
-    }                                                                                        \
+  {                                                                                                \
+    __shared__ type support_buff[MAX_THERAD];                                                      \
+    int gidx = GLOBAL_IDX, lidx = threadIdx.x;                                                     \
+    int offset = 0;                                                                                \
+    if (gidx < size)                                                                               \
+    {                                                                                              \
+      if (groups > 1)                                                                              \
+      {                                                                                            \
+        support_buff[lidx] = currentbuff[gidx];                                                    \
+        __syncthreads();                                                                           \
+        for (int i = 0; i < groups; i++)                                                           \
+        {                                                                                          \
+          support_buff[lidx] = OP(inbuff[gidx + offset], support_buff[lidx]);                      \
+          offset += size;                                                                          \
+        }                                                                                          \
+        outbuff[gidx] = support_buff[lidx];                                                        \
+      }                                                                                            \
+      else                                                                                         \
+      {                                                                                            \
+        outbuff[gidx] = OP(inbuff[gidx], currentbuff[gidx]);                                       \
+      }                                                                                            \
+    }                                                                                              \
   }
 
 #define MAX_OP(a, b) ((a) > (b) ? (a) : (b))
@@ -40,6 +40,19 @@
 #define BOR_OP(a, b) ((a) | (b))
 #define BXOR_OP(a, b) ((a) ^ (b))
 
+#define MAKE_KERNEL_PERM(type, name)                                     \
+  __global__ void name(type *inbuff, type *outbuff, int count, int size) \
+  {                                                                      \
+    int gidx = GLOBAL_IDX;                                               \
+    int node_size = size / GPU_ON_NODE;                                  \
+    int elem = gidx % count;                                             \
+    int rank = gidx / count;                                             \
+    int local_rank = rank % GPU_ON_NODE;                                 \
+    int node_rank = rank / GPU_ON_NODE;                                  \
+    int dest = (node_rank * node_size + local_rank) * count + elem;      \
+    outbuff[dest] = inbuff[gidx];                                        \
+  }
+
 // int8
 MAKE_KERNEL_OP(int8_t, sum_int8, SUM_OP)
 MAKE_KERNEL_OP(int8_t, prod_int8, MUL_OP)
@@ -51,6 +64,7 @@ MAKE_KERNEL_OP(int8_t, lor_int8, LOR_OP)
 MAKE_KERNEL_OP(int8_t, bor_int8, BOR_OP)
 MAKE_KERNEL_OP(int8_t, lxor_int8, LXOR_OP)
 MAKE_KERNEL_OP(int8_t, bxor_int8, BXOR_OP)
+MAKE_KERNEL_PERM(int8_t, reorder_int8)
 
 // int16
 MAKE_KERNEL_OP(int16_t, sum_int16, SUM_OP)
@@ -63,6 +77,7 @@ MAKE_KERNEL_OP(int16_t, lor_int16, LOR_OP)
 MAKE_KERNEL_OP(int16_t, bor_int16, BOR_OP)
 MAKE_KERNEL_OP(int16_t, lxor_int16, LXOR_OP)
 MAKE_KERNEL_OP(int16_t, bxor_int16, BXOR_OP)
+MAKE_KERNEL_PERM(int16_t, reorder_int16)
 
 // int32
 MAKE_KERNEL_OP(int32_t, sum_int32, SUM_OP)
@@ -75,6 +90,7 @@ MAKE_KERNEL_OP(int32_t, lor_int32, LOR_OP)
 MAKE_KERNEL_OP(int32_t, bor_int32, BOR_OP)
 MAKE_KERNEL_OP(int32_t, lxor_int32, LXOR_OP)
 MAKE_KERNEL_OP(int32_t, bxor_int32, BXOR_OP)
+MAKE_KERNEL_PERM(int32_t, reorder_int32)
 
 // int64
 MAKE_KERNEL_OP(int64_t, sum_int64, SUM_OP)
@@ -87,6 +103,7 @@ MAKE_KERNEL_OP(int64_t, lor_int64, LOR_OP)
 MAKE_KERNEL_OP(int64_t, bor_int64, BOR_OP)
 MAKE_KERNEL_OP(int64_t, lxor_int64, LXOR_OP)
 MAKE_KERNEL_OP(int64_t, bxor_int64, BXOR_OP)
+MAKE_KERNEL_PERM(int64_t, reorder_int64)
 
 // int
 MAKE_KERNEL_OP(int, sum_int, SUM_OP)
@@ -99,6 +116,7 @@ MAKE_KERNEL_OP(int, lor_int, LOR_OP)
 MAKE_KERNEL_OP(int, bor_int, BOR_OP)
 MAKE_KERNEL_OP(int, lxor_int, LXOR_OP)
 MAKE_KERNEL_OP(int, bxor_int, BXOR_OP)
+MAKE_KERNEL_PERM(int, reorder_int)
 
 // float
 MAKE_KERNEL_OP(float, sum_float, SUM_OP)
@@ -108,6 +126,7 @@ MAKE_KERNEL_OP(float, min_float, MIN_OP)
 MAKE_KERNEL_OP(float, land_float, LAND_OP)
 MAKE_KERNEL_OP(float, lor_float, LOR_OP)
 MAKE_KERNEL_OP(float, lxor_float, LXOR_OP)
+MAKE_KERNEL_PERM(float, reorder_float)
 
 // double
 MAKE_KERNEL_OP(double, sum_double, SUM_OP)
@@ -117,6 +136,7 @@ MAKE_KERNEL_OP(double, min_double, MIN_OP)
 MAKE_KERNEL_OP(double, land_double, LAND_OP)
 MAKE_KERNEL_OP(double, lor_double, LOR_OP)
 MAKE_KERNEL_OP(double, lxor_double, LXOR_OP)
+MAKE_KERNEL_PERM(double, reorder_double)
 
 // char
 MAKE_KERNEL_OP(char, sum_char, SUM_OP)
@@ -129,8 +149,10 @@ MAKE_KERNEL_OP(char, lor_char, LOR_OP)
 MAKE_KERNEL_OP(char, bor_char, BOR_OP)
 MAKE_KERNEL_OP(char, lxor_char, LXOR_OP)
 MAKE_KERNEL_OP(char, bxor_char, BXOR_OP)
+MAKE_KERNEL_PERM(char, reorder_char)
 
-typedef void (*kernel_func)(void *, void *, const void *, int, int);
+typedef void (*kernel_func_op)(void *, void *, const void *, int, int);
+typedef void (*kernel_func_reorder)(void *, void *, int, int);
 
 static inline enum ReduceOp mpi_to_reduce_op(MPI_Op op)
 {
@@ -178,25 +200,35 @@ static inline enum ReduceType mpi_to_redcue_type(MPI_Datatype dtype)
   return R_UNNOWN_TYPE;
 }
 
-kernel_func kernels[R_TYPE_NUM][R_OP_NUM] = {
-    {(kernel_func)sum_int8, (kernel_func)prod_int8, (kernel_func)max_int8, (kernel_func)min_int8, (kernel_func)land_int8, (kernel_func)band_int8,
-     (kernel_func)lor_int8, (kernel_func)bor_int8, (kernel_func)lxor_int8, (kernel_func)bxor_int8, NULL}, // int8
-    {(kernel_func)sum_int16, (kernel_func)prod_int16, (kernel_func)max_int16, (kernel_func)min_int16, (kernel_func)land_int16, (kernel_func)band_int16,
-     (kernel_func)lor_int16, (kernel_func)bor_int16, (kernel_func)lxor_int16, (kernel_func)bxor_int16, NULL}, // int16
-    {(kernel_func)sum_int32, (kernel_func)prod_int32, (kernel_func)max_int32, (kernel_func)min_int32, (kernel_func)land_int32, (kernel_func)band_int32,
-     (kernel_func)lor_int32, (kernel_func)bor_int32, (kernel_func)lxor_int32, (kernel_func)bxor_int32, NULL}, // int32
-    {(kernel_func)sum_int64, (kernel_func)prod_int64, (kernel_func)max_int64, (kernel_func)min_int64, (kernel_func)land_int64, (kernel_func)band_int64,
-     (kernel_func)lor_int64, (kernel_func)bor_int64, (kernel_func)lxor_int64, (kernel_func)bxor_int64, NULL}, // int64
-    {(kernel_func)sum_int, (kernel_func)prod_int, (kernel_func)max_int, (kernel_func)min_int, (kernel_func)land_int, (kernel_func)band_int, (kernel_func)lor_int,
-     (kernel_func)bor_int, (kernel_func)lxor_int, (kernel_func)bxor_int, NULL}, // int
-    {(kernel_func)sum_float, (kernel_func)prod_float, (kernel_func)max_float, (kernel_func)min_float, (kernel_func)land_float, (kernel_func)NULL,
-     (kernel_func)lor_float, NULL, (kernel_func)lxor_float, NULL, NULL}, // float
-    {(kernel_func)sum_double, (kernel_func)prod_double, (kernel_func)max_double, (kernel_func)min_double, (kernel_func)land_double, (kernel_func)NULL,
-     (kernel_func)lor_double, NULL, (kernel_func)lxor_double, NULL, NULL}, // double
-    {(kernel_func)sum_char, (kernel_func)prod_char, (kernel_func)max_char, (kernel_func)min_char, (kernel_func)land_char, (kernel_func)band_char,
-     (kernel_func)lor_char, (kernel_func)bor_char, (kernel_func)lxor_char, (kernel_func)bxor_char, NULL}, // char
-    {NULL}                                                                                                // unnown type
+kernel_func_op op_kernels[R_TYPE_NUM][R_OP_NUM] = {
+    {(kernel_func_op)sum_int8, (kernel_func_op)prod_int8, (kernel_func_op)max_int8, (kernel_func_op)min_int8, (kernel_func_op)land_int8, (kernel_func_op)band_int8,
+     (kernel_func_op)lor_int8, (kernel_func_op)bor_int8, (kernel_func_op)lxor_int8, (kernel_func_op)bxor_int8, NULL}, // int8
+    {(kernel_func_op)sum_int16, (kernel_func_op)prod_int16, (kernel_func_op)max_int16, (kernel_func_op)min_int16, (kernel_func_op)land_int16, (kernel_func_op)band_int16,
+     (kernel_func_op)lor_int16, (kernel_func_op)bor_int16, (kernel_func_op)lxor_int16, (kernel_func_op)bxor_int16, NULL}, // int16
+    {(kernel_func_op)sum_int32, (kernel_func_op)prod_int32, (kernel_func_op)max_int32, (kernel_func_op)min_int32, (kernel_func_op)land_int32, (kernel_func_op)band_int32,
+     (kernel_func_op)lor_int32, (kernel_func_op)bor_int32, (kernel_func_op)lxor_int32, (kernel_func_op)bxor_int32, NULL}, // int32
+    {(kernel_func_op)sum_int64, (kernel_func_op)prod_int64, (kernel_func_op)max_int64, (kernel_func_op)min_int64, (kernel_func_op)land_int64, (kernel_func_op)band_int64,
+     (kernel_func_op)lor_int64, (kernel_func_op)bor_int64, (kernel_func_op)lxor_int64, (kernel_func_op)bxor_int64, NULL}, // int64
+    {(kernel_func_op)sum_int, (kernel_func_op)prod_int, (kernel_func_op)max_int, (kernel_func_op)min_int, (kernel_func_op)land_int, (kernel_func_op)band_int, (kernel_func_op)lor_int,
+     (kernel_func_op)bor_int, (kernel_func_op)lxor_int, (kernel_func_op)bxor_int, NULL}, // int
+    {(kernel_func_op)sum_float, (kernel_func_op)prod_float, (kernel_func_op)max_float, (kernel_func_op)min_float, (kernel_func_op)land_float, (kernel_func_op)NULL,
+     (kernel_func_op)lor_float, NULL, (kernel_func_op)lxor_float, NULL, NULL}, // float
+    {(kernel_func_op)sum_double, (kernel_func_op)prod_double, (kernel_func_op)max_double, (kernel_func_op)min_double, (kernel_func_op)land_double, (kernel_func_op)NULL,
+     (kernel_func_op)lor_double, NULL, (kernel_func_op)lxor_double, NULL, NULL}, // double
+    {(kernel_func_op)sum_char, (kernel_func_op)prod_char, (kernel_func_op)max_char, (kernel_func_op)min_char, (kernel_func_op)land_char, (kernel_func_op)band_char,
+     (kernel_func_op)lor_char, (kernel_func_op)bor_char, (kernel_func_op)lxor_char, (kernel_func_op)bxor_char, NULL}, // char
+    {NULL}                                                                                                            // unnown type
 };
+
+kernel_func_reorder reorderute_kernels[R_TYPE_NUM] = {
+    (kernel_func_reorder)reorder_int8,
+    (kernel_func_reorder)reorder_int16,
+    (kernel_func_reorder)reorder_int32,
+    (kernel_func_reorder)reorder_int64,
+    (kernel_func_reorder)reorder_int,
+    (kernel_func_reorder)reorder_float,
+    (kernel_func_reorder)reorder_double,
+    (kernel_func_reorder)reorder_char};
 
 int reduce_wrapper(void *inbuff, void *inoutbuff, int count, MPI_Datatype dtype, MPI_Op op)
 {
@@ -223,11 +255,33 @@ int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *cur
   int blockSize = group_size < MAX_THERAD ? group_size : MAX_THERAD;
   int gridSize = (group_size + blockSize - 1) / blockSize;
 
-  kernel_func kfunc = kernels[r_type][r_op];
+  kernel_func_op kfunc = op_kernels[r_type][r_op];
   if (kfunc == NULL)
     return MPI_ERR_UNSUPPORTED_OPERATION;
 
   kfunc<<<gridSize, blockSize>>>(inbuff, outbuff, currentbuff, group_size, groups);
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess)
+  {
+    fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n", __FILE__, __LINE__, cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+
+  return MPI_SUCCESS;
+}
+
+int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int size, MPI_Datatype dtype)
+{
+  int total_elem = size * elem;
+  enum ReduceType r_type = mpi_to_redcue_type(dtype);
+  int blockSize = total_elem < MAX_THERAD ? total_elem : MAX_THERAD;
+  int gridSize = (total_elem + blockSize - 1) / blockSize;
+
+  kernel_func_reorder kfunc = reorderute_kernels[r_type];
+  if (kfunc == NULL)
+    return MPI_ERR_UNSUPPORTED_OPERATION;
+
+  kfunc<<<gridSize, blockSize>>>(inbuff, outbuff, elem, size);
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess)
   {

@@ -77,6 +77,7 @@ int allgather_recursivedoubling_hierarchy_v3(ALLGATHER_MPI_ARGS);
 int allgather_bine_block_by_block_hierarcic_v1(ALLGATHER_MPI_ARGS);
 int allgather_bine_block_by_block_hierarcic_v2(ALLGATHER_MPI_ARGS);
 int allgather_bine_send_remap_hierarcic_v1(ALLGATHER_MPI_ARGS);
+int allgather_bine_send_remap_hierarcic_v2(ALLGATHER_MPI_ARGS);
 int allgather_bine_2_blocks_hierarcic_v1(ALLGATHER_MPI_ARGS);
 int allgather_bine_permutation_hierarcic_v1(ALLGATHER_MPI_ARGS);
 

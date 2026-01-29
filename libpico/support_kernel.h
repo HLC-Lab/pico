@@ -46,6 +46,8 @@ int reduce_wrapper_grops(void *inbuff, void *inoutbuff, int group_size, int grou
 // reduce wrapper that reducea group of buffer of a certent size where ther are a set of starter data on another buffer
 int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *currentbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op);
 
+int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int size, MPI_Datatype dtype);
+
 #ifdef __cplusplus
 }
 #endif
