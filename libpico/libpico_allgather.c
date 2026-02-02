@@ -2737,10 +2737,10 @@ int allgather_bine_send_remap_hierarcic_v2(const void *sbuf, size_t scount, MPI_
   BINE_CUDA_CHECK(cudaDeviceSynchronize());
 #else
   for(int i = 0; i < size; i++) {
-    int elem_local_rank = i % GPU_ON_NODE;
-    int elem_node_rank = i / GPU_ON_NODE;
+    int elem_local_rank = i / node_size;
+    int elem_node_rank = i % node_size;
     COPY_BUFF_DIFF_DT(perm_buff + i * rcount * rext, rcount, rdtype, 
-      rbuf + ((elem_local_rank * node_size + elem_node_rank) * rcount) * rext, rcount, rdtype);
+      rbuf + ((elem_node_rank * GPU_ON_NODE + elem_local_rank) * rcount) * rext, rcount, rdtype);
   }
 #endif
   PICO_TAG_END("local_exchange/reorder");
@@ -3138,10 +3138,10 @@ int allgather_bine_permutation_hierarcic_v2(const void *sbuf, size_t scount, MPI
   BINE_CUDA_CHECK(cudaDeviceSynchronize());
 #else
   for(int i = 0; i < size; i++) {
-    int elem_local_rank = i % GPU_ON_NODE;
-    int elem_node_rank = i / GPU_ON_NODE;
+    int elem_local_rank = i / node_size;
+    int elem_node_rank = i % node_size;
     COPY_BUFF_DIFF_DT(perm_buff + i * rcount * rext, rcount, rdtype, 
-      rbuf + ((elem_local_rank * node_size + elem_node_rank) * rcount) * rext, rcount, rdtype);
+      rbuf + ((elem_node_rank * GPU_ON_NODE + elem_local_rank) * rcount) * rext, rcount, rdtype);
   }
 #endif
   PICO_TAG_END("local_exchange/reorder");

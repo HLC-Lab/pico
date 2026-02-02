@@ -47,9 +47,9 @@
     int node_size = comm_size / GPU_ON_NODE;                                  \
     int elem = gidx % count;                                                  \
     int rank = gidx / count;                                                  \
-    int local_rank = rank % GPU_ON_NODE;                                      \
-    int node_rank = rank / GPU_ON_NODE;                                       \
-    int dest = (local_rank * node_size + node_rank) * count + elem;           \
+    int local_rank = rank / node_size;                                        \
+    int node_rank = rank % node_size;                                         \
+    int dest = (node_rank * GPU_ON_NODE + local_rank) * count + elem;         \
     outbuff[dest] = inbuff[gidx];                                             \
   }
 
