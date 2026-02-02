@@ -252,3 +252,31 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2026_01_07___16_57_58,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap instrumented
 2026_01_08___10_41_22,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine permute remap instrumented
 2026_01_08___10_41_22,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap instrumented
+2026_01_09___09_56_18,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,bine permute remap instrumented
+2026_01_09___09_56_18,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,bine permute remap instrumented
+2026_01_09___16_26_22,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 16 rank
+2026_01_09___16_26_22,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 16 rank
+2026_01_09___18_07_44,0,16,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 64 rank
+2026_01_09___18_07_44,1,16,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 64 rank
+2026_01_10___11_08_54,0,64,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 256 rank
+2026_01_10___11_08_54,1,64,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 256 rank
+2026_01_12___17_15_53,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 16 rank
+2026_01_12___17_15_53,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 16 rank
+2026_01_13___10_33_36,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 16 rank
+2026_01_13___10_33_36,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 16 rank
+2026_01_15___11_38_35,0,16,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 64 rank
+2026_01_15___11_38_35,1,16,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 64 rank
+2026_01_13___12_05_03,0,64,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 256 rank
+2026_01_13___12_05_03,1,64,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 256 rank
+2026_01_15___10_51_11,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 16 rank instrument
+2026_01_15___10_51_11,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 16 rank instrument
+2026_01_15___15_04_55,0,16,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 64 rank instrument
+2026_01_15___15_04_55,1,16,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 64 rank instrument
+2026_01_15___16_12_11,0,64,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 256 rank instrument
+2026_01_15___16_12_11,1,64,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 256 rank instrument
+2026_01_19___10_13_29,0,4,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 16 rank instrument
+2026_01_19___10_13_29,1,4,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 16 rank instrument
+2026_02_02___10_09_50,0,16,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 64 rank instrument
+2026_02_02___10_09_50,1,16,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 64 rank instrument
+2026_01_30___10_47_38,0,64,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 256 rank instrument
+2026_01_30___10_47_38,1,64,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 256 rank instrument
