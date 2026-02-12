@@ -99,27 +99,6 @@
       "algorithms": {
         "allgather": [
           {
-            "name": "default_ompi",
-            "coll": "allgather",
-            "desc": "Open MPI default algorithm selection",
-            "version": "4.1.5",
-            "selection": 0,
-            "constraints": [
-              {
-                "key": "count",
-                "conditions": [
-                  {
-                    "operator": ">=",
-                    "value": "comm_sz"
-                  }
-                ]
-              }
-            ],
-            "tags": [
-              "default"
-            ]
-          },
-          {
             "name": "recursive_doubling_nontowpower_over",
             "coll": "allgather",
             "desc": "libpico external recursive doubling algorithm. Works with non power of 2 processes.",

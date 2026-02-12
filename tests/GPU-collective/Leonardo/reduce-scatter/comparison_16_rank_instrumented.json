@@ -101,27 +101,6 @@
       "algorithms": {
         "reduce_scatter": [
           {
-            "name": "default_ompi",
-            "coll": "reduce_scatter",
-            "desc": "Open MPI default algorithm selection",
-            "version": "4.1.5",
-            "selection": 0,
-            "constraints": [
-              {
-                "key": "count",
-                "conditions": [
-                  {
-                    "operator": ">=",
-                    "value": "comm_sz"
-                  }
-                ]
-              }
-            ],
-            "tags": [
-              "default"
-            ]
-          },
-          {
             "name": "recursive_distance_doubling_gpu_over",
             "coll": "reduce_scatter",
             "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
