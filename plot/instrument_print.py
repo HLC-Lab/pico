@@ -119,9 +119,89 @@ def print_struct_condensed(df_filtered: pd.DataFrame):
             print(f"{data_print:<40}| {"|".join([f"{val:6.2f}% " for val in valore])}")
         print("-" * 85, end="\n\n")
 
+def print_struct_condensed_latex(df_filtered: pd.DataFrame, nnode: int):
+    for algo_name, grouped_df in df_filtered.sort_values('algo_name').groupby('algo_name'):
+        grouped_df = grouped_df.sort_values(by='buffer_size').dropna(axis=1, how='all')
+        
+        colonne_mean = grouped_df.filter(regex='/mean$').columns
+
+        colonne_da_calcolare = colonne_mean.drop('rank0/mean')
+
+        df_percentuali = grouped_df[colonne_da_calcolare].div(grouped_df['rank0/mean'], axis=0) * 100
+
+        df_percentuali.columns = [f"{"/".join(c.split("/")[:-1])}" for c in df_percentuali.columns]
+
+        risultato = pd.concat([
+            grouped_df['buffer_size'],
+            grouped_df.rename(columns={'rank0/mean': 'time'})['time'], 
+            df_percentuali
+        ], axis=1)
+        
+        bufer_sizes = ["r" for _ in risultato['buffer_size']]
+        
+        lines = [
+            "\\begin{table}[H]",
+            "\\centering",
+            f"\\caption{{ {algo_name.replace("_", "\\_")} {nnode} node }}",
+            "\\resizebox{\\textwidth}{!}{%",
+            f"\\begin{{tabular}}{{ {"|l|" + "|".join(bufer_sizes) + "|"} }}",
+            "\\hline",
+            f"\\multicolumn{{1}}{{|l|}}{{}} & \\multicolumn{{ {len(bufer_sizes)} }}{{c|}}{{\\textbf{{time \\% for every size}} }} \\\\ ",
+            f"\\textbf{{Section}} & {"&".join([f"{human_readable_size(val):8} " for val in risultato['buffer_size']])} \\\\",
+            "\\hline",
+        ]
+        
+        for colonna, valore in risultato.items():
+            if colonna in ['buffer_size', 'time']: continue
+            data_print = f"   {"\\subitem" * (len(colonna.split("/")) - 1)} {colonna.replace("_", "\\_")}"
+            lines.append(f"{data_print} & {"&".join([f"{val:6.2f}\\% " for val in valore])} \\\\")
+        
+        lines = lines + [
+                "\\hline",
+                "\\end{tabular}%",
+                "}",
+                "\\end{table}"
+        ]
+        
+        with open(f"instrment/{nnode}_{algo_name}.tex", "w") as f:
+            f.writelines('\n'.join(lines) + '\n')
+
+def print_struct_condensed_time(df_filtered: pd.DataFrame):
+    for algo_name, grouped_df in df_filtered.sort_values('algo_name').groupby('algo_name'):
+        print("=" * 85)
+        print(algo_name)
+        print("=" * 85)
+        grouped_df = grouped_df.sort_values(by='buffer_size').dropna(axis=1, how='all')
+        
+        colonne_mean = grouped_df.filter(regex='/mean$').columns
+
+        colonne_da_calcolare = colonne_mean.drop('rank0/mean')
+
+        df_percentuali = grouped_df[colonne_da_calcolare]
+
+        df_percentuali.columns = [f"{"/".join(c.split("/")[:-1])}" for c in df_percentuali.columns]
+
+        risultato = pd.concat([
+            grouped_df['buffer_size'],
+            grouped_df.rename(columns={'rank0/mean': 'time'})['time'], 
+            df_percentuali
+        ], axis=1)
+        
+        print(f"buffer size: {"".join([f"{human_readable_size(val):8} " for val in risultato['buffer_size']])}")
+        print(f"total time:  {"".join([f"{format_time_units_ns(val):8} " for val in risultato['time']])}", end="\n\n")
+        print(f"   {"section":<37}| time % for every size")
+        print(f"   {" " * 37}| {"|".join([f"{human_readable_size(val):11}" for val in risultato['buffer_size']])}")
+        print("-" * 85)
+        for colonna, valore in risultato.items():
+            if colonna in ['buffer_size', 'time']: continue
+            data_print = f"   {"  " * (len(colonna.split("/")) - 1)}{colonna}"
+            print(f"{data_print:<40}| {"|".join([f"{format_time_units_ns(val):10} " for val in valore])}")
+        print("-" * 85, end="\n\n")
+
 def main():
     parser = argparse.ArgumentParser(description="Instrument data print")
     parser.add_argument("--summary-file", required=True, help="Path to aggregated summary CSV.")
+    parser.add_argument("--nnode", required=True, help="number of node")
     args = parser.parse_args()
 
     # Ensure the path follows the expected format: results/<system>/<timestamp>
