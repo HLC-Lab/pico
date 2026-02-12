@@ -52,7 +52,8 @@ def _load_filtered_dataframe(args) -> tuple[pd.DataFrame, object]:
 def _iter_groups(df: pd.DataFrame) -> Iterable[tuple[str, str, pd.DataFrame]]:
     for datatype, subdf in df.groupby("datatype"):
         for collective, subgroup in subdf.groupby("collective_type"):
-            yield datatype, collective, subgroup.copy()
+            for gpu_awareness, subsubgroup in subgroup.groupby("gpu_awareness"):
+                yield datatype, collective, gpu_awareness, subsubgroup.copy()
 
 
 def _add_common_filters(parser: argparse.ArgumentParser) -> None:
@@ -68,12 +69,13 @@ def _add_common_filters(parser: argparse.ArgumentParser) -> None:
 
 def _line_command(args) -> None:
     df, metadata = _load_filtered_dataframe(args)
-    for datatype, collective, subset in _iter_groups(df):
+    for datatype, collective, gpu_awareness, subset in _iter_groups(df):
         generate_line_plot(
             subset,
             metadata=metadata,
             collective=collective,
             datatype=datatype,
+            gpu_awareness=gpu_awareness,
             error_col=args.error_col,
             error_mode=args.error_mode,
             output_dir=args.output_dir,
@@ -82,7 +84,7 @@ def _line_command(args) -> None:
 
 def _bar_command(args) -> None:
     df, metadata = _load_filtered_dataframe(args)
-    for datatype, collective, subset in _iter_groups(df):
+    for datatype, collective, gpu_awareness, subset in _iter_groups(df):
         normalized = normalize_dataset(
             subset,
             mpi_lib=metadata.mpi_lib,
@@ -94,6 +96,7 @@ def _bar_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
+            gpu_awareness=gpu_awareness,
             errorbars=args.errorbars,
             k=args.k,
             threshold=args.std_threshold,
@@ -104,7 +107,7 @@ def _bar_command(args) -> None:
 
 def _cut_command(args) -> None:
     df, metadata = _load_filtered_dataframe(args)
-    for datatype, collective, subset in _iter_groups(df):
+    for datatype, collective, gpu_awareness, subset in _iter_groups(df):
         normalized = normalize_dataset(
             subset,
             mpi_lib=metadata.mpi_lib,
@@ -116,6 +119,7 @@ def _cut_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
+            gpu_awareness=gpu_awareness,
             errorbars=args.errorbars,
             k=args.k,
             threshold=args.std_threshold,
@@ -126,12 +130,13 @@ def _cut_command(args) -> None:
 
 def _suite_command(args) -> None:
     df, metadata = _load_filtered_dataframe(args)
-    for datatype, collective, subset in _iter_groups(df):
+    for datatype, collective, gpu_awareness ,subset in _iter_groups(df):
         generate_line_plot(
             subset,
             metadata=metadata,
             collective=collective,
             datatype=datatype,
+            gpu_awareness=gpu_awareness,
             error_col=args.error_col,
             error_mode=args.error_mode,
             output_dir=args.output_dir,
@@ -147,6 +152,7 @@ def _suite_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
+            gpu_awareness=gpu_awareness,
             output_dir=args.output_dir,
         )
         generate_cut_bar_plot(
@@ -154,6 +160,7 @@ def _suite_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
+            gpu_awareness=gpu_awareness,
             output_dir=args.output_dir,
         )
 
