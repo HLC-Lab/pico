@@ -280,3 +280,17 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2026_02_02___10_09_50,1,16,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 64 rank instrument
 2026_01_30___10_47_38,0,64,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,summarized,,reduce scatter test complete 256 rank instrument
 2026_01_30___10_47_38,1,64,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,summarized,,reduce scatter test complete 256 rank instrument
+2026_02_04___10_02_46,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 16 rank
+2026_02_04___10_02_46,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 16 rank
+2026_02_04___10_51_34,0,16,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 64 rank
+2026_02_04___10_51_34,1,16,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 64 rank
+2026_02_04___16_37_56,0,64,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 256 rank
+2026_02_04___16_37_56,1,64,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 256 rank
+2026_02_09___13_47_52,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 16 rank
+2026_02_09___13_47_52,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 16 rank
+2026_02_09___15_38_12,0,4,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 16 rank instrument
+2026_02_09___15_38_12,1,4,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 16 rank instrument
+2026_02_09___17_49_06,0,16,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 64 rank instrument
+2026_02_09___17_49_06,1,16,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 64 rank instrument
+2026_02_10___14_50_34,0,64,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,summarized,,allgather test comparison 256 rank instrument
+2026_02_10___14_50_34,1,64,4,ALLGATHER,OMPI,4.1.6,no,null,null,summarized,,allgather test comparison 256 rank instrument
