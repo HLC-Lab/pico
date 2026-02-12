@@ -1035,7 +1035,7 @@ int allgather_recursivedoubling_nontowpower(const void *sbuf, size_t scount, MPI
                                             void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, sub_group_size, remaining_node, err = MPI_SUCCESS;
-  int peer, distance, lower_block_data, upper_block_data, peer_group, node_group, dist_mask = ~0;
+  int peer, distance, lower_block_data, upper_block_data, peer_group, rank_group, dist_mask = ~0;
   ptrdiff_t rlb, rext;
   char *tmprecv = NULL, *tmpsend = NULL, *tmprecv_buff;
 
@@ -1151,12 +1151,12 @@ int allgather_recursivedoubling_nontowpower(const void *sbuf, size_t scount, MPI
       }
       // calc first node of the sub group of current e peer node
       peer_group = peer & dist_mask;
-      node_group = rank & dist_mask;
+      rank_group = rank & dist_mask;
       dist_mask = dist_mask << 1;
 
       // send and recive extra data
       PICO_TAG_BEGIN("exchange/extradata");
-      if (peer_group < remaining_node && node_group < remaining_node)
+      if (peer_group < remaining_node && rank_group < remaining_node)
       {
         tmpsend = tmprecv_buff + (ptrdiff_t)upper_block_data * (ptrdiff_t)rcount * rext;
         tmprecv = tmprecv_buff + (ptrdiff_t)(sub_group_size + peer_group) * (ptrdiff_t)rcount * rext;
@@ -1166,7 +1166,7 @@ int allgather_recursivedoubling_nontowpower(const void *sbuf, size_t scount, MPI
         }
 
         PICO_TAG_BEGIN("exchange/extradata/send_recv");
-        err = MPI_Sendrecv(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, node_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0,
+        err = MPI_Sendrecv(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, rank_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0,
                            tmprecv, (ptrdiff_t)remining_data_to_share(remaining_node, peer_group, distance) * (ptrdiff_t)rcount, rdtype,
                            peer, 0, comm, MPI_STATUS_IGNORE);
         PICO_TAG_END("exchange/extradata/send_recv");
@@ -1177,10 +1177,10 @@ int allgather_recursivedoubling_nontowpower(const void *sbuf, size_t scount, MPI
         }
       }
       // send extra data
-      else if (node_group < remaining_node)
+      else if (rank_group < remaining_node)
       {
         tmpsend = tmprecv_buff + (ptrdiff_t)upper_block_data * (ptrdiff_t)rcount * rext;
-        err = MPI_Send(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, node_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0, comm);
+        err = MPI_Send(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, rank_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0, comm);
         if (MPI_SUCCESS != err)
         {
           line = __LINE__;
