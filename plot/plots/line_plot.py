@@ -12,13 +12,14 @@ import numpy as np
 
 from ..utils import (
     PlotMetadata,
+    apply_adaptive_legend,
     build_tab10_palette,
     ensure_dir,
     format_time_units_ns,
     format_bytes,
     sort_key,
+    style_axes,
 )
-
 
 sns.set_palette("tab10")
 sns.set_style("whitegrid")
@@ -170,7 +171,7 @@ def generate_line_plot(
         print(f"Warning: could not find valid error columns for '{error_col}'; skipping error bars.")
         err_series = None
 
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(12, 6))
     ax = sns.lineplot(
         data=df,
         x="buffer_size",
@@ -180,8 +181,8 @@ def generate_line_plot(
         hue_order=sorted_algos,
         palette=palette,
         markers=True,
-        markersize=9,
-        linewidth=2,
+        markersize=11,
+        linewidth=3,
         estimator=None,          # data already aggregated; plot it as-is
         errorbar=None            # ← turn off CI bands
     )
@@ -216,6 +217,7 @@ def generate_line_plot(
     ax.set_xticks(xticks)
     ax.set_xticklabels([format_bytes(x) for x in xticks])
     ax.yaxis.set_major_formatter(format_time_units_ns)
+    # ax.tick_params(axis="both", labelsize=18)
 
     if metadata.total_nodes == metadata.mpi_tasks:
         title = f"{metadata.system.capitalize()}, {collective.lower().capitalize()}, {metadata.nnodes} nodes"
@@ -229,25 +231,25 @@ def generate_line_plot(
     ax.set_xlabel("Message Size", fontsize=15)
     ax.set_ylabel("Execution Time", fontsize=15)
 
-    if len(sorted_algos) > 10:
-        ncols = 3
-    elif len(sorted_algos) > 5:
-        ncols = 2
-    else:
-        ncols = 1
-
     handles, labels = ax.get_legend_handles_labels()
     new_labels = [
-        " ".join(w.capitalize() for w in label.replace("_", " ").split() if w not in {"over", "ompi", "distance"})
+        " ".join(w.capitalize() for w in label.replace("_", " ").split()) #if w not in {"over", "ompi", "distance"})
         for label in labels
     ]
-    ax.legend(handles, new_labels, fontsize=20, loc="upper left", ncol=ncols, frameon=True)
+    if "Binomial Doubling (open Mpi 4.1.6)" in new_labels:
+        idx = new_labels.index("Binomial Doubling (open Mpi 4.1.6)")
+        new_labels[idx] = "Binomial Doubling (Open MPI 4.1.6)"
+    apply_adaptive_legend(ax, handles=handles, labels=new_labels, loc="upper left", frameon=True)
+    style_axes(ax)
     plt.tight_layout()
 
     target_dir = _resolve_output_dir(metadata.system, output_dir)
     suffix = f"{error_col}_lineplot" if error_col else "lineplot"
-    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_{suffix}.png"
+    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_{suffix}.pdf"
+    name_pdf = name.replace(".png", ".pdf")
     full_path = target_dir / name
+    full_path_pdf = target_dir / name_pdf
     plt.savefig(full_path, dpi=300)
+    plt.savefig(full_path_pdf, dpi=300)
     plt.close()
     return full_path

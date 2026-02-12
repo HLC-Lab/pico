@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from ..utils import ensure_dir
+from ..utils import apply_adaptive_legend, ensure_dir, style_axes
 from .refined_loader import RefinedDataset
 
 
@@ -59,7 +59,8 @@ def generate_refined_line_plot(
 
     handles, labels = ax.get_legend_handles_labels()
     new_labels = [' '.join(w.capitalize() for w in lbl.replace('_', ' ').split()) for lbl in labels]
-    ax.legend(handles, new_labels, fontsize=20, loc='upper left', ncol=1, frameon=True)
+    apply_adaptive_legend(ax, handles=handles, labels=new_labels, loc='upper left', frameon=True)
+    style_axes(ax)
 
     plt.tight_layout()
 

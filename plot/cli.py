@@ -94,7 +94,10 @@ def _bar_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
-            std_threshold=args.std_threshold,
+            errorbars=args.errorbars,
+            k=args.k,
+            threshold=args.std_threshold,
+            marker_loc=args.marker_loc,
             output_dir=args.output_dir,
         )
 
@@ -113,7 +116,10 @@ def _cut_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
-            std_threshold=args.std_threshold,
+            errorbars=args.errorbars,
+            k=args.k,
+            threshold=args.std_threshold,
+            marker_loc=args.marker_loc,
             output_dir=args.output_dir,
         )
 
@@ -141,7 +147,6 @@ def _suite_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
-            std_threshold=args.std_threshold,
             output_dir=args.output_dir,
         )
         generate_cut_bar_plot(
@@ -149,7 +154,6 @@ def _suite_command(args) -> None:
             metadata=metadata,
             collective=collective,
             datatype=datatype,
-            std_threshold=args.cut_std_threshold,
             output_dir=args.output_dir,
         )
 
@@ -283,14 +287,25 @@ def build_parser() -> argparse.ArgumentParser:
     _add_summary_argument(bar_parser)
     _add_common_filters(bar_parser)
     bar_parser.add_argument("--normalize-by", help="Reference algorithm used for normalization.")
-    bar_parser.add_argument("--std-threshold", type=float, default=0.15, help="Absolute std marker threshold.")
+    bar_parser.add_argument( "--errorbars", choices=("none", "se", "ci"), default="se",
+        help="Error bar mode for bar plots: none, se (symmetric), or ci (asymmetric).",)
+    bar_parser.add_argument( "--k", type=float, default=1.96,
+        help="Multiplier for SE error bars (e.g., 1.0 for ±SE, 1.96 for ~95%%).",)
+    bar_parser.add_argument( "--std-threshold", type=float, default=0.15,
+        help="Error marker threshold (applies to chosen error metric).",)
+    bar_parser.add_argument( "--marker-loc", type=float, default=0.05,
+        help="Vertical offset for the red marker when threshold is exceeded.",)
     bar_parser.set_defaults(func=_bar_command)
 
     cut_parser = subparsers.add_parser("cut", help="Generate split normalized bar plots.")
     _add_summary_argument(cut_parser)
     _add_common_filters(cut_parser)
     cut_parser.add_argument("--normalize-by", help="Reference algorithm used for normalization.")
-    cut_parser.add_argument("--std-threshold", type=float, default=0.5, help="Relative std marker threshold.")
+    cut_parser.add_argument( "--errorbars", choices=("none", "se", "ci"), default="se",
+        help="Error bar mode for cut bar plots: none, se (symmetric), or ci (asymmetric).",)
+    cut_parser.add_argument("--k", type=float, default=1.96, help="Multiplier for SE error bars.")
+    cut_parser.add_argument("--std-threshold", type=float, default=0.5, help="Error marker threshold.")
+    cut_parser.add_argument("--marker-loc", type=float, default=0.05, help="Marker vertical offset.")
     cut_parser.set_defaults(func=_cut_command)
 
     suite_parser = subparsers.add_parser("summary", help="Recreate the legacy create_graphs pipeline.")

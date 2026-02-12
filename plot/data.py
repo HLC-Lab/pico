@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 import pandas as pd
+import numpy as np
 
 from .utils import PlotMetadata
 
@@ -118,9 +119,20 @@ def normalize_dataset(
     mpi_lib: str,
     gpu_lib: str,
     base: str | None = None,
+    group_key: str = "buffer_size",
+    metric_col: str = "mean",
+    se_col: str = "standard_error",
+    ci_lower_col: str = "ci_lower",
+    ci_upper_col: str = "ci_upper",
+    corr: float = 0.0,   # rho in [-1, 1] for pairing; 0 is conservative default
 ) -> pd.DataFrame:
     """
-    Normalize the dataset dividing by the reference algorithm.
+    Normalize the dataset by dividing by a reference algorithm within each group_key.
+
+    Outputs:
+      - normalized_mean (ratio of means)
+      - normalized_se   (propagated SE of the ratio using delta method)
+      - normalized_ci_lower / normalized_ci_upper (normalized CI if present)
     """
     df = data.copy()
 
@@ -131,18 +143,86 @@ def normalize_dataset(
         elif mpi_lib in {"MPICH", "CRAY_MPICH"}:
             chosen_base = "default_mpich"
 
-    grouped = df.groupby("buffer_size")
-    normalized_means = pd.Series(index=df.index, dtype=float)
-    normalized_stds = pd.Series(index=df.index, dtype=float)
+    if chosen_base is None:
+        raise ValueError("Could not determine a baseline algorithm; pass base=... explicitly.")
 
-    for buffer_size, group in grouped:
-        base_row = group[group["algo_name"] == chosen_base]
+    # Prepare output columns
+    norm_mean = pd.Series(index=df.index, dtype=float)
+    norm_se = pd.Series(index=df.index, dtype=float)
+    norm_ci_lo = pd.Series(index=df.index, dtype=float)
+    norm_ci_hi = pd.Series(index=df.index, dtype=float)
+
+    has_se = se_col in df.columns
+    has_ci = (ci_lower_col in df.columns) and (ci_upper_col in df.columns)
+
+    for key, group in df.groupby(group_key):
+        base_row = group.loc[group["algo_name"] == chosen_base]
         if base_row.empty:
-            continue
-        base_mean = base_row["mean"].iloc[0]
-        normalized_means.loc[group.index] = group["mean"] / base_mean
-        normalized_stds.loc[group.index] = (group["std"] / group["mean"]) * normalized_means.loc[group.index]
+            continue  # no baseline for this group; leave NaNs, filled later
 
-    df["normalized_mean"] = normalized_means.fillna(1.0)
-    df["normalized_std"] = normalized_stds.fillna(0.0)
+        mu_b = float(base_row[metric_col].iloc[0])
+        if mu_b == 0.0 or not np.isfinite(mu_b):
+            continue
+
+        # Point estimate ratio
+        r = group[metric_col] / mu_b
+        norm_mean.loc[group.index] = r
+
+        # Normalize CI bounds directly (CI for the mean -> divide by same baseline mean)
+        if has_ci:
+            norm_ci_lo.loc[group.index] = group[ci_lower_col] / mu_b
+            norm_ci_hi.loc[group.index] = group[ci_upper_col] / mu_b
+
+        # Propagate SE for ratio (preferred for errorbars)
+        if has_se:
+            se = group[se_col].astype(float)
+            mu = group[metric_col].astype(float)
+
+            se_b = float(base_row[se_col].iloc[0]) if se_col in base_row else np.nan
+            if not np.isfinite(se_b):
+                # If baseline SE missing, fall back to only numerator contribution (still better than std)
+                rel_var = (se / mu) ** 2
+            else:
+                rel_t = se / mu
+                rel_b = se_b / mu_b
+                rel_var = rel_t**2 + rel_b**2 - 2.0 * corr * rel_t * rel_b
+
+            rel_var = np.maximum(rel_var, 0.0)  # numerical safety
+            norm_se.loc[group.index] = np.abs(r) * np.sqrt(rel_var)
+
+        # Convention: baseline is exactly 1 with zero error bar (since it's the reference)
+        base_idx = base_row.index
+        norm_mean.loc[base_idx] = 1.0
+
+        # Baseline "error" shown as relative uncertainty of baseline mean (scale factor uncertainty)
+        if has_se:
+            se_b = float(base_row[se_col].iloc[0])
+            mu_b = float(base_row[metric_col].iloc[0])
+            norm_se.loc[base_idx] = (se_b / mu_b) if (mu_b != 0 and np.isfinite(se_b) and np.isfinite(mu_b)) else 0.0
+
+        if has_ci:
+            lb = float(base_row[ci_lower_col].iloc[0])
+            ub = float(base_row[ci_upper_col].iloc[0])
+            mu_b = float(base_row[metric_col].iloc[0])
+            if mu_b != 0 and np.isfinite(lb) and np.isfinite(ub) and np.isfinite(mu_b):
+                norm_ci_lo.loc[base_idx] = lb / mu_b
+                norm_ci_hi.loc[base_idx] = ub / mu_b
+            else:
+                norm_ci_lo.loc[base_idx] = 1.0
+                norm_ci_hi.loc[base_idx] = 1.0
+
+    df["normalized_mean"] = norm_mean.fillna(1.0)
+
+    if has_se:
+        df["normalized_se"] = norm_se.fillna(0.0)
+    else:
+        df["normalized_se"] = 0.0
+
+    if has_ci:
+        df["normalized_ci_lower"] = norm_ci_lo.fillna(df["normalized_mean"])
+        df["normalized_ci_upper"] = norm_ci_hi.fillna(df["normalized_mean"])
+    else:
+        df["normalized_ci_lower"] = df["normalized_mean"]
+        df["normalized_ci_upper"] = df["normalized_mean"]
+
     return df

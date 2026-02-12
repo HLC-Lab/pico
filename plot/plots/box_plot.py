@@ -16,7 +16,7 @@ import matplotlib
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.stats import gmean
 
-from ..utils import ensure_dir
+from ..utils import ensure_dir, style_axes
 
 
 matplotlib.rc("pdf", fonttype=42)  # To avoid issues with camera-ready submission
@@ -436,6 +436,7 @@ def generate_boxplot(cfg: BoxplotConfig) -> Path:
     if ax.legend_:
         ax.legend_.remove()
     plt.ylabel("")
+    style_axes(ax)
 
     out_dir = cfg.output_dir or (Path("plot") / cfg.system)
     ensure_dir(out_dir)

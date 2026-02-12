@@ -5,8 +5,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Callable, Iterable, Mapping, Sequence
 
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -71,46 +73,151 @@ def build_tab10_palette(sorted_algos: Iterable[str]) -> Mapping[str, tuple[float
     return {algo: colors[i % len(colors)] for i, algo in enumerate(sorted_algos)}
 
 
+def style_axes(ax) -> None:
+    """
+    Apply the shared axis styling used by non-heatmap plots.
+    """
+    ax.set_facecolor("#fdfdfd")
+    ax.grid(True, linestyle=":", linewidth=0.8, color="#999999", alpha=0.7)
+    for spine in ax.spines.values():
+        spine.set_color("black")
+        spine.set_linewidth(1.2)
+
+
+def adaptive_legend_layout(num_entries: int) -> tuple[int, int]:
+    """
+    Choose legend columns and fontsize from the number of legend entries.
+    """
+    if num_entries > 10:
+        return 3, 8
+    if num_entries > 5:
+        if num_entries > 8:
+            return 2, 10
+        return 2, 14
+    if num_entries > 3:
+        return 1, 16
+    return 1, 20
+
+
+def apply_adaptive_legend(
+    ax,
+    *,
+    handles=None,
+    labels: Sequence[str] | None = None,
+    loc: str = "best",
+    frameon: bool | None = None,
+    format_label: Callable[[str], str] | None = None,
+):
+    """
+    Apply a legend to ``ax`` using adaptive columns/font size based on entries.
+    """
+    if handles is None or labels is None:
+        handles, labels = ax.get_legend_handles_labels()
+
+    if not handles:
+        return None
+
+    legend_labels = list(labels)
+    if format_label is not None:
+        legend_labels = [format_label(label) for label in legend_labels]
+
+    ncols, fontsize = adaptive_legend_layout(len(handles))
+    kwargs = {"ncol": ncols, "loc": loc, "fontsize": fontsize}
+    if frameon is not None:
+        kwargs["frameon"] = frameon
+
+    return ax.legend(handles, legend_labels, **kwargs)
+
+
 def draw_errorbars(
     ax,
-    data,
+    data: pd.DataFrame,
     sorted_algos: Iterable[str],
-    std_threshold: float,
     *,
-    threshold_mode: str = "absolute",
-    loc: float = 0.05,
-    top: bool = False,
-    y_min: float = 2.0,
+    mode: str = "se",                 # "none" | "se" | "ci"
+    x_col: str = "buffer_size",
+    algo_col: str = "algo_name",
+    y_col: str = "normalized_mean",
+    # SE mode
+    se_col: str = "normalized_se",
+    k: float = 1.96,                  # 1.96 ~ 95% (normal approx). Use 1.0 for ±SE
+    # CI mode
+    ci_lower_col: str = "normalized_ci_lower",
+    ci_upper_col: str = "normalized_ci_upper",
+    # flagging
+    threshold: float = np.inf,        # if error > threshold, draw a red marker instead
+    loc: float = 0.05,                # vertical offset for the red marker
+    marker_size: float = 50.0,
 ) -> None:
     """
-    Reusable errorbar helper that supports both absolute and relative thresholds.
+    Draw error bars on a grouped bar plot.
+
+    Assumptions:
+      - Bars were drawn in algorithm order matching `sorted_algos`
+        (i.e., container i corresponds to sorted_algos[i]).
+      - Within each algo, bars are in x_col order (we enforce this by sorting rows).
+
+    mode:
+      - "none": do nothing
+      - "se":  symmetric yerr = k * normalized_se
+      - "ci":  asymmetric yerr derived from (normalized_ci_lower, normalized_ci_upper)
     """
+    mode = mode.lower().strip()
+    if mode == "none":
+        return
+    if mode not in {"se", "ci"}:
+        raise ValueError("mode must be one of: 'none', 'se', 'ci'")
+
     containers = ax.containers
+    x_order = sorted(data[x_col].unique())
+
     for idx, algo in enumerate(sorted_algos):
-        algo_group = data[data["algo_name"] == algo]
         if idx >= len(containers):
             continue
+
         container = containers[idx]
+
+        algo_group = data[data[algo_col] == algo].copy()
+        # Ensure row order matches bar order
+        algo_group[x_col] = pd.Categorical(algo_group[x_col], categories=x_order, ordered=True)
+        algo_group = algo_group.sort_values(x_col)
+
         for bar, (_, row) in zip(container, algo_group.iterrows()):
             x = bar.get_x() + bar.get_width() / 2.0
-            y = bar.get_height()
-            std_dev = row.get("normalized_std", 0.0)
+            y = float(bar.get_height())
 
-            if threshold_mode == "absolute":
-                if std_dev > std_threshold:
-                    ax.scatter(x, y + loc, color="red", s=50, zorder=5)
+            if mode == "se":
+                se = float(row.get(se_col, 0.0))
+                yerr = k * se
+                if not np.isfinite(yerr) or yerr <= 0:
+                    continue
+
+                if yerr > threshold:
+                    ax.scatter(x, y + loc, color="red", s=marker_size, zorder=5)
                 else:
-                    ax.errorbar(x, y, yerr=std_dev, fmt="none", ecolor="black", capsize=3, zorder=4)
-            elif threshold_mode == "relative":
-                real_threshold = std_threshold * y
-                if std_dev <= real_threshold:
-                    ax.errorbar(x, y, yerr=std_dev, fmt="none", ecolor="black", capsize=3, zorder=4)
+                    ax.errorbar(x, y, yerr=yerr, fmt="none", ecolor="black", capsize=3, zorder=4)
+
+            elif mode == "ci":
+                lo = float(row.get(ci_lower_col, y))
+                hi = float(row.get(ci_upper_col, y))
+                if not (np.isfinite(lo) and np.isfinite(hi)):
+                    continue
+
+                err_lo = max(0.0, y - lo)
+                err_hi = max(0.0, hi - y)
+                worst = max(err_lo, err_hi)
+
+                if worst > threshold:
+                    ax.scatter(x, y + loc, color="red", s=marker_size, zorder=5)
                 else:
-                    if top and y < y_min:
-                        continue
-                    ax.scatter(x, y + loc, color="red", s=50, zorder=5)
-            else:
-                raise ValueError("threshold_mode must be 'absolute' or 'relative'")
+                    ax.errorbar(
+                        x, y,
+                        yerr=np.array([[err_lo], [err_hi]]),
+                        fmt="none",
+                        ecolor="black",
+                        capsize=3,
+                        zorder=4,
+                    )
 
 
 def format_time_units_ns(value, _pos) -> str:
