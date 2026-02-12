@@ -2492,8 +2492,13 @@ int reduce_scatter_bine_send_remap_hierarchical_v1(const void *sendbuf, void *re
     }
   }
   PICO_TAG_BEGIN("local_com/wait_recv");
-  MPI_Waitall(recv_reqc, recv_reqs, MPI_STATUSES_IGNORE);
+  err = MPI_Waitall(recv_reqc, recv_reqs, MPI_STATUSES_IGNORE);
   PICO_TAG_END("local_com/wait_recv");
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
+
   PICO_TAG_BEGIN("local_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
   err = reduce_wrapper_grops_inoutsplit(tmpbuf, resbuf, src_location, recv_count, GPU_ON_NODE - 1, dt, op);
@@ -2518,6 +2523,7 @@ int reduce_scatter_bine_send_remap_hierarchical_v1(const void *sendbuf, void *re
   return MPI_SUCCESS; */
 
   PICO_TAG_BEGIN("global_com");
+  // determinate the firs global rank that has been reduced 
   int res_first_node = local_rank * node_size;
   int mask = 0x1;
   int inverse_mask = 0x1 << (int)(log_2(node_size) - 1);
@@ -2920,8 +2926,13 @@ int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void 
     PICO_TAG_END("local_com/exchange");
   }
   PICO_TAG_BEGIN("local_com/wait_recv");
-  MPI_Waitall(recv_reqc, recv_reqs, MPI_STATUSES_IGNORE);
+  err = MPI_Waitall(recv_reqc, recv_reqs, MPI_STATUSES_IGNORE);
   PICO_TAG_END("local_com/wait_recv");
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
+
   PICO_TAG_BEGIN("local_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
   err = reduce_wrapper_grops(tmpbuf, resbuf, local_rcount[local_rank], GPU_ON_NODE - 1, dt, op);
@@ -3191,8 +3202,13 @@ int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void 
     PICO_TAG_END("local_com/exchange");
   }
   PICO_TAG_BEGIN("local_com/wait_recv");
-  MPI_Waitall(recv_reqc, recv_reqs, MPI_STATUSES_IGNORE);
+  err = MPI_Waitall(recv_reqc, recv_reqs, MPI_STATUSES_IGNORE);
   PICO_TAG_END("local_com/wait_recv");
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
+
   PICO_TAG_BEGIN("local_com/kernel");
 #ifdef PICO_MPI_CUDA_AWARE
   err = reduce_wrapper_grops(tmpbuf, resbuf, local_rcount[local_rank], GPU_ON_NODE - 1, dt, op);
