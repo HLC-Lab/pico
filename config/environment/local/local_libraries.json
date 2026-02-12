@@ -19,6 +19,28 @@
         "MPI_LIB_COMPILER_VERSION": "15.1.1"
       }
     },
+    "Open MPI Custom": {
+      "desc": "System custom Open MPI installation with additional algorithms.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "6.1.0",
+      "compiler": "mpicc",
+      "gpu": {
+        "support": false
+      },
+      "load": {
+        "type": "env_var",
+        "vars": {
+          "PATH": "/opt/ompi-bine-pr/bin:$PATH",
+          "LD_LIBRARY_PATH": "/opt/ompi-bine-pr/lib:$LD_LIBRARY_PATH",
+          "MANPATH": "/opt/ompi-bine-pr/share:$MANPATH"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "15.1.1"
+      }
+    },
     "MPICH": {
       "desc": "Custom MPICH installation.",
       "standard": "mpi",

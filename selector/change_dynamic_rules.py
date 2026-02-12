@@ -6,35 +6,62 @@ import re
 import sys
 import json
 
+def resolve_algorithm_declarations_dirs() -> list[str]:
+    env_dir = os.getenv("ALGORITHM_DECLARATIONS_DIR")
+    if env_dir:
+        return [env_dir]
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    candidates = [
+        os.path.join(repo_root, "config", "algorithms", "MPI", "Open-MPI"),
+        os.path.join(repo_root, "config", "algorithms", "MPI", "LibPico"),
+        os.path.join(repo_root, "config", "algorithms", "Open-MPI"),
+        os.path.join(repo_root, "config", "algorithms", "LibPico"),
+    ]
+    dirs = [path for path in candidates if os.path.isdir(path)]
+    if dirs:
+        return dirs
+
+    print(f"{__file__}: algorithm declarations directory not found.", file=sys.stderr)
+    sys.exit(1)
+
+
 # Find the dynamic_rule for the given collective type and algorithm
-def find_dynamic_rule(algorithm_config_file: str | os.PathLike, collective_type: str, algorithm: str) -> int:
+def find_dynamic_rule(algorithm_decls_dirs: list[str], collective_type: str, algorithm: str) -> int:
     """ Find the dynamic rule for the given collective type and algorithm
         Args:
-            algorithm_config_file (str | os.PathLike): The path to the JSON file
+            algorithm_decls_dir (str | os.PathLike): Base directory for per-collective JSON files
             collective_type (str): The collective type
             algorithm (str): The algorithm
         Returns:
             int: The dynamic rule
     """
-    # Load the JSON file
-    with open(algorithm_config_file, 'r') as json_file:
-        algorithm_config = json.load(json_file)
+    collective_file = f"{collective_type.lower()}.json"
+    searched_files = []
 
-    if collective_type not in algorithm_config["collective"]:
-        print (f"{__file__}: collective type {collective_type} not found in the JSON file.", file=sys.stderr)
+    for algorithm_decls_dir in algorithm_decls_dirs:
+        algorithm_file = os.path.join(algorithm_decls_dir, collective_file)
+        if not os.path.isfile(algorithm_file):
+            continue
+        searched_files.append(algorithm_file)
+        with open(algorithm_file, 'r') as json_file:
+            algorithm_config = json.load(json_file)
+        if algorithm not in algorithm_config:
+            continue
+        algo_data = algorithm_config[algorithm]
+        if "selection" not in algo_data:
+            print(f"{__file__}: algorithm {algorithm} missing selection in {algorithm_file}.", file=sys.stderr)
+            sys.exit(1)
+        return algo_data["selection"]
+
+    if searched_files:
+        searched = "\n".join(searched_files)
+        print(f"{__file__}: algorithm {algorithm} not found for collective type {collective_type}.", file=sys.stderr)
+        print(f"Searched:\n{searched}", file=sys.stderr)
         sys.exit(1)
 
-    dynamic_rule = -1
-    for algo_name, algo_data in algorithm_config["collective"][collective_type].items():
-        if algo_name == algorithm:
-            dynamic_rule = algo_data["dynamic_rule"]
-            break
-
-    if dynamic_rule == -1:
-        print (f"{__file__}: algorithm {algorithm} not found for collective type {collective_type}.", file=sys.stderr)
-        sys.exit(1)
-
-    return dynamic_rule
+    print(f"{__file__}: no declaration files found for collective type {collective_type}.", file=sys.stderr)
+    sys.exit(1)
 
 
 # Modify the .txt fil
@@ -69,15 +96,20 @@ def main():
         print(f"{__file__} Usage: python change_dynamic_rules.py <algorithm>", file=sys.stderr)
         sys.exit(1)
     algorithm = sys.argv[1]
-    algorithm_config_file = os.getenv('ALGORITHM_CONFIG_FILE')
-    dynamic_rule_file = os.getenv('DYNAMIC_RULE_FILE')
-    collective_type = os.getenv('COLLECTIVE_TYPE')
-    if not (algorithm_config_file and dynamic_rule_file and collective_type):
-        print(f"{__file__}: Environment variables not set.", file=sys.stderr)
-        print(f"ALGORITHM_CONFIG_FILE={algorithm_config_file}\nDYNAMIC_RULE_FILE={dynamic_rule_file}\nCOLLECTIVE_TYPE={collective_type}", file=sys.stderr)
+    mpi_lib = (os.getenv("MPI_LIB") or "").upper()
+    if mpi_lib in {"MPICH", "CRAY_MPICH", "NCCL"}:
+        print(f"{__file__}: MPI_LIB={mpi_lib} should not use change_dynamic_rules.py.", file=sys.stderr)
         sys.exit(1)
 
-    new_rule = find_dynamic_rule(algorithm_config_file, collective_type, algorithm)
+    algorithm_decls_dirs = resolve_algorithm_declarations_dirs()
+    dynamic_rule_file = os.getenv('DYNAMIC_RULE_FILE')
+    collective_type = os.getenv('COLLECTIVE_TYPE')
+    if not (dynamic_rule_file and collective_type):
+        print(f"{__file__}: Environment variables not set.", file=sys.stderr)
+        print(f"DYNAMIC_RULE_FILE={dynamic_rule_file}\nCOLLECTIVE_TYPE={collective_type}\nALGORITHM_DECLARATIONS_DIR={os.getenv('ALGORITHM_DECLARATIONS_DIR')}", file=sys.stderr)
+        sys.exit(1)
+
+    new_rule = find_dynamic_rule(algorithm_decls_dirs, collective_type, algorithm)
     modify_dynamic_rule(dynamic_rule_file, collective_type, new_rule)
 
 if __name__ == "__main__":
