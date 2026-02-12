@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from ..utils import ensure_dir
+from ..utils import apply_adaptive_legend, ensure_dir, style_axes
 from .refined_loader import RefinedDataset
 
 
@@ -87,7 +87,8 @@ def generate_stacked_latency_bars(
     ax.set_title(f'{name} – Per step breakdown', fontsize=18)
     ax.set_ylim(0, 100)
     ax.tick_params(axis='x', rotation=0)
-    ax.legend(loc='lower left', frameon=True, fontsize=20)
+    apply_adaptive_legend(ax, loc='lower left', frameon=True)
+    style_axes(ax)
 
     plt.tight_layout()
     target_dir = ensure_dir(output_dir or Path('plots'))

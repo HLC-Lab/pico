@@ -501,6 +501,10 @@ validate_args() {
 
     check_enum "$GPU_AWARENESS" "--gpu-awareness" "gpu" "yes,no" || return 1
     if [[ "$GPU_AWARENESS" == "yes" ]]; then
+        if [[ -z "$GPU_PER_NODE" || "$GPU_PER_NODE" == "0" ]]; then
+            export GPU_PER_NODE="$PARTITION_GPUS_PER_NODE"
+            inform "GPU_PER_NODE not specified; defaulting to partition GPUs per node: $GPU_PER_NODE"
+        fi
         for gpu in ${GPU_PER_NODE//,/ }; do
             check_integer "$gpu" "--gpu-per-node" "gpu" 0 "$PARTITION_GPUS_PER_NODE" || return 1
             [[ "$gpu" -gt "$slurm_tasks_per_node" ]] && slurm_tasks_per_node="$gpu"

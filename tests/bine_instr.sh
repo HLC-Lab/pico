@@ -9,7 +9,7 @@ export DELETE="no"
 export COMPRESS="no"
 export INSTRUMENT="yes"
 export N_NODES=1
-export OUTPUT_LEVEL="statistics"
+export OUTPUT_LEVEL="minimal"
 # skipped: test.test_time missing
 export TYPES="int32"
 export SIZES="8,64,512,4096,32768"

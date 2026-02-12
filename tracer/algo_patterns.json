@@ -328,5 +328,45 @@
       ],
       "total_steps": "log(p, 2)"
     }
+  },
+  "BCAST": {
+    "binomial_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "binomial_tree_distance_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** s)",
+          "message_size": "n",
+          "active_if": "(r < (2 ** s)) and ((r ^ (2 ** s)) < p)"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "binomial_halving": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "binomial_tree_distance_halving",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** (k - s - 1))",
+          "message_size": "n",
+          "active_if": "((r % (2 ** (k - s))) == 0) and ((r ^ (2 ** (k - s - 1))) < p)"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    }
   }
 }

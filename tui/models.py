@@ -287,7 +287,6 @@ class OutputLevel(Enum):
     STATISTICS = 'statistics'
     MINIMAL = 'minimal'
     SUMMARIZED = 'summarized'
-    SUMMARY = 'summary'
 
     @classmethod
     def from_str(cls, value: str):
@@ -299,8 +298,6 @@ class OutputLevel(Enum):
         elif value == 'minimal':
             return cls.MINIMAL
         elif value == 'summary':
-            return cls.SUMMARY
-        elif value == 'summarized':
             return cls.SUMMARIZED
         else:
             raise ValueError(f"Unknown output level: {value}")
@@ -315,7 +312,7 @@ class OutputLevel(Enum):
             return "Saves only max, min, mean and stddev for each iteration."
         elif self == OutputLevel.MINIMAL:
             return "Saves only max for each iteration."
-        elif self == OutputLevel.SUMMARY:
+        elif self == OutputLevel.SUMMARIZED:
             return "Saves only statistics summary of the whole test, no iteration data is saved."
         else:
             return "Unknown output level."

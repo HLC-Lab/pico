@@ -5,15 +5,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from ..utils import PlotMetadata, build_tab10_palette, draw_errorbars, ensure_dir, format_bytes, sort_key
+from ..utils import (
+    PlotMetadata,
+    apply_adaptive_legend,
+    build_tab10_palette,
+    draw_errorbars,
+    ensure_dir,
+    format_bytes,
+    sort_key,
+    style_axes,
+)
 
 
 def _resolve_output_dir(system: str, output_dir: str | Path | None) -> Path:
     return ensure_dir(output_dir) if output_dir else ensure_dir(Path("plot") / system)
-
 
 def generate_cut_bar_plot(
     data: pd.DataFrame,
@@ -21,15 +30,32 @@ def generate_cut_bar_plot(
     metadata: PlotMetadata,
     collective: str,
     datatype: str,
-    std_threshold: float = 0.5,
+    # error bar controls
+    errorbars: str = "se",       # "none" | "se" | "ci"
+    k: float = 1.96,             # multiplier for SE mode
+    threshold: float = 0.5,      # error marker threshold (applies to chosen error metric)
+    marker_loc: float = 0.05,    # base vertical offset for red marker
     output_dir: str | Path | None = None,
 ) -> Path:
     """
-    Render the split bar plot that emphasises small vs large differences.
-    ``data`` must contain ``normalized_mean`` and ``normalized_std`` columns.
+    Render the split bar plot that emphasizes small vs large differences.
+
+    Expected columns:
+      - normalized_mean
+      - and either:
+          * normalized_se (if errorbars="se")
+          * normalized_ci_lower / normalized_ci_upper (if errorbars="ci")
+
+    Backward compat:
+      - if errorbars="se" and only normalized_std exists, it is treated as normalized_se.
     """
     if data.empty:
         raise ValueError("No data available for generate_cut_bar_plot.")
+
+    # Backward compatibility shim (optional)
+    if errorbars == "se" and "normalized_se" not in data.columns and "normalized_std" in data.columns:
+        data = data.copy()
+        data["normalized_se"] = data["normalized_std"]
 
     sorted_algos = sorted(data["algo_name"].unique().tolist(), key=sort_key)
     palette = build_tab10_palette(sorted_algos)
@@ -51,6 +77,8 @@ def generate_cut_bar_plot(
         hue_order=sorted_algos,
         palette=palette,
         errorbar=None,
+        edgecolor="black",
+        linewidth=1.0,
     )
     sns.barplot(
         ax=ax_bot,
@@ -61,6 +89,8 @@ def generate_cut_bar_plot(
         hue_order=sorted_algos,
         palette=palette,
         errorbar=None,
+        edgecolor="black",
+        linewidth=1.0,
     )
 
     if ax_top.get_legend():
@@ -69,28 +99,42 @@ def generate_cut_bar_plot(
     y_min = 1.8
     y_max = min(data["normalized_mean"].max() * 1.1, 10.0)
 
+    # Errorbars (selectable). Use different marker offsets for top vs bottom.
     draw_errorbars(
         ax_top,
         data,
         sorted_algos,
-        std_threshold,
-        threshold_mode="relative",
-        loc=(y_max - y_min) * 0.1,
-        top=True,
-        y_min=y_min,
+        mode=errorbars,
+        x_col="buffer_size",
+        algo_col="algo_name",
+        y_col="normalized_mean",
+        se_col="normalized_se",
+        k=k,
+        ci_lower_col="normalized_ci_lower",
+        ci_upper_col="normalized_ci_upper",
+        threshold=threshold,
+        loc=(y_max - y_min) * 0.1,   # bigger offset on the top panel
     )
     draw_errorbars(
         ax_bot,
         data,
         sorted_algos,
-        std_threshold,
-        threshold_mode="relative",
-        loc=0.05,
-        y_min=y_min,
+        mode=errorbars,
+        x_col="buffer_size",
+        algo_col="algo_name",
+        y_col="normalized_mean",
+        se_col="normalized_se",
+        k=k,
+        ci_lower_col="normalized_ci_lower",
+        ci_upper_col="normalized_ci_upper",
+        threshold=threshold,
+        loc=marker_loc,
     )
+
     ax_bot.set_ylim(0, y_min - 0.05)
     ax_top.set_ylim(y_min, y_max)
 
+    # Indicate clipped bars on top panel
     top_limit = ax_top.get_ylim()[1]
     for container in ax_top.containers:
         for bar in container:
@@ -110,8 +154,9 @@ def generate_cut_bar_plot(
     ax_bot.plot((-d, +d), (1 - d, 1 + d), **kwargs)
     ax_bot.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
 
-    ax_top.grid(True, which="both", linestyle="-", linewidth=0.25, axis="y")
-    ax_bot.grid(True, which="both", linestyle="-", linewidth=0.5, axis="y")
+
+    style_axes(ax_top)
+    style_axes(ax_bot)
 
     ax_bot.set_xlabel("Buffer Size", fontsize=15)
     ax_bot.set_ylabel("Normalized Mean Execution Time", fontsize=15)
@@ -132,18 +177,12 @@ def generate_cut_bar_plot(
 
     handles, labels = ax_bot.get_legend_handles_labels()
     if handles:
-        if len(handles) > 10:
-            ncols = 3
-        elif len(handles) > 5:
-            ncols = 2
-        else:
-            ncols = 1
-        ax_bot.legend(handles, labels, ncol=ncols, loc="lower left", fontsize=9)
+        apply_adaptive_legend(ax_bot, handles=handles, labels=labels, loc="lower left")
 
     plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
 
     target_dir = _resolve_output_dir(metadata.system, output_dir)
-    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_barplot_cut.png"
+    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_barplot_cut_{errorbars}.pdf"
     full_path = target_dir / name
     plt.savefig(full_path, dpi=300)
     plt.close()

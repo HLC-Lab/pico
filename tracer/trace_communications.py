@@ -212,6 +212,7 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
             steps_expr        = phase.get("steps")
             send_to_expr      = phase.get("send_to")
             message_size_expr = phase.get("message_size")
+            active_if_expr    = phase.get("active_if")
 
             # Evaluate steps expression once (substituting num_ranks_sym)
             steps_eval_expr = steps_expr.replace(num_ranks_sym, str(num_ranks))
@@ -220,6 +221,7 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
             # Precompile expressions for message_size and send_to
             message_size_code = compile(message_size_expr, "<string>", "eval")
             send_to_code      = compile(send_to_expr, "<string>", "eval")
+            active_if_code    = compile(active_if_expr, "<string>", "eval") if active_if_expr else None
 
             for step in range(steps):
                 # Build base substitutions that change per step.
@@ -234,6 +236,8 @@ def count_inter_cell_bytes(comm_pattern, rank_to_cell):
                 for rank in range(num_ranks):
                     subs = dict(base_subs)
                     subs[rank_sym] = rank
+                    if active_if_code and not eval(active_if_code, eval_globals, subs):
+                        continue
                     send_to = int(eval(send_to_code, eval_globals, subs))
 
                     if rank_to_cell.get(rank) != rank_to_cell.get(send_to):                        
@@ -544,6 +548,7 @@ def main():
     allocation = load_allocation(args.alloc, args.location, args.hostname_only)
     node_to_cell = load_topology(args.map, args.location)
     rank_to_cell = map_rank_to_cell(allocation, node_to_cell, args.location, args.hostname_only)
+    comm_patterns = load_communication_pattern(args.comm)
     rows = []
 
     collectives = args.coll.split(",")
@@ -553,7 +558,9 @@ def main():
             return 1
                 
         if coll == "BCAST":
-            count = {
+            count = {}
+            count.update(count_inter_cell_bytes(comm_patterns.get(coll, {}), rank_to_cell))
+            bcast_algorithms = {
                 "binomial_doubling": tree_coll_lat(rank_to_cell, bine=False, doubling=True),
                 "binomial_halving": tree_coll_lat(rank_to_cell, bine=False, doubling=False),
                 "bine_doubling": tree_coll_lat(rank_to_cell, bine=True, doubling=True),
@@ -563,6 +570,8 @@ def main():
                 "binomial_bdw_doubling_halving": coll_bdw(rank_to_cell, bine=False, first_halving=False, reduce=False),
                 "binomial_bdw_halving_doubling": coll_bdw(rank_to_cell, bine=False, first_halving=True, reduce=False)
             }
+            for alg, values in bcast_algorithms.items():
+                count.setdefault(alg, values)
         elif coll == "REDUCE":
             count = {
                 "binomial_doubling": tree_coll_lat(rank_to_cell, bine=False, doubling=True),
@@ -582,7 +591,7 @@ def main():
                 "bine_halving": scatter(rank_to_cell, bine=True, doubling=False)
             }
         elif coll == "ALLREDUCE":
-            patterns = load_communication_pattern(args.comm).get(coll, {})
+            patterns = comm_patterns.get(coll, {})
             # Loop over patterns and count bytes for each algorithm
             count = {}
             for algorithm, alg_data in patterns.items():
@@ -598,7 +607,7 @@ def main():
                 
                 count[algorithm] = (internal + extra_internal, external + extra_external)    
         else:
-            count = count_inter_cell_bytes(load_communication_pattern(args.comm).get(coll, {}), rank_to_cell)
+            count = count_inter_cell_bytes(comm_patterns.get(coll, {}), rank_to_cell)
 
         print("\n\n" + "=" * 40)
         print(f"\t{coll.lower()}")

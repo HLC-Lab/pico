@@ -88,9 +88,9 @@ typedef enum{
 typedef enum{
   ALL = 0,
   STATISTICS,
+  MINIMAL,
   SUMMARIZED
 }output_level_t;
-
 
 //-----------------------------------------------------------------------------------------------
 //                         ALLOCATOR FUNCTIONS
@@ -252,7 +252,6 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
 //-----------------------------------------------------------------------------------------------
 //                                MAIN PICO_COREMARK LOOP FUNCTIONS
 //-----------------------------------------------------------------------------------------------
-
 
 #ifndef PICO_NCCL
  /**

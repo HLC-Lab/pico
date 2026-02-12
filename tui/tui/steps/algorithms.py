@@ -3,7 +3,7 @@
 
 from textual import events
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Static, Button, Checkbox, TabbedContent, TabPane, Header, Footer
 from .base import StepScreen
 from config_loader import alg_get_list, alg_get_algo

@@ -1,0 +1,10 @@
+jsonschema
+matplotlib
+numpy
+packaging
+pandas
+PyYAML
+scipy
+seaborn
+textual
+tqdm

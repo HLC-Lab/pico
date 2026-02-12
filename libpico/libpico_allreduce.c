@@ -440,6 +440,7 @@ int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype 
 int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
                            MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
+  PICO_TAG_BEGIN("mem");
   int *rindex = NULL, *rcount = NULL, *sindex = NULL, *scount = NULL;
   int size, rank;
   MPI_Comm_size(comm, &size);
@@ -477,6 +478,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     err = copy_buffer((char *)sbuf, (char *)rbuf, count, dtype);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
+  PICO_TAG_END("mem");
 
   /*
    * Step 1. Reduce the number of processes to the nearest lower power of two
@@ -508,20 +510,26 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
        * Send the left half of the input vector to the left neighbor,
        * Recv the right half of the input vector from the left neighbor
        */
+      PICO_TAG_BEGIN("comm");
       err = MPI_Sendrecv(rbuf, count_lhalf, dtype, rank - 1, 0,
                       (char *)tmp_buf + (ptrdiff_t)count_lhalf * extent,
                       count_rhalf, dtype, rank - 1, 0, comm, MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      PICO_TAG_END("comm");
 
+      PICO_TAG_BEGIN("reduce");
       /* Reduce on the right half of the buffers (result in rbuf) */
       MPI_Reduce_local((char *)tmp_buf + (ptrdiff_t)count_lhalf * extent,
                        (char *)rbuf + count_lhalf * extent, count_rhalf, dtype, op);
 
+      PICO_TAG_END("reduce");
       /* Send the right half to the left neighbor */
+      PICO_TAG_BEGIN("comm");
       err = MPI_Send((char *)rbuf + (ptrdiff_t)count_lhalf * extent,
                      count_rhalf, dtype, rank - 1, 0, comm);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
+      PICO_TAG_END("comm");
       /* This process does not pariticipate in recursive doubling phase */
       vrank = -1;
 
@@ -531,19 +539,26 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
        * Send the right half of the input vector to the right neighbor,
        * Recv the left half of the input vector from the right neighbor
        */
+      PICO_TAG_BEGIN("comm");
       err = MPI_Sendrecv((char *)rbuf + (ptrdiff_t)count_lhalf * extent,
                       count_rhalf, dtype, rank + 1, 0,
                       tmp_buf, count_lhalf, dtype, rank + 1, 0, comm,
                       MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      PICO_TAG_END("comm");
 
+      PICO_TAG_BEGIN("reduce");
       /* Reduce on the right half of the buffers (result in rbuf) */
       MPI_Reduce_local(tmp_buf, rbuf, count_lhalf, dtype, op);
 
+      PICO_TAG_END("reduce");
+
+      PICO_TAG_BEGIN("comm");
       /* Recv the right half from the right neighbor */
       err = MPI_Recv((char *)rbuf + (ptrdiff_t)count_lhalf * extent,
                   count_rhalf, dtype, rank + 1, 0, comm, MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      PICO_TAG_END("comm");
 
       vrank = rank / 2;
     }
@@ -551,6 +566,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     vrank = rank - nprocs_rem;
   }
 
+  PICO_TAG_BEGIN("mem");
   /*
    * Step 2. Reduce-scatter implemented with recursive vector halving and
    * recursive distance doubling. We have p' = 2^{\floor{\log_2 p}}
@@ -571,6 +587,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     err = MPI_ERR_UNKNOWN;
     goto cleanup_and_return;
   }
+  PICO_TAG_END("mem");
 
   if(vrank != -1) {
     step = 0;
@@ -606,6 +623,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
         rindex[step] = sindex[step] + scount[step];
       }
 
+      PICO_TAG_BEGIN("comm");
       /* Send part of data from the rbuf, recv into the tmp_buf */
       err = MPI_Sendrecv((char *)rbuf + (ptrdiff_t)sindex[step] * extent,
                       scount[step], dtype, dest, 0,
@@ -613,11 +631,14 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
                       rcount[step], dtype, dest, 0, comm,
                       MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+      PICO_TAG_END("comm");
 
+      PICO_TAG_BEGIN("reduce");
       /* Local reduce: rbuf[] = tmp_buf[] <op> rbuf[] */
       MPI_Reduce_local((char *)tmp_buf + (ptrdiff_t)rindex[step] * extent,
                (char *)rbuf + (ptrdiff_t)rindex[step] * extent,
                rcount[step], dtype, op);
+      PICO_TAG_END("reduce");
 
       /* Move the current window to the received message */
       if(step + 1 < steps) {
@@ -647,6 +668,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
       /* Translate vdest virtual rank to real rank */
       int dest = (vdest < nprocs_rem) ? vdest * 2 : vdest + nprocs_rem;
 
+  PICO_TAG_BEGIN("comm");
       /*
        * Send rcount[step] elements from rbuf[rindex[step]...]
        * Recv scount[step] elements to rbuf[sindex[step]...]
@@ -657,12 +679,16 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
                       scount[step], dtype, dest, 0, comm, MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
       step--;
+
+  PICO_TAG_END("comm");
     }
   }
 
   /*
    * Step 4. Send total result to excluded odd ranks.
    */
+
+  PICO_TAG_BEGIN("comm");
   if(rank < 2 * nprocs_rem) {
     if(rank % 2 != 0) {
       /* Odd process -- recv result from rank - 1 */
@@ -677,7 +703,9 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
     }
   }
+  PICO_TAG_END("comm");
 
+  PICO_TAG_BEGIN("mem");
   cleanup_and_return:
   if(NULL != tmp_buf_raw)
     free(tmp_buf_raw);
@@ -689,6 +717,7 @@ int allreduce_rabenseifner(const void *sbuf, void *rbuf, size_t count,
     free(rcount);
   if(NULL != scount)
     free(scount);
+  PICO_TAG_END("mem");
   return err;
 }
 
