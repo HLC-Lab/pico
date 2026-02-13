@@ -134,7 +134,7 @@
             ]
           },
           {
-            "name": "bine_permute_remap_hierarchical_v1_over",
+            "name": "bine_permute_remap_hierarchical_over",
             "coll": "reduce_scatter",
             "desc": "libpico external bine remap memcpy algorithm hierarchical. Works only with power of 2 processes.",
             "version": "1.0.0",
@@ -167,7 +167,7 @@
             ]
           },
           {
-            "name": "bine_permute_remap_hierarchical_v2_over",
+            "name": "bine_permute_remap_hierarchical_ritating_buff_over",
             "coll": "reduce_scatter",
             "desc": "libpico external bine remap memcpy algorithm hierarchical. Works only with power of 2 processes. Cycling buffer for permutation calc",
             "version": "1.0.0",

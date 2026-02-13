@@ -99,7 +99,7 @@
       "algorithms": {
         "reduce_scatter": [
           {
-            "name": "recursive_distance_doubling_hierarchical_v4_over",
+            "name": "recursive_distance_doubling_hierarchical_segmented_over",
             "coll": "reduce_scatter",
             "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
             "version": "1.0.0",

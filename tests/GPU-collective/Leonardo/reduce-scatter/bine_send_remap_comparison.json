@@ -155,7 +155,7 @@
             ]
           },
           {
-            "name": "bine_send_remap_hierarchical_v1_over",
+            "name": "bine_send_remap_hierarchical_over",
             "coll": "reduce_scatter",
             "desc": "libpico external bine remap send algorithm hierarchical. Works only with power of 2 processes.",
             "version": "1.0.0",

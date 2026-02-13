@@ -15,7 +15,7 @@
 #include "support_kernel.h"
 #endif
 
-int reduce_scatter_recursive_doubling_hierarchical_v4(const void *sbuf, void *rbuf, const int rcounts[],
+int reduce_scatter_recursive_doubling_hierarchical_segmented(const void *sbuf, void *rbuf, const int rcounts[],
                                                       MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
   int i, rank, size, err = MPI_SUCCESS;
@@ -390,7 +390,7 @@ cleanup:
   return err;
 }
 
-int reduce_scatter_recursive_doubling_hierarchical_v3(const void *sbuf, void *rbuf, const int rcounts[],
+int reduce_scatter_recursive_doubling_hierarchical_local_parallel(const void *sbuf, void *rbuf, const int rcounts[],
                                                       MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
   int i, rank, size, err = MPI_SUCCESS;
@@ -654,7 +654,7 @@ cleanup:
   return err;
 }
 
-int reduce_scatter_recursive_doubling_hierarchical_v2(const void *sbuf, void *rbuf, const int rcounts[],
+int reduce_scatter_recursive_doubling_hierarchical_local_global(const void *sbuf, void *rbuf, const int rcounts[],
                                                       MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
   int i, rank, size, err = MPI_SUCCESS;
@@ -942,7 +942,7 @@ cleanup:
   return err;
 }
 
-int reduce_scatter_recursive_doubling_hierarchical_v1(const void *sbuf, void *rbuf, const int rcounts[],
+int reduce_scatter_recursive_doubling_hierarchical_global_local(const void *sbuf, void *rbuf, const int rcounts[],
                                                       MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
   int i, rank, size, err = MPI_SUCCESS;
@@ -2403,7 +2403,7 @@ cleanup_and_return:
   return err;
 }
 
-int reduce_scatter_bine_send_remap_hierarchical_v1(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                                    MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS, partner;
@@ -2792,7 +2792,7 @@ err_hndl:
   return err;
 }
 
-int reduce_scatter_bine_permute_remap_hierarchical_v2(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_permute_remap_hierarchical_rotating_buff(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                                       MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
@@ -3080,7 +3080,7 @@ err_hndl:
 }
 
 
-int reduce_scatter_bine_permute_remap_hierarchical_v1(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_permute_remap_hierarchical(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                                       MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
@@ -3491,7 +3491,7 @@ err_hndl:
   return err;
 }
 
-int reduce_scatter_bine_block_by_block_hierarchical_v1(const void *sendbuf, void *recvbuf, const int recvcounts[],
+int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                                        MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;

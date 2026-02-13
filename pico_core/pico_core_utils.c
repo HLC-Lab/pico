@@ -257,10 +257,10 @@ static inline reduce_func_ptr get_reduce_function(const char *algorithm) {
 static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *algorithm){
   #ifndef PICO_NCCL
   CHECK_STR(algorithm, "recursive_distance_doubling_gpu_over", reduce_scatter_recursive_doubling_gpu);
-  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_v1_over", reduce_scatter_recursive_doubling_hierarchical_v1);
-  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_v2_over", reduce_scatter_recursive_doubling_hierarchical_v2);
-  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_v3_over", reduce_scatter_recursive_doubling_hierarchical_v3);
-  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_v4_over", reduce_scatter_recursive_doubling_hierarchical_v4);
+  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_global_local_over", reduce_scatter_recursive_doubling_hierarchical_global_local);
+  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_local_global_over", reduce_scatter_recursive_doubling_hierarchical_local_global);
+  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_local_parallel_over", reduce_scatter_recursive_doubling_hierarchical_local_parallel);
+  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_segmented_over", reduce_scatter_recursive_doubling_hierarchical_segmented);
   CHECK_STR(algorithm, "recursive_halving_over", reduce_scatter_recursivehalving);
   CHECK_STR(algorithm, "recursive_distance_doubling_over", reduce_scatter_recursive_distance_doubling);
   CHECK_STR(algorithm, "ring_over", reduce_scatter_ring);
@@ -269,10 +269,10 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "bine_permute_remap_over", reduce_scatter_bine_permute_remap);  
   CHECK_STR(algorithm, "bine_block_by_block_over", reduce_scatter_bine_block_by_block);
   CHECK_STR(algorithm, "bine_block_by_block_any_even", reduce_scatter_bine_block_by_block_any_even);
-  CHECK_STR(algorithm, "bine_send_remap_hierarchical_v1_over", reduce_scatter_bine_send_remap_hierarchical_v1);
-  CHECK_STR(algorithm, "bine_permute_remap_hierarchical_v1_over", reduce_scatter_bine_permute_remap_hierarchical_v1);
-  CHECK_STR(algorithm, "bine_permute_remap_hierarchical_v2_over", reduce_scatter_bine_permute_remap_hierarchical_v2);
-  CHECK_STR(algorithm, "bine_block_by_block_hierarchical_v1_over", reduce_scatter_bine_block_by_block_hierarchical_v1);
+  CHECK_STR(algorithm, "bine_send_remap_hierarchical_over", reduce_scatter_bine_send_remap_hierarchical);
+  CHECK_STR(algorithm, "bine_permute_remap_hierarchical_over", reduce_scatter_bine_permute_remap_hierarchical);
+  CHECK_STR(algorithm, "bine_permute_remap_hierarchical_ritating_buff_over", reduce_scatter_bine_permute_remap_hierarchical_rotating_buff);
+  CHECK_STR(algorithm, "bine_block_by_block_hierarchical_over", reduce_scatter_bine_block_by_block_hierarchical);
 
   PICO_CORE_DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;

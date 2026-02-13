@@ -154,7 +154,7 @@
             ]
           },
           {
-            "name": "bine_block_by_block_hierarchical_v1_over",
+            "name": "bine_block_by_block_hierarchical_over",
             "coll": "reduce_scatter",
             "desc": "libpico external bine block by block algorithm hierarchical. Works only for power of 2 processes",
             "version": "1.0.0",

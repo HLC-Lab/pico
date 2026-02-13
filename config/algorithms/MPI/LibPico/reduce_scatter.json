@@ -28,7 +28,7 @@
       "external"
     ]
   },
-  "recursive_distance_doubling_hierarchical_v1_over": {
+  "recursive_distance_doubling_hierarchical_global_local_over": {
     "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
     "version": "1.0.0",
     "constraints": [
@@ -57,7 +57,7 @@
       "external"
     ]
   },
-  "recursive_distance_doubling_hierarchical_v2_over": {
+  "recursive_distance_doubling_hierarchical_local_global_over": {
     "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
     "version": "1.0.0",
     "constraints": [
@@ -86,7 +86,7 @@
       "external"
     ]
   },
-  "recursive_distance_doubling_hierarchical_v3_over": {
+  "recursive_distance_doubling_hierarchical_local_parallel_over": {
     "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
     "version": "1.0.0",
     "constraints": [
@@ -115,7 +115,7 @@
       "external"
     ]
   },
-  "recursive_distance_doubling_hierarchical_v4_over": {
+  "recursive_distance_doubling_hierarchical_segmented_over": {
     "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
     "version": "1.0.0",
     "constraints": [
@@ -269,7 +269,7 @@
       "external"
     ]
   },
-  "bine_send_remap_hierarchical_v1_over": {
+  "bine_send_remap_hierarchical_over": {
     "desc": "libpico external bine remap send algorithm hierarchical. Works only with power of 2 processes.",
     "version": "1.0.0",
     "constraints": [
@@ -331,7 +331,7 @@
       "external"
     ]
   },
-  "bine_permute_remap_hierarchical_v1_over": {
+  "bine_permute_remap_hierarchical_over": {
     "desc": "libpico external bine remap memcpy algorithm hierarchical. Works only with power of 2 processes.",
     "version": "1.0.0",
     "constraints": [
@@ -362,7 +362,7 @@
       "external"
     ]
   },
-  "bine_permute_remap_hierarchical_v2_over": {
+  "bine_permute_remap_hierarchical_ritating_buff_over": {
     "desc": "libpico external bine remap memcpy algorithm hierarchical. Works only with power of 2 processes. Cycling buffer for permutation calc",
     "version": "1.0.0",
     "constraints": [
@@ -423,7 +423,7 @@
       "external"
     ]
   },
-  "bine_block_by_block_hierarchical_v1_over": {
+  "bine_block_by_block_hierarchical_over": {
     "desc": "libpico external bine block by block algorithm hierarchical. Works only for power of 2 processes",
     "version": "1.0.0",
     "constraints": [

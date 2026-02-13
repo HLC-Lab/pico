@@ -149,7 +149,7 @@
             ]
           },
           {
-            "name": "recursive_distance_doubling_hierarchical_v1_over",
+            "name": "recursive_distance_doubling_hierarchical_global_local_over",
             "coll": "reduce_scatter",
             "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
             "version": "1.0.0",
@@ -180,7 +180,7 @@
             ]
           },
           {
-            "name": "recursive_distance_doubling_hierarchical_v2_over",
+            "name": "recursive_distance_doubling_hierarchical_local_global_over",
             "coll": "reduce_scatter",
             "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
             "version": "1.0.0",
@@ -211,7 +211,7 @@
             ]
           },
           {
-            "name": "recursive_distance_doubling_hierarchical_v3_over",
+            "name": "recursive_distance_doubling_hierarchical_local_parallel_over",
             "coll": "reduce_scatter",
             "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
             "version": "1.0.0",
@@ -242,7 +242,7 @@
             ]
           },
           {
-            "name": "recursive_distance_doubling_hierarchical_v4_over",
+            "name": "recursive_distance_doubling_hierarchical_segmented_over",
             "coll": "reduce_scatter",
             "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
             "version": "1.0.0",
@@ -306,7 +306,7 @@
             ]
           },
           {
-            "name": "bine_send_remap_hierarchical_v1_over",
+            "name": "bine_send_remap_hierarchical_over",
             "coll": "reduce_scatter",
             "desc": "libpico external bine remap send algorithm hierarchical. Works only with power of 2 processes.",
             "version": "1.0.0",
@@ -372,7 +372,7 @@
             ]
           },
           {
-            "name": "bine_permute_remap_hierarchical_v1_over",
+            "name": "bine_permute_remap_hierarchical_over",
             "coll": "reduce_scatter",
             "desc": "libpico external bine remap memcpy algorithm hierarchical. Works only with power of 2 processes.",
             "version": "1.0.0",
@@ -436,7 +436,7 @@
               "external"
             ]
           },{
-            "name": "bine_block_by_block_hierarchical_v1_over",
+            "name": "bine_block_by_block_hierarchical_over",
             "coll": "reduce_scatter",
             "desc": "libpico external bine block by block algorithm hierarchical. Works only for power of 2 processes",
             "version": "1.0.0",
