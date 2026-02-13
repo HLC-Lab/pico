@@ -36,7 +36,7 @@
     "compress": true,
     "delete": true,
     "number_of_nodes": 64,
-    "output_level": "summarized",
+    "output_level": "minimal",
     "dimensions": {
       "dtype": "int32",
       "sizes_bytes": [
