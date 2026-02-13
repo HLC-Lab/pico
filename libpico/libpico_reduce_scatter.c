@@ -1088,7 +1088,7 @@ int reduce_scatter_recursive_doubling_hierarchical_global_local(const void *sbuf
       {
         goto cleanup;
       }
-      PICO_TAG_END("local_com/wait_recv");
+      PICO_TAG_END("global_com/wait_recv");
 
       // todo: make gpu compatible
       PICO_TAG_BEGIN("global_com/kernel");
