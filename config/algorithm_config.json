@@ -1125,7 +1125,7 @@
           "external"
         ]
       },
-      "recursivedoubling_hierarchy_v1_over": {
+      "recursivedoubling_hierarchy_over": {
         "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
         "library": {
           "libpico": "1.0.0"
@@ -1149,7 +1149,7 @@
           "external"
         ]
       },
-      "recursivedoubling_hierarchy_v2_over": {
+      "recursivedoubling_hierarchy_all_rank_over": {
         "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
         "library": {
           "libpico": "1.0.0"
@@ -1173,7 +1173,7 @@
           "external"
         ]
       },
-      "recursivedoubling_hierarchy_v3_over": {
+      "recursivedoubling_hierarchy_local_parallel_over": {
         "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
         "library": {
           "libpico": "1.0.0"
@@ -1446,7 +1446,7 @@
           "external"
         ]
       },
-      "bine_block_by_block_hierarcic_v1_over": {
+      "bine_block_by_block_hierarcic_local_global_over": {
         "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
         "library": {
           "libpico": "1.0.0"
@@ -1480,7 +1480,7 @@
           "external"
         ]
       },
-      "bine_block_by_block_hierarcic_v2_over": {
+      "bine_block_by_block_hierarcic_global_local_over": {
         "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
         "library": {
           "libpico": "1.0.0"
@@ -1514,7 +1514,7 @@
           "external"
         ]
       },
-      "bine_send_remap_hierarcic_v1_over": {
+      "bine_send_remap_hierarcic_local_global_over": {
         "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
         "library": {
           "libpico": "1.0.0"
@@ -1547,7 +1547,7 @@
           "external"
         ]
       },
-      "bine_send_remap_hierarcic_v2_over": {
+      "bine_send_remap_hierarcic_global_local_over": {
         "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
         "library": {
           "libpico": "1.0.0"
@@ -1580,7 +1580,7 @@
           "external"
         ]
       },
-      "bine_2_blocks_hierarcic_v1_over": {
+      "bine_2_blocks_hierarcic_over": {
         "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
         "library": {
           "libpico": "1.0.0"
@@ -1613,7 +1613,7 @@
           "external"
         ]
       },
-      "bine_permutation_hierarcic_v1_over": {
+      "bine_permutation_hierarcic_local_global_over": {
         "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
         "library": {
           "libpico": "1.0.0"
@@ -1647,7 +1647,7 @@
           "external"
         ]
       },
-      "bine_permutation_hierarcic_v2_over": {
+      "bine_permutation_hierarcic_global_local_over": {
         "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
         "library": {
           "libpico": "1.0.0"

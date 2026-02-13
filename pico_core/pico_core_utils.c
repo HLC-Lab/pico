@@ -131,9 +131,9 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "k_bruck_over", allgather_k_bruck);
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "recursive_doubling_nontowpower_over", allgather_recursivedoubling_nontowpower);
-  CHECK_STR(algorithm, "recursivedoubling_hierarchy_v1_over", allgather_recursivedoubling_hierarchy_v1);
-  CHECK_STR(algorithm, "recursivedoubling_hierarchy_v2_over", allgather_recursivedoubling_hierarchy_v2);
-  CHECK_STR(algorithm, "recursivedoubling_hierarchy_v3_over", allgather_recursivedoubling_hierarchy_v3);
+  CHECK_STR(algorithm, "recursivedoubling_hierarchy_over", allgather_recursivedoubling_hierarchy);
+  CHECK_STR(algorithm, "recursivedoubling_hierarchy_all_rank_over", allgather_recursivedoubling_hierarchy_all_rank);
+  CHECK_STR(algorithm, "recursivedoubling_hierarchy_local_parallel_over", allgather_recursivedoubling_hierarchy_local_parallel);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
   CHECK_STR(algorithm, "bine_block_by_block_over_any_even", allgather_bine_block_by_block_any_even);
@@ -142,13 +142,13 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_2_blocks_over", allgather_bine_2_blocks);
   CHECK_STR(algorithm, "bine_2_blocks_dtype_over", allgather_bine_2_blocks_dtype);
   CHECK_STR(algorithm, "bine_permutation_over", allgather_bine_permutation);
-  CHECK_STR(algorithm, "bine_block_by_block_hierarcic_v1_over", allgather_bine_block_by_block_hierarcic_v1);
-  CHECK_STR(algorithm, "bine_block_by_block_hierarcic_v2_over", allgather_bine_block_by_block_hierarcic_v2);
-  CHECK_STR(algorithm, "bine_send_remap_hierarcic_v1_over", allgather_bine_send_remap_hierarcic_v1);
-  CHECK_STR(algorithm, "bine_send_remap_hierarcic_v2_over", allgather_bine_send_remap_hierarcic_v2);
-  CHECK_STR(algorithm, "bine_2_blocks_hierarcic_v1_over", allgather_bine_2_blocks_hierarcic_v1);
-  CHECK_STR(algorithm, "bine_permutation_hierarcic_v1_over", allgather_bine_permutation_hierarcic_v1);
-  CHECK_STR(algorithm, "bine_permutation_hierarcic_v2_over", allgather_bine_permutation_hierarcic_v2);
+  CHECK_STR(algorithm, "bine_block_by_block_hierarcic_local_global_over", allgather_bine_block_by_block_hierarcic_local_global);
+  CHECK_STR(algorithm, "bine_block_by_block_hierarcic_global_local_over", allgather_bine_block_by_block_hierarcic_global_local);
+  CHECK_STR(algorithm, "bine_send_remap_hierarcic_local_global_over", allgather_bine_send_remap_hierarcic_local_global);
+  CHECK_STR(algorithm, "bine_send_remap_hierarcic_global_local_over", allgather_bine_send_remap_hierarcic_global_local);
+  CHECK_STR(algorithm, "bine_2_blocks_hierarcic_over", allgather_bine_2_blocks_hierarcic);
+  CHECK_STR(algorithm, "bine_permutation_hierarcic_local_global_over", allgather_bine_permutation_hierarcic_local_global);
+  CHECK_STR(algorithm, "bine_permutation_hierarcic_global_local_over", allgather_bine_permutation_hierarcic_global_local);
 
   PICO_CORE_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;

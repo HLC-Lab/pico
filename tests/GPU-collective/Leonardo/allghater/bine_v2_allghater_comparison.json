@@ -91,7 +91,7 @@
       "algorithms": {
         "allgather": [
           {
-            "name": "bine_block_by_block_hierarcic_v2_over",
+            "name": "bine_block_by_block_hierarcic_global_local_over",
             "coll": "allgather",
             "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
             "version": "1.0.0",
@@ -124,7 +124,7 @@
             ]
           },
           {
-            "name": "bine_send_remap_hierarcic_v2_over",
+            "name": "bine_send_remap_hierarcic_global_local_over",
             "coll": "allgather",
             "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
             "version": "1.0.0",
@@ -156,7 +156,7 @@
             ]
           },
           {
-            "name": "bine_permutation_hierarcic_v2_over",
+            "name": "bine_permutation_hierarcic_global_local_over",
             "coll": "allgather",
             "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
             "version": "1.0.0",

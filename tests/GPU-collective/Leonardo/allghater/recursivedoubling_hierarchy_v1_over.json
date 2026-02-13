@@ -99,7 +99,7 @@
       "algorithms": {
         "allgather": [
           {
-            "name": "recursivedoubling_hierarchy_v1_over",
+            "name": "recursivedoubling_hierarchy_over",
             "coll": "allgather",
             "desc": "libpico external recursive doubling algorithm. Use hierarchi condivision schemas",
             "version": "1.0.0",
