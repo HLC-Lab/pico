@@ -21,6 +21,15 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
+  MPI_Datatype dtype;
+  PICO_DTYPE_T loop_dtype; // Used only in test loop, other routines use mpi datatype
+  int iter;
+  size_t count, type_size;
+  void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
+  double *times = NULL, *all_times = NULL, *highest = NULL;
+  const char *algorithm, *type_string; //, *is_hier = getenv("HIERARCHICAL");
+  test_routine_t test_routine;
+
 #if defined PICO_MPI_CUDA_AWARE || defined PICO_NCCL
   void *d_sbuf = NULL, *d_rbuf = NULL, *d_rbuf_gt = NULL;
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
@@ -37,15 +46,6 @@ int main(int argc, char *argv[]) {
   const char **tag_names = NULL;
   double** tag_times = NULL;
 #endif
-
-  MPI_Datatype dtype;
-  PICO_DTYPE_T loop_dtype; // Used only in test loop, other routines use mpi datatype
-  int iter;
-  size_t count, type_size;
-  void *sbuf = NULL, *rbuf = NULL, *rbuf_gt = NULL;
-  double *times = NULL, *all_times = NULL, *highest = NULL;
-  const char *algorithm, *type_string; //, *is_hier = getenv("HIERARCHICAL");
-  test_routine_t test_routine;
 
 #if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
 #endif
