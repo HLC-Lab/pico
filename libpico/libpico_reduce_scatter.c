@@ -1397,6 +1397,7 @@ int reduce_scatter_recursive_doubling_gpu(const void *sbuf, void *rbuf, const in
       err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
       if (err != MPI_SUCCESS)
         goto cleanup;
+      BINE_CUDA_CHECK(cudaDeviceSynchronize());
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
