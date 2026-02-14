@@ -161,7 +161,9 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
   PICO_CORE_DEBUG_PRINT_STR("MPI_Alltoall");
   return alltoall_wrapper;
 #else
-  return ncclAllToAll;
+  fprintf(stderr, "Failed: nccl doesn't support AllToAll operation\n");
+  exit(EXIT_FAILURE);
+  //return ncclAllToAll;
 #endif
 }
 
@@ -209,7 +211,9 @@ static inline gather_func_ptr get_gather_function(const char *algorithm) {
   PICO_CORE_DEBUG_PRINT_STR("MPI_Gather");
   return gather_wrapper;
 #else
-  return ncclGather;
+  fprintf(stderr, "Failed: nccl doesn't support Gather operation\n");
+  exit(EXIT_FAILURE);
+  //return ncclGather;
 #endif
 }
 
@@ -276,7 +280,9 @@ static inline scatter_func_ptr get_scatter_function (const char *algorithm){
   PICO_CORE_DEBUG_PRINT_STR("MPI_Scatter");
   return scatter_wrapper;
 #else
-  return ncclScatter;
+  fprintf(stderr, "Failed: nccl doesn't support Scatter operation\n");
+  exit(EXIT_FAILURE);
+  //return ncclScatter;
 #endif
 }
 

@@ -15,6 +15,12 @@ PICO_CORE_OBJS_CUDA     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_CUDA)/%.o, $(PICO
 PICO_CORE_DEPS_CUDA     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_CUDA)/%.d, $(PICO_CORE_SRC))
 PICO_CORE_CUDA          := $(BIN_DIR)/pico_core_cuda
 
+PICO_CORE_OBJ_DIR_NCCL  ?= ../obj/pico_core_nccl
+PICO_CORE_OBJS_NCCL     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_NCCL)/%.o, $(PICO_CORE_SRC))
+PICO_CORE_DEPS_NCCL     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_NCCL)/%.d, $(PICO_CORE_SRC))
+PICO_CORE_NCCL          := $(BIN_DIR)/pico_core_nccl
+
+
 ifeq ($(DEBUG),1)
 	CFLAGS := $(filter-out -O%,$(CFLAGS))
 endif
@@ -23,6 +29,10 @@ ifeq ($(PICO_MPI_CUDA_AWARE),1)
 all: $(PICO_CORE_CUDA) $(PICO_CORE)
 else
 all: $(PICO_CORE)
+endif
+
+ifeq ($(PICO_NCCL),1)
+all: $(PICO_CORE_NCCL)
 endif
 
 # Build the executable
@@ -47,10 +57,22 @@ $(PICO_CORE_CUDA): $(PICO_CORE_OBJS_CUDA)
 $(PICO_CORE_OBJ_DIR_CUDA)/%.o: %.c
 	@mkdir -p $(PICO_CORE_OBJ_DIR_CUDA)
 	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
-	$(PICOCC) $(CFLAGS) -DPICO_MPI_CUDA_AWARE -lcudart -c $< -o $@
+	$(PICOCC) $(CFLAGS) -DPICO_MPI_CUDA_AWARE -lpico_cuda -lcudart -c $< -o $@
+
+-include $(PICO_CORE_DEPS_CUDA)
+
+$(PICO_CORE_NCCL): $(PICO_CORE_OBJS_NCCL)
+	@mkdir -p $(BIN_DIR)
+	@echo -e "$(GREEN)[LINK] Linking pico_core_cuda: $< -> $@$(NC)"
+	$(PICOCC) $(CFLAGS) $(LDLIBS) $(NCCL_FLAG)  -o $@ $^ -L$(LIB_DIR) -lpico_nccl -lcudart -lm
+
+$(PICO_CORE_OBJ_DIR_NCCL)/%.o: %.c
+	@mkdir -p $(PICO_CORE_OBJ_DIR_NCCL)
+	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
+	$(PICOCC) $(CFLAGS) $(LDLIBS) $(NCCL_FLAG) -DPICO_NCCL -lcudart -c $< -o $@
 
 -include $(PICO_CORE_DEPS_CUDA)
 
 clean:
 	@echo -e "[CLEAN] Removing pico_core object files and binary..."
-	@rm -rf $(PICO_CORE_OBJ_DIR) $(PICO_CORE) $(PICO_CORE_OBJ_DIR_CUDA) $(PICO_CORE_CUDA)
+	@rm -rf $(PICO_CORE_OBJ_DIR) $(PICO_CORE) $(PICO_CORE_OBJ_DIR_CUDA) $(PICO_CORE_CUDA) $(PICO_CORE_OBJ_DIR_NCCL) $(PICO_CORE_NCCL)

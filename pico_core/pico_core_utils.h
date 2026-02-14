@@ -382,7 +382,7 @@ DEFINE_TEST_LOOP(scatter, SCATTER_NCCL_ARGS, scatter(sbuf, rbuf, count, dtype, 0
  * @return 0 if buffers are equal within tolerance, -1 otherwise.
  */
 int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
-                  PICO_DTYPE_T dtype, MPI_Comm comm);
+                  MPI_Datatype dtype, MPI_Comm comm);
 
 
 /**
@@ -419,7 +419,7 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
  * @return 0 on success, an -1 on error.
  */
 int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf, void *rbuf_gt,
-                       size_t count, PICO_DTYPE_T dtype, MPI_Comm comm);
+                       size_t count, MPI_Datatype dtype, MPI_Comm comm);
 
 
 //-----------------------------------------------------------------------------------------------
@@ -592,7 +592,7 @@ int write_allocations_to_file(const char* filename, MPI_Comm comm);
  *
  * @return 0 on success, -1 if the data type is unsupported.
  */
-int rand_sbuf_generator(void *sbuf, PICO_DTYPE_T dtype, size_t array_size,
+int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t array_size,
                          MPI_Comm comm, test_routine_t test_routine);
 
 
@@ -617,7 +617,7 @@ int concatenate_path(const char *dirpath, const char *filename, char *fullpath);
  * @param use_barrier Flag to indicate if a barrier should be used.
  */
 void print_buffers(const void *sbuf, const void *rbuf, const void *rbuf_gt,
-                   size_t sbuf_count, size_t rbuf_count, PICO_DTYPE_T dtype,
+                   size_t sbuf_count, size_t rbuf_count, MPI_Datatype dtype,
                    MPI_Comm comm, int use_barrier);
 
 //-----------------------------------------------------------------------------------------------

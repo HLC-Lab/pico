@@ -24,7 +24,7 @@ int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
 
 #if defined PICO_MPI_CUDA_AWARE || defined PICO_NCCL
 
-int bcast_allocator(void** d_sbuf, void** d_rbuf, void** d_rbuf_gt,
+int bcast_allocator_cuda(void** d_sbuf, void** d_rbuf, void** d_rbuf_gt,
                         size_t count, size_t type_size, MPI_Comm comm) {
   cudaError_t err;
   PICO_CORE_CUDA_CHECK(cudaMalloc(d_sbuf, count * type_size), err);
