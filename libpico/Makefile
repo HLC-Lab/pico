@@ -76,28 +76,31 @@ $(LIBPICO): $(LIB_OBJS)
 
 $(LIB_OBJ_DIR)/%.o: %.c
 	@mkdir -p $(LIB_OBJ_DIR)
+	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
 	$(PICOCC) $(CFLAGS) -c $< -o $@
 
+-include $(LIB_DEPS)
 
 ######################################################################
 ######################CUDA-AWARE MAKEFILE TARGETS#####################
 ######################################################################
 $(LIBPICO_CUDA): $(LIB_OBJS_CUDA)
 	@mkdir -p $(LIB_DIR)
-	@echo "[AR] Creating CUDA library $@"
+	@echo -e "$(GREEN)[AR] Creating static library: $(LIBPICO)$(NC)"
 	ar rcs $@ $^
 
 # Regola per file .c (compilati con PICOCC)
 $(PICO_CORE_OBJ_DIR_CUDA)/%.o: %.c
 	@mkdir -p $(PICO_CORE_OBJ_DIR_CUDA)
+	@echo -e "$(YELLOW)[CC] Compiling CUDA $< -> $@...$(NC)"
 	$(PICOCC) $(CFLAGS) $(CFLAGS_CUDA) -c $< -o $@
 
 # Regola per file .cu (compilati con NVCC)
 $(PICO_CORE_OBJ_DIR_CUDA)/%.o: %.cu
 	@mkdir -p $(PICO_CORE_OBJ_DIR_CUDA)
+	@echo -e "$(YELLOW)[CC] Compiling CUDA $< -> $@...$(NC)"
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
--include $(LIB_DEPS)
 -include $(LIB_DEPS_CUDA)
 
 ######################################################################
@@ -110,7 +113,7 @@ $(LIBPICO_NCCL): $(LIB_OBJS_NCCL)
 
 $(LIB_OBJ_DIR_NCCL)/%.o: %.c
 	@mkdir -p $(LIB_OBJ_DIR_NCCL)
-	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
+	@echo -e "$(YELLOW)[CC] Compiling NCCL $< -> $@...$(NC)"
 	$(PICOCC) $(CFLAGS) $(LDLIBS) $(NCCL_FLAG) -DPICO_NCCL -ldcudart -c $< -o $@
 
 -include $(LIB_DEPS_NCCL)

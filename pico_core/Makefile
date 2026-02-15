@@ -59,7 +59,7 @@ $(PICO_CORE_CUDA): $(PICO_CORE_OBJS_CUDA)
 
 $(PICO_CORE_OBJ_DIR_CUDA)/%.o: %.c
 	@mkdir -p $(PICO_CORE_OBJ_DIR_CUDA)
-	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
+	@echo -e "$(YELLOW)[CC] Compiling CUDA $< -> $@...$(NC)"
 	$(PICOCC) $(CFLAGS) $(CFLAGS_CUDA) -DPICO_MPI_CUDA_AWARE -lpico_cuda -lcudart -c $< -o $@
 
 -include $(PICO_CORE_DEPS_CUDA)
@@ -71,7 +71,7 @@ $(PICO_CORE_NCCL): $(PICO_CORE_OBJS_NCCL)
 
 $(PICO_CORE_OBJ_DIR_NCCL)/%.o: %.c
 	@mkdir -p $(PICO_CORE_OBJ_DIR_NCCL)
-	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
+	@echo -e "$(YELLOW)[CC] Compiling NCCL $< -> $@...$(NC)"
 	$(PICOCC) $(CFLAGS) $(LDLIBS) $(NCCL_FLAG) -DPICO_NCCL -lcudart -c $< -o $@
 
 -include $(PICO_CORE_DEPS_CUDA)
