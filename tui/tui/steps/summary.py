@@ -244,6 +244,8 @@ def json_to_exports(config: JsonLike, sh_path: Union[str, Path]) -> str:
                 gpu_awareness_yes = any(is_number_like(v) and int(v) != 0 for v in gpu_list)
                 if gpu_awareness_yes:
                     write_export(prefix + "GPU_AWARENESS", "yes", quote=True)
+                    nativ_gpu_support = lib.get('gpu_support', {'gpu_support_native':False}).get('gpu_support_native', False)
+                    write_export(prefix + "GPU_NATIV_SUPPORT", "yes" if nativ_gpu_support else "no", quote=True)
                 # else: omit GPU_AWARENESS when empty or all zeroes
             # else: omit GPU_PER_NODE
 
