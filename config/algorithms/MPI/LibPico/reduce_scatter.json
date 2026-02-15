@@ -1,4 +1,33 @@
 {
+  "recursive_distance_doubling_gpu_over": {
+    "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "recursive_distance_doubling",
+      "external"
+    ]
+  },
   "recursive_distance_doubling_over": {
     "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
     "version": "1.0.0",
