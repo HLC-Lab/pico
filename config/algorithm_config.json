@@ -2838,6 +2838,39 @@
           "external"
         ]
       },
+      "bine_block_by_block_hierarchical_over": {
+        "desc": "libpico external bine block by block algorithm hierarchical. Works only for power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "block_by_block",
+          "external"
+        ]
+      },
       "default_mpich": {
         "desc": "MPICH default algorithm selection",
         "library": {
