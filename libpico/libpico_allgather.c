@@ -1839,6 +1839,78 @@ err_hndl:
   return err;
 }
 
+int allgather_bine_permutation(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote, data_exchange;
+  int *permutation = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL;;
+
+  PICO_TAG_BEGIN("setup");
+
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  steps = log_2(size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  if(MPI_IN_PLACE != sbuf) {
+    err = COPY_BUFF_DIFF_DT(sbuf, scount, sdtype, rbuf, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+  permutation = (int *) malloc(size * sizeof(int));
+  if(permutation == NULL){
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  memset(permutation, -1, size * sizeof(int));
+  *(permutation + rank) = 0;
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("comunication");
+  data_exchange = 1;
+  for(int step = steps - 1; step >= 0; step--) {
+    remote = pi(rank, step, size);
+
+    PICO_TAG_BEGIN("comunication/permutation_calc");
+    get_permutation(rank, step, steps, size, permutation, data_exchange);
+    PICO_TAG_END("comunication/permutation_calc");
+
+    tmprecv = (char*) rbuf + (ptrdiff_t)data_exchange * (ptrdiff_t)rcount * rext;
+
+    PICO_TAG_BEGIN("comunication/send_reciv");
+    err = MPI_Sendrecv(rbuf, data_exchange * rcount, rdtype, remote, 0, tmprecv, data_exchange * rcount, rdtype, remote, 0, comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("comunication/send_reciv");
+    data_exchange <<= 1;
+  }
+  PICO_TAG_END("comunication");
+
+  PICO_TAG_BEGIN("reorder_block");
+  err = reorder_blocks_gpu(rbuf, rcount, rdtype, permutation, size);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("reorder_block");
+
+  if(permutation != NULL) 
+    free(permutation);
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line;  // silence compiler warning
+  if(permutation != NULL) free(permutation);
+  return err;
+}
 
 // ---------------------------------------------------
 // MODIFICATIONS INTRODUCTED BY LORENZO

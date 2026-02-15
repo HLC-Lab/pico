@@ -314,5 +314,36 @@
       "cuda",
       "external"
     ]
+  },
+  "bine_permutation_over": {
+    "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "bine",
+      "dtype",
+      "cuda",
+      "external"
+    ]
   }
 }
