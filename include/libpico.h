@@ -126,7 +126,7 @@ int scatter_bine(SCATTER_MPI_ARGS);
 //                        PUBLIC API Maros for instrumentation
 // ----------------------------------------------------------------------------------------------
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
 
 
 /**
