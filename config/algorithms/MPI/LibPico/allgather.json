@@ -70,6 +70,27 @@
       "external"
     ]
   },
+  "recursivedoubling_hierarchy_local_parallel_over": {
+    "desc": "libpico external recursive doubling algorithm. Use hierarchi condivision schemas",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "recursive_doubling",
+      "cuda",
+      "external"
+    ]
+  },
   "recursive_doubling_over": {
     "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",

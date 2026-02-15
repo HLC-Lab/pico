@@ -131,6 +131,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "k_bruck_over", allgather_k_bruck);
   CHECK_STR(algorithm, "recursive_doubling_any_even_over", allgather_recursivedoubling_any_even);
   CHECK_STR(algorithm, "recursivedoubling_hierarchy_over", allgather_recursivedoubling_hierarchy);
+  CHECK_STR(algorithm, "recursivedoubling_hierarchy_local_parallel_over", allgather_recursivedoubling_hierarchy_local_parallel);
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
