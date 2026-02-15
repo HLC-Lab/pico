@@ -12,7 +12,246 @@
 #include "libpico.h"
 #include "libpico_utils.h"
 
+int allgather_recursivedoubling_any_even(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                                            void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, sub_group_size, remaining_node, err = MPI_SUCCESS;
+  int peer, distance, lower_block_data, upper_block_data, peer_group, rank_group, dist_mask = ~0;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL, *tmpsend = NULL, *tmprecv_buff;
 
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  PICO_TAG_BEGIN("setup");
+  err = MPI_Type_get_extent(rdtype, &rlb, &rext);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  tmprecv_buff = (char *)calloc(size * rcount, rext);
+  if (tmprecv_buff == NULL)
+  {
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+#else
+  tmprecv_buff = rbuf;
+#endif
+
+#ifndef PICO_MPI_CUDA_AWARE
+  // Setup buffer for mpi if not in place
+  if (MPI_IN_PLACE != sbuf)
+  {
+    tmpsend = (char *)sbuf;
+    tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+#else
+  tmpsend = (char *)sbuf;
+  tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+  BINE_CUDA_CHECK(cudaMemcpy(tmprecv, tmpsend, rcount * rext, cudaMemcpyDeviceToHost));
+#endif
+
+  // findi sub group power of 2
+  sub_group_size = floor_power_of_two(size);
+  remaining_node = size - sub_group_size;
+  lower_block_data = rank;
+  upper_block_data = rank;
+  PICO_TAG_END("setup");
+
+  // bind remaining rank to rank in sub group
+  PICO_TAG_BEGIN("recv_from_extra_rank");
+  if (rank >= sub_group_size)
+  {
+    tmpsend = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)scount * rext;
+    err = MPI_Send(tmpsend, scount, sdtype, rank - sub_group_size, 0, comm);
+
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+  else if (rank < remaining_node)
+  {
+
+    tmprecv = tmprecv_buff + (ptrdiff_t)(sub_group_size + rank) * (ptrdiff_t)rcount * rext;
+    err = MPI_Recv(tmprecv, rcount, sdtype, sub_group_size + rank, 0, comm, MPI_STATUS_IGNORE);
+
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+
+    upper_block_data = sub_group_size + rank;
+  }
+  PICO_TAG_END("recv_from_extra_rank");
+
+  PICO_TAG_BEGIN("exchange");
+  if (rank < sub_group_size)
+  {
+    // perform exchange in sub group
+    for (distance = 0x1; distance < sub_group_size; distance <<= 1)
+    {
+      peer = rank ^ distance;
+
+      if (rank < peer)
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)lower_block_data * (ptrdiff_t)rcount * rext;
+        tmprecv = tmprecv_buff + (ptrdiff_t)(lower_block_data + distance) * (ptrdiff_t)rcount * rext;
+      }
+      else
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)lower_block_data * (ptrdiff_t)rcount * rext;
+        tmprecv = tmprecv_buff + (ptrdiff_t)(lower_block_data - distance) * (ptrdiff_t)rcount * rext;
+        lower_block_data -= distance;
+      }
+
+      /* Sendreceive */
+      PICO_TAG_BEGIN("exchange/send_recv");
+      err = MPI_Sendrecv(tmpsend, (ptrdiff_t)distance * (ptrdiff_t)rcount, rdtype, peer, 0,
+                         tmprecv, (ptrdiff_t)distance * (ptrdiff_t)rcount, rdtype,
+                         peer, 0, comm, MPI_STATUS_IGNORE);
+      PICO_TAG_END("exchange/send_recv");
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      // calc first node of the sub group of current e peer node
+      peer_group = peer & dist_mask;
+      rank_group = rank & dist_mask;
+      dist_mask = dist_mask << 1;
+
+      // send and recive extra data
+      PICO_TAG_BEGIN("exchange/extradata");
+      if (peer_group < remaining_node && rank_group < remaining_node)
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)upper_block_data * (ptrdiff_t)rcount * rext;
+        tmprecv = tmprecv_buff + (ptrdiff_t)(sub_group_size + peer_group) * (ptrdiff_t)rcount * rext;
+        if (peer_group < rank)
+        {
+          upper_block_data = sub_group_size + peer_group;
+        }
+
+        PICO_TAG_BEGIN("exchange/extradata/send_recv");
+        err = MPI_Sendrecv(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, rank_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0,
+                           tmprecv, (ptrdiff_t)remining_data_to_share(remaining_node, peer_group, distance) * (ptrdiff_t)rcount, rdtype,
+                           peer, 0, comm, MPI_STATUS_IGNORE);
+        PICO_TAG_END("exchange/extradata/send_recv");
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+      // send extra data
+      else if (rank_group < remaining_node)
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)upper_block_data * (ptrdiff_t)rcount * rext;
+        err = MPI_Send(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, rank_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0, comm);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+      // recive extra data
+      else if (peer_group < remaining_node)
+      {
+        tmprecv = tmprecv_buff + (ptrdiff_t)(sub_group_size + peer_group) * (ptrdiff_t)rcount * rext;
+        if (peer_group < rank)
+        {
+          upper_block_data = sub_group_size + peer_group;
+        }
+
+        err = MPI_Recv(tmprecv, (ptrdiff_t)remining_data_to_share(remaining_node, peer_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0, comm, MPI_STATUS_IGNORE);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+      PICO_TAG_END("exchange/extradata");
+    }
+  }
+  PICO_TAG_END("exchange");
+
+  // return value to excluded rank
+  PICO_TAG_BEGIN("send_to_excluded_rank");
+  if (rank >= sub_group_size)
+  {
+    peer = rank - sub_group_size;
+
+    // first blok
+    err = MPI_Recv(tmprecv_buff, (ptrdiff_t)rank * rcount, sdtype, peer, 0, comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+
+    // second block edge case for the last rank
+    if (size - (rank + 1) > 0)
+    {
+      tmprecv = tmprecv_buff + (ptrdiff_t)(rank + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, (ptrdiff_t)(size - (rank + 1)) * rcount, sdtype, peer, 0, comm, MPI_STATUS_IGNORE);
+
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  else if (rank < remaining_node)
+  {
+    peer = rank + sub_group_size;
+    // first block
+    err = MPI_Send(tmprecv_buff, (ptrdiff_t)peer * rcount, sdtype, peer, 0, comm);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+
+    // second block edge case for the last rank
+    if (size - (peer + 1) > 0)
+    {
+      tmpsend = tmprecv_buff + (ptrdiff_t)(peer + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, (ptrdiff_t)(size - (peer + 1)) * rcount, sdtype, peer, 0, comm);
+
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  PICO_TAG_END("send_to_excluded_rank");
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMemcpy(rbuf, tmprecv_buff, size * rcount * rext, cudaMemcpyHostToDevice));
+#endif
+
+  return MPI_SUCCESS;
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line; // silence compiler warning
+  return err;
+}
 
 int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                                  void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)

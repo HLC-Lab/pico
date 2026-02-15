@@ -912,6 +912,31 @@
           "internal"
         ]
       },
+      "recursive_doubling_any_even_over": {
+        "desc": "libpico external recursive doubling algorithm. Works with non power of tow",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "recursive_doubling",
+          "small_sizes",
+          "medium_sizes",
+          "external"
+        ]
+      },
       "recursive_doubling_ompi": {
         "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. When invoked on non power of 2 processes, it will fallback to k_bruck with `radix=2`",
         "library": {
