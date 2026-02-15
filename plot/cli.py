@@ -17,6 +17,7 @@ from .data import (
     SummaryEmptyError,
 )
 from .plots import generate_bar_plot, generate_cut_bar_plot, generate_line_plot
+from .plots.plot_bine_heatmap import BestBineHeatmapConfig, generate_best_bine_heatmap
 from .plots.box_plot import BoxplotConfig, generate_boxplot
 from .plots.family_heatmap import FamilyHeatmapConfig, generate_family_heatmap
 from .plots.comparison_heatmap import ComparisonHeatmapConfig, generate_comparison_heatmap
@@ -200,6 +201,17 @@ def _comparison_heatmap_command(args) -> None:
         output_dir=args.output_dir,
     )
     generate_comparison_heatmap(cfg)
+
+
+def _bine_heatmap_command(args) -> None:
+    cfg = BestBineHeatmapConfig(
+        system=args.system,
+        collective=args.collective,
+        metric=args.metric,
+        runs=args.runs,
+        output=args.output,
+    )
+    generate_best_bine_heatmap(cfg)
 
 
 def _refined_command(args) -> None:
@@ -391,6 +403,32 @@ def build_parser() -> argparse.ArgumentParser:
     comp_parser.add_argument("--show-names", action="store_true", help="Annotate cells with algorithm names.")
     comp_parser.add_argument("--output-dir", help="Target directory for the generated heatmap.")
     comp_parser.set_defaults(func=_comparison_heatmap_command)
+
+    bine_parser = subparsers.add_parser("bine-heatmap", help="Generate best-Bine variant heatmaps.")
+    bine_parser.add_argument("--system", required=True, help="System name (e.g. leonardo).")
+    bine_parser.add_argument(
+        "--collective",
+        required=True,
+        choices=("ALLGATHER", "REDUCE_SCATTER"),
+        help="Collective to plot.",
+    )
+    bine_parser.add_argument(
+        "--metric",
+        choices=("mean", "median", "percentile_90"),
+        default="mean",
+        help="Metric used to compute bandwidth.",
+    )
+    bine_parser.add_argument(
+        "--runs",
+        nargs="+",
+        metavar="TIMESTAMP:NODES",
+        help="List of result runs (e.g. 2025_04_06___13_24_31:64).",
+    )
+    bine_parser.add_argument(
+        "--output",
+        help="Optional output PDF path. Defaults to plot/<system>/heatmaps/<collective>/<system>_<collective>_best_bine_variant.pdf",
+    )
+    bine_parser.set_defaults(func=_bine_heatmap_command)
 
     return parser
 

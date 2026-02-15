@@ -112,7 +112,7 @@ run_best_bine_plot() {
     return
   fi
 
-  local -a cmd=(python3 ./plot/plot_bine_heatmap.py --system "${SYSTEM}" --collective "${collective}" --metric "${METRIC}")
+  local -a cmd=(python3 -m plot bine-heatmap --system "${SYSTEM}" --collective "${collective}" --metric "${METRIC}")
   cmd+=(--runs "${run_array[@]}")
   if [[ -n "$output_path" ]]; then
     cmd+=(--output "$output_path")
@@ -194,7 +194,7 @@ fi
 
 if (( RUN_STANDARD_PLOTS )); then
   # Call the single Python script with the chosen options
-  ALLGATHER_CMD=(python3 ./plot/plot_bine_heatmap.py --system "${SYSTEM}" --collective ALLGATHER --metric "${METRIC}")
+  ALLGATHER_CMD=(python3 -m plot bine-heatmap --system "${SYSTEM}" --collective ALLGATHER --metric "${METRIC}")
   if (( ${#RUNS_ARRAY[@]} )); then
     ALLGATHER_CMD+=(--runs "${RUNS_ARRAY[@]}")
   elif [[ -n "${BASE_RUNS[$SYSTEM]:-}" ]]; then
@@ -204,7 +204,7 @@ if (( RUN_STANDARD_PLOTS )); then
   fi
   "${ALLGATHER_CMD[@]}"
 
-  REDUCE_SCATTER_CMD=(python3 ./plot/plot_bine_heatmap.py --system "${SYSTEM}" --collective REDUCE_SCATTER --metric "${METRIC}")
+  REDUCE_SCATTER_CMD=(python3 -m plot bine-heatmap --system "${SYSTEM}" --collective REDUCE_SCATTER --metric "${METRIC}")
   if (( ${#RUNS_ARRAY[@]} )); then
     REDUCE_SCATTER_CMD+=(--runs "${RUNS_ARRAY[@]}")
   elif [[ -n "${BASE_RUNS[$SYSTEM]:-}" ]]; then

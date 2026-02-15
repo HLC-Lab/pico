@@ -9,5 +9,6 @@ Key commands:
   plots (see `python -m plot line|bar|cut --help` for individual plots).
 - `python -m plot heatmap …` builds the algorithm-family heatmaps.
 - `python -m plot comparison-heatmap …` produces the target-algorithm comparison heatmaps.
+- `python -m plot bine-heatmap …` generates best-Bine variant heatmaps.
 - `python -m plot boxplot …` generates the improvement boxplots.
 - `python -m plot refined …` renders the refined line plot and stacked-latency bar chart.
