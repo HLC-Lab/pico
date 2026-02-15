@@ -2772,6 +2772,38 @@
           "external"
         ]
       },
+      "recursive_distance_doubling_hierarchical_local_parallel_over": {
+        "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "recursive_distance_doubling",
+          "external"
+        ]
+      },
       "default_mpich": {
         "desc": "MPICH default algorithm selection",
         "library": {
