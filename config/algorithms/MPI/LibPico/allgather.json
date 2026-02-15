@@ -376,5 +376,35 @@
       "bine",
       "external"
     ]
+  },
+  "bine_send_remap_hierarcic_global_local_over": {
+    "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "bine_remap",
+      "bine",
+      "external"
+    ]
   }
 }

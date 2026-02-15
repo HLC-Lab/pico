@@ -74,6 +74,7 @@ int allgather_recursivedoubling_any_even(ALLGATHER_MPI_ARGS);
 int allgather_recursivedoubling_hierarchy(ALLGATHER_MPI_ARGS);
 int allgather_recursivedoubling_hierarchy_local_parallel(ALLGATHER_MPI_ARGS);
 int allgather_bine_block_by_block_hierarcic_global_local(ALLGATHER_MPI_ARGS);
+int allgather_bine_send_remap_hierarcic_global_local(ALLGATHER_MPI_ARGS);
 
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);
 int alltoall_bine(ALLTOALL_MPI_ARGS);

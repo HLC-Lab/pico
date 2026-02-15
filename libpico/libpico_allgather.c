@@ -2041,6 +2041,151 @@ err_hndl:
   return err;
 }
 
+int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, steps, err = MPI_SUCCESS;
+  int vrank, remote, vremote, send_block_location, distance;
+  int node_size, node_rank, node_offset, local_rank;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+  void *perm_buff = NULL, *global_temp = NULL;
+  MPI_Request requests[GPU_ON_NODE * 2];
+
+  PICO_TAG_BEGIN("setup");
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  local_rank = rank % GPU_ON_NODE;
+  node_size = size / GPU_ON_NODE;
+  node_offset = rank - local_rank;
+  node_rank = node_offset / GPU_ON_NODE;
+
+  /*
+   * Current implementation only handles power-of-two number of processes.
+   */
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&perm_buff, size * rcount * rext));
+#else
+  perm_buff = malloc(size * rcount * rext);
+#endif
+  if (perm_buff == NULL) { line = __LINE__; goto err_hndl; }
+
+  /* Initialization step:
+   * - if I gather the result for another rank, I send my buffer to that rank
+   *   and I receive the data from the rank at the inverse permutation
+   * - if I gather the result for myself, I copy the data from the send buffer
+   */
+  PICO_TAG_BEGIN("setup/data_exchange");
+  vrank = (int) remap_rank((uint32_t) node_size, (uint32_t) node_rank);
+  int node_to_rank = vrank * GPU_ON_NODE + local_rank;
+  if(vrank != node_rank) {
+    tmprecv = (char*) perm_buff + (ptrdiff_t)(local_rank * node_size + vrank) * (ptrdiff_t)rcount * rext;
+    err = MPI_Sendrecv(sbuf, scount, sdtype, get_sender_rec(node_size, node_rank) * GPU_ON_NODE + local_rank, 0,
+                       tmprecv, rcount, rdtype, node_to_rank, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  }
+  else{
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) perm_buff + (ptrdiff_t)(local_rank * node_size + vrank) * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+  PICO_TAG_END("setup/data_exchange");
+  PICO_TAG_END("setup");
+
+  /* Communication step:
+     At every step i, rank r:
+     - exchanges message with rank remote = (r ^ 2^i).
+  */
+  PICO_TAG_BEGIN("gloabbal_comm");
+  distance = 0x1;
+  send_block_location = vrank;
+  global_temp = (char*)perm_buff + (ptrdiff_t)local_rank * (ptrdiff_t)node_size * (ptrdiff_t)rcount * rext;
+  for(int step = steps - 1; step >= 0; step--) {
+    size_t step_scount = rcount * distance;
+    remote = pi(node_rank, step, node_size);
+    vremote = (int) remap_rank((uint32_t) node_size, (uint32_t) remote);
+    node_to_rank = remote * GPU_ON_NODE + local_rank;
+
+    if(vrank < vremote){
+      tmpsend = (char*)global_temp + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)global_temp + (ptrdiff_t)(send_block_location + distance) * (ptrdiff_t)rcount * rext;
+    } else {
+      tmpsend = (char*)global_temp + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)global_temp + (ptrdiff_t)(send_block_location - distance) * (ptrdiff_t)rcount * rext;
+      send_block_location -= distance;
+    }
+
+    PICO_TAG_BEGIN("gloabbal_comm/sendrecv");
+    /* Sendreceive */
+    err = MPI_Sendrecv(tmpsend, step_scount, rdtype, node_to_rank, 0, 
+                       tmprecv, step_scount, rdtype, node_to_rank, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("gloabbal_comm/sendrecv");
+    distance <<=1;
+  } 
+  PICO_TAG_END("gloabbal_comm");
+
+  PICO_TAG_BEGIN("local_exchange");
+  // local exchange
+  int num_reqs = 0;
+  tmpsend = global_temp;
+  for (int i = 0; i < GPU_ON_NODE; i++)
+  {
+    if (i == local_rank)
+      continue;
+      
+    tmprecv = (char*)perm_buff + (ptrdiff_t)i * node_size * rcount * rext;
+
+    err = MPI_Isend(tmpsend, node_size * rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+    err = MPI_Irecv(tmprecv, node_size * rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+  }
+  PICO_TAG_BEGIN("local_exchange/request_wait");
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_exchange/request_wait");
+
+  PICO_TAG_BEGIN("local_exchange/reorder");
+#ifdef PICO_MPI_CUDA_AWARE
+  reorder_kernel_wrapper(perm_buff, rbuf, rcount, size, rdtype);
+  BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+  for(int i = 0; i < size; i++) {
+    int elem_local_rank = i / node_size;
+    int elem_node_rank = i % node_size;
+    COPY_BUFF_DIFF_DT(perm_buff + i * rcount * rext, rcount, rdtype, 
+      rbuf + ((elem_node_rank * GPU_ON_NODE + elem_local_rank) * rcount) * rext, rcount, rdtype);
+  }
+#endif
+  PICO_TAG_END("local_exchange/reorder");
+
+  PICO_TAG_END("local_exchange");
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line;  // silence compiler warning
+  return err;
+}
+
 
 // ---------------------------------------------------
 // MODIFICATIONS INTRODUCTED BY LORENZO
