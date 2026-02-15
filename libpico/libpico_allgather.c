@@ -12,6 +12,10 @@
 #include "libpico.h"
 #include "libpico_utils.h"
 
+#ifdef PICO_MPI_CUDA_AWARE
+#include "support_kernel.h"
+#endif
+
 int allgather_recursivedoubling_hierarchy_local_parallel(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                                              void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
