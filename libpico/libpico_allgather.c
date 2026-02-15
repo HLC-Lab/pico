@@ -1912,6 +1912,136 @@ err_hndl:
   return err;
 }
 
+int allgather_bine_block_by_block_hierarcic_global_local(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+  int node_size, node_rank, node_offset, local_rank;
+  int num_reqs;
+  int *s_bitmap = NULL, *r_bitmap = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+  MPI_Request *requests = NULL;
+
+  PICO_TAG_BEGIN("setup");
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  local_rank = rank % GPU_ON_NODE;
+  node_size = size / GPU_ON_NODE;
+  node_offset = rank - local_rank;
+  node_rank = node_offset / GPU_ON_NODE;
+
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  PICO_TAG_BEGIN("setup/buffer_copy");
+  if(MPI_IN_PLACE != sbuf) {
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+  PICO_TAG_END("setup/buffer_copy");
+  PICO_TAG_BEGIN("setup/bitmap_setup");
+  s_bitmap = (int *) malloc(node_size * sizeof(int));
+  r_bitmap = (int *) malloc(node_size * sizeof(int));
+  requests = (MPI_Request *) malloc(size * 2 * sizeof(MPI_Request));
+  if(s_bitmap == NULL || r_bitmap == NULL || requests == NULL){
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+  PICO_TAG_END("setup/bitmap_setup");
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("global_comm");
+  for(int step = steps - 1; step >= 0; step--) {
+    num_reqs = 0;
+    remote = pi(node_rank, step, node_size);
+
+    PICO_TAG_BEGIN("global_comm/bitmap_set");
+    memset(s_bitmap, 0, node_size * sizeof(int));
+    memset(r_bitmap, 0, node_size * sizeof(int));
+    get_indexes(node_rank, step, steps, node_size, r_bitmap);
+    get_indexes(remote, step, steps, node_size, s_bitmap);
+    PICO_TAG_END("global_comm/bitmap_set");
+
+    remote = remote * GPU_ON_NODE + local_rank;
+
+    PICO_TAG_BEGIN("global_comm/block_exchange");
+    for(int block = 0; block < node_size; block++){
+      if(s_bitmap[block] != 0){
+        tmpsend = (char*)rbuf + (ptrdiff_t)(block * GPU_ON_NODE + local_rank) * (ptrdiff_t)rcount * rext;
+        err = MPI_Isend(tmpsend, rcount, rdtype, remote, block, comm, requests + num_reqs);
+        if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+        num_reqs++;
+      }
+      if(r_bitmap[block] != 0){
+        tmprecv = (char*)rbuf + (ptrdiff_t)(block * GPU_ON_NODE + local_rank) * (ptrdiff_t)rcount * rext;
+        err = MPI_Irecv(tmprecv, rcount, rdtype, remote, block, comm, requests + num_reqs);
+        if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+        num_reqs++;
+      }
+    }
+    PICO_TAG_END("global_comm/block_exchange");
+
+    PICO_TAG_BEGIN("global_comm/req_wait");
+    err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("global_comm/req_wait");
+  }
+  PICO_TAG_END("global_comm");
+
+  // local exchange
+  PICO_TAG_BEGIN("local_comm");
+  num_reqs = 0;
+  for (int i = 0; i < GPU_ON_NODE; i++)
+  {
+    if (i == local_rank)
+      continue;
+
+    for (int j = 0; j < node_size; j++)
+    {
+      tmpsend = (char*) rbuf + (ptrdiff_t)(j * GPU_ON_NODE + local_rank) * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*) rbuf + (ptrdiff_t)(j * GPU_ON_NODE + i) * rcount * rext;
+
+      err = MPI_Isend(tmpsend, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+      num_reqs++;
+      err = MPI_Irecv(tmprecv, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+      num_reqs++;
+    }
+  }
+  PICO_TAG_BEGIN("local_comm/local_req_wait");
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_comm/local_req_wait");
+  PICO_TAG_END("local_comm");
+
+  free(s_bitmap);
+  free(r_bitmap);
+  free(requests);
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line;  // silence compiler warning
+  if(requests != NULL) free(requests);
+  if(s_bitmap != NULL) free(s_bitmap);
+  if(r_bitmap != NULL) free(r_bitmap);
+  return err;
+}
+
+
 // ---------------------------------------------------
 // MODIFICATIONS INTRODUCTED BY LORENZO
 // 
