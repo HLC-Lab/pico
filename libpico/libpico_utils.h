@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stddef.h>
+#include <errno.h>
 
 #ifdef DEBUG
 #define BINE_DEBUG_PRINT(fmt, ...) \
@@ -86,8 +87,6 @@ static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
 //                                MACRO FOR CUDA FUNCTION CALLS
 // ----------------------------------------------------------------------------------------------
 
-#ifdef PICO_MPI_CUDA_AWARE
-
 #define BINE_CUDA_CHECK(cmd) do {                         \
   cudaError_t e = cmd;                              \
   if( e != cudaSuccess ) {                          \
@@ -97,6 +96,31 @@ static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
   }                                                 \
 } while(0)
 
+static inline int pico_task_on_node() {
+  int current_tasks_per_node;
+
+  char* tasks_per_node_env = getenv("CURRENT_TASKS_PER_NODE");
+  if (tasks_per_node_env == NULL) {
+    fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE environment variable is not set.\n");
+    return MPI_ERR_COMM;
+  }
+  current_tasks_per_node = atoi(tasks_per_node_env);
+  if (current_tasks_per_node <= 0) {
+    fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE must be a positive integer.\n");
+    return MPI_ERR_COMM;
+  }
+
+  return current_tasks_per_node;
+}
+
+static inline void pico_get_group_config(int *node_size, int *node_rank, int *node_offset, int *local_rank, int task_on_node, int size, int rank) {
+  *node_rank = rank / task_on_node;
+  *node_size = size / task_on_node;
+  *node_offset = *node_rank * task_on_node;
+  *local_rank = rank % task_on_node;
+}
+
+#ifdef PICO_MPI_CUDA_AWARE
 
 static inline int copy_buffer_different_dt_cuda(const void *input_buffer, size_t scount,
   const MPI_Datatype sdtype, void *output_buffer,

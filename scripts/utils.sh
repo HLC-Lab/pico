@@ -888,13 +888,6 @@ compile_all_libraries_tui() {
         local libmods="$(_get_var "LIB_${i}_MODULES")"
         local load_type="$(_get_var "LIB_${i}_LOAD_TYPE")"
 
-        # check if env var LOCATION == local
-        if [[ "$LOCATION" == "local" ]]; then 
-            local tpn="$(_get_var "LIB_${i}_SIM_NODE_GROUP")"
-        else
-            local tpn="$(_get_var "LIB_${i}_TASKS_PER_NODE")"
-        fi
-
         # CUDA build only if: GPU_AWARENESS=yes ∧ any GPU>0 ∧ GPU_LIB=cuda
         local gaw="$(_get_var "LIB_${i}_GPU_AWARENESS")"
         local gns="$(_get_var "LIB_${i}_GPU_NATIV_SUPPORT")"
@@ -938,7 +931,6 @@ compile_all_libraries_tui() {
         mk+=" LIB_OBJ_DIR=\"$OUT_OBJ/lib\" LIB_OBJ_DIR_CUDA=\"$OUT_OBJ/lib_cuda\""
         mk+=" DEBUG=$mk_debug"
         mk+=" PICO_INSTRUMENT=$this_instrument"
-        mk+=" TASKS_PER_NODE=${tpn}"
         if (( need_cuda_build )); then mk+=" PICO_MPI_CUDA_AWARE=1"; fi
         if (( need_cuda_build )) && [[ "$gns" == "yes" ]]; then mk+=" GPU_NATIV_SUPPORT=1"; fi
 

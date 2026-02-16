@@ -41,15 +41,15 @@
 #define BXOR_OP(a, b) ((a) ^ (b))
 
 #define MAKE_KERNEL_PERM(type, name)                                          \
-  __global__ void name(type *inbuff, type *outbuff, int count, int comm_size) \
+  __global__ void name(type *inbuff, type *outbuff, int count, int comm_size, int gpu_on_node) \
   {                                                                           \
     int gidx = GLOBAL_IDX;                                                    \
-    int node_size = comm_size / GPU_ON_NODE;                                  \
+    int node_size = comm_size / gpu_on_node;                                  \
     int elem = gidx % count;                                                  \
     int rank = gidx / count;                                                  \
     int local_rank = rank / node_size;                                        \
     int node_rank = rank % node_size;                                         \
-    int dest = (node_rank * GPU_ON_NODE + local_rank) * count + elem;         \
+    int dest = (node_rank * gpu_on_node + local_rank) * count + elem;         \
     outbuff[dest] = inbuff[gidx];                                             \
   }
 
@@ -152,7 +152,7 @@ MAKE_KERNEL_OP(char, bxor_char, BXOR_OP)
 MAKE_KERNEL_PERM(char, reorder_char)
 
 typedef void (*kernel_func_op)(void *, void *, const void *, int, int);
-typedef void (*kernel_func_reorder)(void *, void *, int, int);
+typedef void (*kernel_func_reorder)(void *, void *, int, int, int);
 
 static inline enum ReduceOp mpi_to_reduce_op(MPI_Op op)
 {
@@ -272,7 +272,7 @@ int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *cur
   return MPI_SUCCESS;
 }
 
-int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int comm_size, MPI_Datatype dtype)
+int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int comm_size, int gpu_on_node, MPI_Datatype dtype)
 {
   int total_elem = comm_size * elem;
   enum ReduceType r_type = mpi_to_redcue_type(dtype);
@@ -283,7 +283,7 @@ int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int comm_size,
   if (kfunc == NULL)
     return MPI_ERR_UNSUPPORTED_OPERATION;
 
-  kfunc<<<gridSize, blockSize>>>(inbuff, outbuff, elem, comm_size);
+  kfunc<<<gridSize, blockSize>>>(inbuff, outbuff, elem, comm_size, gpu_on_node);
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess)
   {
