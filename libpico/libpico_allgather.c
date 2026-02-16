@@ -1930,7 +1930,7 @@ int allgather_bine_block_by_block_hierarcic_global_local(const void *sbuf, size_
   pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
 
   steps = log_2(node_size);
-  if(!is_power_of_two(size) || steps < 1) {
+  if(!is_power_of_two(size) || (steps < 1 && node_size > 1)) {
     BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }
@@ -2061,7 +2061,7 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
    * Current implementation only handles power-of-two number of processes.
    */
   steps = log_2(node_size);
-  if(!is_power_of_two(size) || steps < 1) {
+  if(!is_power_of_two(size) || (steps < 1 && node_size > 1)) {
     BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
     return MPI_ERR_ARG;
   }

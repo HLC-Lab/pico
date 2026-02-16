@@ -1256,7 +1256,7 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
   void *tmpbuf = NULL, *resbuf = NULL;
   int upper_index, lower_index;
   size_t buffer_size_unit;
-  lower_index = node_offset;
+  lower_index = local_rank * node_size;
   upper_index = lower_index + (node_size - 1);
   buffer_size_unit = displs[upper_index] - displs[lower_index] + recvcounts[upper_index];
   const char *src_location = sendbuf + (ptrdiff_t)displs[lower_index] * (ptrdiff_t)dtsize;
