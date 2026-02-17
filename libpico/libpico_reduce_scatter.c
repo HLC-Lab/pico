@@ -389,8 +389,6 @@ int reduce_scatter_recursive_doubling_gpu(const void *sbuf, void *rbuf, const in
       }
     }
 
-    // printf("rank %d send size %d reciv size %d send index %d reciv index %d dist %d\n", rank, send_size, recv_size, send_index, recv_index, dist_mask);
-
     PICO_TAG_BEGIN("com/exchange");
     if (recv_size > 0)
     {
@@ -1409,10 +1407,6 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
     mask <<= 1;
     inverse_mask >>= 1;
     block_first_mask >>= 1;
-    /*printf("rank %d dist %d sb %d:%d <-> rsb %d:%d rb %d:%d <-> rrb %d:%d ss %d rs %d first node %d send offset %d recv offset %d\n",
-      rank, mask, send_block_first, send_block_last, send_block_first_rem, send_block_last_rem, recv_block_first, recv_block_last,
-      recv_block_first_rem, recv_block_last_rem, send_count, recv_count, recv_block_first_rem, displs[send_block_first_rem] - displs[res_first_node], displs[recv_block_first_rem] - displs[res_first_node]);
-    fflush(stdout);*/
   }
   PICO_TAG_END("global_com");
 

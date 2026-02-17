@@ -14,8 +14,8 @@ PICO_CORE_OBJ_DIR_CUDA  ?= ../obj/pico_core_cuda
 PICO_CORE_OBJS_CUDA     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_CUDA)/%.o, $(PICO_CORE_SRC))
 PICO_CORE_DEPS_CUDA     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_CUDA)/%.d, $(PICO_CORE_SRC))
 PICO_CORE_CUDA          := $(BIN_DIR)/pico_core_cuda
-ifeq ($(GPU_NATIV_SUPPORT),1)
-CFLAGS_CUDA += -DGPU_NATIV_SUPPORT
+ifeq ($(GPU_NATIVE_SUPPORT),1)
+CFLAGS_CUDA += -DGPU_NATIVE_SUPPORT
 endif
 
 PICO_CORE_OBJ_DIR_NCCL  ?= ../obj/pico_core_nccl
