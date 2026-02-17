@@ -12,7 +12,901 @@
 #include "libpico.h"
 #include "libpico_utils.h"
 
+#ifdef PICO_MPI_CUDA_AWARE
+#include "support_kernel.h"
+#endif
 
+int allgather_recursivedoubling_hierarchy_local_parallel(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                                             void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line, rank, size, err = MPI_SUCCESS;
+  int peer, distance, node_offset, local_rank, node_size, node_rank, send_block_location, dist_mask;
+  int node_sub_group, remapped_node_rank, remaining_node, node_data_to_send, node_data_to_recv, remapped_peer;
+  int local_sub_group, local_data_to_send, local_data_to_recv, remapped_local_rank, remaning_local, req_index;
+  ptrdiff_t rlb, rext;
+  int task_on_node = pico_task_on_node();
+  MPI_Request send_reqs[task_on_node], recv_reqs[task_on_node];
+  char *tmprecv = NULL, *tmpsend = NULL, *tmprecv_buff = NULL;
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  PICO_TAG_BEGIN("setup");
+
+  err = MPI_Type_get_extent(rdtype, &rlb, &rext);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+#if defined PICO_MPI_CUDA_AWARE && !defined GPU_NATIVE_SUPPORT
+  tmprecv_buff = (char *)calloc(size * rcount, rext);
+  if (tmprecv_buff == NULL)
+  {
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  tmpsend = (char *)sbuf;
+  tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+  BINE_CUDA_CHECK(cudaMemcpy(tmprecv, tmpsend, rcount * rext, cudaMemcpyDeviceToHost));
+#else
+  tmprecv_buff = rbuf;
+
+  // Setup buffer for mpi if not in place
+  if (MPI_IN_PLACE != sbuf)
+  {
+    tmpsend = (char *)sbuf;
+    tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+#endif
+  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("local_comm");
+  // local allgather
+  PICO_TAG_BEGIN("local_comm/setup");
+  local_sub_group = floor_power_of_two(task_on_node);
+  remaning_local = task_on_node - local_sub_group;
+  send_block_location = rank;
+  PICO_TAG_END("local_comm/setup");
+
+  PICO_TAG_BEGIN("local_comm/recv_from_excluded_rank");
+  // share data betwin excluded local rank
+  if (local_sub_group != task_on_node)
+  {
+    if ((local_rank >> 1) < remaning_local && local_rank & 1)
+    {
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, rcount, rdtype, rank - 1, 0, comm);
+    }
+    else if ((local_rank >> 1) < remaning_local && !(local_rank & 1))
+    {
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, rcount, rdtype, rank + 1, 0, comm, MPI_STATUS_IGNORE);
+    }
+
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+  PICO_TAG_END("local_comm/recv_from_excluded_rank");
+
+  req_index = 0;
+  if (!(local_rank & 1) || local_rank >= remaning_local << 1 || local_sub_group == task_on_node)
+  {
+    PICO_TAG_BEGIN("local_comm/exchange");
+    remapped_local_rank = (local_rank >> 1) < remaning_local && local_sub_group != task_on_node ? local_rank >> 1 : local_rank - remaning_local;
+    local_data_to_send = remapped_local_rank < remaning_local ? 2 : 1;
+    tmpsend = (char *)tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    for (int i = 0; i < local_sub_group; i++)
+    {
+      if (i == remapped_local_rank)
+        continue;
+
+      remapped_peer = (i < remaning_local && local_sub_group != task_on_node ? (i * 2) : (i + remaning_local));
+      local_data_to_recv = remapped_peer < remaning_local ? 2 : 1;
+      peer = node_offset + remapped_peer;
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(peer) * (ptrdiff_t)rcount * rext;
+
+      /* Sendreceive */
+      err = MPI_Isend(tmpsend, (ptrdiff_t)local_data_to_send * (ptrdiff_t)rcount, rdtype, peer, 0, comm, &send_reqs[req_index]);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+
+      err = MPI_Irecv(tmprecv, (ptrdiff_t)local_data_to_recv * (ptrdiff_t)rcount, rdtype, peer, 0, comm, &recv_reqs[req_index]);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+
+      req_index++;
+    }
+    PICO_TAG_END("local_comm/exchange");
+  }
+
+  PICO_TAG_BEGIN("local_comm/wait_recv");
+  err = MPI_Waitall(req_index, recv_reqs, MPI_STATUSES_IGNORE);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+  PICO_TAG_END("local_comm/wait_recv");
+
+  PICO_TAG_BEGIN("local_comm/wait_send");
+  err = MPI_Waitall(req_index, send_reqs, MPI_STATUSES_IGNORE);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+  PICO_TAG_END("local_comm/wait_send");
+
+  PICO_TAG_BEGIN("local_comm/send_to_excluded_rank");
+  if (local_sub_group != task_on_node)
+  {
+    if ((local_rank >> 1) < remaning_local && !(local_rank & 1))
+    {
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)node_offset * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, rcount * (local_rank + 1), rdtype, rank + 1, 0, comm);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)(rank + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, rcount * (task_on_node - (local_rank + 1)), rdtype, rank + 1, 0, comm);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+    else if ((local_rank >> 1) < remaning_local && local_rank & 1)
+    {
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)node_offset * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, rcount * local_rank, rdtype, rank - 1, 0, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, rcount * (task_on_node - local_rank), rdtype, rank - 1, 0, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  PICO_TAG_END("local_comm/send_to_excluded_rank");
+  // end local comunication
+  PICO_TAG_END("local_comm");
+
+  PICO_TAG_BEGIN("global_comm");
+  PICO_TAG_BEGIN("global_comm/setup");
+  // global allgather
+  send_block_location = node_offset;
+  node_sub_group = floor_power_of_two(node_size);
+  remaining_node = node_size - node_sub_group;
+  dist_mask = ~0;
+  PICO_TAG_END("global_comm/setup");
+
+  // share data betwin extra node and node in the group
+  PICO_TAG_BEGIN("global_comm/recv_from_excluded_node");
+  if (node_sub_group != node_size)
+  {
+    if ((node_rank >> 1) < remaining_node && node_rank & 1)
+    {
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, task_on_node * rcount, rdtype, ((node_rank - 1) * task_on_node) + local_rank, 0, comm);
+    }
+    else if ((node_rank >> 1) < remaining_node && !(node_rank & 1))
+    {
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location + task_on_node) * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, task_on_node * rcount, rdtype, ((node_rank - 1) * task_on_node) + local_rank, 0, comm, MPI_STATUS_IGNORE);
+    }
+
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+  PICO_TAG_END("global_comm/recv_from_excluded_node");
+
+  // exchange data in sub group
+  PICO_TAG_BEGIN("global_comm/exchange");
+  if (!(node_rank & 1) || node_rank >= (remaining_node << 1) || node_size == node_sub_group)
+  {
+    remapped_node_rank = (node_rank >> 1) < remaining_node && node_size != node_sub_group ? node_rank / 2 : node_rank - remaining_node;
+
+    for (distance = 0x1; distance < node_sub_group; distance <<= 1)
+    {
+      remapped_peer = remapped_node_rank ^ distance;
+      node_data_to_recv = (distance + min(distance, max(remaining_node - (remapped_peer & dist_mask), 0))) * task_on_node;
+      node_data_to_send = (distance + min(distance, max(remaining_node - (remapped_node_rank & dist_mask), 0))) * task_on_node;
+      dist_mask <<= 1;
+      
+      if (remapped_node_rank < remapped_peer)
+      {
+        tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+        tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location + node_data_to_send) * (ptrdiff_t)rcount * rext;
+      }
+      else
+      {
+        tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+        tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location - node_data_to_recv) * (ptrdiff_t)rcount * rext;
+        send_block_location -= node_data_to_recv;
+      }
+
+      peer = remapped_peer < remaining_node && node_size != node_sub_group ? remapped_peer * 2 : remapped_peer + remaining_node;
+      peer = peer * task_on_node + local_rank;
+
+      /* Sendreceive */
+      PICO_TAG_BEGIN("global_comm/exchange/send_recv");
+      err = MPI_Sendrecv(tmpsend, node_data_to_send * rcount, rdtype, peer, 0,
+                         tmprecv, node_data_to_recv * rcount, rdtype,
+                         peer, 0, comm, MPI_STATUS_IGNORE);
+      PICO_TAG_END("global_comm/exchange/send_recv");
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  PICO_TAG_END("global_comm/exchange");
+
+  // share data back to extra node
+  PICO_TAG_BEGIN("global_comm/send_to_excluded_node");
+  if (node_sub_group != node_size)
+  {
+    if ((node_rank >> 1) < remaining_node && !(node_rank & 1))
+    {
+      err = MPI_Send(tmprecv_buff, (node_rank + 1) * task_on_node * rcount, rdtype, ((node_rank + 1) * task_on_node) + local_rank, 0, comm);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)(node_rank + 1) * task_on_node * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, (node_size - (node_rank + 1)) * task_on_node * rcount, rdtype, ((node_rank + 1) * task_on_node) + local_rank, 0, comm);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+    else if ((node_rank >> 1) < remaining_node && node_rank & 1)
+    {
+      err = MPI_Recv(tmprecv_buff, node_rank * task_on_node * rcount, rdtype, ((node_rank - 1) * task_on_node) + local_rank, 0, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)node_rank * task_on_node * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, (node_size - node_rank) * task_on_node * rcount, rdtype, ((node_rank - 1) * task_on_node) + local_rank, 0, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  PICO_TAG_END("global_comm/send_to_excluded_node");
+  PICO_TAG_END("global_comm");
+  // end global
+
+#if defined PICO_MPI_CUDA_AWARE && !defined GPU_NATIVE_SUPPORT
+  BINE_CUDA_CHECK(cudaMemcpy(rbuf, tmprecv_buff, size * rcount * rext, cudaMemcpyHostToDevice));
+  if (tmprecv_buff != NULL)
+  {
+    free(tmprecv_buff);
+  }
+#endif
+
+  return MPI_SUCCESS;
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line; // silence compiler warning
+  return err;
+}
+
+
+int allgather_recursivedoubling_hierarchy(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                                             void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line, rank, size, err = MPI_SUCCESS;
+  int peer, distance, node_offset, local_rank, node_size, node_rank, send_block_location, dist_mask;
+  int node_sub_group, remapped_node_rank, remaining_node, node_data_to_send, node_data_to_recv, remapped_peer;
+  int local_sub_group, local_data_to_send, local_data_to_recv, remapped_local_rank, remaning_local;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL, *tmpsend = NULL, *tmprecv_buff = NULL;
+  int task_on_node = pico_task_on_node();
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  PICO_TAG_BEGIN("setup");
+  err = MPI_Type_get_extent(rdtype, &rlb, &rext);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+#if defined PICO_MPI_CUDA_AWARE && !defined GPU_NATIVE_SUPPORT
+  tmprecv_buff = (char *)calloc(size * rcount, rext);
+  if (tmprecv_buff == NULL)
+  {
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  tmpsend = (char *)sbuf;
+  tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+  BINE_CUDA_CHECK(cudaMemcpy(tmprecv, tmpsend, rcount * rext, cudaMemcpyDeviceToHost));
+#else
+  tmprecv_buff = rbuf;
+
+  // Setup buffer for mpi if not in place
+  if (MPI_IN_PLACE != sbuf)
+  {
+    tmpsend = (char *)sbuf;
+    tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+#endif
+  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("local_comm");
+  // local allgather
+  PICO_TAG_BEGIN("local_comm/setup");
+  local_sub_group = floor_power_of_two(task_on_node);
+  remaning_local = task_on_node - local_sub_group;
+  send_block_location = rank;
+  PICO_TAG_END("local_comm/setup");
+
+  PICO_TAG_BEGIN("local_comm/recv_from_excluded_rank");
+  // share data betwin excluded local rank
+  if (local_sub_group != task_on_node)
+  {
+    if ((local_rank >> 1) < remaning_local && local_rank & 1)
+    {
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, rcount, rdtype, rank - 1, 0, comm);
+    }
+    else if ((local_rank >> 1) < remaning_local && !(local_rank & 1))
+    {
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, rcount, rdtype, rank + 1, 0, comm, MPI_STATUS_IGNORE);
+    }
+
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+  PICO_TAG_END("local_comm/recv_from_excluded_rank");
+
+  PICO_TAG_BEGIN("local_comm/exchange");
+  if (!(local_rank & 1) || local_rank >= remaning_local << 1 || local_sub_group == task_on_node)
+  {
+    remapped_local_rank = (local_rank >> 1) < remaning_local && local_sub_group != task_on_node ? local_rank >> 1 : local_rank - remaning_local;
+    dist_mask = ~0;
+
+    for (distance = 0x1; distance < local_sub_group; distance <<= 1)
+    {
+      remapped_peer = (remapped_local_rank ^ distance);
+      local_data_to_recv = distance + min(distance, max(remaning_local - (remapped_peer & dist_mask), 0));
+      local_data_to_send = distance + min(distance, max(remaning_local - (remapped_local_rank & dist_mask), 0));
+      dist_mask <<= 1;
+
+      if (remapped_local_rank < remapped_peer)
+      {
+        tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+        tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location + local_data_to_send) * (ptrdiff_t)rcount * rext;
+      }
+      else
+      {
+        tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+        tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location - local_data_to_recv) * (ptrdiff_t)rcount * rext;
+        send_block_location -= local_data_to_recv;
+      }
+
+      peer = node_offset + (remapped_peer < remaning_local && local_sub_group != task_on_node ? (remapped_peer * 2) : (remapped_peer + remaning_local));
+
+      /* Sendreceive */
+      PICO_TAG_BEGIN("local_comm/exchange/send_recv");
+      err = MPI_Sendrecv(tmpsend, (ptrdiff_t)local_data_to_send * (ptrdiff_t)rcount, rdtype, peer, 0,
+                         tmprecv, (ptrdiff_t)local_data_to_recv * (ptrdiff_t)rcount, rdtype,
+                         peer, 0, comm, MPI_STATUS_IGNORE);
+      PICO_TAG_END("local_comm/exchange/send_recv");
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  PICO_TAG_END("local_comm/exchange");
+
+  PICO_TAG_BEGIN("local_comm/send_to_excluded_rank");
+  if (local_sub_group != task_on_node)
+  {
+    if ((local_rank >> 1) < remaning_local && !(local_rank & 1))
+    {
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)node_offset * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, rcount * (local_rank + 1), rdtype, rank + 1, 0, comm);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      tmpsend = (char *)tmprecv_buff + (ptrdiff_t)(rank + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, rcount * (task_on_node - (local_rank + 1)), rdtype, rank + 1, 0, comm);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+    else if ((local_rank >> 1) < remaning_local && local_rank & 1)
+    {
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)node_offset * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, rcount * local_rank, rdtype, rank - 1, 0, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      tmprecv = (char *)tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, rcount * (task_on_node - local_rank), rdtype, rank - 1, 0, comm, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  PICO_TAG_END("local_comm/send_to_excluded_rank");
+  PICO_TAG_END("local_comm");
+  // end local comunication
+
+  PICO_TAG_BEGIN("global_comm");
+  // global allgather
+  PICO_TAG_BEGIN("global_comm/setup");
+  send_block_location = node_offset;
+  node_sub_group = floor_power_of_two(node_size);
+  remaining_node = node_size - node_sub_group;
+  dist_mask = ~0;
+  PICO_TAG_END("global_comm/setup");
+
+  if (rank % task_on_node == 0)
+  {
+    // share data betwin extra node and node in the group
+    PICO_TAG_BEGIN("global_comm/recv_from_excluded_node");
+    if (node_sub_group != node_size)
+    {
+      if ((node_rank >> 1) < remaining_node && node_rank & 1)
+      {
+        tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+        err = MPI_Send(tmpsend, task_on_node * rcount, rdtype, (node_rank - 1) * task_on_node, 0, comm);
+      }
+      else if ((node_rank >> 1) < remaining_node && !(node_rank & 1))
+      {
+        tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location + task_on_node) * (ptrdiff_t)rcount * rext;
+        err = MPI_Recv(tmprecv, task_on_node * rcount, rdtype, (node_rank + 1) * task_on_node, 0, comm, MPI_STATUS_IGNORE);
+      }
+
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+    PICO_TAG_END("global_comm/recv_from_excluded_node");
+
+    // exchange data in sub group
+    PICO_TAG_BEGIN("global_comm/exchange");
+    if (!(node_rank & 1) || node_rank >= (remaining_node << 1) || node_size == node_sub_group)
+    {
+      remapped_node_rank = (node_rank >> 1) < remaining_node && node_size != node_sub_group ? node_rank / 2 : node_rank - remaining_node;
+
+
+      for (distance = 0x1; distance < node_sub_group; distance <<= 1)
+      {
+        remapped_peer = remapped_node_rank ^ distance;
+        node_data_to_recv = (distance + min(distance, max(remaining_node - (remapped_peer & dist_mask), 0))) * task_on_node;
+        node_data_to_send = (distance + min(distance, max(remaining_node - (remapped_node_rank & dist_mask), 0))) * task_on_node;
+        dist_mask <<= 1;
+        
+        if (remapped_node_rank < remapped_peer)
+        {
+          tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+          tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location + node_data_to_send) * (ptrdiff_t)rcount * rext;
+        }
+        else
+        {
+          tmpsend = (char *)tmprecv_buff + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+          tmprecv = (char *)tmprecv_buff + (ptrdiff_t)(send_block_location - node_data_to_recv) * (ptrdiff_t)rcount * rext;
+          send_block_location -= node_data_to_recv;
+        }
+
+        peer = remapped_peer < remaining_node && node_size != node_sub_group ? remapped_peer * 2 : remapped_peer + remaining_node;
+        peer *= task_on_node;
+
+        /* Sendreceive */
+        PICO_TAG_BEGIN("global_comm/exchange/send_recv");
+        err = MPI_Sendrecv(tmpsend, node_data_to_send * rcount, rdtype, peer, 0,
+                           tmprecv, node_data_to_recv * rcount, rdtype,
+                           peer, 0, comm, MPI_STATUS_IGNORE);
+        PICO_TAG_END("global_comm/exchange/send_recv");
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+    }
+    PICO_TAG_END("global_comm/exchange");
+
+    // share data back to extra node
+    PICO_TAG_BEGIN("global_comm/send_to_excluded_node");
+    if (node_sub_group != node_size)
+    {
+      if ((node_rank >> 1) < remaining_node && !(node_rank & 1))
+      {
+        err = MPI_Send(tmprecv_buff, (node_rank + 1) * task_on_node * rcount, rdtype, (node_rank + 1) * task_on_node, 0, comm);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+        tmpsend = (char *)tmprecv_buff + (ptrdiff_t)(node_rank + 1) * task_on_node * (ptrdiff_t)rcount * rext;
+        err = MPI_Send(tmpsend, (node_size - (node_rank + 1)) * task_on_node * rcount, rdtype, (node_rank + 1) * task_on_node, 0, comm);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+      else if ((node_rank >> 1) < remaining_node && node_rank & 1)
+      {
+        err = MPI_Recv(tmprecv_buff, node_rank * task_on_node * rcount, rdtype, (node_rank - 1) * task_on_node, 0, comm, MPI_STATUS_IGNORE);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+        tmprecv = (char *)tmprecv_buff + (ptrdiff_t)node_rank * task_on_node * (ptrdiff_t)rcount * rext;
+        err = MPI_Recv(tmprecv, (node_size - node_rank) * task_on_node * rcount, rdtype, (node_rank - 1) * task_on_node, 0, comm, MPI_STATUS_IGNORE);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+    }
+    PICO_TAG_END("global_comm/send_to_excluded_node");
+  }
+  PICO_TAG_END("global_comm");
+  // end global
+
+  // share data back localy
+  // TODO: make all the node that recive data cominucate to other
+  PICO_TAG_BEGIN("final_local_exchange");
+  for (distance = 0x1; distance < local_sub_group; distance <<= 1)
+  {
+    if (local_rank >= (distance << 1))
+      continue;
+
+    peer = local_rank ^ distance;
+
+    if (local_rank < peer)
+    {
+      MPI_Send(tmprecv_buff, size * rcount, rdtype, peer + node_offset, 0, comm);
+    }
+    else
+    {
+      MPI_Recv(tmprecv_buff, size * rcount, rdtype, peer + node_offset, 0, comm, MPI_STATUS_IGNORE);
+    }
+  }
+
+  if (local_rank < remaning_local)
+  {
+    MPI_Send(tmprecv_buff, size * rcount, rdtype, rank + local_sub_group, 0, comm);
+  }
+  else if (local_rank >= local_sub_group)
+  {
+    MPI_Recv(tmprecv_buff, size * rcount, rdtype, rank - local_sub_group, 0, comm, MPI_STATUS_IGNORE);
+  }
+  PICO_TAG_END("final_local_exchange");
+
+#if defined PICO_MPI_CUDA_AWARE && !defined GPU_NATIVE_SUPPORT
+  BINE_CUDA_CHECK(cudaMemcpy(rbuf, tmprecv_buff, size * rcount * rext, cudaMemcpyHostToDevice));
+  if (tmprecv_buff != NULL)
+  {
+    free(tmprecv_buff);
+  }
+#endif
+
+  return MPI_SUCCESS;
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line; // silence compiler warning
+  return err;
+}
+
+int allgather_recursivedoubling_any_even(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                                            void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, sub_group_size, remaining_node, err = MPI_SUCCESS;
+  int peer, distance, lower_block_data, upper_block_data, peer_group, rank_group, dist_mask = ~0;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL, *tmpsend = NULL, *tmprecv_buff;
+
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  PICO_TAG_BEGIN("setup");
+  err = MPI_Type_get_extent(rdtype, &rlb, &rext);
+  if (MPI_SUCCESS != err)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  tmprecv_buff = (char *)calloc(size * rcount, rext);
+  if (tmprecv_buff == NULL)
+  {
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+#else
+  tmprecv_buff = rbuf;
+#endif
+
+#ifndef PICO_MPI_CUDA_AWARE
+  // Setup buffer for mpi if not in place
+  if (MPI_IN_PLACE != sbuf)
+  {
+    tmpsend = (char *)sbuf;
+    tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+#else
+  tmpsend = (char *)sbuf;
+  tmprecv = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+  BINE_CUDA_CHECK(cudaMemcpy(tmprecv, tmpsend, rcount * rext, cudaMemcpyDeviceToHost));
+#endif
+
+  // findi sub group power of 2
+  sub_group_size = floor_power_of_two(size);
+  remaining_node = size - sub_group_size;
+  lower_block_data = rank;
+  upper_block_data = rank;
+  PICO_TAG_END("setup");
+
+  // bind remaining rank to rank in sub group
+  PICO_TAG_BEGIN("recv_from_extra_rank");
+  if (rank >= sub_group_size)
+  {
+    tmpsend = tmprecv_buff + (ptrdiff_t)rank * (ptrdiff_t)scount * rext;
+    err = MPI_Send(tmpsend, scount, sdtype, rank - sub_group_size, 0, comm);
+
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+  }
+  else if (rank < remaining_node)
+  {
+
+    tmprecv = tmprecv_buff + (ptrdiff_t)(sub_group_size + rank) * (ptrdiff_t)rcount * rext;
+    err = MPI_Recv(tmprecv, rcount, sdtype, sub_group_size + rank, 0, comm, MPI_STATUS_IGNORE);
+
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+
+    upper_block_data = sub_group_size + rank;
+  }
+  PICO_TAG_END("recv_from_extra_rank");
+
+  PICO_TAG_BEGIN("exchange");
+  if (rank < sub_group_size)
+  {
+    // perform exchange in sub group
+    for (distance = 0x1; distance < sub_group_size; distance <<= 1)
+    {
+      peer = rank ^ distance;
+
+      if (rank < peer)
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)lower_block_data * (ptrdiff_t)rcount * rext;
+        tmprecv = tmprecv_buff + (ptrdiff_t)(lower_block_data + distance) * (ptrdiff_t)rcount * rext;
+      }
+      else
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)lower_block_data * (ptrdiff_t)rcount * rext;
+        tmprecv = tmprecv_buff + (ptrdiff_t)(lower_block_data - distance) * (ptrdiff_t)rcount * rext;
+        lower_block_data -= distance;
+      }
+
+      /* Sendreceive */
+      PICO_TAG_BEGIN("exchange/send_recv");
+      err = MPI_Sendrecv(tmpsend, (ptrdiff_t)distance * (ptrdiff_t)rcount, rdtype, peer, 0,
+                         tmprecv, (ptrdiff_t)distance * (ptrdiff_t)rcount, rdtype,
+                         peer, 0, comm, MPI_STATUS_IGNORE);
+      PICO_TAG_END("exchange/send_recv");
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+      // calc first node of the sub group of current e peer node
+      peer_group = peer & dist_mask;
+      rank_group = rank & dist_mask;
+      dist_mask = dist_mask << 1;
+
+      // send and recive extra data
+      PICO_TAG_BEGIN("exchange/extradata");
+      if (peer_group < remaining_node && rank_group < remaining_node)
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)upper_block_data * (ptrdiff_t)rcount * rext;
+        tmprecv = tmprecv_buff + (ptrdiff_t)(sub_group_size + peer_group) * (ptrdiff_t)rcount * rext;
+        if (peer_group < rank)
+        {
+          upper_block_data = sub_group_size + peer_group;
+        }
+
+        PICO_TAG_BEGIN("exchange/extradata/send_recv");
+        err = MPI_Sendrecv(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, rank_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0,
+                           tmprecv, (ptrdiff_t)remining_data_to_share(remaining_node, peer_group, distance) * (ptrdiff_t)rcount, rdtype,
+                           peer, 0, comm, MPI_STATUS_IGNORE);
+        PICO_TAG_END("exchange/extradata/send_recv");
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+      // send extra data
+      else if (rank_group < remaining_node)
+      {
+        tmpsend = tmprecv_buff + (ptrdiff_t)upper_block_data * (ptrdiff_t)rcount * rext;
+        err = MPI_Send(tmpsend, (ptrdiff_t)remining_data_to_share(remaining_node, rank_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0, comm);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+      // recive extra data
+      else if (peer_group < remaining_node)
+      {
+        tmprecv = tmprecv_buff + (ptrdiff_t)(sub_group_size + peer_group) * (ptrdiff_t)rcount * rext;
+        if (peer_group < rank)
+        {
+          upper_block_data = sub_group_size + peer_group;
+        }
+
+        err = MPI_Recv(tmprecv, (ptrdiff_t)remining_data_to_share(remaining_node, peer_group, distance) * (ptrdiff_t)rcount, rdtype, peer, 0, comm, MPI_STATUS_IGNORE);
+        if (MPI_SUCCESS != err)
+        {
+          line = __LINE__;
+          goto err_hndl;
+        }
+      }
+      PICO_TAG_END("exchange/extradata");
+    }
+  }
+  PICO_TAG_END("exchange");
+
+  // return value to excluded rank
+  PICO_TAG_BEGIN("send_to_excluded_rank");
+  if (rank >= sub_group_size)
+  {
+    peer = rank - sub_group_size;
+
+    // first blok
+    err = MPI_Recv(tmprecv_buff, (ptrdiff_t)rank * rcount, sdtype, peer, 0, comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+
+    // second block edge case for the last rank
+    if (size - (rank + 1) > 0)
+    {
+      tmprecv = tmprecv_buff + (ptrdiff_t)(rank + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Recv(tmprecv, (ptrdiff_t)(size - (rank + 1)) * rcount, sdtype, peer, 0, comm, MPI_STATUS_IGNORE);
+
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  else if (rank < remaining_node)
+  {
+    peer = rank + sub_group_size;
+    // first block
+    err = MPI_Send(tmprecv_buff, (ptrdiff_t)peer * rcount, sdtype, peer, 0, comm);
+    if (MPI_SUCCESS != err)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
+
+    // second block edge case for the last rank
+    if (size - (peer + 1) > 0)
+    {
+      tmpsend = tmprecv_buff + (ptrdiff_t)(peer + 1) * (ptrdiff_t)rcount * rext;
+      err = MPI_Send(tmpsend, (ptrdiff_t)(size - (peer + 1)) * rcount, sdtype, peer, 0, comm);
+
+      if (MPI_SUCCESS != err)
+      {
+        line = __LINE__;
+        goto err_hndl;
+      }
+    }
+  }
+  PICO_TAG_END("send_to_excluded_rank");
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMemcpy(rbuf, tmprecv_buff, size * rcount * rext, cudaMemcpyHostToDevice));
+#endif
+
+  return MPI_SUCCESS;
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line; // silence compiler warning
+  return err;
+}
 
 int allgather_recursivedoubling(const void *sbuf, size_t scount, MPI_Datatype sdtype,
                                  void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
@@ -417,6 +1311,8 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
   char *tmpsend = NULL, *tmprecv = NULL;
   MPI_Request *requests = NULL;
 
+  PICO_TAG_BEGIN("setup");
+
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -429,14 +1325,16 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
   err = MPI_Type_get_extent (rdtype, &rlb, &rext);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
 
+  PICO_TAG_BEGIN("setup/buffer_copy");
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
 
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
-
+  PICO_TAG_END("setup/buffer_copy");
+  PICO_TAG_BEGIN("setup/bitmap_setup");
   s_bitmap = (int *) malloc(size * sizeof(int));
   r_bitmap = (int *) malloc(size * sizeof(int));
   requests = (MPI_Request *) malloc(size * sizeof(MPI_Request));
@@ -445,16 +1343,23 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
   }
+  PICO_TAG_END("setup/bitmap_setup");
+
+  PICO_TAG_END("setup");
+  PICO_TAG_BEGIN("comunication");
 
   for(int step = steps - 1; step >= 0; step--) {
     int num_reqs = 0;
     remote = pi(rank, step, size);
 
+    PICO_TAG_BEGIN("comunication/bitmap_set");
     memset(s_bitmap, 0, size * sizeof(int));
     memset(r_bitmap, 0, size * sizeof(int));
     get_indexes(rank, step, steps, size, r_bitmap);
     get_indexes(remote, step, steps, size, s_bitmap);
+    PICO_TAG_END("comunication/bitmap_set");
 
+    PICO_TAG_BEGIN("comunication/block_exchange");
     for(int block = 0; block < size; block++){
       if(s_bitmap[block] != 0){
         tmpsend = (char*)rbuf + (ptrdiff_t)block * (ptrdiff_t)rcount * rext;
@@ -469,11 +1374,14 @@ int allgather_bine_block_by_block(const void *sbuf, size_t scount, MPI_Datatype 
         num_reqs++;
       }
     }
-
+    PICO_TAG_END("comunication/block_exchange");
+    PICO_TAG_BEGIN("comunication/wait_requests");
     err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("comunication/wait_requests");
   }
 
+  PICO_TAG_END("comunication");
 
   free(s_bitmap);
   free(r_bitmap);
@@ -501,7 +1409,8 @@ int allgather_bine_block_by_block_any_even(const void *sendbuf, size_t sendcount
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(recvtype, &dtsize);
   MPI_Request *requests = NULL;
-  memcpy((char*) recvbuf + sendcount * rank * dtsize, sendbuf, sendcount * dtsize);
+  COPY_BUFF_DIFF_DT(sendbuf, sendcount, recvtype, (char*) recvbuf + sendcount * rank * dtsize, recvcount, recvtype);
+  //memcpy((char*) recvbuf + sendcount * rank * dtsize, sendbuf, sendcount * dtsize);
 
   int inverse_mask = 0x1 << (int) (log_2(size) - 1);
   int step = 0;
@@ -568,10 +1477,11 @@ int allgather_bine_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdty
                            void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, rank, size, steps, err = MPI_SUCCESS;
-  int vrank, remote, vremote, sendblocklocation, distance;
+  int vrank, remote, vremote, send_block_location, distance;
   ptrdiff_t rlb, rext;
   char *tmpsend = NULL, *tmprecv = NULL;
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -604,37 +1514,42 @@ int allgather_bine_send_remap(const void *sbuf, size_t scount, MPI_Datatype sdty
     tmpsend = (char*) sbuf;
     tmprecv = (char*) rbuf + (ptrdiff_t)vrank * (ptrdiff_t)rcount * rext;
 
-    err = copy_buffer_different_dt(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
+  PICO_TAG_END("setup");
+  PICO_TAG_BEGIN("comunication");
 
   /* Communication step:
      At every step i, rank r:
      - exchanges message with rank remote = (r ^ 2^i).
   */
   distance = 0x1;
-  sendblocklocation = vrank;
+  send_block_location = vrank;
   for(int step = steps - 1; step >= 0; step--) {
     size_t step_scount = rcount * distance;
     remote = pi(rank, step, size);
     vremote = (int) remap_rank((uint32_t) size, (uint32_t) remote);
 
     if(vrank < vremote){
-      tmpsend = (char*)rbuf + (ptrdiff_t)sendblocklocation * (ptrdiff_t)rcount * rext;
-      tmprecv = (char*)rbuf + (ptrdiff_t)(sendblocklocation + distance) * (ptrdiff_t)rcount * rext;
+      tmpsend = (char*)rbuf + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)rbuf + (ptrdiff_t)(send_block_location + distance) * (ptrdiff_t)rcount * rext;
     } else {
-      tmpsend = (char*)rbuf + (ptrdiff_t)sendblocklocation * (ptrdiff_t)rcount * rext;
-      tmprecv = (char*)rbuf + (ptrdiff_t)(sendblocklocation - distance) * (ptrdiff_t)rcount * rext;
-      sendblocklocation -= distance;
+      tmpsend = (char*)rbuf + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)rbuf + (ptrdiff_t)(send_block_location - distance) * (ptrdiff_t)rcount * rext;
+      send_block_location -= distance;
     }
 
+    PICO_TAG_BEGIN("comunication/send_reciv");
     /* Sendreceive */
     err = MPI_Sendrecv(tmpsend, step_scount, rdtype, remote, 0, 
                        tmprecv, step_scount, rdtype, remote, 0,
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("comunication/send_reciv");
     distance <<=1;
   } 
+  PICO_TAG_END("comunication");
 
   return MPI_SUCCESS;
 
@@ -654,6 +1569,7 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
   ptrdiff_t rlb, rext;
   char *tmpsend = NULL, *tmprecv = NULL;
 
+  PICO_TAG_BEGIN("setup");
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
@@ -680,8 +1596,9 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
     err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
   }
+  PICO_TAG_END("setup");
 
-
+  PICO_TAG_BEGIN("comunication");
   /* Communication step.
    *  At every step i, rank r:
    *  - communication peer is calculated by pi(rank, step, size)
@@ -714,6 +1631,7 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
     extra_send = (send_index + mask > size) ? ((send_index + mask) - size) : 0;
     send_count = mask - extra_send;
 
+    PICO_TAG_BEGIN("comunication/extra_comm");
     // warparound communication
     if (extra_recv != 0){
       tmprecv = (char*)rbuf;
@@ -725,23 +1643,29 @@ int allgather_bine_2_blocks(const void *sbuf, size_t scount, MPI_Datatype sdtype
       err = MPI_Send(tmpsend, extra_send * rcount, rdtype, remote, extra_tag, comm);
       if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     }
+    PICO_TAG_END("comunication/extra_comm");
 
     // Simple case: no wrap-around
     tmpsend = (char*)rbuf + (ptrdiff_t)send_index * (ptrdiff_t)rcount * rext;
     tmprecv = (char*)rbuf + (ptrdiff_t)recv_index * (ptrdiff_t)rcount * rext;
 
+    PICO_TAG_BEGIN("comunication/send_reciv");
     err = MPI_Sendrecv(tmpsend, send_count * rcount, rdtype, remote, 0, 
                        tmprecv, recv_count * rcount, rdtype, remote, 0,
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("comunication/send_reciv");
     
+    PICO_TAG_BEGIN("comunication/wait_extra_req");
     if (extra_recv != 0) {
       err = MPI_Wait(&req, MPI_STATUS_IGNORE);
       if (MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     }
+    PICO_TAG_END("comunication/wait_extra_req");
 
     mask <<= 1;
   }
+  PICO_TAG_END("comunication");
 
   return MPI_SUCCESS;
 
@@ -865,6 +1789,349 @@ int allgather_bine_2_blocks_dtype(const void *sbuf, size_t scount, MPI_Datatype 
 
     mask <<= 1;
   }
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
+  (void)line;  // silence compiler warning
+  return err;
+}
+
+int allgather_bine_permutation(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote, data_exchange;
+  int *permutation = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmprecv = NULL;;
+
+  PICO_TAG_BEGIN("setup");
+
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  steps = log_2(size);
+  if(!is_power_of_two(size) || steps < 1) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  if(MPI_IN_PLACE != sbuf) {
+    err = COPY_BUFF_DIFF_DT(sbuf, scount, sdtype, rbuf, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+
+  permutation = (int *) malloc(size * sizeof(int));
+  if(permutation == NULL){
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  memset(permutation, -1, size * sizeof(int));
+  *(permutation + rank) = 0;
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("comunication");
+  data_exchange = 1;
+  for(int step = steps - 1; step >= 0; step--) {
+    remote = pi(rank, step, size);
+
+    PICO_TAG_BEGIN("comunication/permutation_calc");
+    get_permutation(rank, step, steps, size, permutation, data_exchange);
+    PICO_TAG_END("comunication/permutation_calc");
+
+    tmprecv = (char*) rbuf + (ptrdiff_t)data_exchange * (ptrdiff_t)rcount * rext;
+
+    PICO_TAG_BEGIN("comunication/send_reciv");
+    err = MPI_Sendrecv(rbuf, data_exchange * rcount, rdtype, remote, 0, tmprecv, data_exchange * rcount, rdtype, remote, 0, comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("comunication/send_reciv");
+    data_exchange <<= 1;
+  }
+  PICO_TAG_END("comunication");
+
+  PICO_TAG_BEGIN("reorder_block");
+  err = reorder_blocks_gpu(rbuf, rcount, rdtype, permutation, size);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("reorder_block");
+
+  if(permutation != NULL) 
+    free(permutation);
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line;  // silence compiler warning
+  if(permutation != NULL) free(permutation);
+  return err;
+}
+
+int allgather_bine_block_by_block_hierarcic_global_local(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm){
+  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+  int node_size, node_rank, node_offset, local_rank;
+  int num_reqs;
+  int *s_bitmap = NULL, *r_bitmap = NULL;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+  MPI_Request *requests = NULL;
+  int task_on_node = pico_task_on_node();
+
+  PICO_TAG_BEGIN("setup");
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || (steps < 1 && node_size > 1)) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+  PICO_TAG_BEGIN("setup/buffer_copy");
+  if(MPI_IN_PLACE != sbuf) {
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) rbuf + (ptrdiff_t)rank * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+  PICO_TAG_END("setup/buffer_copy");
+  PICO_TAG_BEGIN("setup/bitmap_setup");
+  s_bitmap = (int *) malloc(node_size * sizeof(int));
+  r_bitmap = (int *) malloc(node_size * sizeof(int));
+  requests = (MPI_Request *) malloc(size * 2 * sizeof(MPI_Request));
+  if(s_bitmap == NULL || r_bitmap == NULL || requests == NULL){
+    line = __LINE__;
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+  PICO_TAG_END("setup/bitmap_setup");
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("global_comm");
+  for(int step = steps - 1; step >= 0; step--) {
+    num_reqs = 0;
+    remote = pi(node_rank, step, node_size);
+
+    PICO_TAG_BEGIN("global_comm/bitmap_set");
+    memset(s_bitmap, 0, node_size * sizeof(int));
+    memset(r_bitmap, 0, node_size * sizeof(int));
+    get_indexes(node_rank, step, steps, node_size, r_bitmap);
+    get_indexes(remote, step, steps, node_size, s_bitmap);
+    PICO_TAG_END("global_comm/bitmap_set");
+
+    remote = remote * task_on_node + local_rank;
+
+    PICO_TAG_BEGIN("global_comm/block_exchange");
+    for(int block = 0; block < node_size; block++){
+      if(s_bitmap[block] != 0){
+        tmpsend = (char*)rbuf + (ptrdiff_t)(block * task_on_node + local_rank) * (ptrdiff_t)rcount * rext;
+        err = MPI_Isend(tmpsend, rcount, rdtype, remote, block, comm, requests + num_reqs);
+        if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+        num_reqs++;
+      }
+      if(r_bitmap[block] != 0){
+        tmprecv = (char*)rbuf + (ptrdiff_t)(block * task_on_node + local_rank) * (ptrdiff_t)rcount * rext;
+        err = MPI_Irecv(tmprecv, rcount, rdtype, remote, block, comm, requests + num_reqs);
+        if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+        num_reqs++;
+      }
+    }
+    PICO_TAG_END("global_comm/block_exchange");
+
+    PICO_TAG_BEGIN("global_comm/req_wait");
+    err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("global_comm/req_wait");
+  }
+  PICO_TAG_END("global_comm");
+
+  // local exchange
+  PICO_TAG_BEGIN("local_comm");
+  num_reqs = 0;
+  for (int i = 0; i < task_on_node; i++)
+  {
+    if (i == local_rank)
+      continue;
+
+    for (int j = 0; j < node_size; j++)
+    {
+      tmpsend = (char*) rbuf + (ptrdiff_t)(j * task_on_node + local_rank) * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*) rbuf + (ptrdiff_t)(j * task_on_node + i) * rcount * rext;
+
+      err = MPI_Isend(tmpsend, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+      num_reqs++;
+      err = MPI_Irecv(tmprecv, rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+      if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+      num_reqs++;
+    }
+  }
+  PICO_TAG_BEGIN("local_comm/local_req_wait");
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_comm/local_req_wait");
+  PICO_TAG_END("local_comm");
+
+  free(s_bitmap);
+  free(r_bitmap);
+  free(requests);
+
+  return MPI_SUCCESS;
+
+err_hndl:
+  BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
+  (void)line;  // silence compiler warning
+  if(requests != NULL) free(requests);
+  if(s_bitmap != NULL) free(s_bitmap);
+  if(r_bitmap != NULL) free(r_bitmap);
+  return err;
+}
+
+int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+{
+  int line = -1, rank, size, steps, err = MPI_SUCCESS;
+  int vrank, remote, vremote, send_block_location, distance;
+  int node_size, node_rank, node_offset, local_rank;
+  ptrdiff_t rlb, rext;
+  char *tmpsend = NULL, *tmprecv = NULL;
+  void *perm_buff = NULL, *global_temp = NULL;
+  int task_on_node = pico_task_on_node();
+  MPI_Request requests[task_on_node * 2];
+
+  PICO_TAG_BEGIN("setup");
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+
+  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+
+  /*
+   * Current implementation only handles power-of-two number of processes.
+   */
+  steps = log_2(node_size);
+  if(!is_power_of_two(size) || (steps < 1 && node_size > 1)) {
+    BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  err = MPI_Type_get_extent (rdtype, &rlb, &rext);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&perm_buff, size * rcount * rext));
+#else
+  perm_buff = malloc(size * rcount * rext);
+#endif
+  if (perm_buff == NULL) { line = __LINE__; goto err_hndl; }
+
+  /* Initialization step:
+   * - if I gather the result for another rank, I send my buffer to that rank
+   *   and I receive the data from the rank at the inverse permutation
+   * - if I gather the result for myself, I copy the data from the send buffer
+   */
+  PICO_TAG_BEGIN("setup/data_exchange");
+  vrank = (int) remap_rank((uint32_t) node_size, (uint32_t) node_rank);
+  int node_to_rank = vrank * task_on_node + local_rank;
+  if(vrank != node_rank) {
+    tmprecv = (char*) perm_buff + (ptrdiff_t)(local_rank * node_size + vrank) * (ptrdiff_t)rcount * rext;
+    err = MPI_Sendrecv(sbuf, scount, sdtype, get_sender_rec(node_size, node_rank) * task_on_node + local_rank, 0,
+                       tmprecv, rcount, rdtype, node_to_rank, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  }
+  else{
+    tmpsend = (char*) sbuf;
+    tmprecv = (char*) perm_buff + (ptrdiff_t)(local_rank * node_size + vrank) * (ptrdiff_t)rcount * rext;
+
+    err = COPY_BUFF_DIFF_DT(tmpsend, scount, sdtype, tmprecv, rcount, rdtype);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl;  }
+  }
+  PICO_TAG_END("setup/data_exchange");
+  PICO_TAG_END("setup");
+
+  /* Communication step:
+     At every step i, rank r:
+     - exchanges message with rank remote = (r ^ 2^i).
+  */
+  PICO_TAG_BEGIN("gloabbal_comm");
+  distance = 0x1;
+  send_block_location = vrank;
+  global_temp = (char*)perm_buff + (ptrdiff_t)local_rank * (ptrdiff_t)node_size * (ptrdiff_t)rcount * rext;
+  for(int step = steps - 1; step >= 0; step--) {
+    size_t step_scount = rcount * distance;
+    remote = pi(node_rank, step, node_size);
+    vremote = (int) remap_rank((uint32_t) node_size, (uint32_t) remote);
+    node_to_rank = remote * task_on_node + local_rank;
+
+    if(vrank < vremote){
+      tmpsend = (char*)global_temp + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)global_temp + (ptrdiff_t)(send_block_location + distance) * (ptrdiff_t)rcount * rext;
+    } else {
+      tmpsend = (char*)global_temp + (ptrdiff_t)send_block_location * (ptrdiff_t)rcount * rext;
+      tmprecv = (char*)global_temp + (ptrdiff_t)(send_block_location - distance) * (ptrdiff_t)rcount * rext;
+      send_block_location -= distance;
+    }
+
+    PICO_TAG_BEGIN("gloabbal_comm/sendrecv");
+    /* Sendreceive */
+    err = MPI_Sendrecv(tmpsend, step_scount, rdtype, node_to_rank, 0, 
+                       tmprecv, step_scount, rdtype, node_to_rank, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    PICO_TAG_END("gloabbal_comm/sendrecv");
+    distance <<=1;
+  } 
+  PICO_TAG_END("gloabbal_comm");
+
+  PICO_TAG_BEGIN("local_exchange");
+  // local exchange
+  int num_reqs = 0;
+  tmpsend = global_temp;
+  for (int i = 0; i < task_on_node; i++)
+  {
+    if (i == local_rank)
+      continue;
+      
+    tmprecv = (char*)perm_buff + (ptrdiff_t)i * node_size * rcount * rext;
+
+    err = MPI_Isend(tmpsend, node_size * rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+    err = MPI_Irecv(tmprecv, node_size * rcount, rdtype, node_offset + i, 0, comm, &requests[num_reqs]);
+    if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+    num_reqs++;
+  }
+  PICO_TAG_BEGIN("local_exchange/request_wait");
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  PICO_TAG_END("local_exchange/request_wait");
+
+  PICO_TAG_BEGIN("local_exchange/reorder");
+#ifdef PICO_MPI_CUDA_AWARE
+  reorder_kernel_wrapper(perm_buff, rbuf, rcount, size, task_on_node, rdtype);
+  BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+  for(int i = 0; i < size; i++) {
+    int elem_local_rank = i / node_size;
+    int elem_node_rank = i % node_size;
+    COPY_BUFF_DIFF_DT(perm_buff + i * rcount * rext, rcount, rdtype, 
+      rbuf + ((elem_node_rank * task_on_node + elem_local_rank) * rcount) * rext, rcount, rdtype);
+  }
+#endif
+  PICO_TAG_END("local_exchange/reorder");
+
+  PICO_TAG_END("local_exchange");
 
   return MPI_SUCCESS;
 

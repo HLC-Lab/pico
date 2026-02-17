@@ -11,6 +11,471 @@
 #include "libpico.h"
 #include "libpico_utils.h"
 
+#ifdef PICO_MPI_CUDA_AWARE
+#include "support_kernel.h"
+#endif
+
+int reduce_scatter_recursive_doubling_hierarchical_local_parallel(const void *sbuf, void *rbuf, const int rcounts[],
+                                                      MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
+{
+  int i, rank, size, err = MPI_SUCCESS;
+  ptrdiff_t extent, true_extent, lb, recv_buffer_size, result_buffer_size, gap = 0;
+  char *recv_tmp_buff, *result_tmp_buff;
+  char *recv_buff_head, *result_buff_head;
+  int data_sub_group, local_inverse, local_rank;
+  int node_rank, node_size, peer_node;
+  int peer, dist_mask, rem_data;
+  int send_index = 0, recv_index = 0;
+  int task_on_node = pico_task_on_node();
+  size_t send_size, recv_size;
+  ptrdiff_t *disps = NULL;
+  MPI_Request send_req[task_on_node];
+  MPI_Request recv_req[task_on_node];
+  int req_index, node_offset;
+
+  err = MPI_Comm_size(comm, &size);
+  err = MPI_Comm_rank(comm, &rank);
+
+  PICO_TAG_BEGIN("support_data");
+  /* get datatype information */
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+
+  // calculate memory needed for the buffer
+  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+  local_inverse = inverse_rank(task_on_node, local_rank);
+
+  data_sub_group = 0;
+  for (i = 0; i < node_size; i++)
+  {
+    data_sub_group += rcounts[local_inverse * node_size + i];
+  }
+
+  /* determinate data displacment  */
+  disps = calloc(size, sizeof(ptrdiff_t));
+  if (disps == NULL)
+    return MPI_ERR_NO_MEM;
+
+  disps[0] = 0;
+  for (i = 0; i < (size - 1); i++)
+  {
+    disps[i + 1] = disps[i] + rcounts[i];
+  }
+
+  /* short cut the trivial case */
+  if (0 == disps[size - 1] + rcounts[size - 1])
+  {
+    free(disps);
+    return MPI_SUCCESS;
+  }
+
+  result_buffer_size = true_extent + extent * data_sub_group;
+  recv_buffer_size = true_extent + extent * data_sub_group * (task_on_node - 1);
+
+  if (MPI_IN_PLACE == sbuf)
+  {
+    sbuf = rbuf;
+  }
+  PICO_TAG_END("support_data");
+  PICO_TAG_BEGIN("buffer_allocation");
+  /* allocate temporar buffer */
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_tmp_buff, recv_buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&result_tmp_buff, result_buffer_size));
+#else
+  recv_tmp_buff = (char *)malloc(recv_buffer_size);
+  result_tmp_buff = (char *)malloc(result_buffer_size);
+
+  if (recv_tmp_buff == NULL || result_tmp_buff == NULL)
+  {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup;
+  }
+
+#endif
+  PICO_TAG_END("buffer_allocation");
+  PICO_TAG_BEGIN("local_com");
+
+  recv_buff_head = recv_tmp_buff - gap;
+  result_buff_head = result_tmp_buff - gap;
+
+  /* recursive doubling local */
+  recv_size = send_size = data_sub_group;
+
+  err = COPY_BUFF_DIFF_DT(sbuf + disps[local_inverse * node_size] * extent, recv_size, dtype, result_buff_head, recv_size, dtype);
+  if (err != MPI_SUCCESS)
+    goto cleanup;
+
+  req_index = 0;
+  recv_index = 0;
+  for (i = 0; i < task_on_node; i++)
+  {
+    peer = node_offset + i;
+    if (peer == rank)
+      continue;
+
+    local_inverse = inverse_rank(task_on_node, i);
+
+    err = MPI_Isend(sbuf + disps[local_inverse * node_size] * extent, send_size, dtype, peer, 0, comm, &send_req[req_index]);
+    if (err != MPI_SUCCESS)
+      goto cleanup;
+
+    err = MPI_Irecv(recv_buff_head + recv_index * extent, recv_size, dtype, peer, 0, comm, &recv_req[req_index]);
+    if (err != MPI_SUCCESS)
+      goto cleanup;
+
+    req_index++;
+    recv_index += recv_size;
+  }
+
+  err = MPI_Waitall(req_index, recv_req, MPI_STATUSES_IGNORE);
+  if (err != MPI_SUCCESS)
+    goto cleanup;
+  PICO_TAG_END("local_com");
+  PICO_TAG_BEGIN("local_com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+  err = reduce_wrapper_grops(recv_buff_head, result_buff_head, recv_size, task_on_node - 1, dtype, op);
+  if (err != MPI_SUCCESS)
+    goto cleanup;
+  cudaDeviceSynchronize();
+#else
+  for (i = 0; i < task_on_node - 1; i++)
+  {
+    err = MPI_Reduce_local(recv_buff_head + i * recv_size * extent, result_buff_head, recv_size, dtype, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto cleanup;
+    }
+  }
+#endif
+  PICO_TAG_END("local_com/kernel");
+  err = MPI_Waitall(req_index, send_req, MPI_STATUSES_IGNORE);
+  if (err != MPI_SUCCESS)
+    goto cleanup;
+  PICO_TAG_BEGIN("global_com");
+  /* recursive doubling global */
+  int g_send_index, g_recv_index, g_last_index;
+  send_index = recv_index = 0;
+  rem_data = node_size >> 1;
+  g_send_index = g_recv_index = local_inverse * node_size;
+  g_last_index = g_recv_index + node_size;
+
+  for (dist_mask = 0x1; dist_mask < node_size; dist_mask <<= 1)
+  {
+    peer_node = node_rank ^ dist_mask;
+    peer = (peer_node * task_on_node) + local_rank;
+
+    send_size = recv_size = 0;
+
+    if (node_rank < peer_node)
+    {
+      g_send_index = g_recv_index + rem_data;
+      for (i = g_send_index; i < g_last_index; ++i)
+      {
+        send_size += rcounts[i];
+      }
+      for (i = g_recv_index; i < g_send_index; ++i)
+      {
+        recv_size += rcounts[i];
+      }
+      send_index = recv_index + recv_size;
+    }
+    else
+    {
+      g_recv_index = g_send_index + rem_data;
+      for (i = g_send_index; i < g_recv_index; ++i)
+      {
+        send_size += rcounts[i];
+      }
+      for (i = g_recv_index; i < g_last_index; ++i)
+      {
+        recv_size += rcounts[i];
+      }
+      recv_index = send_index + send_size;
+    }
+
+    if (recv_size > 0)
+    {
+      err = MPI_Irecv(recv_buff_head, recv_size, dtype, peer, 0, comm, &recv_req[0]);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+    }
+    if (send_size > 0)
+    {
+      err = MPI_Send(result_buff_head + send_index * extent, send_size, dtype, peer, 0, comm);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+    }
+
+    if (recv_size > 0)
+    {
+      err = MPI_Wait(&recv_req[0], MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        goto cleanup;
+      }
+
+      PICO_TAG_BEGIN("global-kernel");
+      // todo: make gpu compatible
+#ifdef PICO_MPI_CUDA_AWARE
+      err = reduce_wrapper(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+      cudaDeviceSynchronize();
+#else
+      MPI_Reduce_local(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
+#endif
+      PICO_TAG_END("global-kernel");
+    }
+
+    send_index = recv_index;
+    g_send_index = g_recv_index;
+    g_last_index = g_recv_index + rem_data;
+    rem_data >>= 1;
+  }
+  PICO_TAG_END("global_com");
+
+  PICO_TAG_BEGIN("reorder_data");
+  int inverse = inverse_rank(size, rank);
+  if (rank != inverse)
+  {
+    /* send result to correct rank's recv buffer */
+    err = MPI_Sendrecv(result_buff_head + recv_index * extent, rcounts[inverse], dtype, inverse, 0,
+                       rbuf, rcounts[rank], dtype, inverse, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err)
+    {
+      goto cleanup;
+    }
+  }
+  else
+  {
+    /* copy local results from results buffer into real receive buffer */
+    err = COPY_BUFF_DIFF_DT(result_buff_head + recv_index * extent, rcounts[rank],
+                            dtype, rbuf, rcounts[rank], dtype);
+    if (MPI_SUCCESS != err)
+    {
+      goto cleanup;
+    }
+  }
+  PICO_TAG_END("reorder_data");
+
+cleanup:
+  if (NULL != disps)
+    free(disps);
+#ifdef PICO_MPI_CUDA_AWARE
+  if (NULL != recv_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(recv_tmp_buff));
+  if (NULL != result_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(result_tmp_buff));
+#else
+  if (NULL != recv_tmp_buff)
+    free(recv_tmp_buff);
+  if (NULL != result_tmp_buff)
+    free(result_tmp_buff);
+#endif
+  return err;
+}
+
+int reduce_scatter_recursive_doubling_gpu(const void *sbuf, void *rbuf, const int rcounts[],
+                                          MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
+{
+  int i, rank, size, err = MPI_SUCCESS;
+  size_t dcount;
+  ptrdiff_t extent, true_extent, lb, buffer_size, gap = 0;
+  ptrdiff_t *disps = NULL;
+  char *recv_tmp_buff, *result_tmp_buff;
+  char *recv_buff_head, *result_buff_head;
+
+  err = MPI_Comm_size(comm, &size);
+  err = MPI_Comm_rank(comm, &rank);
+
+  PICO_TAG_BEGIN("setup");
+  /* determinate data displacment  */
+  PICO_TAG_BEGIN("setup/disps_alloc");
+  disps = calloc(size, sizeof(ptrdiff_t));
+  if (disps == NULL)
+    return MPI_ERR_NO_MEM;
+  PICO_TAG_END("setup/disps_alloc");
+
+  disps[0] = 0;
+  for (i = 0; i < (size - 1); i++)
+  {
+    disps[i + 1] = disps[i] + rcounts[i];
+  }
+  dcount = disps[size - 1] + rcounts[size - 1];
+
+  /* short cut the trivial case */
+  if (0 == dcount)
+  {
+    free(disps);
+    return MPI_SUCCESS;
+  }
+
+  /* get datatype information */
+  MPI_Type_get_extent(dtype, &lb, &extent);
+  MPI_Type_get_true_extent(dtype, &gap, &true_extent);
+
+  // calculate memory needed for the buffer
+  buffer_size = true_extent + extent * (dcount - 1);
+
+  if (MPI_IN_PLACE == sbuf)
+  {
+    sbuf = rbuf;
+  }
+
+  /* allocate temporar buffer */
+  PICO_TAG_BEGIN("setup/alloc_temp");
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&recv_tmp_buff, buffer_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&result_tmp_buff, buffer_size));
+#else
+  recv_tmp_buff = (char *)malloc(buffer_size);
+  result_tmp_buff = (char *)malloc(buffer_size);
+
+  if (recv_tmp_buff == NULL || result_tmp_buff == NULL)
+  {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup;
+  }
+#endif
+  PICO_TAG_END("setup/alloc_temp");
+
+  recv_buff_head = recv_tmp_buff - gap;
+  result_buff_head = result_tmp_buff - gap;
+
+  PICO_TAG_BEGIN("setup/send_to_temp");
+  err = COPY_BUFF_DIFF_DT(sbuf, dcount, dtype, result_buff_head, dcount, dtype);
+  if (err != MPI_SUCCESS)
+    goto cleanup;
+  PICO_TAG_END("setup/send_to_temp");
+  PICO_TAG_END("setup");
+
+  /* recursive doubling */
+  PICO_TAG_BEGIN("com");
+  int rem_data = size >> 1;
+  int dist_mask, last_index = size, peer;
+  int send_index = 0, recv_index = 0;
+  size_t send_size, recv_size;
+  MPI_Request req;
+  for (dist_mask = 0x1; dist_mask < size; dist_mask <<= 1)
+  {
+    peer = rank ^ dist_mask;
+
+    send_size = recv_size = 0;
+
+    if (rank < peer)
+    {
+      send_index = recv_index + rem_data;
+      for (i = send_index; i < last_index; ++i)
+      {
+        send_size += rcounts[i];
+      }
+      for (i = recv_index; i < send_index; ++i)
+      {
+        recv_size += rcounts[i];
+      }
+    }
+    else
+    {
+      recv_index = send_index + rem_data;
+      for (i = send_index; i < recv_index; ++i)
+      {
+        send_size += rcounts[i];
+      }
+      for (i = recv_index; i < last_index; ++i)
+      {
+        recv_size += rcounts[i];
+      }
+    }
+
+    PICO_TAG_BEGIN("com/exchange");
+    if (recv_size > 0)
+    {
+      err = MPI_Irecv(recv_buff_head + disps[recv_index] * extent, recv_size, dtype, peer, 0, comm, &req);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+    }
+    if (send_size > 0)
+    {
+      err = MPI_Send(result_buff_head + disps[send_index] * extent, send_size, dtype, peer, 0, comm);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+    }
+    PICO_TAG_END("com/exchange");
+
+    if (recv_size > 0)
+    {
+      PICO_TAG_BEGIN("com/wait_recv");
+      err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        goto cleanup;
+      }
+      PICO_TAG_END("com/wait_recv");
+
+      // todo: make gpu compatible
+      PICO_TAG_BEGIN("com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+      err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
+      if (err != MPI_SUCCESS)
+        goto cleanup;
+      BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+      MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
+#endif
+      PICO_TAG_END("com/kernel");
+    }
+
+    send_index = recv_index;
+    last_index = recv_index + rem_data;
+    rem_data >>= 1;
+  }
+  PICO_TAG_END("com");
+
+  PICO_TAG_BEGIN("reorder_data");
+  int inverse = inverse_rank(size, rank);
+  if (rank != inverse)
+  {
+    /* send result to correct rank's recv buffer */
+    err = MPI_Sendrecv(result_buff_head + disps[inverse] * extent, rcounts[inverse], dtype, inverse, 0,
+                       rbuf, rcounts[rank], dtype, inverse, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if (MPI_SUCCESS != err)
+    {
+      goto cleanup;
+    }
+  }
+  else
+  {
+    /* copy local results from results buffer into real receive buffer */
+    err = COPY_BUFF_DIFF_DT(result_buff_head + disps[rank] * extent, rcounts[rank],
+                            dtype, rbuf, rcounts[rank], dtype);
+    if (MPI_SUCCESS != err)
+    {
+      goto cleanup;
+    }
+  }
+  PICO_TAG_END("reorder_data");
+
+cleanup:
+  if (NULL != disps)
+    free(disps);
+#ifdef PICO_MPI_CUDA_AWARE
+  if (NULL != recv_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(recv_tmp_buff));
+  if (NULL != result_tmp_buff)
+    BINE_CUDA_CHECK(cudaFree(result_tmp_buff));
+#else
+  if (NULL != recv_tmp_buff)
+    free(recv_tmp_buff);
+  if (NULL != result_tmp_buff)
+    free(result_tmp_buff);
+#endif
+  return err;
+}
+
+
 int reduce_scatter_recursivehalving(const void *sbuf, void *rbuf, const int rcounts[],
                                     MPI_Datatype dtype, MPI_Op op, MPI_Comm comm)
 {
@@ -759,45 +1224,311 @@ cleanup_and_return:
   return err;
 }
 
+int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvbuf, const int recvcounts[],
+                                                   MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
+{
+  int size, rank, dtsize, err = MPI_SUCCESS, partner;
+  int node_size, node_rank, node_offset, local_rank;
+  int recv_count, send_count;
+  int task_on_node = pico_task_on_node();
+  MPI_Request send_reqs[task_on_node], recv_reqs[task_on_node];
+  int send_reqc, recv_reqc;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+
+  PICO_TAG_BEGIN("setup");
+  int count = 0;
+  PICO_TAG_BEGIN("setup/alloc_setup_buff");
+  int *displs = (int *)malloc(size * sizeof(int));
+  int *step_to_send = (int *)malloc(size * sizeof(int));
+  PICO_TAG_END("setup/alloc_setup_buff");
+  for (int i = 0; i < size; i++)
+  {
+    displs[i] = count;
+    count += recvcounts[i];
+  }
+
+  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+
+  void *tmpbuf = NULL, *resbuf = NULL;
+  int upper_index, lower_index;
+  size_t buffer_size_unit;
+  lower_index = local_rank * node_size;
+  upper_index = lower_index + (node_size - 1);
+  buffer_size_unit = displs[upper_index] - displs[lower_index] + recvcounts[upper_index];
+  const char *src_location = sendbuf + (ptrdiff_t)displs[lower_index] * (ptrdiff_t)dtsize;
+
+  PICO_TAG_BEGIN("setup/alloc_temp_buf");
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&tmpbuf, buffer_size_unit * (task_on_node - 1) * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&resbuf, buffer_size_unit * dtsize));
+#else
+  tmpbuf = malloc(buffer_size_unit * (task_on_node - 1) * dtsize);
+  resbuf = malloc(buffer_size_unit * dtsize);
+#endif
+  PICO_TAG_END("setup/alloc_temp_buf");
+  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
+  {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+#ifndef PICO_MPI_CUDA_AWARE
+  memcpy(resbuf, src_location, buffer_size_unit * dtsize);
+#endif
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("local_com");
+  send_reqc = recv_reqc = 0;
+  recv_count = buffer_size_unit;
+  for (int i = 0; i < task_on_node; i++)
+  {
+    partner = node_offset + i;
+    if (partner == rank)
+      continue;
+
+    lower_index = i * node_size;
+    upper_index = lower_index + (node_size - 1);
+    send_count = displs[upper_index] - displs[lower_index] + recvcounts[upper_index];
+    if (send_count > 0)
+    {
+      err = MPI_Isend(sendbuf + (ptrdiff_t)displs[lower_index] * (ptrdiff_t)dtsize, send_count, dt, partner, 0, comm, &send_reqs[send_reqc]);
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      send_reqc++;
+    }
+    if (recv_count > 0)
+    {
+      err = MPI_Irecv(tmpbuf + (ptrdiff_t)recv_reqc * (ptrdiff_t)recv_count * (ptrdiff_t)dtsize, recv_count, dt, partner, 0, comm, &recv_reqs[recv_reqc]);
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      recv_reqc++;
+    }
+  }
+  PICO_TAG_BEGIN("local_com/wait_recv");
+  err = MPI_Waitall(recv_reqc, recv_reqs, MPI_STATUSES_IGNORE);
+  PICO_TAG_END("local_com/wait_recv");
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
+
+  PICO_TAG_BEGIN("local_com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+  err = reduce_wrapper_grops_inoutsplit(tmpbuf, resbuf, src_location, recv_count, task_on_node - 1, dt, op);
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
+  BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+  for (int i = 0; i < recv_reqc; i++)
+  {
+    err = MPI_Reduce_local(tmpbuf + (ptrdiff_t)i * (ptrdiff_t)recv_count * (ptrdiff_t)dtsize, resbuf, recv_count, dt, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+  }
+#endif
+  PICO_TAG_END("local_com/kernel");
+  PICO_TAG_END("local_com");
+  /*COPY_BUFF_DIFF_DT(resbuf, recvcounts[rank], dt, recvbuf, recvcounts[rank], dt);
+  return MPI_SUCCESS; */
+
+  PICO_TAG_BEGIN("global_com");
+  // determinate the firs global rank that has been reduced 
+  int res_first_node = local_rank * node_size;
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int)(log_2(node_size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  int remapped_rank = remap_rank(node_size, node_rank);
+  int send_block_first, send_block_last, send_block_first_rem, send_block_last_rem;
+  int recv_block_first = 0, recv_block_last, recv_block_first_rem = 0, recv_block_last_rem;
+  char *reduction_addres = NULL;
+  while (mask < node_size)
+  {
+    if (node_rank % 2 == 0)
+    {
+      partner = mod(node_rank + negabinary_to_binary((mask << 1) - 1), node_size);
+    }
+    else
+    {
+      partner = mod(node_rank - negabinary_to_binary((mask << 1) - 1), node_size);
+    }
+
+    // For sure I need to send my (remapped) partner's data
+    // the actual start block however must be aligned to
+    // the power of two
+    send_block_first = remap_rank(node_size, partner) & block_first_mask;
+    send_block_last = send_block_first + inverse_mask - 1;
+    send_block_first_rem = send_block_first + res_first_node;
+    send_block_last_rem = send_block_last + res_first_node;
+    send_count = displs[send_block_last_rem] - displs[send_block_first_rem] + recvcounts[send_block_last_rem];
+    // Something similar for the block to recv.
+    // I receive my block, but aligned to the power of two
+    recv_block_first = remapped_rank & block_first_mask;
+    recv_block_last = recv_block_first + inverse_mask - 1;
+    recv_block_first_rem = recv_block_first + res_first_node;
+    recv_block_last_rem = recv_block_last + res_first_node;
+    recv_count = displs[recv_block_last_rem] - displs[recv_block_first_rem] + recvcounts[recv_block_last_rem];
+    PICO_TAG_BEGIN("global_com/send_recv");
+    err = MPI_Sendrecv((char *)resbuf + (displs[send_block_first_rem] - displs[res_first_node]) * dtsize, send_count, dt, partner * task_on_node + local_rank, 0,
+                       (char *)tmpbuf, recv_count, dt, partner * task_on_node + local_rank, 0, comm, MPI_STATUS_IGNORE);
+    PICO_TAG_END("global_com/send_recv");
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+    reduction_addres = (char *)resbuf + (displs[recv_block_first_rem] - displs[res_first_node]) * dtsize;
+
+    PICO_TAG_BEGIN("global_com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+    err = reduce_wrapper((char *)tmpbuf, reduction_addres, recv_count, dt, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+    err = MPI_Reduce_local((char *)tmpbuf, reduction_addres, recv_count, dt, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+#endif
+    PICO_TAG_END("global_com/kernel");
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+  }
+  PICO_TAG_END("global_com");
+
+  // Final send
+  // Whom I have been remapped to? I.e., who is going to send me my data? Just do a recv from any
+  PICO_TAG_BEGIN("reorder_data");
+  if (recv_block_first_rem != rank && node_size > 1)
+  {
+    MPI_Status status;
+    PICO_TAG_BEGIN("reorder_data/send_recv");
+    MPI_Sendrecv(reduction_addres, recvcounts[recv_block_first_rem], dt, recv_block_first_rem, 0,
+                 (char *)recvbuf, recvcounts[rank], dt, MPI_ANY_SOURCE, 0, comm, &status);
+    PICO_TAG_END("reorder_data/send_recv");
+  }
+  else
+  {
+    PICO_TAG_BEGIN("reorder_data/copy_data");
+    err = COPY_BUFF_DIFF_DT(reduction_addres, recvcounts[rank], dt, recvbuf, recvcounts[rank], dt);
+    PICO_TAG_END("reorder_data/copy_data");
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+  }
+  PICO_TAG_END("reorder_data");
+
+  err = MPI_Waitall(send_reqc, send_reqs, MPI_STATUSES_IGNORE);
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+  free(tmpbuf);
+  free(resbuf);
+#endif
+  free(displs);
+  free(step_to_send);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != displs)
+    free(displs);
+  if (NULL != step_to_send)
+    free(step_to_send);
+  if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
+    free(tmpbuf);
+#endif
+  if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+    free(resbuf);
+#endif
+  return err;
+}
+
 
 int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int recvcounts[],
-                                    MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
+                                   MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
 
+  PICO_TAG_BEGIN("setup");
   int count = 0;
-  int* displs = (int*) malloc(size*sizeof(int));
-  int* step_to_send = (int*) malloc(size*sizeof(int));
-  for(int i = 0; i < size; i++){
+  PICO_TAG_BEGIN("setup/alloc_support_buff");
+  int *displs = (int *)malloc(size * sizeof(int));
+  int *step_to_send = (int *)malloc(size * sizeof(int));
+  PICO_TAG_END("setup/alloc_support_buff");
+  for (int i = 0; i < size; i++)
+  {
     displs[i] = count;
     count += recvcounts[i];
   }
 
-  void* tmpbuf = malloc(count*dtsize);
-  void* resbuf = malloc(count*dtsize);
-  if(NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf) {
+  void *tmpbuf = NULL, *resbuf = NULL;
+  PICO_TAG_BEGIN("setup/alloc_temp_buff");
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **)&tmpbuf, count * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&resbuf, count * dtsize));
+#else
+  tmpbuf = malloc(count * dtsize);
+  resbuf = malloc(count * dtsize);
+#endif
+  PICO_TAG_END("setup/alloc_temp_buff");
+  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
+  {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
   }
-  memcpy(resbuf, sendbuf, count*dtsize);
+  COPY_BUFF_DIFF_DT(sendbuf, count, dt, resbuf, count, dt);
+  // memcpy(resbuf, sendbuf, count * dtsize);
+  PICO_TAG_END("setup");
 
+  PICO_TAG_BEGIN("com");
   int mask = 0x1;
-  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int inverse_mask = 0x1 << (int)(log_2(size) - 1);
   int block_first_mask = ~(inverse_mask - 1);
   int remapped_rank = remap_rank(size, rank);
-  while(mask < size){
+  while (mask < size)
+  {
     int partner;
-    if(rank % 2 == 0){
-        partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
-    }else{
-        partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    if (rank % 2 == 0)
+    {
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size);
+    }
+    else
+    {
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size);
     }
 
     // For sure I need to send my (remapped) partner's data
-    // the actual start block however must be aligned to 
+    // the actual start block however must be aligned to
     // the power of two
     int send_block_first = remap_rank(size, partner) & block_first_mask;
     int send_block_last = send_block_first + inverse_mask - 1;
@@ -807,39 +1538,500 @@ int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int
     int recv_block_first = remapped_rank & block_first_mask;
     int recv_block_last = recv_block_first + inverse_mask - 1;
     int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
-    err = MPI_Sendrecv((char*) resbuf + displs[send_block_first]*dtsize, send_count, dt, partner, 0,
-                 (char*) tmpbuf + displs[recv_block_first]*dtsize, recv_count, dt, partner, 0, comm, MPI_STATUS_IGNORE);
-    if(MPI_SUCCESS != err) { goto err_hndl; }
-    err = MPI_Reduce_local((char*) tmpbuf + displs[recv_block_first]*dtsize, (char*) resbuf + displs[recv_block_first]*dtsize, recv_count, dt, op);
-    if(MPI_SUCCESS != err) { goto err_hndl; }
+    PICO_TAG_BEGIN("com/send_recv");
+    err = MPI_Sendrecv((char *)resbuf + displs[send_block_first] * dtsize, send_count, dt, partner, 0,
+                       (char *)tmpbuf + displs[recv_block_first] * dtsize, recv_count, dt, partner, 0, comm, MPI_STATUS_IGNORE);
+    PICO_TAG_END("com/send_recv");
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+    PICO_TAG_BEGIN("com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+    reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
+    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+    err = MPI_Reduce_local((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+#endif
+    PICO_TAG_END("com/kernel");
 
     mask <<= 1;
     inverse_mask >>= 1;
     block_first_mask >>= 1;
   }
-  
+  PICO_TAG_END("com");
+
   // Final send
   // Whom I have been remapped to? I.e., who is going to send me my data? Just do a recv from any
+  /*
+  reciv = rmap(local_rank) * gpu_on_node + node_rank
+  */
   MPI_Status status;
-  MPI_Sendrecv((char*) resbuf + displs[remapped_rank]*dtsize, recvcounts[remapped_rank], dt, remapped_rank , 0,
-               (char*) recvbuf                              , recvcounts[rank]         , dt, MPI_ANY_SOURCE, 0, 
+  PICO_TAG_BEGIN("reorder_data");
+  MPI_Sendrecv((char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[remapped_rank], dt, remapped_rank, 0,
+               (char *)recvbuf, recvcounts[rank], dt, MPI_ANY_SOURCE, 0,
                comm, &status);
+  PICO_TAG_END("reorder_data");
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
   free(tmpbuf);
   free(resbuf);
+#endif
   free(displs);
   free(step_to_send);
   return MPI_SUCCESS;
 
 err_hndl:
-  if (NULL != displs) free(displs);
-  if (NULL != step_to_send) free(step_to_send);
-  if (NULL != tmpbuf) free(tmpbuf);
-  if (NULL != resbuf) free(resbuf);
+  if (NULL != displs)
+    free(displs);
+  if (NULL != step_to_send)
+    free(step_to_send);
+  if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
+    free(tmpbuf);
+#endif
+  if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+    free(resbuf);
+#endif
   return err;
 }
 
 int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const int recvcounts[],
+                                      MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
+{
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+  PICO_TAG_BEGIN("setup");
+  int count = 0;
+  PICO_TAG_BEGIN("setup/alloc_suport_buf");
+  int *displs = (int *)malloc(size * sizeof(int));
+  int *step_to_send = (int *)malloc(size * sizeof(int));
+  PICO_TAG_END("setup/alloc_suport_buf");
+  for (int i = 0; i < size; i++)
+  {
+    displs[i] = count;
+    count += recvcounts[i];
+  }
+
+  void *tmpbuf, *resbuf;
+  PICO_TAG_BEGIN("setup/alloc_temp_buff");
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, count * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&resbuf, count * dtsize));
+#else
+  tmpbuf = malloc(count * dtsize);
+  resbuf = malloc(count * dtsize);
+#endif
+  PICO_TAG_END("setup/alloc_temp_buff");
+  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
+  {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  // Permute memcpy
+  for (int i = 0; i < size; i++)
+  {
+    int remapped_rank = remap_rank(size, i);
+    /*if (rank == 0)
+    {
+      printf("pos %d remaped to %d\n", get_sender_rec(size, i), i);
+      fflush(stdout);
+    }*/
+    PICO_TAG_BEGIN("setup/copy_perm_buff");
+    COPY_BUFF_DIFF_DT((char *)sendbuf + displs[i] * dtsize, recvcounts[i], dt, (char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[i], dt);
+    PICO_TAG_END("setup/copy_perm_buff");
+    // memcpy((char *)resbuf + displs[remapped_rank] * dtsize, (char *)sendbuf + displs[i] * dtsize, recvcounts[i] * dtsize);
+  }
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("com");
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int)(log_2(size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  int remapped_rank = remap_rank(size, rank);
+  while (mask < size)
+  {
+    int partner;
+    if (rank % 2 == 0)
+    {
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size);
+    }
+    else
+    {
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size);
+    }
+
+    // For sure I need to send my (remapped) partner's data
+    // the actual start block however must be aligned to
+    // the power of two
+    int send_block_first = remap_rank(size, partner) & block_first_mask;
+    int send_block_last = send_block_first + inverse_mask - 1;
+    int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
+    // Something similar for the block to recv.
+    // I receive my block, but aligned to the power of two
+    int recv_block_first = remapped_rank & block_first_mask;
+    int recv_block_last = recv_block_first + inverse_mask - 1;
+    int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
+
+    PICO_TAG_BEGIN("com/send_recv");
+    err = MPI_Sendrecv((char *)resbuf + displs[send_block_first] * dtsize, send_count, dt, partner, 0,
+                       (char *)tmpbuf + displs[recv_block_first] * dtsize, recv_count, dt, partner, 0, comm, MPI_STATUS_IGNORE);
+    PICO_TAG_END("com/send_recv");
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+    PICO_TAG_BEGIN("com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+    reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
+    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+    err = MPI_Reduce_local((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+#endif
+    PICO_TAG_END("com/kernel");
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+  }
+  PICO_TAG_END("com");
+
+  // Final memcpy
+  PICO_TAG_BEGIN("copy_result");
+  COPY_BUFF_DIFF_DT((char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[rank], dt, recvbuf, recvcounts[rank], dt);
+  PICO_TAG_END("copy_result");
+  // memcpy(recvbuf, (char *)resbuf + displs[remapped_rank] * dtsize, recvcounts[rank] * dtsize);
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+  free(tmpbuf);
+  free(resbuf);
+#endif
+  free(displs);
+  free(step_to_send);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != displs)
+    free(displs);
+  if (NULL != step_to_send)
+    free(step_to_send);
+  if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
+    free(tmpbuf);
+#endif
+  if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+    free(resbuf);
+#endif
+  return err;
+}
+
+int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *recvbuf, const int recvcounts[],
+                                                       MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
+{
+  int size, rank, dtsize, err = MPI_SUCCESS;
+  int local_rank, node_size, node_offset, node_rank, elem;
+  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Type_size(dt, &dtsize);
+  int count = 0;
+  PICO_TAG_BEGIN("setup");
+
+  PICO_TAG_BEGIN("setup/alloc_support_buf");
+  int *displs = (int *)malloc(size * sizeof(int));
+  int *step_to_send = (int *)malloc(size * sizeof(int));
+  PICO_TAG_END("setup/alloc_support_buf");
+
+  int task_on_node = pico_task_on_node();
+  for (int i = 0; i < size; i++)
+  {
+    displs[i] = count;
+    count += recvcounts[i];
+  }
+
+  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+
+  void *tmpbuf, *resbuf;
+  PICO_TAG_BEGIN("setup/alloc_temp_buff");
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, (count / task_on_node * (task_on_node - 1)) * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&resbuf, (count / task_on_node) * dtsize));
+#else
+  tmpbuf = malloc((count / task_on_node * (task_on_node - 1)) * dtsize);
+  resbuf = malloc((count / task_on_node) * dtsize);
+#endif
+  PICO_TAG_END("setup/alloc_temp_buff");
+
+  PICO_TAG_BEGIN("setup/alloc_support_buf");
+  int *inverse_remapping = (int *)malloc(node_size * sizeof(int));  
+  MPI_Request *send_req = (MPI_Request *)malloc(node_size * (task_on_node - 1) * sizeof(MPI_Request));
+  MPI_Request *recv_req = (MPI_Request *)malloc(node_size * (task_on_node - 1) * sizeof(MPI_Request));
+  PICO_TAG_END("setup/alloc_support_buf");
+
+  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping || NULL == send_req || NULL == recv_req)
+  {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  int copy_offset = 0;
+  for (int i = 0; i < node_size; i++)
+  {
+    inverse_remapping[remap_rank(node_size, i)] = i;
+    elem = local_rank + task_on_node * i;
+    COPY_BUFF_DIFF_DT(sendbuf + displs[elem] * dtsize, recvcounts[elem], dt, resbuf + copy_offset * dtsize, recvcounts[elem], dt);
+    copy_offset += recvcounts[elem];
+  }
+
+  int local_reduce_count = copy_offset;
+  // memcpy(resbuf, sendbuf, count * dtsize);
+  PICO_TAG_END("setup");
+
+  PICO_TAG_BEGIN("local_com");
+  int recv_offset = 0;
+  int recv_req_count = 0, send_req_count = 0;
+  for (int i = 0; i < task_on_node; i++)
+  {
+    if (local_rank == i)
+      continue;
+
+    for (int j = 0; j < node_size; j++)
+    {
+      elem = local_rank + j * task_on_node;
+      err = MPI_Irecv(tmpbuf + recv_offset * dtsize, recvcounts[elem], dt,
+                      node_offset + i, 0, comm, &recv_req[recv_req_count]);
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      recv_req_count++;
+      recv_offset += recvcounts[elem];      
+    
+      elem = i + j * task_on_node;
+      err = MPI_Isend(sendbuf + displs[elem] * dtsize, recvcounts[elem], dt, node_offset + i, 0, comm, &send_req[send_req_count]);
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      send_req_count++;
+    }
+  }
+
+  PICO_TAG_BEGIN("local_com/recv_wait");
+  err = MPI_Waitall(recv_req_count, recv_req, MPI_STATUSES_IGNORE);
+  PICO_TAG_END("local_com/recv_wait");
+
+  PICO_TAG_BEGIN("local_com/kernel");
+#ifdef PICO_MPI_CUDA_AWARE
+  err = reduce_wrapper_grops(tmpbuf, resbuf, local_reduce_count, task_on_node - 1, dt, op);
+  if (MPI_SUCCESS != err)
+  {
+    goto err_hndl;
+  }
+  BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#else
+  for (int i = 0; i < task_on_node - 1; i++)
+  {
+    err = MPI_Reduce_local(tmpbuf + (ptrdiff_t)i * (ptrdiff_t)local_reduce_count * (ptrdiff_t)dtsize,
+                           resbuf, local_reduce_count, dt, op);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+  }
+#endif
+  PICO_TAG_END("local_com/kernel");
+
+  PICO_TAG_BEGIN("local_com/send_wait");
+  err = MPI_Waitall(send_req_count, send_req, MPI_STATUSES_IGNORE);
+  PICO_TAG_END("local_com/send_wait");
+  PICO_TAG_END("local_com");
+
+  PICO_TAG_BEGIN("global_com");
+  int mask = 0x1;
+  int inverse_mask = 0x1 << (int)(log_2(node_size) - 1);
+  int block_first_mask = ~(inverse_mask - 1);
+  int remapped_rank = remap_rank(node_size, node_rank);
+  recv_req_count = send_req_count = 0;
+  while (mask < node_size)
+  {
+    int partner;
+    if (node_rank % 2 == 0)
+    {
+      partner = mod(node_rank + negabinary_to_binary((mask << 1) - 1), node_size);
+    }
+    else
+    {
+      partner = mod(node_rank - negabinary_to_binary((mask << 1) - 1), node_size);
+    }
+
+    // For sure I need to send my (remapped) partner's data
+    // the actual start block however must be aligned to
+    // the power of two
+    int send_block_first = remap_rank(node_size, partner) & block_first_mask;
+    int send_block_last = send_block_first + inverse_mask - 1;
+    // Something similar for the block to recv.
+    // I receive my block, but aligned to the power of two
+    int recv_block_first = remapped_rank & block_first_mask;
+    int recv_block_last = recv_block_first + inverse_mask - 1;
+
+    PICO_TAG_BEGIN("global_com/block_recv");
+    send_req_count = recv_req_count = 0;
+    for (size_t block = recv_block_first; block <= recv_block_last; block++)
+    {
+      if (mask << 1 >= node_size)
+      {
+        // Last step, receiving in recvbuf
+        err = MPI_Irecv((char *)recvbuf, recvcounts[inverse_remapping[block]], dt, partner * task_on_node + local_rank, 0,
+                        comm, &recv_req[recv_req_count]);
+      }
+      else
+      {
+        err = MPI_Irecv((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, partner * task_on_node + local_rank, 0,
+                        comm, &recv_req[recv_req_count]);
+      }
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      ++recv_req_count;
+    }
+    PICO_TAG_END("global_com/block_recv");
+
+    PICO_TAG_BEGIN("global_com/block_send");
+    for (size_t block = send_block_first; block <= send_block_last; block++)
+    {
+      err = MPI_Isend((char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, partner * task_on_node + local_rank, 0,
+                      comm, &send_req[send_req_count]);
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      ++send_req_count;
+    }
+    PICO_TAG_END("global_com/block_send");
+
+    int w_req = 0;
+    for (size_t block = recv_block_first; block <= recv_block_last; block++)
+    {
+      PICO_TAG_BEGIN("global_com/recv_wait");
+      err = MPI_Wait(&recv_req[w_req], MPI_STATUS_IGNORE);
+      PICO_TAG_END("global_com/recv_wait");
+
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      PICO_TAG_BEGIN("global_com/kernel");
+      if (mask << 1 >= node_size)
+      {
+        // Last step, received in recvbuf, aggregating from resbuf
+#ifdef PICO_MPI_CUDA_AWARE
+        reduce_wrapper((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+#else
+        err = MPI_Reduce_local((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+#endif
+      }
+      else
+      {
+#ifdef PICO_MPI_CUDA_AWARE
+        reduce_wrapper((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+#else
+        err = MPI_Reduce_local((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+#endif
+      }
+      PICO_TAG_END("global_com/kernel");
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      ++w_req;
+    }
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#endif
+
+    PICO_TAG_BEGIN("global_com/send_wait");
+    err = MPI_Waitall(send_req_count, send_req, MPI_STATUSES_IGNORE);
+    PICO_TAG_END("global_com/send_wait");
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
+
+    mask <<= 1;
+    inverse_mask >>= 1;
+    block_first_mask >>= 1;
+  }
+  PICO_TAG_END("global_com");
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+  free(tmpbuf);
+  free(resbuf);
+#endif
+  free(send_req); 
+  free(recv_req);
+  free(inverse_remapping);
+  free(step_to_send);
+  free(displs);
+  return MPI_SUCCESS;
+
+err_hndl:
+  if (NULL != send_req)
+    free(send_req);
+  if (NULL != recv_req)
+    free(recv_req);
+  if (NULL != displs)
+    free(displs);
+  if (NULL != step_to_send)
+    free(step_to_send);
+  if (NULL != inverse_remapping)
+    free(inverse_remapping);
+  if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
+    free(tmpbuf);
+#endif
+  if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+    free(resbuf);
+#endif
+  return err;
+}
+
+int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const int recvcounts[],
                                        MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
@@ -847,121 +2039,60 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
   int count = 0;
-  int* displs = (int*) malloc(size*sizeof(int));
-  int* step_to_send = (int*) malloc(size*sizeof(int));
-  for(int i = 0; i < size; i++){
+  PICO_TAG_BEGIN("setup");
+  PICO_TAG_BEGIN("setup/alloc_support_buf");
+  int *displs = (int *)malloc(size * sizeof(int));
+  int *step_to_send = (int *)malloc(size * sizeof(int));
+  int *inverse_remapping = (int *)malloc(size * sizeof(int));
+  PICO_TAG_END("setup/alloc_support_buf");
+  for (int i = 0; i < size; i++)
+  {
     displs[i] = count;
     count += recvcounts[i];
+    inverse_remapping[remap_rank(size, i)] = i;
   }
 
-  void* tmpbuf = malloc(count*dtsize);
-  void* resbuf = malloc(count*dtsize);
-  if(NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf) {
+  void *tmpbuf, *resbuf;
+  PICO_TAG_BEGIN("setup/alloc_temp_buff");
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, count * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&resbuf, count * dtsize));
+#else
+  tmpbuf = malloc(count * dtsize);
+  resbuf = malloc(count * dtsize);
+#endif
+  PICO_TAG_END("setup/alloc_temp_buff");
+  MPI_Request *reqs = NULL;
+
+  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping)
+  {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
   }
+  COPY_BUFF_DIFF_DT(sendbuf, count, dt, resbuf, count, dt);
+  // memcpy(resbuf, sendbuf, count * dtsize);
+  PICO_TAG_END("setup");
 
-  // Permute memcpy
-  for(int i = 0; i < size; i++){
-    int remapped_rank = remap_rank(size, i);
-    memcpy((char*) resbuf + displs[remapped_rank]*dtsize, (char*) sendbuf + displs[i]*dtsize, recvcounts[i]*dtsize);
-  }
-
+  PICO_TAG_BEGIN("com");
   int mask = 0x1;
-  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  int inverse_mask = 0x1 << (int)(log_2(size) - 1);
   int block_first_mask = ~(inverse_mask - 1);
   int remapped_rank = remap_rank(size, rank);
-  while(mask < size){
+  reqs = (MPI_Request *)malloc(size * sizeof(MPI_Request));
+  while (mask < size)
+  {
     int partner;
-    if(rank % 2 == 0){
-      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
-    }else{
-      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    if (rank % 2 == 0)
+    {
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size);
+    }
+    else
+    {
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size);
     }
 
     // For sure I need to send my (remapped) partner's data
-    // the actual start block however must be aligned to 
-    // the power of two
-    int send_block_first = remap_rank(size, partner) & block_first_mask;
-    int send_block_last = send_block_first + inverse_mask - 1;
-    int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
-    // Something similar for the block to recv.
-    // I receive my block, but aligned to the power of two
-    int recv_block_first = remapped_rank & block_first_mask;
-    int recv_block_last = recv_block_first + inverse_mask - 1;
-    int recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
-    
-    err = MPI_Sendrecv((char*) resbuf + displs[send_block_first]*dtsize, send_count, dt, partner, 0,
-                 (char*) tmpbuf + displs[recv_block_first]*dtsize, recv_count, dt, partner, 0, comm, MPI_STATUS_IGNORE);
-    if(MPI_SUCCESS != err) { goto err_hndl; }
-    err = MPI_Reduce_local((char*) tmpbuf + displs[recv_block_first]*dtsize, (char*) resbuf + displs[recv_block_first]*dtsize, recv_count, dt, op);
-    if(MPI_SUCCESS != err) { goto err_hndl; }
-
-    mask <<= 1;
-    inverse_mask >>= 1;
-    block_first_mask >>= 1;
-  }
-
-  // Final memcpy
-  memcpy(recvbuf, (char*) resbuf + displs[remapped_rank]*dtsize, recvcounts[rank]*dtsize);
-
-  free(tmpbuf);
-  free(resbuf);
-  free(displs);
-  free(step_to_send);
-  return MPI_SUCCESS;
-
-err_hndl:
-  if (NULL != displs) free(displs);
-  if (NULL != step_to_send) free(step_to_send);
-  if (NULL != tmpbuf) free(tmpbuf);
-  if (NULL != resbuf) free(resbuf);
-  return err;
-}
-
-
-int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const int recvcounts[],
-                                        MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
-{
-  int size, rank, dtsize, err = MPI_SUCCESS;
-  MPI_Comm_size(comm, &size);
-  MPI_Comm_rank(comm, &rank);
-  MPI_Type_size(dt, &dtsize);
-  int count = 0;
-  int* displs = (int*) malloc(size*sizeof(int));
-  int* step_to_send = (int*) malloc(size*sizeof(int));
-  int* inverse_remapping = (int*) malloc(size*sizeof(int));
-  for(int i = 0; i < size; i++){
-  displs[i] = count;
-  count += recvcounts[i];
-  inverse_remapping[remap_rank(size, i)] = i;
-  }
-  
-  void* tmpbuf = malloc(count*dtsize);
-  void* resbuf = malloc(count*dtsize);
-  MPI_Request* reqs = NULL;
-
-  if(NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping) {
-  err = MPI_ERR_NO_MEM;
-  goto err_hndl;
-  }
-  memcpy(resbuf, sendbuf, count*dtsize);
-  
-  int mask = 0x1;
-  int inverse_mask = 0x1 << (int) (log_2(size) - 1);
-  int block_first_mask = ~(inverse_mask - 1);
-  int remapped_rank = remap_rank(size, rank);  
-  reqs = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
-  while(mask < size){
-    int partner;
-    if(rank % 2 == 0){
-      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
-    }else{
-      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
-    }   
-
-    // For sure I need to send my (remapped) partner's data
-    // the actual start block however must be aligned to 
+    // the actual start block however must be aligned to
     // the power of two
     int send_block_first = remap_rank(size, partner) & block_first_mask;
     int send_block_last = send_block_first + inverse_mask - 1;
@@ -970,170 +2101,276 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
     int recv_block_first = remapped_rank & block_first_mask;
     int recv_block_last = recv_block_first + inverse_mask - 1;
 
+    PICO_TAG_BEGIN("com/block_recv");
     int next_req = 0;
-    for(size_t block = recv_block_first; block <= recv_block_last; block++){
-      if(mask << 1 >= size){
+    for (size_t block = recv_block_first; block <= recv_block_last; block++)
+    {
+      if (mask << 1 >= size)
+      {
         // Last step, receiving in recvbuf
-        err = MPI_Irecv((char*) recvbuf, recvcounts[inverse_remapping[block]], dt, partner, 0,
-              comm, &reqs[next_req]);
-      }else{
-        err = MPI_Irecv((char*) tmpbuf + displs[inverse_remapping[block]]*dtsize, recvcounts[inverse_remapping[block]], dt, partner, 0,
-              comm, &reqs[next_req]);
+        err = MPI_Irecv((char *)recvbuf, recvcounts[inverse_remapping[block]], dt, partner, 0,
+                        comm, &reqs[next_req]);
       }
-      if(MPI_SUCCESS != err) { goto err_hndl; }
+      else
+      {
+        err = MPI_Irecv((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, partner, 0,
+                        comm, &reqs[next_req]);
+      }
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
       ++next_req;
     }
+    PICO_TAG_END("com/block_recv");
 
-    for(size_t block = send_block_first; block <= send_block_last; block++){
-      err = MPI_Isend((char*) resbuf + displs[inverse_remapping[block]]*dtsize, recvcounts[inverse_remapping[block]], dt, partner, 0,
-            comm, &reqs[next_req]);
-      if(MPI_SUCCESS != err) { goto err_hndl; }
+    PICO_TAG_BEGIN("com/block_send");
+    for (size_t block = send_block_first; block <= send_block_last; block++)
+    {
+      err = MPI_Isend((char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, partner, 0,
+                      comm, &reqs[next_req]);
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
       ++next_req;
     }
+    PICO_TAG_END("com/block_send");
 
     int w_req = 0;
-    for(size_t block = recv_block_first; block <= recv_block_last; block++){
+    for (size_t block = recv_block_first; block <= recv_block_last; block++)
+    {
+      PICO_TAG_BEGIN("com/recv_wait");
       err = MPI_Wait(&reqs[w_req], MPI_STATUS_IGNORE);
-      if(MPI_SUCCESS != err) { goto err_hndl; }
-      if(mask << 1 >= size){
-        // Last step, received in recvbuf, aggregating from resbuf
-        err = MPI_Reduce_local((char*) resbuf + displs[inverse_remapping[block]]*dtsize, (char*) recvbuf, recvcounts[inverse_remapping[block]], dt, op);
-      }else{
-        err = MPI_Reduce_local((char*) tmpbuf + displs[inverse_remapping[block]]*dtsize, (char*) resbuf + displs[inverse_remapping[block]]*dtsize, recvcounts[inverse_remapping[block]], dt, op);
+      PICO_TAG_END("com/recv_wait");
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
       }
-      if(MPI_SUCCESS != err) { goto err_hndl; }
+      PICO_TAG_BEGIN("com/kernel");
+      if (mask << 1 >= size)
+      {
+        // Last step, received in recvbuf, aggregating from resbuf
+#ifdef PICO_MPI_CUDA_AWARE
+        reduce_wrapper((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+#else
+        err = MPI_Reduce_local((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+#endif
+      }
+      else
+      {
+#ifdef PICO_MPI_CUDA_AWARE
+        reduce_wrapper((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+#else
+        err = MPI_Reduce_local((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+#endif
+      }
+      PICO_TAG_END("com/kernel");
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
       ++w_req;
     }
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+#endif
+    PICO_TAG_BEGIN("com/send_wait");
     err = MPI_Waitall(next_req - w_req, &reqs[w_req], MPI_STATUSES_IGNORE);
-    if(MPI_SUCCESS != err) { goto err_hndl; }
+    PICO_TAG_END("com/send_wait");
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
 
     mask <<= 1;
     inverse_mask >>= 1;
     block_first_mask >>= 1;
   }
+  PICO_TAG_END("com");
 
   free(reqs);
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+  BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
   free(tmpbuf);
   free(resbuf);
+#endif
   free(inverse_remapping);
   free(step_to_send);
   free(displs);
   return MPI_SUCCESS;
 
 err_hndl:
-  if (NULL != reqs) free(reqs);
-  if (NULL != displs) free(displs);
-  if (NULL != step_to_send) free(step_to_send);
-  if (NULL != inverse_remapping) free(inverse_remapping);
-  if (NULL != tmpbuf) free(tmpbuf);
-  if (NULL != resbuf) free(resbuf);
+  if (NULL != reqs)
+    free(reqs);
+  if (NULL != displs)
+    free(displs);
+  if (NULL != step_to_send)
+    free(step_to_send);
+  if (NULL != inverse_remapping)
+    free(inverse_remapping);
+  if (NULL != tmpbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
+    free(tmpbuf);
+#endif
+  if (NULL != resbuf)
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(resbuf));
+#else
+    free(resbuf);
+#endif
   return err;
 }
 
 int reduce_scatter_bine_block_by_block_any_even(const void *sendbuf, void *recvbuf, const int recvcounts[],
-                                                 MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
+                                                MPI_Datatype dt, MPI_Op op, MPI_Comm comm)
 {
   int size, rank, dtsize, err = MPI_SUCCESS;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
   int count = 0;
-  int* displs = (int*) malloc(size*sizeof(int));
-  for(int i = 0; i < size; i++){
+  int *displs = (int *)malloc(size * sizeof(int));
+  for (int i = 0; i < size; i++)
+  {
     displs[i] = count;
     count += recvcounts[i];
   }
 
-  void* tmpbuf = malloc(count*dtsize);
-  void* resbuf = malloc(count*dtsize);
-  memcpy(resbuf, sendbuf, count*dtsize);
-  
+  void *tmpbuf = malloc(count * dtsize);
+  void *resbuf = malloc(count * dtsize);
+  memcpy(resbuf, sendbuf, count * dtsize);
+
   int mask = 0x1;
-  MPI_Request* reqs_s = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
-  MPI_Request* reqs_r = (MPI_Request*) malloc(size*sizeof(MPI_Request));  
-  int* blocks_to_recv = (int*) malloc(size*sizeof(int));
+  MPI_Request *reqs_s = (MPI_Request *)malloc(size * sizeof(MPI_Request));
+  MPI_Request *reqs_r = (MPI_Request *)malloc(size * sizeof(MPI_Request));
+  int *blocks_to_recv = (int *)malloc(size * sizeof(int));
   int next_req_s = 0, next_req_r = 0;
   int reverse_step = log_2(size) - 1;
   int last_recv_done = 0;
-  while(mask < size){
+  while (mask < size)
+  {
     int partner;
-    if(rank % 2 == 0){
-        partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
-    }else{
-        partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+    if (rank % 2 == 0)
+    {
+      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size);
+    }
+    else
+    {
+      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size);
     }
 
     next_req_r = 0;
     next_req_s = 0;
 
     // We start from 1 because 0 never sends block 0
-    for(size_t block = 1; block < size; block++){
+    for (size_t block = 1; block < size; block++)
+    {
       // Get the position of the highest set bit using clz
       // That gives us the first at which block departs from 0
       int k = 31 - __builtin_clz(get_nu(block, size));
       // Check if this must be sent
-      if(k == reverse_step){
-          // 0 would send this block
-          size_t block_to_send, block_to_recv;
-          if(rank % 2 == 0){
-              // I am even, thus I need to shift by rank position to the right
-              block_to_send = mod(block + rank, size);
-              // What to receive? What my partner is sending
-              // Since I am even, my partner is odd, thus I need to mirror it and then shift
-              block_to_recv = mod(partner - block, size);
-          }else{
-              // I am odd, thus I need to mirror it
-              block_to_send = mod(rank - block, size);
-              // What to receive? What my partner is sending
-              // Since I am odd, my partner is even, thus I need to mirror it and then shift   
-              block_to_recv = mod(block + partner, size);
-          }
+      if (k == reverse_step)
+      {
+        // 0 would send this block
+        size_t block_to_send, block_to_recv;
+        if (rank % 2 == 0)
+        {
+          // I am even, thus I need to shift by rank position to the right
+          block_to_send = mod(block + rank, size);
+          // What to receive? What my partner is sending
+          // Since I am even, my partner is odd, thus I need to mirror it and then shift
+          block_to_recv = mod(partner - block, size);
+        }
+        else
+        {
+          // I am odd, thus I need to mirror it
+          block_to_send = mod(rank - block, size);
+          // What to receive? What my partner is sending
+          // Since I am odd, my partner is even, thus I need to mirror it and then shift
+          block_to_recv = mod(block + partner, size);
+        }
 
-          if(block_to_send != rank){
-              err = MPI_Isend((char*) resbuf + displs[block_to_send]*dtsize, recvcounts[block_to_send], dt, partner, 0,
+        if (block_to_send != rank)
+        {
+          err = MPI_Isend((char *)resbuf + displs[block_to_send] * dtsize, recvcounts[block_to_send], dt, partner, 0,
                           comm, &reqs_s[next_req_s]);
-              if(MPI_SUCCESS != err) { goto err_hndl; }
-              ++next_req_s;
+          if (MPI_SUCCESS != err)
+          {
+            goto err_hndl;
           }
+          ++next_req_s;
+        }
 
-          if(block_to_recv != partner){
-              blocks_to_recv[next_req_r] = block_to_recv;
-              if(mask << 1 >= size){
-                  // Last step, receiving in recvbuf
-                  err = MPI_Irecv((char*) recvbuf, recvcounts[block_to_recv], dt, partner, 0,
-                          comm, &reqs_r[next_req_r]);
-                  if(MPI_SUCCESS != err) { goto err_hndl; }
-                  last_recv_done = 1;
-              }else{
-                  err = MPI_Irecv((char*) tmpbuf + displs[block_to_recv]*dtsize, recvcounts[block_to_recv], dt, partner, 0,
-                          comm, &reqs_r[next_req_r]);
-                  if(MPI_SUCCESS != err) { goto err_hndl; }
-              }
-              ++next_req_r;
+        if (block_to_recv != partner)
+        {
+          blocks_to_recv[next_req_r] = block_to_recv;
+          if (mask << 1 >= size)
+          {
+            // Last step, receiving in recvbuf
+            err = MPI_Irecv((char *)recvbuf, recvcounts[block_to_recv], dt, partner, 0,
+                            comm, &reqs_r[next_req_r]);
+            if (MPI_SUCCESS != err)
+            {
+              goto err_hndl;
+            }
+            last_recv_done = 1;
           }
+          else
+          {
+            err = MPI_Irecv((char *)tmpbuf + displs[block_to_recv] * dtsize, recvcounts[block_to_recv], dt, partner, 0,
+                            comm, &reqs_r[next_req_r]);
+            if (MPI_SUCCESS != err)
+            {
+              goto err_hndl;
+            }
+          }
+          ++next_req_r;
+        }
       }
     }
 
-    for(size_t block = 0; block < next_req_r; block++){
-        err = MPI_Wait(&reqs_r[block], MPI_STATUS_IGNORE);
-        if(MPI_SUCCESS != err) { goto err_hndl; }
-        if(mask << 1 >= size){
-            // Last step, received in recvbuf, aggregating from resbuf
-            err = MPI_Reduce_local((char*) resbuf + displs[blocks_to_recv[block]]*dtsize, (char*) recvbuf                                      , recvcounts[blocks_to_recv[block]], dt, op);
-            if(MPI_SUCCESS != err) { goto err_hndl; }
-        }else{
-            err = MPI_Reduce_local((char*) tmpbuf + displs[blocks_to_recv[block]]*dtsize, (char*) resbuf + displs[blocks_to_recv[block]]*dtsize, recvcounts[blocks_to_recv[block]], dt, op);
-            if(MPI_SUCCESS != err) { goto err_hndl; }
+    for (size_t block = 0; block < next_req_r; block++)
+    {
+      err = MPI_Wait(&reqs_r[block], MPI_STATUS_IGNORE);
+      if (MPI_SUCCESS != err)
+      {
+        goto err_hndl;
+      }
+      if (mask << 1 >= size)
+      {
+        // Last step, received in recvbuf, aggregating from resbuf
+        err = MPI_Reduce_local((char *)resbuf + displs[blocks_to_recv[block]] * dtsize, (char *)recvbuf, recvcounts[blocks_to_recv[block]], dt, op);
+        if (MPI_SUCCESS != err)
+        {
+          goto err_hndl;
         }
+      }
+      else
+      {
+        err = MPI_Reduce_local((char *)tmpbuf + displs[blocks_to_recv[block]] * dtsize, (char *)resbuf + displs[blocks_to_recv[block]] * dtsize, recvcounts[blocks_to_recv[block]], dt, op);
+        if (MPI_SUCCESS != err)
+        {
+          goto err_hndl;
+        }
+      }
     }
     err = MPI_Waitall(next_req_s, reqs_s, MPI_STATUSES_IGNORE);
-    if(MPI_SUCCESS != err) { goto err_hndl; }
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
 
     mask <<= 1;
     reverse_step--;
   }
-  if(!last_recv_done){
-    memcpy(recvbuf, (char*) resbuf + displs[rank]*dtsize, recvcounts[rank]*dtsize);
+  if (!last_recv_done)
+  {
+    memcpy(recvbuf, (char *)resbuf + displs[rank] * dtsize, recvcounts[rank] * dtsize);
   }
 
   free(blocks_to_recv);
@@ -1145,15 +2382,20 @@ int reduce_scatter_bine_block_by_block_any_even(const void *sendbuf, void *recvb
   return MPI_SUCCESS;
 
 err_hndl:
-  if (NULL != blocks_to_recv) free(blocks_to_recv);
-  if (NULL != reqs_s) free(reqs_s);
-  if (NULL != reqs_r) free(reqs_r);
-  if (NULL != displs) free(displs);
-  if (NULL != tmpbuf) free(tmpbuf);
-  if (NULL != resbuf) free(resbuf);
+  if (NULL != blocks_to_recv)
+    free(blocks_to_recv);
+  if (NULL != reqs_s)
+    free(reqs_s);
+  if (NULL != reqs_r)
+    free(reqs_r);
+  if (NULL != displs)
+    free(displs);
+  if (NULL != tmpbuf)
+    free(tmpbuf);
+  if (NULL != resbuf)
+    free(resbuf);
   return err;
 }
-
 
 // NOTE: Not fully implemented
 //
@@ -1166,7 +2408,7 @@ err_hndl:
 //   ptrdiff_t extent, true_extent,lb, buf_size, gap = 0;
 //   char *recv_buf = NULL, *recv_buf_free = NULL;
 //   char *result_buf = NULL, *result_buf_free = NULL;
-//   
+//
 //   MPI_Datatype sendtype, recvtype;
 //   int dis[2], blklens[2], total_count, dst;
 //

@@ -69,6 +69,12 @@ int allgather_bine_block_by_block_any_even(ALLGATHER_MPI_ARGS);
 int allgather_bine_send_remap(ALLGATHER_MPI_ARGS);
 int allgather_bine_2_blocks(ALLGATHER_MPI_ARGS);
 int allgather_bine_2_blocks_dtype(ALLGATHER_MPI_ARGS);
+int allgather_bine_permutation(ALLGATHER_MPI_ARGS);
+int allgather_recursivedoubling_any_even(ALLGATHER_MPI_ARGS);
+int allgather_recursivedoubling_hierarchy(ALLGATHER_MPI_ARGS);
+int allgather_recursivedoubling_hierarchy_local_parallel(ALLGATHER_MPI_ARGS);
+int allgather_bine_block_by_block_hierarcic_global_local(ALLGATHER_MPI_ARGS);
+int allgather_bine_send_remap_hierarcic_global_local(ALLGATHER_MPI_ARGS);
 
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);
 int alltoall_bine(ALLTOALL_MPI_ARGS);
@@ -89,13 +95,17 @@ int gather_bine(GATHER_MPI_ARGS);
 int reduce_bine_lat(REDUCE_MPI_ARGS);
 int reduce_bine_bdw(REDUCE_MPI_ARGS);
 
+int reduce_scatter_recursive_doubling_gpu(REDUCE_SCATTER_MPI_ARGS);
+int reduce_scatter_recursive_doubling_hierarchical_local_parallel(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_recursivehalving(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_recursive_distance_doubling(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_ring(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_butterfly(REDUCE_SCATTER_MPI_ARGS);
+int reduce_scatter_bine_send_remap_hierarchical(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_bine_send_remap(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_bine_permute_remap(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_bine_block_by_block(REDUCE_SCATTER_MPI_ARGS);
+int reduce_scatter_bine_block_by_block_hierarchical(REDUCE_SCATTER_MPI_ARGS);
 int reduce_scatter_bine_block_by_block_any_even(REDUCE_SCATTER_MPI_ARGS);
 
 int scatter_linear(SCATTER_MPI_ARGS);
@@ -126,7 +136,7 @@ int scatter_bine(SCATTER_MPI_ARGS);
 //                        PUBLIC API Maros for instrumentation
 // ----------------------------------------------------------------------------------------------
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
 
 
 /**

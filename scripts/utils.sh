@@ -831,7 +831,7 @@ activate_virtualenv() {
 compile_code() {
     [[ "$BEAR_COMPILE" == "yes" ]] && make_command="bear -- make all" || make_command="make all" # Used to create compile_command.json file for lsp
     [[ "$DEBUG_MODE" == "yes" ]] && make_command+=" DEBUG=1" ||  make_command+=" -s"
-    [[ "$INSTRUMENT" == "yes" && "$GPU_AWARENESS" != "yes" ]] && make_command+=" PICO_INSTRUMENT=1" && inform "Instrumented build requested"
+    [[ "$INSTRUMENT" == "yes" ]] && make_command+=" PICO_INSTRUMENT=1" && inform "Instrumented build requested"
 
     if [[ "$GPU_AWARENESS" == "yes" ]]; then
       case "$GPU_LIB" in
@@ -847,6 +847,10 @@ compile_code() {
             ;;
         esac
     fi
+
+    #if [[ "$GPU_NATIVE_SUPPORT" == "yes"]]: then
+    #    make_command+=" GPU_NATIVE_SUPPORT=1"
+    #fi
 
     if [[ "$DRY_RUN" == "yes" ]]; then
         inform "Would run: $make_command"
@@ -886,6 +890,7 @@ compile_all_libraries_tui() {
 
         # CUDA build only if: GPU_AWARENESS=yes ∧ any GPU>0 ∧ GPU_LIB=cuda
         local gaw="$(_get_var "LIB_${i}_GPU_AWARENESS")"
+        local gns="$(_get_var "LIB_${i}_GPU_NATIVE_SUPPORT")"
         local gpn="$(_get_var "LIB_${i}_GPU_PER_NODE")"
         local gpu_lib_raw="$(_get_var "LIB_${i}_GPU_LIB")"
         local gpu_lib="${gpu_lib_raw,,}"   # lowercase
@@ -901,7 +906,7 @@ compile_all_libraries_tui() {
             need_cuda_build=1
         fi
         local this_instrument=0
-        if [[ "$mk_instr" -eq 1 && "$any_gpu_nonzero" -eq 0 ]]; then
+        if [[ "$mk_instr" -eq 1 ]]; then
             inform "Instrumented build requested for library $i"
             this_instrument=1
         fi
@@ -927,6 +932,7 @@ compile_all_libraries_tui() {
         mk+=" DEBUG=$mk_debug"
         mk+=" PICO_INSTRUMENT=$this_instrument"
         if (( need_cuda_build )); then mk+=" PICO_MPI_CUDA_AWARE=1"; fi
+        if (( need_cuda_build )) && [[ "$gns" == "yes" ]]; then mk+=" GPU_NATIVE_SUPPORT=1"; fi
 
         if [[ "$DEBUG_MODE" == "yes" ]]; then
             echo -e "${BLUE}>>> [lib ${i}] Invoking build${NC}"

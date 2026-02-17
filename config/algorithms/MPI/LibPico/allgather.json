@@ -28,6 +28,69 @@
       "external"
     ]
   },
+  "recursive_doubling_any_even_over": {
+    "desc": "libpico external recursive doubling algorithm. Works with non power of 2 processes.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "recursive_doubling",
+      "cuda",
+      "external"
+    ]
+  },
+  "recursivedoubling_hierarchy_over": {
+    "desc": "libpico external recursive doubling algorithm. Use hierarchi condivision schemas",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "recursive_doubling",
+      "cuda",
+      "external"
+    ]
+  },
+  "recursivedoubling_hierarchy_local_parallel_over": {
+    "desc": "libpico external recursive doubling algorithm. Use hierarchi condivision schemas",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "recursive_doubling",
+      "cuda",
+      "external"
+    ]
+  },
   "recursive_doubling_over": {
     "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",
@@ -249,6 +312,98 @@
       "bine",
       "dtype",
       "cuda",
+      "external"
+    ]
+  },
+  "bine_permutation_over": {
+    "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "bine",
+      "dtype",
+      "cuda",
+      "external"
+    ]
+  },
+  "bine_block_by_block_hierarcic_global_local_over": {
+    "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "bine_block_by_block",
+      "block_by_block",
+      "bine",
+      "external"
+    ]
+  },
+  "bine_send_remap_hierarcic_global_local_over": {
+    "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "bine_remap",
+      "bine",
       "external"
     ]
   }

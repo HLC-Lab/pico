@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stddef.h>
+#include <errno.h>
 
 #ifdef DEBUG
 #define BINE_DEBUG_PRINT(fmt, ...) \
@@ -35,7 +36,7 @@
 #define BINE_UNLIKELY(x) (x)
 #endif // defined(__GNUC__) || defined(__clang__)
 
-#ifdef PICO_MPI_CUDA_AWARE
+#if defined PICO_MPI_CUDA_AWARE && defined GPU_NATIVE_SUPPORT
 #define COPY_BUFF_DIFF_DT(...) copy_buffer_different_dt_cuda(__VA_ARGS__)
 #else
 #define COPY_BUFF_DIFF_DT(...) copy_buffer_different_dt(__VA_ARGS__)
@@ -48,6 +49,20 @@ static int smallest_negabinary[BINE_MAX_STEPS] = {0, 0, -2, -2, -10, -10, -42, -
           -170, -170, -682, -682, -2730, -2730, -10922, -10922, -43690, -43690, -174762, -174762};
 static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
           341, 341, 1365, 1365, 5461, 5461, 21845, 21845, 87381, 87381, 349525};
+
+#define max(a,b)             \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a > _b ? _a : _b;       \
+})
+
+#define min(a,b)             \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a < _b ? _a : _b;       \
+})
 
 /**
  * This macro gives a generic way to compute the well distributed block counts
@@ -72,8 +87,6 @@ static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
 //                                MACRO FOR CUDA FUNCTION CALLS
 // ----------------------------------------------------------------------------------------------
 
-#ifdef PICO_MPI_CUDA_AWARE
-
 #define BINE_CUDA_CHECK(cmd) do {                         \
   cudaError_t e = cmd;                              \
   if( e != cudaSuccess ) {                          \
@@ -83,6 +96,31 @@ static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
   }                                                 \
 } while(0)
 
+static inline int pico_task_on_node() {
+  int current_tasks_per_node;
+
+  char* tasks_per_node_env = getenv("CURRENT_TASKS_PER_NODE");
+  if (tasks_per_node_env == NULL) {
+    fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE environment variable is not set.\n");
+    return MPI_ERR_COMM;
+  }
+  current_tasks_per_node = atoi(tasks_per_node_env);
+  if (current_tasks_per_node <= 0) {
+    fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE must be a positive integer.\n");
+    return MPI_ERR_COMM;
+  }
+
+  return current_tasks_per_node;
+}
+
+static inline void pico_get_group_config(int *node_size, int *node_rank, int *node_offset, int *local_rank, int task_on_node, int size, int rank) {
+  *node_rank = rank / task_on_node;
+  *node_size = size / task_on_node;
+  *node_offset = *node_rank * task_on_node;
+  *local_rank = rank % task_on_node;
+}
+
+#ifdef PICO_MPI_CUDA_AWARE
 
 static inline int copy_buffer_different_dt_cuda(const void *input_buffer, size_t scount,
   const MPI_Datatype sdtype, void *output_buffer,
@@ -135,6 +173,27 @@ static inline int pi(int rank, int step, int comm_sz) {
   if(dest < 0) dest += comm_sz;                              // Adjust for negative ranks
 
   return dest;
+}
+
+
+static inline void get_permutation_aux(int rank, int step, const int n_steps, const int adj_size, int *bitmap, int offset){
+  *(bitmap + rank) = offset;
+  if (step >= n_steps) return;
+
+  int peer;
+  
+  for (int s = step; s < n_steps; s++){
+    peer = pi(rank, s, adj_size);
+    get_permutation_aux(peer, s + 1, n_steps, adj_size, bitmap, offset + (1 << (n_steps - s - 1)));
+  }
+}
+
+
+static inline void get_permutation(int rank, int step, const int n_steps, const int adj_size, int *bitmap, int offset){
+  if (step >= n_steps) return;
+  
+  int peer = pi(rank, step, adj_size);
+  get_permutation_aux(peer, step + 1, n_steps, adj_size, bitmap, offset);
 }
 
 
@@ -479,6 +538,89 @@ static inline int reorder_blocks(void *buffer, size_t block_size,
 }
 
 /**
+ * @brief Reorders blocks in a buffer according to a given permutation.
+ *
+ * @param buffer The buffer containing the blocks to reorder.
+ * @param block_size The size of each block in bytes.
+ * @param block_permutation The permutation of the blocks.
+ * @param num_blocks The number of blocks in the buffer.
+ *
+ * @return MPI_SUCCESS on success, or an error code.
+ */
+static inline int reorder_blocks_gpu(void *buffer, size_t block_size, MPI_Datatype dtype,
+                                     int *block_permutation, int num_blocks)
+{
+  if (BINE_UNLIKELY(buffer == NULL || block_permutation == NULL || num_blocks <= 0))
+  {
+    return MPI_ERR_ARG;
+  }
+
+  int err = MPI_SUCCESS;
+  ptrdiff_t lb, ext;
+  char *buf = (char *)buffer;
+  void *temp;
+
+  err = MPI_Type_get_extent(dtype, &lb, &ext);
+  if (MPI_SUCCESS != err)
+  {
+    return err;
+  }
+
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc(&temp, block_size * ext));
+#else
+  temp = malloc(block_size * ext);
+#endif
+  char *visited = (char *)calloc(num_blocks, sizeof(int));
+  if (temp == NULL || visited == NULL)
+  {
+    return MPI_ERR_NO_MEM;
+  }
+
+  for (int i = 0; i < num_blocks; ++i)
+  {
+    // Skip if the block is already in its correct position or visited
+    if (visited[i] == 1 || block_permutation[i] == i)
+    {
+      continue;
+    }
+
+    int current = i;
+    // Save the current block to temp (start of the cycle)
+    COPY_BUFF_DIFF_DT(buf + current * block_size * ext, block_size, dtype, temp, block_size, dtype);
+
+    // Follow the cycle and place each block in its final position
+    while (visited[block_permutation[current]] != 1)
+    {
+      int next = block_permutation[current];
+      COPY_BUFF_DIFF_DT(buf + next * block_size * ext, block_size, dtype, buf + current * block_size * ext, block_size, dtype);
+      visited[current] = 1;
+      current = next;
+    }
+
+    // Place the saved block in its final position
+    COPY_BUFF_DIFF_DT(temp, block_size, dtype, buf + current * block_size * ext, block_size, dtype);
+    visited[current] = 1; // Mark the last block as visited
+  }
+
+  if (visited != NULL)
+  {
+    free(visited);
+  }
+
+  if (temp != NULL)
+  {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(temp));
+#else
+    free(temp);
+#endif
+  }
+
+  return MPI_SUCCESS;
+}
+
+/**
  * @brief Get the sender of a message based on the permutation.
  *
  * @param p The permutation array.
@@ -647,5 +789,26 @@ static inline uint32_t get_nu(uint32_t rank, uint32_t size){
   }
 }
 
-#endif // LIBPICO_UTILS_H
+// return the amount of extra data to be shered
+static inline int remining_data_to_share(int remainig_node, int node_rank, int comm_dist)
+{
+  int shared_size = remainig_node - node_rank;
+  if (shared_size >= comm_dist)
+  {
+    return comm_dist;
+  }
+  return shared_size;
+}
 
+// round the number to the smaller nearest power of tow
+static inline unsigned int floor_power_of_two(unsigned int n) {
+    if (n == 0) return 0;
+    n |= (n >> 1);
+    n |= (n >> 2);
+    n |= (n >> 4);
+    n |= (n >> 8);
+    n |= (n >> 16);
+    return n - (n >> 1);
+}
+
+#endif // LIBPICO_UTILS_H
