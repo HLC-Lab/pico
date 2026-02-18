@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 #endif // PICO_NCCL
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
   int num_tags;
   const char **tag_names = NULL;
   double** tag_times = NULL;
@@ -114,12 +114,19 @@ int main(int argc, char *argv[]) {
   }
 #endif // DEBUG
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
   libpico_init_tags();
+  #if defined PICO_MPI_CUDA_AWARE
+  if (run_coll_once(test_routine, d_sbuf, d_rbuf, count, dtype, comm) != MPI_SUCCESS) {
+    line = __LINE__;
+    goto err_hndl;
+  }
+  #else
   if (run_coll_once(test_routine, sbuf, rbuf, count, dtype, comm) != MPI_SUCCESS) {
     line = __LINE__;
     goto err_hndl;
   }
+  #endif
   num_tags = libpico_count_tags();
   if (num_tags <= 0) {
     fprintf(stderr, "Error: No tags were created. Aborting...");
@@ -212,7 +219,7 @@ int main(int argc, char *argv[]) {
 
 #ifndef DEBUG
 
-#if !(defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE)
+#if !(defined PICO_INSTRUMENT && !defined PICO_NCCL)
   // Gather all process times to rank 0 and find the highest execution time of each iteration
   PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
 
@@ -302,7 +309,7 @@ int main(int argc, char *argv[]) {
       goto err_hndl;
     }
   }
-#endif // !(defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE)
+#endif // !(defined PICO_INSTRUMENT && !defined PICO_NCCL)
 
 #endif // DEBUG
 
@@ -317,7 +324,7 @@ int main(int argc, char *argv[]) {
     free(highest);
   }
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
   free(tag_names);
   free(tag_times[0]);
   free(tag_times);
@@ -361,7 +368,7 @@ err_hndl:
   if(NULL != d_rbuf_gt) cudaFree(d_rbuf_gt);
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
   if (NULL != tag_names) free(tag_names);
   if (NULL != tag_times) {
     if (NULL != tag_times[0]) free(tag_times[0]);
@@ -373,4 +380,3 @@ err_hndl:
 
   return EXIT_FAILURE;
 }
-

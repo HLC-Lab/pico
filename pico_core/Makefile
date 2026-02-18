@@ -14,6 +14,9 @@ PICO_CORE_OBJ_DIR_CUDA  ?= ../obj/pico_core_cuda
 PICO_CORE_OBJS_CUDA     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_CUDA)/%.o, $(PICO_CORE_SRC))
 PICO_CORE_DEPS_CUDA     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_CUDA)/%.d, $(PICO_CORE_SRC))
 PICO_CORE_CUDA          := $(BIN_DIR)/pico_core_cuda
+ifeq ($(GPU_NATIVE_SUPPORT),1)
+CFLAGS_CUDA += -DGPU_NATIVE_SUPPORT
+endif
 
 PICO_CORE_OBJ_DIR_NCCL  ?= ../obj/pico_core_nccl
 PICO_CORE_OBJS_NCCL     := $(patsubst %.c, $(PICO_CORE_OBJ_DIR_NCCL)/%.o, $(PICO_CORE_SRC))
@@ -52,12 +55,12 @@ $(PICO_CORE_OBJ_DIR)/%.o: %.c
 $(PICO_CORE_CUDA): $(PICO_CORE_OBJS_CUDA)
 	@mkdir -p $(BIN_DIR)
 	@echo -e "$(GREEN)[LINK] Linking pico_core_cuda: $< -> $@$(NC)"
-	$(PICOCC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR) -lpico_cuda -lcudart -lm
+	$(PICOCC) $(CFLAGS) -o $@ $^ -L$(LIB_DIR) -lpico_cuda -lcudart -lstdc++ -lm
 
 $(PICO_CORE_OBJ_DIR_CUDA)/%.o: %.c
 	@mkdir -p $(PICO_CORE_OBJ_DIR_CUDA)
-	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
-	$(PICOCC) $(CFLAGS) -DPICO_MPI_CUDA_AWARE -lpico_cuda -lcudart -c $< -o $@
+	@echo -e "$(YELLOW)[CC] Compiling CUDA $< -> $@...$(NC)"
+	$(PICOCC) $(CFLAGS) $(CFLAGS_CUDA) -DPICO_MPI_CUDA_AWARE -lpico_cuda -lcudart -c $< -o $@
 
 -include $(PICO_CORE_DEPS_CUDA)
 
@@ -68,7 +71,7 @@ $(PICO_CORE_NCCL): $(PICO_CORE_OBJS_NCCL)
 
 $(PICO_CORE_OBJ_DIR_NCCL)/%.o: %.c
 	@mkdir -p $(PICO_CORE_OBJ_DIR_NCCL)
-	@echo -e "$(YELLOW)[CC] Compiling $< -> $@...$(NC)"
+	@echo -e "$(YELLOW)[CC] Compiling NCCL $< -> $@...$(NC)"
 	$(PICOCC) $(CFLAGS) $(LDLIBS) $(NCCL_FLAG) -DPICO_NCCL -lcudart -c $< -o $@
 
 -include $(PICO_CORE_DEPS_CUDA)

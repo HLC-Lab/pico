@@ -129,6 +129,9 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
 static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
 #ifndef PICO_NCCL
   CHECK_STR(algorithm, "k_bruck_over", allgather_k_bruck);
+  CHECK_STR(algorithm, "recursive_doubling_any_even_over", allgather_recursivedoubling_any_even);
+  CHECK_STR(algorithm, "recursivedoubling_hierarchy_over", allgather_recursivedoubling_hierarchy);
+  CHECK_STR(algorithm, "recursivedoubling_hierarchy_local_parallel_over", allgather_recursivedoubling_hierarchy_local_parallel);
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
@@ -137,6 +140,9 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_send_remap_over", allgather_bine_send_remap);
   CHECK_STR(algorithm, "bine_2_blocks_over", allgather_bine_2_blocks);
   CHECK_STR(algorithm, "bine_2_blocks_dtype_over", allgather_bine_2_blocks_dtype);
+  CHECK_STR(algorithm, "bine_permutation_over", allgather_bine_permutation);
+  CHECK_STR(algorithm, "bine_block_by_block_hierarcic_global_local_over", allgather_bine_block_by_block_hierarcic_global_local);
+  CHECK_STR(algorithm, "bine_send_remap_hierarcic_global_local_over", allgather_bine_send_remap_hierarcic_global_local);
 
   PICO_CORE_DEBUG_PRINT_STR("MPI_Allgather");
   return allgather_wrapper;
@@ -247,7 +253,9 @@ static inline reduce_func_ptr get_reduce_function(const char *algorithm) {
 * defauls to the internal reduce scatter function.
 */
 static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *algorithm){
-#ifndef PICO_NCCL
+  #ifndef PICO_NCCL
+  CHECK_STR(algorithm, "recursive_distance_doubling_gpu_over", reduce_scatter_recursive_doubling_gpu);
+  CHECK_STR(algorithm, "recursive_distance_doubling_hierarchical_local_parallel_over", reduce_scatter_recursive_doubling_hierarchical_local_parallel);
   CHECK_STR(algorithm, "recursive_halving_over", reduce_scatter_recursivehalving);
   CHECK_STR(algorithm, "recursive_distance_doubling_over", reduce_scatter_recursive_distance_doubling);
   CHECK_STR(algorithm, "ring_over", reduce_scatter_ring);
@@ -256,6 +264,8 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "bine_permute_remap_over", reduce_scatter_bine_permute_remap);  
   CHECK_STR(algorithm, "bine_block_by_block_over", reduce_scatter_bine_block_by_block);
   CHECK_STR(algorithm, "bine_block_by_block_any_even", reduce_scatter_bine_block_by_block_any_even);
+  CHECK_STR(algorithm, "bine_send_remap_hierarchical_over", reduce_scatter_bine_send_remap_hierarchical);
+  CHECK_STR(algorithm, "bine_block_by_block_hierarchical_over", reduce_scatter_bine_block_by_block_hierarchical);
 
   PICO_CORE_DEBUG_PRINT_STR("MPI_Reduce_scatter");
   return MPI_Reduce_scatter;
@@ -403,7 +413,7 @@ int get_data_saving_options(test_routine_t *test_routine, size_t count,
     return -1;
   }
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
   if (test_routine->segsize != 0) {
     snprintf(data_filename, sizeof(data_filename), "/%ld_%s_%ld_%s_instrument.csv",
              count, algorithm, test_routine->segsize, type_string);
@@ -547,7 +557,7 @@ int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t ty
 }
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
 int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
                    size_t count, MPI_Datatype dtype, MPI_Comm comm){
   int rank, comm_sz, ret, *rcounts = NULL;
@@ -916,7 +926,7 @@ int write_output_to_file(test_routine_t test_routine, double *highest, double *a
 }
 
 
-#if defined PICO_INSTRUMENT && !defined PICO_NCCL && !defined PICO_MPI_CUDA_AWARE
+#if defined PICO_INSTRUMENT && !defined PICO_NCCL
 int write_instrument_output_to_file(test_routine_t test_routine, double* times,
                                     double** tag_times, const char** tag_names, int iter){
   FILE *output_file = fopen(test_routine.output_data_file, "w");

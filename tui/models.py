@@ -544,6 +544,7 @@ class LibraryLoad:
 @dataclass
 class GPUSupport:
     gpu: bool = False
+    gpu_support_native: bool = False
     gpu_load: Optional[LibraryLoad] = None
 
     def validate(self) -> bool:
@@ -555,6 +556,7 @@ class GPUSupport:
     @classmethod
     def from_dict(cls, gpu_json: Dict[str, Any]) -> "GPUSupport":
         gpu = gpu_json.get('support', False)
+        gpu_support_native = gpu_json.get('native', False)
         gpu_load = None
         if gpu:
             gpu_load_data = gpu_json.get('load', {})
@@ -562,7 +564,7 @@ class GPUSupport:
                 raise ValueError("GPU load data must be a dictionary")
             gpu_load = LibraryLoad()
             gpu_load.from_dict(gpu_load_data)
-        return cls(gpu=gpu, gpu_load=gpu_load)
+        return cls(gpu=gpu, gpu_support_native=gpu_support_native, gpu_load=gpu_load)
 
 class CollectiveType(Enum):
     UNKNOWN = 'unknown'
@@ -822,5 +824,4 @@ class SessionConfig:
         return f"Environment: {env}\n\n" \
                f"Test Configuration:\n{test}\n\n" \
                f"Libraries:\n{libs}"
-
 
