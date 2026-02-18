@@ -1115,6 +1115,63 @@ export -f run_bench
 ###############################################################################
 # Function to update/select algorithm
 ###############################################################################
+nccl_selector_from_algo_name() {
+    local algo="${1,,}"
+
+    case "$algo" in
+        auto|default|auto_nccl|default_nccl)
+            echo ""
+            return 0
+            ;;
+    esac
+
+    # Accept explicit protocol suffixes in algorithm aliases, e.g. ring_nccl_ll.
+    case "$algo" in
+        *_simple) algo="${algo%_simple}" ;;
+        *_ll128)  algo="${algo%_ll128}" ;;
+        *_ll)     algo="${algo%_ll}" ;;
+    esac
+
+    if [[ "$algo" == *_nccl ]]; then
+        algo="${algo%_nccl}"
+    fi
+    echo "$algo"
+}
+
+nccl_algo_token() {
+    local selector="$1"
+
+    case "${selector,,}" in
+        ring)         echo "Ring" ;;
+        tree)         echo "Tree" ;;
+        collnetdirect) echo "CollnetDirect" ;;
+        collnetchain)  echo "CollnetChain" ;;
+        nvls)         echo "NVLS" ;;
+        nvlstree)     echo "NVLSTree" ;;
+        pat)          echo "PAT" ;;
+        *)            echo "$selector" ;;
+    esac
+}
+
+is_nccl_ring_algo() {
+    [[ "$MPI_LIB" == "NCCL" ]] || return 1
+
+    local selector
+    selector="$(nccl_selector_from_algo_name "$1")"
+    [[ "${selector,,}" == "ring" ]]
+}
+
+nccl_protocol_from_algo_name() {
+    local algo="${1,,}"
+
+    case "$algo" in
+        *_simple) echo "Simple" ;;
+        *_ll128)  echo "LL128" ;;
+        *_ll)     echo "LL" ;;
+        *)        echo "" ;;
+    esac
+}
+
 update_algorithm() {
     local algo="$1"
     local cvar_indx="$2"
@@ -1149,6 +1206,21 @@ update_algorithm() {
             export "${var_name}"="$cvar"
             success "Setting MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
             ;;
+        "NCCL")
+            # NCCL algorithm forcing is controlled through NCCL_ALGO at runtime.
+            local selector
+            selector="$(nccl_selector_from_algo_name "$algo")"
+            if [[ -z "$selector" ]]; then
+                unset NCCL_ALGO
+                success "Clearing NCCL_ALGO for algorithm $algo (runtime auto-selection)..."
+            else
+                local nccl_algo
+                nccl_algo="$(nccl_algo_token "$selector")"
+                [[ "$nccl_algo" == "$selector" ]] && warning "Unknown NCCL selector '$selector' for '$algo'; using raw value."
+                export NCCL_ALGO="$nccl_algo"
+                success "Setting NCCL_ALGO=$NCCL_ALGO for algorithm $algo..."
+            fi
+            ;;
         *)
             echo "Error: Unsupported MPI_LIB value: $MPI_LIB" >&2
             return 1
@@ -1156,6 +1228,39 @@ update_algorithm() {
     esac
 }
 export -f update_algorithm
+
+# This wrapper handles running benchmarks with different NCCL protocols
+# if the algorithm is a ring variant and the library is NCCL.
+# For non-NCCL or non-ring algorithms, it just runs the benchmark once.
+# TODO: Clean this wrapper and put this inside the run_bench
+run_bench_with_nccl_protocols() {
+    local size="$1" algo="$2" type="$3"
+
+    if is_nccl_ring_algo "$algo"; then
+        local explicit_proto
+        explicit_proto="$(nccl_protocol_from_algo_name "$algo")"
+
+        if [[ -n "$explicit_proto" ]]; then
+            export NCCL_PROTO="$explicit_proto"
+            [[ "$DEBUG_MODE" == "yes" ]] && inform "NCCL ring protocol: $NCCL_PROTO"
+            run_bench "$size" "$algo" "$type"
+            return 0
+        fi
+
+        local proto
+        for proto in Simple LL LL128; do
+            local proto_suffix="${proto,,}"
+            local bench_algo="${algo}_${proto_suffix}"
+            export NCCL_PROTO="$proto"
+            [[ "$DEBUG_MODE" == "yes" ]] && inform "NCCL ring protocol: $NCCL_PROTO"
+            run_bench "$size" "$bench_algo" "$type"
+        done
+    else
+        [[ "$MPI_LIB" == "NCCL" ]] && unset NCCL_PROTO
+        run_bench "$size" "$algo" "$type"
+    fi
+}
+export -f run_bench_with_nccl_protocols
 
 ###############################################################################
 # Loop through algorithms, sizes, and types to run all tests
@@ -1179,12 +1284,12 @@ run_all_tests() {
                 for type in ${TYPES//,/ }; do
                     for segment_size in ${SEGMENT_SIZES//,/ }; do
                         export SEGSIZE=$segment_size
-                        run_bench $size $algo $type
+                        run_bench_with_nccl_protocols $size $algo $type
                     done
                 done
             else
                 for type in ${TYPES//,/ }; do
-                    run_bench $size $algo $type
+                    run_bench_with_nccl_protocols $size $algo $type
                 done
             fi
         done
