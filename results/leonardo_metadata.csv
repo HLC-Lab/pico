@@ -293,3 +293,4 @@ timestamp,test_id,nnodes,tasks_per_node,collective_type,mpi_lib,mpi_lib_version,
 2026_02_19___16_46_45,4,2048,4,GATHER,OMPI,4.1.6,no,null,null,minimal,,null
 2026_02_19___16_46_45,5,2048,4,REDUCE_SCATTER,OMPI,4.1.6,no,null,null,minimal,,null
 2026_02_19___18_08_30,0,512,4,ALLGATHER,OMPI,4.1.6,yes,cuda,12.1,minimal,,null
+2026_02_19___18_08_30,1,512,4,REDUCE_SCATTER,OMPI,4.1.6,yes,cuda,12.1,minimal,,null
