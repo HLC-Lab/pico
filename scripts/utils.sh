@@ -887,6 +887,8 @@ compile_all_libraries_tui() {
 
         local libmods="$(_get_var "LIB_${i}_MODULES")"
         local load_type="$(_get_var "LIB_${i}_LOAD_TYPE")"
+        local lib_standard="$(_get_var "LIB_${i}_STANDARD")"
+        local lib_standard_lc="${lib_standard,,}"
 
         # CUDA build only if: GPU_AWARENESS=yes ∧ any GPU>0 ∧ GPU_LIB=cuda
         local gaw="$(_get_var "LIB_${i}_GPU_AWARENESS")"
@@ -905,6 +907,17 @@ compile_all_libraries_tui() {
         if [[ "$gaw" == "yes" && $any_gpu_nonzero -eq 1 && "$gpu_lib" == "cuda" ]]; then
             need_cuda_build=1
         fi
+        local need_nccl_build=0
+        if [[ "$lib_standard_lc" == "nccl" || "$MPI_LIB" == "NCCL" ]]; then
+            need_nccl_build=1
+        fi
+
+        # NCCL sources are C-only and require proper MPI wrapper link flags.
+        if (( need_nccl_build )) && [[ "${PICOCC##*/}" == "nvcc" ]] && command -v mpicc >/dev/null 2>&1; then
+            [[ "$DEBUG_MODE" == "yes" ]] && inform "[lib $i] NCCL standard detected: overriding compiler nvcc -> mpicc"
+            export PICOCC="mpicc"
+        fi
+
         local this_instrument=0
         if [[ "$mk_instr" -eq 1 ]]; then
             inform "Instrumented build requested for library $i"
@@ -931,7 +944,11 @@ compile_all_libraries_tui() {
         mk+=" LIB_OBJ_DIR=\"$OUT_OBJ/lib\" LIB_OBJ_DIR_CUDA=\"$OUT_OBJ/lib_cuda\""
         mk+=" DEBUG=$mk_debug"
         mk+=" PICO_INSTRUMENT=$this_instrument"
-        if (( need_cuda_build )); then mk+=" PICO_MPI_CUDA_AWARE=1"; fi
+        if (( need_nccl_build )); then
+            mk+=" PICO_NCCL=1"
+        elif (( need_cuda_build )); then
+            mk+=" PICO_MPI_CUDA_AWARE=1"
+        fi
         if (( need_cuda_build )) && [[ "$gns" == "yes" ]]; then mk+=" GPU_NATIVE_SUPPORT=1"; fi
 
         if [[ "$DEBUG_MODE" == "yes" ]]; then
@@ -951,6 +968,7 @@ compile_all_libraries_tui() {
         # Export the per-lib execs if they exist
         [[ -f "$OUT_BIN/pico_core" ]] && export "LIB_${i}_PICO_EXEC_CPU=$OUT_BIN/pico_core" && trace_ldd "$OUT_BIN/pico_core"
         [[ -f "$OUT_BIN/pico_core_cuda" ]] && export "LIB_${i}_PICO_EXEC_GPU=$OUT_BIN/pico_core_cuda" && trace_ldd "$OUT_BIN/pico_core_cuda"
+        [[ -f "$OUT_BIN/pico_core_nccl" ]] && export "LIB_${i}_PICO_EXEC_GPU=$OUT_BIN/pico_core_nccl" && trace_ldd "$OUT_BIN/pico_core_nccl"
 
         # Unload only this library's modules (keep general ones)
         restore_lib_context "$i" || true
@@ -1632,7 +1650,10 @@ cli_prepare_metadata() {
     if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then
         export DATA_DIR="$OUTPUT_DIR/${_iter_ref}"
         mkdir -p "$DATA_DIR"
-        python3 "$PICO_DIR/results/generate_metadata.py" "${_iter_ref}" || return 1
+        if ! python3 "$PICO_DIR/results/generate_metadata.py" "${_iter_ref}"; then
+            error "Metadata generation failed for iteration ${_iter_ref}. For GPU-aware runs, ensure GPU_LIB and GPU_LIB_VERSION are exported."
+            return 1
+        fi
         success "📂 Metadata of $DATA_DIR created"
     fi
     return 0

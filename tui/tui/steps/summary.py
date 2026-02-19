@@ -238,14 +238,17 @@ def json_to_exports(config: JsonLike, sh_path: Union[str, Path]) -> str:
 
             gpu_list = tests_lib.get("gpu") if isinstance(tests_lib, dict) else None
             gpu_awareness_yes = False
+            gpu_support = lib.get("gpu_support", {})
+            if not isinstance(gpu_support, dict):
+                gpu_support = {}
             if isinstance(gpu_list, list) and len(gpu_list) > 0:
                 write_export(prefix + "GPU_PER_NODE", csv(gpu_list), quote=True)
                 # Awareness only if any non-zero
                 gpu_awareness_yes = any(is_number_like(v) and int(v) != 0 for v in gpu_list)
                 if gpu_awareness_yes:
                     write_export(prefix + "GPU_AWARENESS", "yes", quote=True)
-                    nativ_gpu_support = lib.get('gpu_support', {'gpu_support_native':False}).get('gpu_support_native', False)
-                    write_export(prefix + "GPU_NATIV_SUPPORT", "yes" if nativ_gpu_support else "no", quote=True)
+                    native_gpu_support = bool(gpu_support.get("gpu_support_native", False))
+                    write_export(prefix + "GPU_NATIVE_SUPPORT", "yes" if native_gpu_support else "no", quote=True)
                 # else: omit GPU_AWARENESS when empty or all zeroes
             # else: omit GPU_PER_NODE
 
@@ -297,17 +300,29 @@ def json_to_exports(config: JsonLike, sh_path: Union[str, Path]) -> str:
             # load_type == "default": nothing to add here
 
             if gpu_awareness_yes:
-                gpu_support = lib.get("gpu_support", {})
-                gpu_load = gpu_support.get("gpu_load", {}) if isinstance(gpu_support, dict) else {}
+                gpu_meta = gpu_support.get("metadata", {})
+                if not isinstance(gpu_meta, dict):
+                    gpu_meta = {}
+
+                meta_gpu_lib = gpu_meta.get("GPU_LIB")
+                meta_gpu_lib_version = gpu_meta.get("GPU_LIB_VERSION")
+                if meta_gpu_lib:
+                    write_export(prefix + "GPU_LIB", str(meta_gpu_lib), quote=True)
+                if meta_gpu_lib_version:
+                    write_export(prefix + "GPU_LIB_VERSION", str(meta_gpu_lib_version), quote=True)
+
+                gpu_load = gpu_support.get("gpu_load", {})
+
                 if isinstance(gpu_load, dict) and gpu_load.get("type") == "module" and gpu_load.get("module"):
                     mod = str(gpu_load["module"])
                     name_m, ver_m = parse_module_name_version(mod)
-                    write_export(prefix + "GPU_LIB", name_m, quote=True)
-                    if ver_m:
+                    if not meta_gpu_lib:
+                        write_export(prefix + "GPU_LIB", name_m, quote=True)
+                    if ver_m and not meta_gpu_lib_version:
                         write_export(prefix + "GPU_LIB_VERSION", ver_m, quote=True)
                     lib_modules.append(mod)
-                else:
-                    lines.append(f"# skipped: libraries[{i}].gpu_support.gpu_load module unavailable for GPU-aware lib")
+                elif not meta_gpu_lib:
+                    lines.append(f"# skipped: libraries[{i}].gpu_support.metadata.GPU_LIB missing for GPU-aware lib")
 
             if lib_modules:
                 write_export(prefix + "MODULES", csv(lib_modules), quote=True)

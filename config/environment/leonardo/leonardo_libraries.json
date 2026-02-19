@@ -144,7 +144,7 @@
       "compiler": "nvcc",
       "load": {
         "type": "module",
-        "module": "openmpi/4.1.6--gcc--12.2.0 nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22"
+        "module": "nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22,openmpi/4.1.6--gcc--12.2.0,cuda/12.2"
       },
       "gpu": {
         "support": true,
@@ -153,7 +153,7 @@
         },
         "metadata": {
           "GPU_LIB": "CUDA",
-          "GPU_LIB_VERSION": "12.1"
+          "GPU_LIB_VERSION": "12.2"
         }
       }
     }

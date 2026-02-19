@@ -2,7 +2,13 @@
 
 .PHONY: all clean libpico pico_core
 
-CFLAGS_COMMON = -O3 -Wall -I$(PICO_DIR)/include -MMD -MP
+CFLAGS_COMMON = -O3 -I$(PICO_DIR)/include -MMD -MP
+
+ifneq ($(filter nvcc,$(notdir $(PICOCC))),)
+	CFLAGS_COMMON += -Xcompiler -Wall
+else
+	CFLAGS_COMMON += -Wall
+endif
 
 ifeq ($(DEBUG),1)
 	CFLAGS_COMMON += -DDEBUG -g
