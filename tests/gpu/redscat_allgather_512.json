@@ -1,0 +1,608 @@
+{
+  "environment": {
+    "desc": "Leonardo HPC cluster.",
+    "name": "leonardo",
+    "slurm": true,
+    "python_module": "python/3.11.6--gcc--8.5.0",
+    "other_var": {
+      "UCX_IB_SL": "1"
+    },
+    "partition": {
+      "environment": "leonardo",
+      "desc": "Boost partition with GPU nodes.",
+      "name": "boost_usr_prod",
+      "is_gpu": true,
+      "cpus_per_node": 32,
+      "sockets_per_node": 1,
+      "gpus_per_node": 4,
+      "qos": {
+        "partition": "boost_usr_prod",
+        "environment": "leonardo",
+        "desc": "QOS for big jobs with more than 64 nodes.",
+        "name": "boost_qos_bprod",
+        "is_required": true,
+        "nodes_limit": {
+          "min": 65,
+          "max": 256
+        },
+        "time_limit": "24:00:00",
+        "extra_requirements": {
+          "tasks_per_node": 32,
+          "gres": "gpu:4"
+        }
+      }
+    }
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 256,
+    "output_level": "minimal",
+    "inject_params": "insert_here",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        32,
+        256,
+        2048,
+        16384,
+        131072,
+        1048576,
+        8388608,
+        67108864,
+        536870912
+      ],
+      "sizes_elements": [
+        8,
+        64,
+        512,
+        4096,
+        32768,
+        262144,
+        2097152,
+        16777216,
+        134217728
+      ],
+      "segsizes_bytes": [
+        0
+      ]
+    },
+    "test_time": "02:00:00"
+  },
+  "libraries": [
+    {
+      "name": "Open MPI 4.1.6",
+      "desc": "An open source Message Passing Interface implementation.",
+      "tests": {
+        "gpu": [
+          4
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": true,
+        "gpu_support_native": false,
+        "gpu_load": {
+          "type": "module",
+          "module": "cuda/12.1"
+        }
+      },
+      "lib_load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--gcc--12.2.0"
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "allgather": [
+          {
+            "name": "default_ompi",
+            "coll": "allgather",
+            "desc": "Open MPI default algorithm selection",
+            "version": "4.1.5",
+            "selection": 0,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "default"
+            ]
+          },
+          {
+            "name": "k_bruck_ompi",
+            "coll": "allgather",
+            "desc": "Open MPI K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+            "version": "4.1.5",
+            "selection": 2,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "k_bruck",
+              "can_crash",
+              "additional_parameter",
+              "medium_sizes",
+              "large_sizes"
+            ]
+          },
+          {
+            "name": "recursive_doubling_ompi",
+            "coll": "allgather",
+            "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. When invoked on non power of 2 processes, it will fallback to k_bruck with `radix=2`",
+            "version": "4.1.5",
+            "selection": 3,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_doubling",
+              "small_sizes",
+              "medium_sizes"
+            ]
+          },
+          {
+            "name": "ring_ompi",
+            "coll": "allgather",
+            "desc": "Open MPI ring algorithm. This algorithm is used for large messages",
+            "version": "4.1.5",
+            "selection": 4,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "ring",
+              "large_sizes"
+            ]
+          },
+          {
+            "name": "neighbor_ompi",
+            "coll": "allgather",
+            "desc": "Open MPI neighbor exchange algorithm. This algorithm is used for large messages. Works only for even number of processes. When invoked on odd number of processes, it will fallback to ring",
+            "version": "4.1.5",
+            "selection": 5,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_even",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "neighbor",
+              "large_sizes"
+            ]
+          },
+          {
+            "name": "recursivedoubling_hierarchy_local_parallel_over",
+            "coll": "allgather",
+            "desc": "libpico external recursive doubling algorithm. Use hierarchi condivision schemas",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_doubling",
+              "cuda",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_over",
+            "coll": "allgather",
+            "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine_block_by_block",
+              "block_by_block",
+              "bine",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_send_remap_over",
+            "coll": "allgather",
+            "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine_remap",
+              "bine",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_hierarcic_global_local_over",
+            "coll": "allgather",
+            "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine_block_by_block",
+              "block_by_block",
+              "bine",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_send_remap_hierarcic_global_local_over",
+            "coll": "allgather",
+            "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine_remap",
+              "bine",
+              "external"
+            ]
+          }
+        ],
+        "reduce_scatter": [
+          {
+            "name": "default_ompi",
+            "coll": "reduce_scatter",
+            "desc": "Open MPI default algorithm selection",
+            "version": "4.1.5",
+            "selection": 0,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "default"
+            ]
+          },
+          {
+            "name": "recursive_halving_ompi",
+            "coll": "reduce_scatter",
+            "desc": "Open MPI recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
+            "version": "4.1.5",
+            "selection": 2,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_halving",
+              "small_sizes",
+              "medium_sizes"
+            ]
+          },
+          {
+            "name": "ring_ompi",
+            "coll": "reduce_scatter",
+            "desc": "Open MPI ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
+            "version": "4.1.5",
+            "selection": 3,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "ring",
+              "large_sizes"
+            ]
+          },
+          {
+            "name": "butterfly_ompi",
+            "coll": "reduce_scatter",
+            "desc": "Open MPI butterfly algorithm. This algorithm is used for small messages",
+            "version": "4.1.5",
+            "selection": 4,
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "butterfly",
+              "small_sizes",
+              "can_crash"
+            ]
+          },
+          {
+            "name": "recursive_distance_doubling_gpu_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_distance_doubling",
+              "external"
+            ]
+          },
+          {
+            "name": "recursive_distance_doubling_hierarchical_local_parallel_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "recursive_distance_doubling",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "block_by_block",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_hierarchical_over",
+            "coll": "reduce_scatter",
+            "desc": "libpico external bine block by block algorithm hierarchical. Works only for power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "block_by_block",
+              "external"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
