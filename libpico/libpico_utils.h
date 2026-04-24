@@ -811,4 +811,15 @@ static inline unsigned int floor_power_of_two(unsigned int n) {
     return n - (n >> 1);
 }
 
+static inline int same_prefix_negabinary(int a, int b, int total_bits, int prefix_len)
+{
+    a = binary_to_negabinary(a);
+    b = binary_to_negabinary(b);
+
+    int shift = total_bits - prefix_len;
+    return (a >> shift) == (b >> shift);
+}
+
+
+
 #endif // LIBPICO_UTILS_H
