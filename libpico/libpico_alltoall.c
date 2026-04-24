@@ -7,10 +7,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
-
+#include <math.h>
+#include <assert.h>
+#include <string.h>
 #include "libpico.h"
 #include "libpico_utils.h"
-
 
 /* Alltoall pairwise implementation from Open MPI 5.0.1 base module.
  * Original file: ompi/mca/coll/base/coll_base_alltoall.c
