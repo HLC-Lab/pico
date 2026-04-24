@@ -7,10 +7,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
-
+#include <math.h>
 #include "libpico.h"
 #include "libpico_utils.h"
-
 
 /* Alltoall pairwise implementation from Open MPI 5.0.1 base module.
  * Original file: ompi/mca/coll/base/coll_base_alltoall.c
@@ -197,4 +196,118 @@ int alltoall_bine(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
 err_hndl:
   if(tmpbuf != NULL) free(tmpbuf);
   return err;
+}
+
+
+int alltoall_bine_DH(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
+                     void *recvbuf, size_t r_count, MPI_Datatype r_dtype, MPI_Comm comm)
+{
+    assert(s_count == r_count);
+    assert(s_dtype == r_dtype);
+
+    int r, size, dtype, s, err = MPI_SUCCESS;
+    char *work_buffer = NULL;
+    char *send_buffer = NULL;
+    char *keep_buffer = NULL;
+    size_t block_size;
+    size_t header_size;
+    size_t packet_size;
+
+    err = MPI_Comm_rank(comm, &r);
+    if (err != MPI_SUCCESS) goto err_hndl;
+
+    err = MPI_Comm_size(comm, &size);
+    if (err != MPI_SUCCESS) goto err_hndl;
+
+    err = MPI_Type_size(s_dtype, &dtype);
+    if (err != MPI_SUCCESS) goto err_hndl;
+
+    s = (int)log2((double)size);
+    assert((1 << s) == size);
+
+    block_size = s_count * (size_t)dtype;
+    header_size = 2 * sizeof(int);
+    packet_size = header_size + block_size;
+
+    work_buffer = malloc((size_t)size * packet_size);
+    send_buffer = malloc((size_t)size * packet_size);
+    keep_buffer = malloc((size_t)size * packet_size);
+
+    if (work_buffer == NULL || send_buffer == NULL || keep_buffer == NULL) {
+        err = MPI_ERR_NO_MEM;
+        goto err_hndl;
+    }
+
+    for (int i = 0; i < size; i++) {
+        char *rec = work_buffer + (size_t)i * packet_size;
+        int src = r;
+        int dst = i;
+
+        memcpy(rec, &src, sizeof(int));
+        memcpy(rec + sizeof(int), &dst, sizeof(int));
+        memcpy(rec + header_size,
+               (const char *)sendbuf + (size_t)i * block_size,
+               block_size);
+    }
+
+    for (int step = 0; step < s; step++) {
+        int partner;
+        int send_count = 0;
+        int keep_count = 0;
+
+         if ((r % 2) == 0) 
+          partner = mod(r + (1 - (int)pow(-2, s - step)) / 3, size);
+        else 
+          partner = mod(r - (1 - (int)pow(-2, s - step)) / 3, size);
+
+        for (int j = 0; j < size; j++) {
+            char *rec = work_buffer + (size_t)j * packet_size;
+            int dst;
+
+            memcpy(&dst, rec + sizeof(int), sizeof(int));
+
+            if (same_prefix_negabinary(dst, partner, s, step + 1)) {
+                memcpy(send_buffer + (size_t)send_count * packet_size,
+                       rec,
+                       packet_size);
+                send_count++;
+            } else {
+                memcpy(keep_buffer + (size_t)keep_count * packet_size,
+                       rec,
+                       packet_size);
+                keep_count++;
+            }
+        }
+
+        err = MPI_Sendrecv(send_buffer,
+                           (int)((size_t)send_count * packet_size), MPI_BYTE, partner, 0,
+                           work_buffer + (size_t)keep_count * packet_size,
+                           (int)((size_t)send_count * packet_size), MPI_BYTE, partner, 0,
+                           comm, MPI_STATUS_IGNORE);
+        if (err != MPI_SUCCESS) goto err_hndl;
+
+        memcpy(work_buffer,
+               keep_buffer,
+               (size_t)keep_count * packet_size);
+    }
+
+    for (int i = 0; i < size; i++) {
+        char *rec = work_buffer + (size_t)i * packet_size;
+        int src, dst;
+
+        memcpy(&src, rec, sizeof(int));
+        memcpy(&dst, rec + sizeof(int), sizeof(int));
+
+        assert(dst == r);
+
+        memcpy((char *)recvbuf + (size_t)src * block_size,
+               rec + header_size,
+               block_size);
+    }
+
+err_hndl:
+    free(keep_buffer);
+    free(send_buffer);
+    free(work_buffer);
+    return err;
 }
