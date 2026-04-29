@@ -78,6 +78,7 @@ int allgather_bine_send_remap_hierarcic_global_local(ALLGATHER_MPI_ARGS);
 
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);
 int alltoall_bine(ALLTOALL_MPI_ARGS);
+int alltoall_bine_DH(ALLTOALL_MPI_ARGS);
 
 int bcast_linear(BCAST_MPI_ARGS);
 int bcast_binomial_halving(BCAST_MPI_ARGS);
