@@ -198,7 +198,7 @@ err_hndl:
   return err;
 }
 
-
+// This implementation follows the distance-halving Bine butterfly pattern described in the paper
 int alltoall_bine_DH(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
                      void *recvbuf, size_t r_count, MPI_Datatype r_dtype, MPI_Comm comm)
 {
