@@ -1,4 +1,3 @@
-
 #include <mpi.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -38,7 +37,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
     for (int i = 0; i < size; i++)
     {
-        local_total_bytes += (unsigned long)(sendcounts[i] * (size_t)dtype);
+        local_total_bytes += (unsigned long)((size_t)sendcounts[i] * (size_t)dtype);
     }
 
     err = allreduce_bine_lat(&local_total_bytes, &global_total_bytes, 1, MPI_UNSIGNED_LONG, MPI_SUM, comm);
@@ -58,9 +57,9 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
     for (int i = 0; i < size; i++)
     {
-        int block_size = sendcounts[i] * (size_t)dtype;
-        size_t offset = sdispls[i] * (size_t)dtype;
-        size_t packet_size = header_size + block_size;
+        int block_size = (int)((size_t)sendcounts[i] * (size_t)dtype);
+        size_t offset = (size_t)sdispls[i] * (size_t)dtype;
+        size_t packet_size = header_size + (size_t)block_size;
         if (block_size > 0)
         {
             char *rec = work_buffer + dim_work;
@@ -71,7 +70,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             memcpy(rec + sizeof(int), &dst, sizeof(int));
             memcpy(rec + 2 * sizeof(int), &block_size, sizeof(int));
 
-            memcpy(rec + header_size, (const char *)sendbuf + offset, block_size);
+            memcpy(rec + header_size, (const char *)sendbuf + offset, (size_t)block_size);
 
             dim_work += packet_size;
         }
@@ -143,7 +142,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
         assert(dst == r);
 
-        size_t offset = rdispls[src] * (size_t)dtype;
+        size_t offset = (size_t)rdispls[src] * (size_t)dtype;
 
         if (block_size > 0)
         {
