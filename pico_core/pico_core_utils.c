@@ -27,6 +27,7 @@ static inline coll_t get_collective_from_string(const char *coll_str) {
   CHECK_STR(coll_str, "ALLREDUCE", ALLREDUCE);
   CHECK_STR(coll_str, "ALLGATHER", ALLGATHER);
   CHECK_STR(coll_str, "ALLTOALL", ALLTOALL);
+  CHECK_STR(coll_str, "ALLTOALLV", ALLTOALLV);
   CHECK_STR(coll_str, "BCAST", BCAST);
   CHECK_STR(coll_str, "GATHER", GATHER);
   CHECK_STR(coll_str, "REDUCE", REDUCE);
@@ -53,6 +54,8 @@ static inline allocator_func_ptr get_allocator(coll_t collective) {
       return allgather_allocator;
     case ALLTOALL:
       return alltoall_allocator;
+    case ALLTOALLV:
+      return alltoallv_allocator;
     case BCAST:
       return bcast_allocator;
     case GATHER:
@@ -171,6 +174,12 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
   exit(EXIT_FAILURE);
   //return ncclAllToAll;
 #endif
+}
+
+static inline alltoallv_func_ptr get_alltoallv_function(const char *algorithm){
+  CHECK_STR(algorithm, "bine_dh_over", alltoallv_bine_DH);
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Alltoallv");
+  return alltoallv_wrapper;
 }
 
 /**
@@ -335,6 +344,9 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
       break;
     case ALLTOALL:
       test_routine->function.alltoall = get_alltoall_function(algorithm);
+      break;
+    case ALLTOALLV:
+      test_routine->function.alltoallv = get_alltoallv_function(algorithm);
       break;
     case BCAST:
       test_routine->function.bcast = get_bcast_function(algorithm);
@@ -580,6 +592,28 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
                            rbuf, local_count, dtype, comm);
       
     break;
+    case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+
+      for (int i = 0; i < comm_sz; i++) {
+         scounts[i] = (int)local_count;
+         rcounts_v[i] = (int)local_count;
+         sdispls[i] = i * (int)local_count;
+         rdispls[i] = i * (int)local_count;
+        }
+
+      ret = test_routine.function.alltoallv(sbuf, scounts, sdispls, dtype,
+                                        rbuf, rcounts_v, rdispls, dtype, comm);
+
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+      }
     case BCAST:
       ret = test_routine.function.bcast(sbuf, count, dtype, 0, comm);
       break;
@@ -636,6 +670,29 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                            rbuf, local_count, dtype,
                            comm, iter, times, test_routine);
     break;
+    case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+
+      for (int i = 0; i < comm_sz; i++) {
+        scounts[i] = (int)local_count;
+        rcounts_v[i] = (int)local_count;
+        sdispls[i] = i * (int)local_count;
+        rdispls[i] = i * (int)local_count;
+      }
+
+      ret = alltoallv_test_loop(sbuf, scounts, sdispls, dtype,
+                            rbuf, rcounts_v, rdispls, dtype,
+                            comm, iter, times, test_routine);
+
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+    }
     case BCAST:
       ret = bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
                         test_routine);
@@ -740,6 +797,27 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
              rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       break;
+    case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+      size_t local_count = count / (size_t)comm_sz;
+      for (int i = 0; i < comm_sz; i++) {
+        scounts[i] = (int)local_count;
+        rcounts_v[i] = (int)local_count;
+        sdispls[i] = i * (int)local_count;
+        rdispls[i] = i * (int)local_count;
+      }
+      PMPI_Alltoallv(sbuf, scounts, sdispls, dtype,
+                 rbuf_gt, rcounts_v, rdispls, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+    }
     case BCAST:
       if(rank == 0) {
         memcpy(rbuf_gt, sbuf, count * type_size);
@@ -1055,7 +1133,8 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   size_t real_sbuf_count =
     (test_routine.collective == ALLGATHER ||
      test_routine.collective == GATHER    ||
-     test_routine.collective == ALLTOALL) ?
+     test_routine.collective == ALLTOALL  ||
+     test_routine.collective == ALLTOALLV) ?
                                         count / (size_t) comm_sz : count;
 
   for(size_t i = 0; i < real_sbuf_count; i++) {
@@ -1262,10 +1341,11 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   }
 
   size_t real_sbuf_count =
-    (test_routine.collective == ALLGATHER ||
-     test_routine.collective == GATHER    ||
-     test_routine.collective == ALLTOALL) ?
-                                        count / (size_t) comm_sz : count;
+  (test_routine.collective == ALLGATHER ||
+   test_routine.collective == GATHER    ||
+   test_routine.collective == ALLTOALL  ||
+   test_routine.collective == ALLTOALLV) ?
+                                      count / (size_t) comm_sz : count;
 
   for(int i=0; i< real_sbuf_count; i++){
     if(dtype == MPI_INT64_T) {

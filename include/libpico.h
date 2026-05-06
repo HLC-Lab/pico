@@ -19,6 +19,8 @@
                                   void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm
 #define ALLTOALL_MPI_ARGS         const void *sbuf, size_t scount, MPI_Datatype sdtype, \
                                   void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm
+#define ALLTOALLV_MPI_ARGS        const void *sbuf, const int scounts[], const int sdispls[], MPI_Datatype sdtype, \
+                                  void *rbuf, const int rcounts[], const int rdispls[], MPI_Datatype rdtype, MPI_Comm comm
 #define BCAST_MPI_ARGS            void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm
 #define GATHER_MPI_ARGS           const void *sbuf, size_t scount, MPI_Datatype sdtype, \
                                   void *rbuf, size_t rcount, MPI_Datatype rdtype, int root, MPI_Comm comm
@@ -79,6 +81,8 @@ int allgather_bine_send_remap_hierarcic_global_local(ALLGATHER_MPI_ARGS);
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);
 int alltoall_bine(ALLTOALL_MPI_ARGS);
 int alltoall_bine_DH(ALLTOALL_MPI_ARGS);
+
+int alltoallv_bine_DH(ALLTOALLV_MPI_ARGS);
 
 int bcast_linear(BCAST_MPI_ARGS);
 int bcast_binomial_halving(BCAST_MPI_ARGS);

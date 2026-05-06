@@ -569,6 +569,7 @@ class GPUSupport:
 class CollectiveType(Enum):
     UNKNOWN = 'unknown'
     ALLTOALL = 'alltoall'
+    ALLTOALLV = 'alltoallv'
     ALLREDUCE = 'allreduce'
     ALLGATHER = 'allgather'
     BARRIER = 'barrier'
@@ -586,6 +587,8 @@ class CollectiveType(Enum):
         value = value.lower()
         if value == 'alltoall':
             return cls.ALLTOALL
+        elif value == 'alltoallv':
+            return cls.ALLTOALLV
         elif value == 'allreduce':
             return cls.ALLREDUCE
         elif value == 'allgather':

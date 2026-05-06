@@ -72,6 +72,7 @@ typedef enum{
   ALLREDUCE = 0,
   ALLGATHER,
   ALLTOALL,
+  ALLTOALLV,
   BCAST,
   GATHER,
   REDUCE,
@@ -108,6 +109,7 @@ typedef int (*allocator_func_ptr)(ALLOCATOR_ARGS);
 int allreduce_allocator(ALLOCATOR_ARGS);
 int allgather_allocator(ALLOCATOR_ARGS);
 int alltoall_allocator(ALLOCATOR_ARGS);
+int alltoallv_allocator(ALLOCATOR_ARGS);
 int bcast_allocator(ALLOCATOR_ARGS);
 int gather_allocator(ALLOCATOR_ARGS);
 int reduce_allocator(ALLOCATOR_ARGS);
@@ -122,6 +124,7 @@ int scatter_allocator(ALLOCATOR_ARGS);
 typedef int (*allreduce_func_ptr)(ALLREDUCE_MPI_ARGS);
 typedef int (*allgather_func_ptr)(ALLGATHER_MPI_ARGS);
 typedef int (*alltoall_func_ptr)(ALLTOALL_MPI_ARGS);
+typedef int (*alltoallv_func_ptr)(ALLTOALLV_MPI_ARGS);
 typedef int (*bcast_func_ptr)(BCAST_MPI_ARGS);
 typedef int (*gather_func_ptr)(GATHER_MPI_ARGS);
 typedef int (*reduce_func_ptr)(REDUCE_MPI_ARGS);
@@ -136,6 +139,9 @@ static inline int allgather_wrapper(ALLGATHER_MPI_ARGS){
 }
 static inline int alltoall_wrapper(ALLTOALL_MPI_ARGS){
   return MPI_Alltoall(sbuf, (int)scount, sdtype, rbuf, (int)rcount, rdtype, comm);
+}
+static inline int alltoallv_wrapper(ALLTOALLV_MPI_ARGS){
+  return MPI_Alltoallv(sbuf, scounts, sdispls, sdtype,rbuf, rcounts, rdispls, rdtype, comm);
 }
 static inline int bcast_wrapper(BCAST_MPI_ARGS){
   return MPI_Bcast(buf, (int)count, dtype, root, comm);
@@ -189,6 +195,7 @@ typedef struct {
     allreduce_func_ptr allreduce;
     allgather_func_ptr allgather;
     alltoall_func_ptr alltoall;
+    alltoallv_func_ptr alltoallv;
     bcast_func_ptr bcast;
     gather_func_ptr gather;
     reduce_func_ptr reduce;
@@ -298,6 +305,7 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times,  \
 DEFINE_TEST_LOOP(allreduce, ALLREDUCE_MPI_ARGS, allreduce(sbuf, rbuf, count, dtype, MPI_SUM, comm))
 DEFINE_TEST_LOOP(allgather, ALLGATHER_MPI_ARGS, allgather(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
 DEFINE_TEST_LOOP(alltoall, ALLTOALL_MPI_ARGS, alltoall(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
+DEFINE_TEST_LOOP(alltoallv, ALLTOALLV_MPI_ARGS, alltoallv(sbuf, scounts, sdispls, sdtype, rbuf, rcounts, rdispls, rdtype, comm))
 DEFINE_TEST_LOOP(bcast, BCAST_MPI_ARGS, bcast(buf, count, dtype, 0, comm))
 DEFINE_TEST_LOOP(gather, GATHER_MPI_ARGS, gather(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
 DEFINE_TEST_LOOP(reduce, REDUCE_MPI_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm))
