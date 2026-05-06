@@ -1,0 +1,23 @@
+{
+  "default_ompi": {
+    "desc": "Open MPI default Alltoallv algorithm selection",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": 0,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "default"
+    ]
+  }
+}

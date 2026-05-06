@@ -888,6 +888,15 @@ static inline int same_prefix_negabinary(int a, int b, int total_bits, int prefi
     return (a >> shift) == (b >> shift);
 }
 
+static inline int logical_rank_for_bine_dh_root(int x, int root, int size)
+{
+    if ((root % 2) == 0)
+        // use the normal rotation
+        return mod(x - root, size);
+    else
+        // use the mirrored rotation
+        return mod(root - x, size);
+}
 
 
 #endif // LIBPICO_UTILS_H

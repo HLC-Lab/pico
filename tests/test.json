@@ -1,0 +1,89 @@
+{
+  "environment": {
+    "desc": "Saverio's laptop.",
+    "name": "local",
+    "slurm": false
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 1,
+    "output_level": "minimal",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        32
+      ],
+      "sizes_elements": [
+        8
+      ],
+      "segsizes_bytes": [
+        16384,
+        131072,
+        1048576
+      ]
+    }
+  },
+  "libraries": [
+    {
+      "name": "Open MPI",
+      "desc": "System's default Open MPI installation",
+      "tests": {
+        "cpu": [
+          8
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "Open-MPI",
+      "version": "5.0.7",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": false,
+        "gpu_support_native": false
+      },
+      "lib_load": {
+        "type": "default"
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "alltoallv": [
+          {
+            "name": "bine_dh_over",
+            "coll": "alltoallv",
+            "desc": "LibPico external Alltoall algorithm . This algorithm follows the distance-halving Bine butterfly communication pattern described in the Bine paper.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "external",
+              "distance-halving"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

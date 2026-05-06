@@ -1,0 +1,21 @@
+{
+  "default_mpich": {
+    "desc": "MPICH default algorithm selection",
+    "version": "8.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "auto",
+    "tags": [
+      "default"
+    ]
+  }
+}
