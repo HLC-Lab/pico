@@ -15,7 +15,7 @@ test_config_schema = {
     "type": "object",
     "properties": {
         "libpico_version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
-        "collective": {"type": "string", "enum": ["ALLREDUCE", "ALLTOALL", "ALLGATHER", "BCAST", "GATHER", "REDUCE", "REDUCE_SCATTER", "SCATTER"]},
+        "collective": {"type": "string", "enum": ["ALLREDUCE", "ALLTOALL","ALLTOALLV", "ALLGATHER", "BCAST", "GATHER", "REDUCE", "REDUCE_SCATTER", "SCATTER"]},
         "MPI_Op": {"type": "string"},
         "tags": {
             "type": "object",

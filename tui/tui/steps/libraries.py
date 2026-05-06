@@ -77,6 +77,7 @@ class LibrariesStep(StepScreen):
             "Allgather",
             "Allreduce",
             "Alltoall",
+            "Alltoallv",
             "Broadcast",
             "Gather",
             "Reduce",

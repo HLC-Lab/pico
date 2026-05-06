@@ -17,6 +17,12 @@
 1        # Number of message sizes
 0 0 0 0 # Algorithm
 
+4        # Collective ID = ALLTOALLV
+1        # Number of comm sizes
+2        # Comm size
+1        # Number of message sizes
+0 pico 0 0 # Algorithm
+
 6        # Collective ID = BARRIER
 1        # Number of comm sizes
 2        # Comm size
