@@ -285,9 +285,7 @@ int alltoall_bine_DH(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
 
     memcpy(rec, &src, sizeof(int));
     memcpy(rec + sizeof(int), &dst, sizeof(int));
-    memcpy(rec + header_size,
-           (const char *)sendbuf + (size_t)i * block_size,
-           block_size);
+    memcpy(rec + header_size,(const char *)sendbuf + (size_t)i * block_size,block_size);
   }
 
   for (int step = 0; step < s; step++)
