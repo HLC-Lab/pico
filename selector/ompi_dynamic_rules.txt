@@ -1,4 +1,4 @@
-9        # Number of collectives
+10        # Number of collectives
 0        # Collective ID = ALLGATHER
 1        # Number of comm sizes
 2        # Comm size
@@ -21,7 +21,7 @@
 1        # Number of comm sizes
 2        # Comm size
 1        # Number of message sizes
-0 pico 0 0 # Algorithm
+0 0 0 0 # Algorithm
 
 6        # Collective ID = BARRIER
 1        # Number of comm sizes

@@ -1,7 +1,7 @@
 {
   "default_ompi": {
     "desc": "Open MPI default Alltoallv algorithm selection.",
-    "version": "5.0.7",
+    "version": "4.1.5",
     "constraints": [
       {
         "key": "count",
@@ -22,7 +22,7 @@
   },
   "basic_linear_ompi": {
     "desc": "Open MPI basic linear Alltoallv algorithm.",
-    "version": "5.0.7",
+    "version": "4.1.5",
     "constraints": [
       {
         "key": "count",
@@ -44,7 +44,7 @@
   },
   "pairwise_ompi": {
     "desc": "Open MPI pairwise Alltoallv algorithm.",
-    "version": "5.0.7",
+    "version": "4.1.5",
     "constraints": [
       {
         "key": "count",
