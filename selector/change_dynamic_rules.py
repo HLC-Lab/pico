@@ -79,7 +79,7 @@ def modify_dynamic_rule(rule_file: str | os.PathLike, collective_type: str, new_
     for i, line in enumerate(lines):
         if re.search(pattern, line):
             if i + 4 < len(lines):  # Ensure we don't go out of bounds
-                lines[i+4] = f"0 {new_rule} 0 0 # Algorithm\n"
+                lines[i+4] = f"0 {int(new_rule)} 0 0 # Algorithm\n"
                 with open(rule_file, 'w') as txt_file:
                     txt_file.writelines(lines)
                 return
@@ -108,9 +108,15 @@ def main():
         print(f"{__file__}: Environment variables not set.", file=sys.stderr)
         print(f"DYNAMIC_RULE_FILE={dynamic_rule_file}\nCOLLECTIVE_TYPE={collective_type}\nALGORITHM_DECLARATIONS_DIR={os.getenv('ALGORITHM_DECLARATIONS_DIR')}", file=sys.stderr)
         sys.exit(1)
-
     new_rule = find_dynamic_rule(algorithm_decls_dirs, collective_type, algorithm)
-    modify_dynamic_rule(dynamic_rule_file, collective_type, new_rule)
+    if not str(new_rule).isdigit():
+        print(
+        f"{__file__}: algorithm {algorithm} for {collective_type} maps to non-Open-MPI rule '{new_rule}'. "
+        "Resetting Open MPI dynamic rule to default.",
+        file=sys.stderr)
+        modify_dynamic_rule(dynamic_rule_file, collective_type, 0)
+        sys.exit(0)
 
+    modify_dynamic_rule(dynamic_rule_file, collective_type, int(new_rule))
 if __name__ == "__main__":
     main()
