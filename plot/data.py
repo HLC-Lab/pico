@@ -97,7 +97,6 @@ def drop_unused_columns(df: pd.DataFrame) -> pd.DataFrame:
         "mpi_lib_version",
         "gpu_lib",
         "gpu_lib_version",
-        "gpu_awareness",
         "libpico_version",
     ]
 
@@ -142,6 +141,8 @@ def normalize_dataset(
             chosen_base = "allreduce_nccl_pat" if gpu_lib == "CUDA" else "default_ompi"
         elif mpi_lib in {"MPICH", "CRAY_MPICH"}:
             chosen_base = "default_mpich"
+        elif mpi_lib in {"NCCL"}:
+            chosen_base = "ring_nccl_simple"
 
     if chosen_base is None:
         raise ValueError("Could not determine a baseline algorithm; pass base=... explicitly.")

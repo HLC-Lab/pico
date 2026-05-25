@@ -71,6 +71,7 @@ static inline int pico_nccl_init(MPI_Comm comm, int rank, int comm_sz,
   cudaError_t cuda_err;
   ncclResult_t nccl_err;
 
+/*
   int visible = 0;
   PICO_CORE_CUDA_CHECK(cudaGetDeviceCount(&visible), cuda_err);
   if (visible != 1 && rank == 0) {
@@ -79,6 +80,7 @@ static inline int pico_nccl_init(MPI_Comm comm, int rank, int comm_sz,
       "Check your srun flags.\n", visible);
     return -1;
   }
+*/
 
   ncclUniqueId id;
   if (rank == 0) PICO_NCCL_CHECK(ncclGetUniqueId(&id), nccl_err);

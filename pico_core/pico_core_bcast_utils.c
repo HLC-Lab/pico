@@ -14,6 +14,8 @@ int bcast_allocator(void** sbuf, void** rbuf, void** rbuf_gt,
   *sbuf = (char *)calloc(count, type_size);
   *rbuf_gt = (char *)calloc(count, type_size);
 
+  *rbuf = *sbuf;
+
   if(*sbuf == NULL || *rbuf_gt == NULL) {
     fprintf(stderr, "Error: Memory allocation failed. Aborting...");
     return -1;
@@ -29,6 +31,8 @@ int bcast_allocator_cuda(void** d_sbuf, void** d_rbuf, void** d_rbuf_gt,
   cudaError_t err;
   PICO_CORE_CUDA_CHECK(cudaMalloc(d_sbuf, count * type_size), err);
   PICO_CORE_CUDA_CHECK(cudaMemset(*d_sbuf, 0, count * type_size), err);
+
+  *d_rbuf = *d_sbuf;
 
   PICO_CORE_CUDA_CHECK(cudaMalloc(d_rbuf_gt, count * type_size), err);
   PICO_CORE_CUDA_CHECK(cudaMemset(*d_rbuf_gt, 0, count * type_size), err);

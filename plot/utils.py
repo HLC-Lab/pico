@@ -58,10 +58,12 @@ def sort_key(algo: str) -> tuple[int, str]:
     if algo.startswith("default"):
         return (0, algo)
     if not algo.endswith("over"):
-        return (1, algo)
-    if "bine" not in algo:
+        if "nccl" not in algo:
+            return (1, algo)
         return (2, algo)
-    return (3, algo)
+    if "bine" not in algo:
+        return (3, algo)
+    return (4, algo)
 
 
 def build_tab10_palette(sorted_algos: Iterable[str]) -> Mapping[str, tuple[float, float, float]]:

@@ -21,6 +21,20 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &comm_sz);
 
+#if defined PICO_MPI_CUDA_AWARE || defined PICO_NCCL
+  int gpus_count, gpu_selector;
+  cudaError_t cuda_err;
+  PICO_CORE_CUDA_CHECK(cudaGetDeviceCount(&gpus_count), cuda_err);
+
+  if (gpus_count > 1) {
+    gpu_selector = rank % gpus_count;
+
+    PICO_CORE_CUDA_CHECK(cudaSetDevice(gpu_selector), cuda_err);
+
+    MPI_Barrier(comm);
+  }
+#endif
+
   MPI_Datatype dtype;
   PICO_DTYPE_T loop_dtype; // Used only in test loop, other routines use mpi datatype
   int iter;
@@ -314,9 +328,9 @@ int main(int argc, char *argv[]) {
 #endif // DEBUG
 
   // Clean up
-  if(NULL != sbuf)    free(sbuf);
-  if(NULL != rbuf)    free(rbuf);
-  if(NULL != rbuf_gt) free(rbuf_gt);
+  if(NULL != sbuf && sbuf != rbuf)    free(sbuf);
+  if(NULL != rbuf)                    free(rbuf);
+  if(NULL != rbuf_gt)                 free(rbuf_gt);
   free(times);
 
   if(rank == 0) {
@@ -337,9 +351,9 @@ int main(int argc, char *argv[]) {
   }
 #endif
 #if defined PICO_MPI_CUDA_AWARE || defined PICO_NCCL
-  if(NULL != d_sbuf)    cudaFree(d_sbuf);
-  if(NULL != d_rbuf)    cudaFree(d_rbuf);
-  if(NULL != d_rbuf_gt) cudaFree(d_rbuf_gt);
+  if(NULL != d_sbuf && d_sbuf != d_rbuf)    cudaFree(d_sbuf);
+  if(NULL != d_rbuf)                        cudaFree(d_rbuf);
+  if(NULL != d_rbuf_gt)                     cudaFree(d_rbuf_gt);
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
 
   MPI_Barrier(comm);
@@ -352,10 +366,10 @@ err_hndl:
   fprintf(stderr, "\n%s: line %d\tError invoked by rank %d\n\n", __FILE__, line, rank);
   (void)line;  // silence compiler warning
 
-  if(NULL != sbuf)    free(sbuf);
-  if(NULL != rbuf)    free(rbuf);
-  if(NULL != rbuf_gt) free(rbuf_gt);
-  if(NULL != times)   free(times);
+  if(NULL != sbuf && sbuf != rbuf)    free(sbuf);
+  if(NULL != rbuf)                    free(rbuf);
+  if(NULL != rbuf_gt)                 free(rbuf_gt);
+  if(NULL != times)                   free(times);
 
   if(rank == 0) {
     if(NULL != all_times)  free(all_times);
@@ -363,9 +377,9 @@ err_hndl:
   }
 
 #if defined PICO_MPI_CUDA_AWARE || defined PICO_NCCL
-  if(NULL != d_sbuf)    cudaFree(d_sbuf);
-  if(NULL != d_rbuf)    cudaFree(d_rbuf);
-  if(NULL != d_rbuf_gt) cudaFree(d_rbuf_gt);
+  if(NULL != d_sbuf && d_sbuf != d_rbuf)    cudaFree(d_sbuf);
+  if(NULL != d_rbuf)                        cudaFree(d_rbuf);
+  if(NULL != d_rbuf_gt)                     cudaFree(d_rbuf_gt);
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
 
 #if defined PICO_INSTRUMENT && !defined PICO_NCCL
