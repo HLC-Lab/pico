@@ -232,19 +232,19 @@ kernel_func_reorder reorderute_kernels[R_TYPE_NUM] = {
     NULL
   };
 
-int reduce_wrapper(void *inbuff, void *inoutbuff, int count, MPI_Datatype dtype, MPI_Op op)
+int reduce_wrapper(void *inbuff, void *inoutbuff, int count, MPI_Datatype dtype, MPI_Op op, int syncronize)
 {
   // call reduce_wrapper_grops_inoutsplit with sanem value for both outbuff and currentbuff with group comm_size to count and 1 group
-  return reduce_wrapper_grops_inoutsplit(inbuff, inoutbuff, inoutbuff, count, 1, dtype, op);
+  return reduce_wrapper_grops_inoutsplit(inbuff, inoutbuff, inoutbuff, count, 1, dtype, op, syncronize);
 }
 
-int reduce_wrapper_grops(void *inbuff, void *inoutbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op)
+int reduce_wrapper_grops(void *inbuff, void *inoutbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op, int syncronize)
 {
   // call reduce_wrapper_grops_inoutsplit with sanem value for both outbuff and currentbuff
-  return reduce_wrapper_grops_inoutsplit(inbuff, inoutbuff, inoutbuff, group_size, groups, dtype, op);
+  return reduce_wrapper_grops_inoutsplit(inbuff, inoutbuff, inoutbuff, group_size, groups, dtype, op, syncronize);
 }
 
-int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *currentbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op)
+int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *currentbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op, int syncronize)
 {
   enum ReduceOp r_op = mpi_to_reduce_op(op);
   enum ReduceType r_type = mpi_to_redcue_type(dtype);
@@ -267,6 +267,16 @@ int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *cur
   {
     fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n", __FILE__, __LINE__, cudaGetErrorString(err));
     exit(EXIT_FAILURE);
+  }
+
+  if (syncronize != 0)
+  {
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess)
+    {
+      fprintf(stderr, "Failed: Cuda error %s:%d '%s'\n", __FILE__, __LINE__, cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
+    }
   }
 
   return MPI_SUCCESS;

@@ -42,6 +42,12 @@
 #define COPY_BUFF_DIFF_DT(...) copy_buffer_different_dt(__VA_ARGS__)
 #endif
 
+#if defined PICO_MPI_CUDA_AWARE
+#define COPY_BUFF(...) copy_buffer_cuda(__VA_ARGS__)
+#else
+#define COPY_BUFF(...) copy_buffer(__VA_ARGS__)
+#endif
+
 static int rhos[BINE_MAX_STEPS] = {1, -1, 3, -5, 11, -21, 43, -85, 171, -341,
           683, -1365, 2731, -5461, 10923, -21845, 43691, -87381, 174763, -349525};
 
@@ -121,6 +127,22 @@ static inline void pico_get_group_config(int *node_size, int *node_rank, int *no
 }
 
 #ifdef PICO_MPI_CUDA_AWARE
+
+static inline int copy_buffer_cuda(const void *input_buffer, void *output_buffer,
+                              size_t count, const MPI_Datatype datatype) {
+  if(BINE_UNLIKELY(input_buffer == NULL || output_buffer == NULL || count <= 0)) {
+    return MPI_ERR_UNKNOWN;
+  }
+
+  int datatype_size;
+  MPI_Type_size(datatype, &datatype_size);                // Get the size of the MPI datatype
+
+  size_t total_size = count * (size_t)datatype_size;
+
+  BINE_CUDA_CHECK(cudaMemcpy(output_buffer, input_buffer, total_size, cudaMemcpyDeviceToDevice));
+
+  return MPI_SUCCESS;
+}
 
 static inline int copy_buffer_different_dt_cuda(const void *input_buffer, size_t scount,
   const MPI_Datatype sdtype, void *output_buffer,

@@ -5,6 +5,9 @@
 #include <cuda.h> 
 #include <stdio.h>
 
+#define BINE_CUDA_SYNCRONIZE 1
+#define BINE_CUDA_UNSYNCRONIZE 0
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,13 +41,13 @@ enum ReduceOp {
 };
 
 // simple reduce wrappe reduce 2 buffer
-int reduce_wrapper(void* inbuff, void* inoutbuff, int count, MPI_Datatype dtype, MPI_Op op);
+int reduce_wrapper(void* inbuff, void* inoutbuff, int count, MPI_Datatype dtype, MPI_Op op, int syncronize);
 
 // reduce wrapper that reducea group of buffer of a certent size
-int reduce_wrapper_grops(void *inbuff, void *inoutbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op);
+int reduce_wrapper_grops(void *inbuff, void *inoutbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op, int syncronize);
 
 // reduce wrapper that reducea group of buffer of a certent size where ther are a set of starter data on another buffer
-int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *currentbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op);
+int reduce_wrapper_grops_inoutsplit(void *inbuff, void *outbuff, const void *currentbuff, int group_size, int groups, MPI_Datatype dtype, MPI_Op op, int syncronize);
 
 int reorder_kernel_wrapper(void *inbuff, void *outbuff, int elem, int size, int gpu_on_node, MPI_Datatype dtype);
 

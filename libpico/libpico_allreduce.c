@@ -11,6 +11,10 @@
 #include "libpico.h"
 #include "libpico_utils.h"
 
+#ifdef PICO_MPI_CUDA_AWARE
+#include "support_kernel.h"
+#endif
+
 size_t bine_allreduce_segsize = 0;
 
 int allreduce_recursivedoubling(const void *sbuf, void *rbuf, size_t count,
@@ -330,7 +334,7 @@ int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype 
   // Special case for size == 1
   if(1 == size) {
     if(MPI_IN_PLACE != sbuf) {
-      ret = copy_buffer((char *) sbuf, (char *) rbuf, count, dtype);
+      ret = COPY_BUFF((char *) sbuf, (char *) rbuf, count, dtype);
       if(ret < 0) { line = __LINE__; goto error_hndl; }
     }
     return MPI_SUCCESS;
@@ -340,15 +344,19 @@ int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype 
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
   span = true_extent + extent * (count - 1);
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **) &inplacebuf_free, span + gap));
+ #else
   inplacebuf_free = (char*) malloc(span + gap);
+ #endif
   char *inplacebuf = inplacebuf_free + gap;
 
   // Copy content from sbuffer to inplacebuf
   if(MPI_IN_PLACE == sbuf) {
-      ret = copy_buffer((char*)rbuf, inplacebuf, count, dtype);
+      ret = COPY_BUFF((char*)rbuf, inplacebuf, count, dtype);
       if(ret < 0) { line = __LINE__; goto error_hndl; }
   } else {
-      ret = copy_buffer((char*)sbuf, inplacebuf, count, dtype);
+      ret = COPY_BUFF((char*)sbuf, inplacebuf, count, dtype);
       if(ret < 0) { line = __LINE__; goto error_hndl; }
   }
 
@@ -384,7 +392,11 @@ int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype 
     } else {
       ret = MPI_Recv(tmprecv, count, dtype, (rank - 1), 0, comm, MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
+#ifdef PICO_MPI_CUDA_AWARE
+      BINE_CUDA_CHECK(reduce_wrapper((char *) tmprecv, (char *) tmpsend, count, dtype, op, 1));
+#else
       MPI_Reduce_local((char *) tmprecv, (char *) tmpsend, count, dtype, op);
+#endif
       new_rank = rank >> 1;
     }
   } else new_rank = rank - extra_ranks;
@@ -406,7 +418,11 @@ int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype 
                        comm, MPI_STATUS_IGNORE);
     if(MPI_SUCCESS != ret) { line = __LINE__; goto error_hndl; }
     
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(reduce_wrapper((char *) tmprecv, (char *) tmpsend, count, dtype, op, 1));
+#else
     MPI_Reduce_local((char *) tmprecv, (char *) tmpsend, count, dtype, op);
+#endif
   }
   
   // Final results is sent to nodes that are not included in general computation
@@ -423,17 +439,27 @@ int allreduce_bine_lat(const void *sbuf, void *rbuf, size_t count, MPI_Datatype 
   }
 
   if(tmpsend != rbuf) {
-    ret = copy_buffer(tmpsend, (char*) rbuf, count, dtype);
+    ret = COPY_BUFF(tmpsend, (char*) rbuf, count, dtype);
     if(ret < 0) { line = __LINE__; goto error_hndl; }
   }
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(inplacebuf_free));
+#else
   free(inplacebuf_free);
+#endif
   return MPI_SUCCESS;
 
   error_hndl:
     BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, ret);
     (void)line;  // silence compiler warning
-    if(NULL != inplacebuf_free) free(inplacebuf_free);
+    if(NULL != inplacebuf_free) {
+#ifdef PICO_MPI_CUDA_AWARE
+      BINE_CUDA_CHECK(cudaFree(inplacebuf_free));
+#else
+      free(inplacebuf_free);
+#endif
+    }
     return ret;
 }
 
@@ -746,13 +772,17 @@ int allreduce_bine_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
   buf_size = true_extent + extent * (count >> 1);
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **) &tmp_buf_raw, buf_size));
+#else
   tmp_buf_raw = (char *)malloc(buf_size);
+#endif
   tmp_buf = tmp_buf_raw - gap;
 
   // Copy into receive_buffer content of send_buffer to not produce
   // side effects on send_buffer
   if(send_buf != MPI_IN_PLACE) {
-    err = copy_buffer((char *)send_buf, (char *)recv_buf, count, dtype);
+    err = COPY_BUFF((char *)send_buf, (char *)recv_buf, count, dtype);
     if(MPI_SUCCESS != err) { goto cleanup_and_return; }
   }
   PICO_TAG_END("mem-move");
@@ -796,7 +826,11 @@ int allreduce_bine_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
 
     tmp_recv = (char *) recv_buf + r_index[step] * extent;
     PICO_TAG_BEGIN("reduction", step);
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(reduce_wrapper(tmp_buf, tmp_recv, r_count[step], dtype, op, 1));
+#else
     MPI_Reduce_local(tmp_buf, tmp_recv, r_count[step], dtype, op);
+#endif
     PICO_TAG_END("reduction", step);
 
     if(step + 1 < steps) {
@@ -823,7 +857,11 @@ int allreduce_bine_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
   }
   PICO_TAG_END("phase:allgather");
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmp_buf_raw));
+#else
   free(tmp_buf_raw);
+#endif
   free(r_index);
   free(s_index);
   free(r_count);
@@ -831,7 +869,13 @@ int allreduce_bine_bdw_remap(const void *send_buf, void *recv_buf, size_t count,
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  if(NULL != tmp_buf_raw)  free(tmp_buf_raw);
+  if(NULL != tmp_buf_raw) {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmp_buf_raw));
+#else
+    free(tmp_buf_raw);
+#endif
+  }
   if(NULL != r_index)      free(r_index);
   if(NULL != s_index)      free(s_index);
   if(NULL != r_count)      free(r_count);
@@ -842,6 +886,7 @@ cleanup_and_return:
 int allreduce_bine_block_by_block_any_even(const void *sbuf, void *rbuf, size_t count, 
                                             MPI_Datatype dt, MPI_Op op, MPI_Comm comm) {
   int size, rank, dtsize, err = MPI_SUCCESS;
+  void *tmpbuf = NULL;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
@@ -861,8 +906,13 @@ int allreduce_bine_block_by_block_any_even(const void *sbuf, void *rbuf, size_t 
     count_so_far += recvcounts[i];
   }
 
-  void* tmpbuf = malloc(count*dtsize);
-  memcpy(rbuf, sbuf, count*dtsize);
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **) &tmpbuf, count * dtsize));
+#else
+  tmpbuf = malloc(count*dtsize);
+#endif
+  //memcpy(rbuf, sbuf, count*dtsize);
+  COPY_BUFF(sbuf, rbuf, count, dt);
 
   /**** Reduce-scatter phase ****/
   int mask = 0x1;
@@ -925,8 +975,12 @@ int allreduce_bine_block_by_block_any_even(const void *sbuf, void *rbuf, size_t 
     for(size_t block = 0; block < next_req_r; block++){
         err = MPI_Wait(&reqs_r[block], MPI_STATUS_IGNORE);
         if(MPI_SUCCESS != err) { goto err_hndl; }
+#ifdef PICO_MPI_CUDA_AWARE
+        BINE_CUDA_CHECK(reduce_wrapper((char*) tmpbuf + displs[blocks_to_recv[block]]*dtsize, (char*) rbuf + displs[blocks_to_recv[block]]*dtsize, recvcounts[blocks_to_recv[block]], dt, op, 1));
+#else
         err = MPI_Reduce_local((char*) tmpbuf + displs[blocks_to_recv[block]]*dtsize, (char*) rbuf + displs[blocks_to_recv[block]]*dtsize, recvcounts[blocks_to_recv[block]], dt, op);
         if(MPI_SUCCESS != err) { goto err_hndl; }
+#endif
     }
     err = MPI_Waitall(next_req_s, reqs_s, MPI_STATUSES_IGNORE);
     if(MPI_SUCCESS != err) { goto err_hndl; }
@@ -987,12 +1041,15 @@ int allreduce_bine_block_by_block_any_even(const void *sbuf, void *rbuf, size_t 
     mask >>= 1;
     step++;
   }
-
   free(blocks_to_recv);
   free(reqs_s);
   free(reqs_r);
   free(displs);
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
   free(tmpbuf);
+#endif
   free(recvcounts);
   return MPI_SUCCESS;
 
@@ -1001,7 +1058,13 @@ err_hndl:
   if (NULL != reqs_s) free(reqs_s);
   if (NULL != reqs_r) free(reqs_r);
   if (NULL != displs) free(displs);
-  if (NULL != tmpbuf) free(tmpbuf);
+  if (NULL != tmpbuf) {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(tmpbuf));
+#else
+    free(tmpbuf);
+#endif
+  }
   if (NULL != recvcounts) free(recvcounts);
   return err;
 
@@ -1046,8 +1109,13 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
   // Allocate temporary buffer for send/recv and reduce operations
   inbuf_size = (segcount < (count >> 1)) ?
                   true_extent + extent * segcount : true_extent + extent * (count >> 1);
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaMalloc((void **) &inbuf_free[0], inbuf_size));
+  BINE_CUDA_CHECK(cudaMalloc((void **) &inbuf_free[1], inbuf_size));
+#else
   inbuf_free[0] = (char *)malloc(inbuf_size);
   inbuf_free[1] = (char *)malloc(inbuf_size);
+#endif
   if(NULL == inbuf_free[0] || NULL == inbuf_free[1]) {
     err = MPI_ERR_NO_MEM;
     goto cleanup_and_return;
@@ -1072,7 +1140,11 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
       // TODO: Pay attention to commuitativity of the operation
       err = MPI_Recv(rbuf, count, dtype, (rank - 1), 0, comm, MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+#ifdef PICO_MPI_CUDA_AWARE
+      BINE_CUDA_CHECK(reduce_wrapper((char *) sbuf, (char *) rbuf, count, dtype, op, 1));
+#else
       MPI_Reduce_local((char *) sbuf, (char *) rbuf, count, dtype, op);
+#endif
       new_rank = rank >> 1;
     }
   } else {
@@ -1080,7 +1152,7 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
     // Copy into receive_buffer content of send_buffer to not produce
     // side effects on send_buffer
     if(sbuf != MPI_IN_PLACE) {
-      err = copy_buffer((char *)sbuf, (char *) rbuf, count, dtype);
+      err = COPY_BUFF((char *)sbuf, (char *) rbuf, count, dtype);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
     }
   }
@@ -1153,8 +1225,12 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
         err = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
         if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
+#ifdef PICO_MPI_CUDA_AWARE
+        BINE_CUDA_CHECK(reduce_wrapper(inbuf[inbi ^ 0x1], tmp_recv_phase, phase_rcount, dtype, op, 1));
+#else
         err = MPI_Reduce_local(inbuf[inbi ^ 0x1], tmp_recv_phase, phase_rcount, dtype, op);
         if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+#endif
 
         err = MPI_Send(tmp_send_phase, phase_scount, dtype, dest, 0, comm);
         if(MPI_SUCCESS != err) { goto cleanup_and_return; }
@@ -1166,8 +1242,12 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
       if(num_phases != 0){
         tmp_recv += (ptrdiff_t)((num_phases - 1) * phase_rcount * extent);
       }
+#ifdef PICO_MPI_CUDA_AWARE
+      BINE_CUDA_CHECK(reduce_wrapper(inbuf[inbi], tmp_recv, phase_rcount, dtype, op, 1));
+#else
       err = MPI_Reduce_local(inbuf[inbi], tmp_recv, phase_rcount, dtype, op);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+#endif
 
       if(step + 1 < steps) {
         r_index[step + 1] = r_index[step];
@@ -1206,8 +1286,13 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
     }
   }
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(inbuf_free[0]));
+  BINE_CUDA_CHECK(cudaFree(inbuf_free[1]));
+#else
   free(inbuf_free[0]);
   free(inbuf_free[1]);
+#endif
   free(r_index);
   free(s_index);
   free(r_count);
@@ -1215,8 +1300,20 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
   return MPI_SUCCESS;
 
 cleanup_and_return:
-  if(NULL != inbuf_free[0]) free(inbuf_free[0]);
-  if(NULL != inbuf_free[1]) free(inbuf_free[1]);
+  if(NULL != inbuf_free[0]) {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(inbuf_free[0]));
+#else
+    free(inbuf_free[0]);
+#endif
+  }
+  if(NULL != inbuf_free[1]) {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(inbuf_free[1]));
+#else
+    free(inbuf_free[1]);
+#endif
+  }
   if(NULL != r_index)       free(r_index);
   if(NULL != s_index)       free(s_index);
   if(NULL != r_count)       free(r_count);
