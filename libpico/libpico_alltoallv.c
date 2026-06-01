@@ -10,7 +10,8 @@
 int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdispls[], MPI_Datatype sendtype,
                       void *recvbuf, const int recvcounts[], const int rdispls[], MPI_Datatype recvtype,
                       MPI_Comm comm)
-{
+{   
+    
     assert(sendtype == recvtype);
 
     int r, size, dtype, s, err = MPI_SUCCESS;
@@ -39,8 +40,9 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
     {
         local_total_bytes += (unsigned long)((size_t)sendcounts[i] * (size_t)dtype);
     }
-
+    PICO_TAG_BEGIN("init:allreduce");
     err = allreduce_bine_lat(&local_total_bytes, &global_total_bytes, 1, MPI_UNSIGNED_LONG, MPI_SUM, comm);
+    PICO_TAG_END("init:allreduce");
     if (err != MPI_SUCCESS)
         goto err_hndl;
     max_dim_buffer = (size_t)size * header_size + (size_t)global_total_bytes;
@@ -54,7 +56,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
         err = MPI_ERR_NO_MEM;
         goto err_hndl;
     }
-
+    PICO_TAG_BEGIN("init:for");
     for (int i = 0; i < size; i++)
     {
         int block_size = (int)((size_t)sendcounts[i] * (size_t)dtype);
@@ -75,6 +77,10 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             dim_work += packet_size;
         }
     }
+    PICO_TAG_END("init:for");
+    
+
+    
 
     for (int step = 0; step < s; step++)
     {
@@ -84,7 +90,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             partner = mod(r + (1 - (int)pow(-2, s - step)) / 3, size);
         else
             partner = mod(r - (1 - (int)pow(-2, s - step)) / 3, size);
-
+        PICO_TAG_BEGIN("step:while");
         size_t skip = 0;
         while (skip < dim_work)
         {
@@ -112,21 +118,29 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
             skip += packet_size;
         }
+        PICO_TAG_END("step:while");
+        
 
+        PICO_TAG_BEGIN("step:sendrecv_size");
         err = MPI_Sendrecv(&dim_send, 1, MPI_INT, partner, 0, &dim_recv, 1, MPI_INT, partner, 0, comm, MPI_STATUS_IGNORE);
+        PICO_TAG_END("step:sendrecv_size");
+        
         if (err != MPI_SUCCESS)
             goto err_hndl;
-
+        PICO_TAG_BEGIN("step:sendrecv_data");   
         err = MPI_Sendrecv(send_buffer, dim_send, MPI_BYTE, partner, 1, work_buffer + dim_keep, dim_recv, MPI_BYTE, partner, 1,
                            comm, MPI_STATUS_IGNORE);
+        PICO_TAG_END("step:sendrecv_data");
         if (err != MPI_SUCCESS)
             goto err_hndl;
-
+        PICO_TAG_BEGIN("step:memcpy");
         memcpy(work_buffer, keep_buffer, (size_t)dim_keep);
-
+        PICO_TAG_END("step:memcpy");
         dim_work = (size_t)dim_keep + (size_t)dim_recv;
     }
+    
 
+    PICO_TAG_BEGIN("permutation");
     size_t skip = 0;
     while (skip < dim_work)
     {
@@ -153,7 +167,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
         skip += packet_size;
     }
-
+    PICO_TAG_END("permutation");
 err_hndl:
     free(keep_buffer);
     free(send_buffer);
