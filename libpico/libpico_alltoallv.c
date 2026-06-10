@@ -37,7 +37,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
     size_t local_total_bytes = 0;
     size_t local_blocks = 0;
-    
+
     for (int i = 0; i < size; i++)
     {
         size_t block_size = (size_t)sendcounts[i] * (size_t)dtype;
@@ -48,7 +48,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             local_blocks++;
         }
     }
-    
+
     max_dim_buffer = local_total_bytes + local_blocks * header_size;
 
     if (max_dim_buffer == 0)
@@ -122,19 +122,35 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             skip += packet_size;
         }
         PICO_TAG_END("step:while");
-        PICO_TAG_BEGIN("step:sendrecv_size");
-        err = MPI_Sendrecv(&dim_send, 1, MPI_INT, partner, 0, &dim_recv, 1, MPI_INT, partner, 0, comm, MPI_STATUS_IGNORE);
-        PICO_TAG_END("step:sendrecv_size");
+        MPI_Request req;
+        MPI_Status status;
+
+        PICO_TAG_BEGIN("step:isend_data");
+        err = MPI_Isend(send_buffer, dim_send, MPI_BYTE,
+                        partner, 1, comm, &req);
+        PICO_TAG_END("step:isend_data");
         if (err != MPI_SUCCESS)
             goto err_hndl;
-        PICO_TAG_BEGIN("step:realloc");
-        size_t needed = (size_t)dim_keep + (size_t)dim_recv;
 
+        PICO_TAG_BEGIN("step:probe");
+        err = MPI_Probe(partner, 1, comm, &status);
+        PICO_TAG_END("step:probe");
+        if (err != MPI_SUCCESS)
+            goto err_hndl;
+
+        err = MPI_Get_count(&status, MPI_BYTE, &dim_recv);
+        if (err != MPI_SUCCESS)
+            goto err_hndl;
+
+        size_t needed = (size_t)dim_keep + (size_t)dim_recv;
         if (needed == 0)
             needed = 1;
 
         if (needed > max_dim_buffer)
         {
+            PICO_TAG_BEGIN("step:realloc");
+
+            char *old_buffer = work_buffer;
 
             char *new_buffer = malloc(needed * 3);
             if (new_buffer == NULL)
@@ -146,59 +162,83 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             char *new_work_buffer = new_buffer;
             char *new_send_buffer = new_buffer + needed;
             char *new_keep_buffer = new_buffer + 2 * needed;
-            memcpy(new_send_buffer, send_buffer, (size_t)dim_send);
-            memcpy(new_keep_buffer, keep_buffer, (size_t)dim_keep);
-
-            free(work_buffer);
-
+            PICO_TAG_END("step:realloc");
+            PICO_TAG_BEGIN("step:memcpy");
+            memcpy(new_work_buffer, keep_buffer, (size_t)dim_keep);
+            PICO_TAG_END("step:memcpy");
             work_buffer = new_work_buffer;
             send_buffer = new_send_buffer;
             keep_buffer = new_keep_buffer;
 
             max_dim_buffer = needed;
-        }
-        PICO_TAG_END("step:realloc");
+
+            
+
+            PICO_TAG_BEGIN("step:recv_data");
+            err = MPI_Recv(work_buffer + dim_keep, dim_recv, MPI_BYTE,
+                           partner, 1, comm, MPI_STATUS_IGNORE);
+            PICO_TAG_END("step:recv_data");
+            if (err != MPI_SUCCESS) 
+                goto err_hndl;
         
-        PICO_TAG_BEGIN("step:sendrecv_data");
-        err = MPI_Sendrecv(send_buffer, dim_send, MPI_BYTE, partner, 1, work_buffer + dim_keep, dim_recv, MPI_BYTE, partner, 1,
-                           comm, MPI_STATUS_IGNORE);
-        PICO_TAG_END("step:sendrecv_data");
-        if (err != MPI_SUCCESS)
-            goto err_hndl;
-        PICO_TAG_BEGIN("step:memcpy");
-        memcpy(work_buffer, keep_buffer, (size_t)dim_keep);
-        PICO_TAG_END("step:memcpy");
+
+            err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+            if (err != MPI_SUCCESS)
+                goto err_hndl;
+        
+
+            free(old_buffer);
+        }
+        else
+        {
+            PICO_TAG_BEGIN("step:recv_data");
+            err = MPI_Recv(work_buffer + dim_keep, dim_recv, MPI_BYTE,
+                           partner, 1, comm, MPI_STATUS_IGNORE);
+            PICO_TAG_END("step:recv_data");
+            if (err != MPI_SUCCESS)
+                goto err_hndl;
+
+            err = MPI_Wait(&req, MPI_STATUS_IGNORE);
+            if (err != MPI_SUCCESS)
+                goto err_hndl;
+
+            PICO_TAG_BEGIN("step:memcpy");
+            memcpy(work_buffer, keep_buffer, (size_t)dim_keep);
+            PICO_TAG_END("step:memcpy"); 
+        }
+    
+
         dim_work = (size_t)dim_keep + (size_t)dim_recv;
     }
-    PICO_TAG_BEGIN("permutation");
-    size_t skip = 0;
-    while (skip < dim_work)
-    {
-        char *rec = work_buffer + skip;
-
-        int src, dst, block_size;
-
-        memcpy(&src, rec, sizeof(int));
-        memcpy(&dst, rec + sizeof(int), sizeof(int));
-        memcpy(&block_size, rec + 2 * sizeof(int), sizeof(int));
-
-        size_t packet_size = header_size + (size_t)block_size;
-
-        assert(dst == r);
-
-        size_t offset = (size_t)rdispls[src] * (size_t)dtype;
-
-        if (block_size > 0)
+        PICO_TAG_BEGIN("permutation");
+        size_t skip = 0;
+        while (skip < dim_work)
         {
-            memcpy((char *)recvbuf + offset,
-                   rec + header_size,
-                   (size_t)block_size);
-        }
+            char *rec = work_buffer + skip;
 
-        skip += packet_size;
+            int src, dst, block_size;
+
+            memcpy(&src, rec, sizeof(int));
+            memcpy(&dst, rec + sizeof(int), sizeof(int));
+            memcpy(&block_size, rec + 2 * sizeof(int), sizeof(int));
+
+            size_t packet_size = header_size + (size_t)block_size;
+
+            assert(dst == r);
+
+            size_t offset = (size_t)rdispls[src] * (size_t)dtype;
+
+            if (block_size > 0)
+            {
+                memcpy((char *)recvbuf + offset,
+                       rec + header_size,
+                       (size_t)block_size);
+            }
+
+            skip += packet_size;
+        }
+        PICO_TAG_END("permutation");
+    err_hndl:
+        free(work_buffer);
+        return err;
     }
-    PICO_TAG_END("permutation");
-err_hndl:
-    free(work_buffer);
-    return err;
-}
