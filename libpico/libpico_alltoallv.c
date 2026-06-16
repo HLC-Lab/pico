@@ -17,7 +17,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
     assert(sendtype == recvtype);
 
     int r, size, dtype, s, err = MPI_SUCCESS;
-    char *work_buffer = NULL, *send_buffer = NULL, *keep_buffer = NULL;
+    char *work_buffer = NULL, *send_buffer = NULL;
     size_t header_size = 3 * sizeof(int), max_dim_buffer, dim_work = 0;
 
     err = MPI_Comm_rank(comm, &r);
@@ -54,14 +54,13 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
     if (max_dim_buffer == 0)
         max_dim_buffer = 1;
 
-    work_buffer = malloc(max_dim_buffer * 3);
+    work_buffer = malloc(max_dim_buffer * 2);
     if (work_buffer == NULL)
     {
         err = MPI_ERR_NO_MEM;
         goto err_hndl;
     }
     send_buffer = work_buffer + max_dim_buffer;
-    keep_buffer = send_buffer + max_dim_buffer;
     PICO_TAG_BEGIN("init:for");
     for (int i = 0; i < size; i++)
     {
@@ -115,7 +114,8 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             }
             else
             {
-                memcpy(keep_buffer + dim_keep, rec, packet_size);
+                if(dim_keep!=skip)
+                    memmove(work_buffer + dim_keep, rec, packet_size);
                 dim_keep += (int)packet_size;
             }
 
@@ -152,7 +152,7 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
             char *old_buffer = work_buffer;
 
-            char *new_buffer = malloc(needed * 3);
+            char *new_buffer = malloc(needed * 2);
             if (new_buffer == NULL)
             {
                 err = MPI_ERR_NO_MEM;
@@ -161,14 +161,12 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
 
             char *new_work_buffer = new_buffer;
             char *new_send_buffer = new_buffer + needed;
-            char *new_keep_buffer = new_buffer + 2 * needed;
             PICO_TAG_END("step:realloc");
             PICO_TAG_BEGIN("step:memcpy");
-            memcpy(new_work_buffer, keep_buffer, (size_t)dim_keep);
+            memcpy(new_work_buffer, work_buffer, (size_t)dim_keep);
             PICO_TAG_END("step:memcpy");
             work_buffer = new_work_buffer;
             send_buffer = new_send_buffer;
-            keep_buffer = new_keep_buffer;
 
             max_dim_buffer = needed;
 
@@ -201,10 +199,6 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
             err = MPI_Wait(&req, MPI_STATUS_IGNORE);
             if (err != MPI_SUCCESS)
                 goto err_hndl;
-
-            PICO_TAG_BEGIN("step:memcpy");
-            memcpy(work_buffer, keep_buffer, (size_t)dim_keep);
-            PICO_TAG_END("step:memcpy"); 
         }
     
 
