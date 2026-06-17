@@ -221,12 +221,12 @@ def generate_line_plot(
     # ax.tick_params(axis="both", labelsize=18)
 
     if metadata.total_nodes == metadata.mpi_tasks:
-        title = f"{metadata.system.capitalize()}, {collective.lower().capitalize()}, {metadata.nnodes} nodes {"GPU" if gpu_awareness == "yes" else "CPU"}"
+        title = f"{metadata.system.capitalize()}, {collective.lower().capitalize()}, {metadata.nnodes} nodes {'GPU' if gpu_awareness == 'yes' else 'CPU'}"
     else:
         title = (
             f"{metadata.system.capitalize()}, {collective.lower().capitalize()}, "
             f"{metadata.nnodes} nodes ({metadata.mpi_tasks} tasks)"
-            f"{"GPU" if gpu_awareness == "yes" else "CPU"}"
+            f"{'GPU' if gpu_awareness == 'yes' else 'CPU'}"
         )
 
     plt.title(title, fontsize=18)
@@ -247,7 +247,7 @@ def generate_line_plot(
 
     target_dir = _resolve_output_dir(metadata.system, output_dir)
     suffix = f"{error_col}_lineplot" if error_col else "lineplot"
-    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_{suffix}{"_gpu_aware" if gpu_awareness == "yes" else ""}.pdf"
+    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_{suffix}{'_gpu_aware' if gpu_awareness == 'yes' else ''}.pdf"
     name_pdf = name.replace(".png", ".pdf")
     full_path = target_dir / name
     full_path_pdf = target_dir / name_pdf

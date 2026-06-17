@@ -108,11 +108,11 @@
         "support": true,
         "load": {
           "type": "default"
-        },
-        "metadata": {
-          "GPU_LIB": "CUDA",
-          "GPU_LIB_VERSION": "12.1"
         }
+      },
+      "metadata": {
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.1"
       }
     },
     "NCCL 2.19.3": {
@@ -129,11 +129,11 @@
         "support": true,
         "load": {
           "type": "default"
-        },
-        "metadata": {
-          "GPU_LIB": "CUDA",
-          "GPU_LIB_VERSION": "12.1"
         }
+      },
+      "metadata": {
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.1"
       }
     },
     "NCCL 2.22.3": {
@@ -144,17 +144,18 @@
       "compiler": "nvcc",
       "load": {
         "type": "module",
-        "module": "nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22,openmpi/4.1.6--gcc--12.2.0,cuda/12.2"
+        "module": "nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22,openmpi/4.1.6--gcc--12.2.0"
       },
       "gpu": {
         "support": true,
         "load": {
-          "type": "default"
-        },
-        "metadata": {
-          "GPU_LIB": "CUDA",
-          "GPU_LIB_VERSION": "12.2"
+          "type": "module",
+          "module": "cuda/12.2"
         }
+      },
+      "metadata": {
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.2"
       }
     }
   }

@@ -912,12 +912,6 @@ compile_all_libraries_tui() {
             need_nccl_build=1
         fi
 
-        # NCCL sources are C-only and require proper MPI wrapper link flags.
-        if (( need_nccl_build )) && [[ "${PICOCC##*/}" == "nvcc" ]] && command -v mpicc >/dev/null 2>&1; then
-            [[ "$DEBUG_MODE" == "yes" ]] && inform "[lib $i] NCCL standard detected: overriding compiler nvcc -> mpicc"
-            export PICOCC="mpicc"
-        fi
-
         local this_instrument=0
         if [[ "$mk_instr" -eq 1 ]]; then
             inform "Instrumented build requested for library $i"
@@ -929,6 +923,13 @@ compile_all_libraries_tui() {
         activate_lib_context "$i" || { error "Failed to activate context for library $i"; return 1; }
         [[ "$DEBUG_MODE" == "yes" ]] && inform "[lib $i] LOAD_TYPE=${load_type:-<unset>} modules=${libmods:-<none>}"
         trace_env_snapshot "lib $i AFTER apply/load"
+        
+        # NCCL sources are C-only and require proper MPI wrapper link flags.
+        if (( need_nccl_build )) && [[ "${PICOCC##*/}" == "nvcc" ]] && command -v mpicc >/dev/null 2>&1; then
+            [[ "$DEBUG_MODE" == "yes" ]] && inform "[lib $i] NCCL standard detected: overriding compiler nvcc -> mpicc"
+            export PICOCC="mpicc"
+        fi
+        
         trace_compiler_wrapper "$PICOCC"
 
         # Per-lib output dirs
@@ -1161,6 +1162,7 @@ nccl_selector_from_algo_name() {
     fi
     echo "$algo"
 }
+export -f nccl_selector_from_algo_name
 
 nccl_algo_token() {
     local selector="$1"
@@ -1176,6 +1178,8 @@ nccl_algo_token() {
         *)            echo "$selector" ;;
     esac
 }
+export -f nccl_algo_token
+
 
 is_nccl_ring_algo() {
     [[ "$MPI_LIB" == "NCCL" ]] || return 1
@@ -1184,6 +1188,7 @@ is_nccl_ring_algo() {
     selector="$(nccl_selector_from_algo_name "$1")"
     [[ "${selector,,}" == "ring" ]]
 }
+export -f is_nccl_ring_algo
 
 nccl_protocol_from_algo_name() {
     local algo="${1,,}"
@@ -1195,6 +1200,7 @@ nccl_protocol_from_algo_name() {
         *)        echo "" ;;
     esac
 }
+export -f nccl_protocol_from_algo_name
 
 update_algorithm() {
     local algo="$1"

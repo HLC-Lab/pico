@@ -127,10 +127,9 @@ int reduce_scatter_recursive_doubling_hierarchical_local_parallel(const void *sb
   if (err != MPI_SUCCESS)
     goto cleanup;
 #ifdef PICO_MPI_CUDA_AWARE
-  err = reduce_wrapper_grops(recv_buff_head, result_buff_head, recv_size, task_on_node - 1, dtype, op);
+  err = reduce_wrapper_grops(recv_buff_head, result_buff_head, recv_size, task_on_node - 1, dtype, op, BINE_CUDA_SYNCRONIZE);
   if (err != MPI_SUCCESS)
     goto cleanup;
-  cudaDeviceSynchronize();
 #else
   for (i = 0; i < task_on_node - 1; i++)
   {
@@ -208,10 +207,9 @@ int reduce_scatter_recursive_doubling_hierarchical_local_parallel(const void *sb
 
       // todo: make gpu compatible
 #ifdef PICO_MPI_CUDA_AWARE
-      err = reduce_wrapper(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
+      err = reduce_wrapper(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op, BINE_CUDA_SYNCRONIZE);
       if (err != MPI_SUCCESS)
         goto cleanup;
-      cudaDeviceSynchronize();
 #else
       MPI_Reduce_local(recv_buff_head, result_buff_head + recv_index * extent, recv_size, dtype, op);
 #endif
@@ -389,10 +387,9 @@ int reduce_scatter_recursive_doubling_gpu(const void *sbuf, void *rbuf, const in
 
       // todo: make gpu compatible
 #ifdef PICO_MPI_CUDA_AWARE
-      err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
+      err = reduce_wrapper(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op, BINE_CUDA_SYNCRONIZE);
       if (err != MPI_SUCCESS)
         goto cleanup;
-      BINE_CUDA_CHECK(cudaDeviceSynchronize());
 #else
       MPI_Reduce_local(recv_buff_head + disps[recv_index] * extent, result_buff_head + disps[recv_index] * extent, recv_size, dtype, op);
 #endif
@@ -1225,10 +1222,10 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
   const char *src_location = sendbuf + (ptrdiff_t)displs[lower_index] * (ptrdiff_t)dtsize;
 
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc((void **)&tmpbuf, buffer_size_unit * (task_on_node - 1) * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc((void **)&tmpbuf, buffer_size_unit * max((task_on_node - 1), 1) * dtsize));
   BINE_CUDA_CHECK(cudaMalloc((void **)&resbuf, buffer_size_unit * dtsize));
 #else
-  tmpbuf = malloc(buffer_size_unit * (task_on_node - 1) * dtsize);
+  tmpbuf = malloc(buffer_size_unit * max((task_on_node - 1), 1) * dtsize);
   resbuf = malloc(buffer_size_unit * dtsize);
 #endif
   if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
@@ -1243,7 +1240,7 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
 
   send_reqc = recv_reqc = 0;
   recv_count = buffer_size_unit;
-  for (int i = 0; i < task_on_node; i++)
+  for (int i = 0; i < task_on_node && task_on_node > 1; i++)
   {
     partner = node_offset + i;
     if (partner == rank)
@@ -1278,12 +1275,18 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
   }
 
 #ifdef PICO_MPI_CUDA_AWARE
-  err = reduce_wrapper_grops_inoutsplit(tmpbuf, resbuf, src_location, recv_count, task_on_node - 1, dt, op);
-  if (MPI_SUCCESS != err)
+  if (task_on_node > 1)
   {
-    goto err_hndl;
+    err = reduce_wrapper_grops_inoutsplit(tmpbuf, resbuf, src_location, recv_count, task_on_node - 1, dt, op, BINE_CUDA_SYNCRONIZE);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
   }
-  BINE_CUDA_CHECK(cudaDeviceSynchronize());
+  else 
+  {
+    COPY_BUFF_DIFF_DT(sendbuf, recv_count, dt, resbuf, recv_count, dt);
+  }
 #else
   for (int i = 0; i < recv_reqc; i++)
   {
@@ -1341,12 +1344,11 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
     reduction_addres = (char *)resbuf + (displs[recv_block_first_rem] - displs[res_first_node]) * dtsize;
 
 #ifdef PICO_MPI_CUDA_AWARE
-    err = reduce_wrapper((char *)tmpbuf, reduction_addres, recv_count, dt, op);
+    err = reduce_wrapper((char *)tmpbuf, reduction_addres, recv_count, dt, op, BINE_CUDA_SYNCRONIZE);
     if (MPI_SUCCESS != err)
     {
       goto err_hndl;
     }
-    BINE_CUDA_CHECK(cudaDeviceSynchronize());
 #else
     err = MPI_Reduce_local((char *)tmpbuf, reduction_addres, recv_count, dt, op);
     if (MPI_SUCCESS != err)
@@ -1482,8 +1484,11 @@ int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int
       goto err_hndl;
     }
 #ifdef PICO_MPI_CUDA_AWARE
-    reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
-    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+    err = reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op, BINE_CUDA_SYNCRONIZE);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
 #else
     err = MPI_Reduce_local((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
     if (MPI_SUCCESS != err)
@@ -1616,8 +1621,11 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
       goto err_hndl;
     }
 #ifdef PICO_MPI_CUDA_AWARE
-    reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
-    BINE_CUDA_CHECK(cudaDeviceSynchronize());
+    err = reduce_wrapper((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op, BINE_CUDA_SYNCRONIZE);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
 #else
     err = MPI_Reduce_local((char *)tmpbuf + displs[recv_block_first] * dtsize, (char *)resbuf + displs[recv_block_first] * dtsize, recv_count, dt, op);
     if (MPI_SUCCESS != err)
@@ -1690,16 +1698,16 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
 
   void *tmpbuf, *resbuf;
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, (count / task_on_node * (task_on_node - 1)) * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, (count / task_on_node * max((task_on_node - 1), 1)) * dtsize));
   BINE_CUDA_CHECK(cudaMalloc(&resbuf, (count / task_on_node) * dtsize));
 #else
-  tmpbuf = malloc((count / task_on_node * (task_on_node - 1)) * dtsize);
+  tmpbuf = malloc((count / task_on_node * max((task_on_node - 1), 1)) * dtsize);
   resbuf = malloc((count / task_on_node) * dtsize);
 #endif
 
   int *inverse_remapping = (int *)malloc(node_size * sizeof(int));  
-  MPI_Request *send_req = (MPI_Request *)malloc(node_size * (task_on_node - 1) * sizeof(MPI_Request));
-  MPI_Request *recv_req = (MPI_Request *)malloc(node_size * (task_on_node - 1) * sizeof(MPI_Request));
+  MPI_Request *send_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
+  MPI_Request *recv_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
 
   if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping || NULL == send_req || NULL == recv_req)
   {
@@ -1721,7 +1729,7 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
 
   int recv_offset = 0;
   int recv_req_count = 0, send_req_count = 0;
-  for (int i = 0; i < task_on_node; i++)
+  for (int i = 0; i < task_on_node && task_on_node > 1; i++)
   {
     if (local_rank == i)
       continue;
@@ -1751,12 +1759,14 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
   err = MPI_Waitall(recv_req_count, recv_req, MPI_STATUSES_IGNORE);
 
 #ifdef PICO_MPI_CUDA_AWARE
-  err = reduce_wrapper_grops(tmpbuf, resbuf, local_reduce_count, task_on_node - 1, dt, op);
-  if (MPI_SUCCESS != err)
+  if (task_on_node > 1)
   {
-    goto err_hndl;
+    err = reduce_wrapper_grops(tmpbuf, resbuf, local_reduce_count, task_on_node - 1, dt, op, BINE_CUDA_SYNCRONIZE);
+    if (MPI_SUCCESS != err)
+    {
+      goto err_hndl;
+    }
   }
-  BINE_CUDA_CHECK(cudaDeviceSynchronize());
 #else
   for (int i = 0; i < task_on_node - 1; i++)
   {
@@ -1843,7 +1853,7 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
       {
         // Last step, received in recvbuf, aggregating from resbuf
 #ifdef PICO_MPI_CUDA_AWARE
-        reduce_wrapper((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+        reduce_wrapper((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op, BINE_CUDA_UNSYNCRONIZE);
 #else
         err = MPI_Reduce_local((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
 #endif
@@ -1851,7 +1861,7 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
       else
       {
 #ifdef PICO_MPI_CUDA_AWARE
-        reduce_wrapper((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+        reduce_wrapper((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op, BINE_CUDA_UNSYNCRONIZE);
 #else
         err = MPI_Reduce_local((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
 #endif
@@ -2024,7 +2034,7 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
       {
         // Last step, received in recvbuf, aggregating from resbuf
 #ifdef PICO_MPI_CUDA_AWARE
-        reduce_wrapper((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
+        reduce_wrapper((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op, BINE_CUDA_UNSYNCRONIZE);
 #else
         err = MPI_Reduce_local((char *)resbuf + displs[inverse_remapping[block]] * dtsize, (char *)recvbuf, recvcounts[inverse_remapping[block]], dt, op);
 #endif
@@ -2032,7 +2042,7 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
       else
       {
 #ifdef PICO_MPI_CUDA_AWARE
-        reduce_wrapper((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
+        reduce_wrapper((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op, BINE_CUDA_UNSYNCRONIZE);
 #else
         err = MPI_Reduce_local((char *)tmpbuf + displs[inverse_remapping[block]] * dtsize, (char *)resbuf + displs[inverse_remapping[block]] * dtsize, recvcounts[inverse_remapping[block]], dt, op);
 #endif

@@ -109,7 +109,7 @@ static inline allreduce_func_ptr get_allreduce_function(const char *algorithm) {
   CHECK_STR(algorithm, "bine_lat_over", allreduce_bine_lat);
   CHECK_STR(algorithm, "bine_bdw_remap_over", allreduce_bine_bdw_remap);
   CHECK_STR(algorithm, "bine_bdw_remap_segmented_over", allreduce_bine_bdw_remap_segmented);
-  CHECK_STR(algorithm, "bine_block_by_block_any_even", allreduce_bine_block_by_block_any_even);
+  CHECK_STR(algorithm, "bine_block_by_block_any_even_over", allreduce_bine_block_by_block_any_even);
 
   PICO_CORE_DEBUG_PRINT_STR("MPI_Allreduce");
   return allreduce_wrapper;
@@ -135,7 +135,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
-  CHECK_STR(algorithm, "bine_block_by_block_over_any_even", allgather_bine_block_by_block_any_even);
+  CHECK_STR(algorithm, "bine_block_by_block_any_even_over", allgather_bine_block_by_block_any_even);
   CHECK_STR(algorithm, "bine_block_by_block_over", allgather_bine_block_by_block);
   CHECK_STR(algorithm, "bine_send_remap_over", allgather_bine_send_remap);
   CHECK_STR(algorithm, "bine_2_blocks_over", allgather_bine_2_blocks);
@@ -263,7 +263,7 @@ static inline reduce_scatter_func_ptr get_reduce_scatter_function (const char *a
   CHECK_STR(algorithm, "bine_send_remap_over", reduce_scatter_bine_send_remap);
   CHECK_STR(algorithm, "bine_permute_remap_over", reduce_scatter_bine_permute_remap);  
   CHECK_STR(algorithm, "bine_block_by_block_over", reduce_scatter_bine_block_by_block);
-  CHECK_STR(algorithm, "bine_block_by_block_any_even", reduce_scatter_bine_block_by_block_any_even);
+  CHECK_STR(algorithm, "bine_block_by_block_any_even_over", reduce_scatter_bine_block_by_block_any_even);
   CHECK_STR(algorithm, "bine_send_remap_hierarchical_over", reduce_scatter_bine_send_remap_hierarchical);
   CHECK_STR(algorithm, "bine_block_by_block_hierarchical_over", reduce_scatter_bine_block_by_block_hierarchical);
 

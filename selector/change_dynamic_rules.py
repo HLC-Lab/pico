@@ -52,6 +52,8 @@ def find_dynamic_rule(algorithm_decls_dirs: list[str], collective_type: str, alg
         if "selection" not in algo_data:
             print(f"{__file__}: algorithm {algorithm} missing selection in {algorithm_file}.", file=sys.stderr)
             sys.exit(1)
+        if algo_data["selection"] == "pico":
+            return 0
         return algo_data["selection"]
 
     if searched_files:

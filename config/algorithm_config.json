@@ -586,7 +586,7 @@
           "external"
         ]
       },
-      "bine_block_by_block_any_even": {
+      "bine_block_by_block_any_even_over": {
         "desc": "libpico external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with even processes. This version sends each data block/segment individually. It segments the message into segments of size `segsize  = count / comm_sz` ",
         "library": {
           "libpico": "1.0.0"
@@ -3522,7 +3522,7 @@
           "external"
         ]
       },
-      "bine_block_by_block_any_even": {
+      "bine_block_by_block_any_even_over": {
         "desc": "libpico external bine block by block algorithm. Works only any even processes",
         "library": {
           "libpico": "1.0.0"

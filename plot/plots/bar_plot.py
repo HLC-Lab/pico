@@ -109,12 +109,12 @@ def generate_bar_plot(
 
     # Title
     if metadata.total_nodes == metadata.mpi_tasks:
-        title = f"{metadata.system.capitalize()}, {collective.lower().capitalize()}, {metadata.nnodes} nodes {"GPU" if gpu_awareness == "yes" else "CPU"}"
+        title = f"{metadata.system.capitalize()}, {collective.lower().capitalize()}, {metadata.nnodes} nodes {'GPU' if gpu_awareness == 'yes' else 'CPU'}"
     else:
         title = (
             f"{metadata.system.capitalize()}, {collective.lower().capitalize()}, "
             f"{metadata.nnodes} nodes ({metadata.mpi_tasks} tasks)"
-            f"{"GPU" if gpu_awareness == "yes" else "CPU"}"
+            f"{'GPU' if gpu_awareness == 'yes' else 'CPU'}"
         )
     plt.title(title, fontsize=18)
     plt.xlabel("Message Size", fontsize=15)
@@ -126,7 +126,7 @@ def generate_bar_plot(
     target_dir = _resolve_output_dir(metadata.system, output_dir)
 
     # Include error bar mode in filename so artifacts are distinguishable
-    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_{errorbars}_barplot{"_gpu_aware" if gpu_awareness == "yes" else ""}_{errorbars}.pdf"
+    name = f"{collective.lower()}_{metadata.nnodes}_{datatype}_{metadata.timestamp}_{errorbars}_barplot{'_gpu_aware' if gpu_awareness == 'yes' else ''}_{errorbars}.pdf"
     full_path = target_dir / name
 
     plt.savefig(full_path, dpi=300)
