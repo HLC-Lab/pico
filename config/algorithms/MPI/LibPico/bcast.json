@@ -2,7 +2,7 @@
   "linear_over": {
     "desc": "libpico external linear algorithm. This algorithm uses a simple linear pattern of communication where the root sends data to each process one by one. Copied from open mpi linear algorithm.",
     "version": "1.0.0",
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "linear",
       "external"
@@ -11,7 +11,7 @@
   "binomial_halving_over": {
     "desc": "libpico external recursive halving (binomial) algorithm. This algorithm uses a binomial tree pattern of communication where each process that receives data from the root forwards it to other processes. Copied from MPICH binomial algorithm.",
     "version": "1.0.0",
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "recursive_halving",
       "binomial",
@@ -21,7 +21,7 @@
   "binomial_doubling_over": {
     "desc": "libpico external binomial doubling algorithm. At each step informed ranks send to a partner at distance 2^k, doubling the number of informed ranks.",
     "version": "1.0.0",
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "doubling",
       "binomial",
@@ -42,7 +42,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "scatter_allgather",
       "segmented",
@@ -72,7 +72,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine_lat",
       "bine",
@@ -103,7 +103,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine_lat_reversed",
       "bine",
@@ -125,7 +125,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine_lat_new",
       "bine",
@@ -147,7 +147,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine_lat_i_new",
       "bine",
@@ -187,7 +187,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine_bdw_remap",
       "remap",

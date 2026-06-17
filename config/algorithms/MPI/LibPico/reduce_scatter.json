@@ -22,7 +22,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "recursive_distance_doubling",
       "external"
@@ -51,7 +51,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "recursive_distance_doubling",
       "external"
@@ -80,7 +80,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "recursive_distance_doubling",
       "external"
@@ -100,7 +100,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "recursive_halving",
       "small_sizes",
@@ -122,7 +122,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "ring",
       "large_sizes",
@@ -143,7 +143,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "butterfly",
       "small_sizes",
@@ -174,7 +174,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine",
       "remap",
@@ -205,7 +205,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine",
       "remap",
@@ -236,7 +236,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine",
       "remap",
@@ -267,14 +267,14 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine",
       "block_by_block",
       "external"
     ]
   },
-  "bine_block_by_block_any_even_over": {
+  "bine_block_by_block_any_even": {
     "desc": "libpico external bine block by block algorithm. Works only any even processes",
     "version": "1.0.0",
     "constraints": [
@@ -297,7 +297,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine",
       "block_by_block",
@@ -327,7 +327,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine",
       "block_by_block",

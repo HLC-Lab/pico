@@ -22,7 +22,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "bine",
       "external"
@@ -51,7 +51,7 @@
         ]
       }
     ],
-    "selection": 0,
+    "selection": "pico",
     "tags": [
       "pairwise",
       "external"
