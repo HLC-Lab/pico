@@ -135,7 +135,7 @@ static inline allgather_func_ptr get_allgather_function(const char *algorithm) {
   CHECK_STR(algorithm, "recursive_doubling_over", allgather_recursivedoubling);
   CHECK_STR(algorithm, "ring_over", allgather_ring);
   CHECK_STR(algorithm, "sparbit_over", allgather_sparbit);
-  CHECK_STR(algorithm, "bine_block_by_block_any_even_over", allgather_bine_block_by_block_any_even_over);
+  CHECK_STR(algorithm, "bine_block_by_block_any_even_over", allgather_bine_block_by_block_any_even);
   CHECK_STR(algorithm, "bine_block_by_block_over", allgather_bine_block_by_block);
   CHECK_STR(algorithm, "bine_send_remap_over", allgather_bine_send_remap);
   CHECK_STR(algorithm, "bine_2_blocks_over", allgather_bine_2_blocks);
