@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "selection": "pico",
+    "selection": 0,
     "additional_parameters": {
       "radix": {
         "desc": "Radix of the K-nomial tree",
@@ -31,7 +31,7 @@
   "recursive_doubling_any_even_over": {
     "desc": "libpico external recursive doubling algorithm. Works with non power of 2 processes.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -52,7 +52,7 @@
   "recursivedoubling_hierarchy_over": {
     "desc": "libpico external recursive doubling algorithm. Use hierarchi condivision schemas",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -73,7 +73,7 @@
   "recursivedoubling_hierarchy_local_parallel_over": {
     "desc": "libpico external recursive doubling algorithm. Use hierarchi condivision schemas",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -94,7 +94,7 @@
   "recursive_doubling_over": {
     "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -124,7 +124,7 @@
   "ring_over": {
     "desc": "libpico external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -145,7 +145,7 @@
   "sparbit_over": {
     "desc": "libpico external sparse bit algorithm. Comm_sz must be greater or equal to count.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -165,7 +165,7 @@
   "bine_block_by_block_over": {
     "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -193,10 +193,10 @@
       "external"
     ]
   },
-  "bine_block_by_block_over_any_even": {
+  "bine_block_by_block_any_even_over": {
     "desc": "libpico external bine block by block algorithm. Works for any number of even processes",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -227,7 +227,7 @@
   "bine_send_remap_over": {
     "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "comm_sz",
@@ -257,7 +257,7 @@
   "bine_2_blocks_over": {
     "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "comm_sz",
@@ -287,7 +287,7 @@
   "bine_2_blocks_dtype_over": {
     "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "comm_sz",
@@ -318,7 +318,7 @@
   "bine_permutation_over": {
     "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "comm_sz",
@@ -349,7 +349,7 @@
   "bine_block_by_block_hierarcic_global_local_over": {
     "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "count",
@@ -380,7 +380,7 @@
   "bine_send_remap_hierarcic_global_local_over": {
     "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
     "version": "1.0.0",
-    "selection": "pico",
+    "selection": 0,
     "constraints": [
       {
         "key": "comm_sz",

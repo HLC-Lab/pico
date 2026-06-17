@@ -13,7 +13,7 @@
         ]
       }
     ],
-    "selection": "pico",
+    "selection": 0,
     "tags": [
       "external"
     ]
@@ -50,7 +50,7 @@
         ]
       }
     ],
-    "selection": "pico",
+    "selection": 0,
     "tags": [
       "bine",
       "external"

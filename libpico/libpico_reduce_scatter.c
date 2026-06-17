@@ -1698,16 +1698,16 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
 
   void *tmpbuf, *resbuf;
 #ifdef PICO_MPI_CUDA_AWARE
-  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, (count / task_on_node * min((task_on_node - 1), 1)) * dtsize));
+  BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, (count / task_on_node * max((task_on_node - 1), 1)) * dtsize));
   BINE_CUDA_CHECK(cudaMalloc(&resbuf, (count / task_on_node) * dtsize));
 #else
-  tmpbuf = malloc((count / task_on_node * min((task_on_node - 1), 1)) * dtsize);
+  tmpbuf = malloc((count / task_on_node * max((task_on_node - 1), 1)) * dtsize);
   resbuf = malloc((count / task_on_node) * dtsize);
 #endif
 
   int *inverse_remapping = (int *)malloc(node_size * sizeof(int));  
-  MPI_Request *send_req = (MPI_Request *)malloc(node_size * min((task_on_node - 1), 1) * sizeof(MPI_Request));
-  MPI_Request *recv_req = (MPI_Request *)malloc(node_size * min((task_on_node - 1), 1) * sizeof(MPI_Request));
+  MPI_Request *send_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
+  MPI_Request *recv_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
 
   if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping || NULL == send_req || NULL == recv_req)
   {
