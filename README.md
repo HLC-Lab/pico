@@ -54,7 +54,7 @@ The recommended way to use **PICO** is through its **Textual TUI**, which guides
 
 ### ⚙️ 1. Configure Your Environment
 
-Ensure you have at least one valid environment definition under `config/environment/`.
+Ensure you have at least one valid environment definition under `config/environment/` (TUI) or `config/environments/` (legacy CLI).
 
 A working `local` sample is provided, modify it for your local machine.
 
@@ -67,7 +67,7 @@ Create and activate a Python virtual environment, then install the Python depend
 pip install -r requirements.txt
 ```
 
-Start the interactive interface follow the four-step wizard: configure environment, select libraries, choose algorithms, and export.
+Start the interactive interface (see [tui/README.md](tui/README.md) for a full walkthrough of the four-step wizard) to configure the environment, select libraries, choose algorithms, and export.
 
 ```bash
 python tui/main.py
@@ -136,16 +136,17 @@ scripts/submit_wrapper.sh \
 - `libpico/` — Library of custom collective algorithms and instrumentation helpers, selectable alongside vendor MPI/NCCL paths.
 - `scripts/submit_wrapper.sh` — Entry point that parses CLI flags or TUI exports, loads site modules, builds binaries, activates Python envs, and launches SLURM or local runs.
 - `scripts/orchestrator.sh` — Node-side runner that sweeps libraries, algorithm sets, GPU modes, message sizes, and datatypes while invoking metadata capture and optional compression.
-- `config/` — Declarative environment, library, and algorithm descriptions consumed by the TUI and CLI (modules to load, compiler wrappers, task/GPU limits).
-- `tui/` — Textual-based UI that guides the user through environment selection, library selection, algorithm mix, and exports the shell/JSON bundle for later submission.
-- `plot/` — Python package and CLI (`python -m plot …`) that turns CSV summaries into line charts, bar charts, heatmaps, and tables.
-- `tracer/` — Tools for network-awareness studies (link utilization estimates, cluster job monitoring, scatterplots/boxplots).
-- `schedgen/` — Adapted SPCL scheduler generator used to derive algorithm schedules from communication traces.
+- `config/` — Declarative environment, library, and algorithm descriptions consumed by the TUI and CLI (modules to load, compiler wrappers, task/GPU limits). See [config/environment/README.md](config/environment/README.md) for the environment schema.
+- `tui/` — Textual-based UI that guides the user through environment selection, library selection, algorithm mix, and exports the shell/JSON bundle for later submission. See [tui/README.md](tui/README.md) for usage and extension details.
+- `plot/` — Python package and CLI (`python -m plot …`) that turns CSV summaries into line charts, bar charts, heatmaps, and tables. See [plot/README.md](plot/README.md) for available subcommands and data pipelines.
+- `tracer/` — Tools for network-awareness studies (link utilization estimates, cluster job monitoring, scatterplots/boxplots). See [tracer/README.md](tracer/README.md) for details.
+- `schedgen/` — Adapted SPCL scheduler generator used to derive algorithm schedules from communication traces. See [schedgen/README.md](schedgen/README.md) for usage and built-in algorithms.
+- `selector/` — Dynamic rule selection helpers for Open MPI algorithm tuning.
 - `results/` — Storage for raw outputs, metadata CSVs (per system), and helper scripts such as `generate_metadata.py`.
 
 ## 💡 What Happens During a Run
-1. Environment sourcing loads modules, compiler wrappers, MPI/NCCL paths, and queue defaults from `config/environments/<location>.sh`.
-2. The Makefile builds `libpico` first, then `pico_core` (CPU) and optionally `pico_core_cuda` (GPU), honouring debug and instrumentation flags.
+1. Environment sourcing loads modules, compiler wrappers, MPI/NCCL paths, and queue defaults. In the CLI workflow this happens via `config/environments/<location>.sh`; in the TUI workflow the test descriptor (`tests/<name>.sh`) already carries all resolved settings.
+2. The Makefile builds `libpico` first, then `pico_core` (CPU) and optionally `pico_core_cuda` (GPU) or `pico_core_nccl` (NCCL), honouring debug and instrumentation flags.
 3. A Python virtual environment is activated and populated with plotting/tracing dependencies on demand.
 4. `scripts/orchestrator.sh` iterates over every selected library, collective, datatype, message size, and GPU mode. For each combination it:
    - Prepares per-collective environment variables and propagates algorithm lists to the workers.
@@ -155,15 +156,15 @@ scripts/submit_wrapper.sh \
 5. Outputs are written under `results/<location>/<timestamp>/`; in non-debug runs the directory can be tarred and optionally deleted.
 
 ## 📈 Results and Analysis
-- CSV files follow the `<count>_<algorithm>[_<segment>]_datatype.csv` naming scheme with per-iteration timing, statistics-only, or summarized rows depending on `--output-level`.
+- CSV files follow the `<count>_<algorithm>_<datatype>.csv` naming scheme (or `<count>_<algorithm>_<segsize>_<datatype>.csv` for segmented collectives). Instrumented builds append `_instrument` before the extension. Rows contain per-iteration timing or summary statistics depending on `--output-level` (supported values: `all`, `minimal`).
 - Allocation maps (`alloc_<tasks>.csv`) record rank-to-node placement. GPU runs append `_GPU`.
 - SLURM logs reside alongside the CSVs (`slurm_<jobid>.out/.err`) unless in debug mode.
 - Metadata is appended to `results/<location>_metadata.csv`, enabling cross-run filtering by timestamp, collective, library version, GPU involvement, and notes.
 - Example plotting commands:
 ```bash
 python -m plot summary --summary-file results/leonardo/<timestamp>/summary.csv
-python -m plot heatmap --system leonardo --timestamp <timestamp> --collective allreduce
-python -m plot boxplot --system lumi --notes "production"
+python -m plot heatmap --system leonardo --nnodes 8 --collective allreduce
+python -m plot boxplot --system lumi --nnodes 8 --notes "production"
 ```
 - The tracer package (`tracer/trace_communications.py`) estimates traffic on global links for recorded allocations, while `tracer/sinfo` can processes week-long job snapshots from monitored clusters.
 
@@ -171,10 +172,10 @@ python -m plot boxplot --system lumi --notes "production"
 - Building with `-DPICO_INSTRUMENT` exposes the `PICO_TAG_BEGIN/END` macros defined in `include/libpico.h`. 
   - These can be inserted into LibPICO collective implementations to record per-phase timings, which are emitted into `_instrument.csv` files. Detailed usage and examples are provided in [libpico/instrument.md](./libpico/instrument.md).
   - Instrumentation is supported for CPU collectives; the macros are transparent when GPU paths are enabled.
-- To add new algorithms, implement them in `libpico_<collective>.c`, declare them in `include/libpico.h`, and list them in `config/algorithms/<standard>/<library>/<collective>.json`. The TUI and CLI automatically surface the new options.
+- To add new algorithms, follow the step-by-step guide in [libpico/adding_algorithms.md](libpico/adding_algorithms.md). The TUI and CLI automatically surface new options once registered.
 
 ## 🧱 Extending PICO
-- **Environments:** Add new cluster profiles by cloning `config/environment/<env>` JSON descriptors and creating a matching `config/environments/<env>.sh` wrapper that sets modules, compiler wrappers, and queue defaults.
+- **Environments:** See [config/environment/README.md](config/environment/README.md) for the full schema reference and step-by-step guide to adding new cluster profiles. Real-world examples are available under `config/environment/`.
 - **Libraries:** Update `<env>_libraries.json` to expose additional MPI/NCCL builds, compiler flags, GPU capabilities, and metadata strings. The TUI reads these files at runtime.
 
 ## 🗂️ Repository Layout
@@ -189,12 +190,13 @@ pico/
 ├── plot/                   # Plotting package and CLI
 ├── tracer/                 # Network tracing and allocation analysis tools
 ├── schedgen/               # Communication schedule generator (SPCL fork)
+├── selector/               # Dynamic rule selection helpers for Open MPI
 ├── tests/                  # Sample exported configurations
 └── results/                # Generated data, metadata CSVs, and helper scripts
 ```
 
 ## 🪪 Credits and License
-**PICO** is developed by *Daniele De Sensi* and *Saverio Pasqualoni* at the Department of Computer Science, Sapienza University of Rome. The project is licensed under the **MIT License**.
+**PICO** is developed by *Daniele De Sensi*, *Saverio Pasqualoni* and *Lorenzo Protano* at the Department of Computer Science, Sapienza University of Rome. The project is licensed under the **MIT License**.
 
 Schedgen code was originally released by SPCL @ ETH Zurich under the **BSD 4-Clause license**. The version bundled with PICO includes targeted modifications to support its extended scheduling and tracing workflow.
 

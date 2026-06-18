@@ -17,7 +17,7 @@
 
   and **not** with `PICO_NCCL` or `PICO_MPI_CUDA_AWARE`.
 * Declarations live in [`include/libpico.h`](../include/libpico.h).
-* Implementation is in `libpico/instrument_collectives.c`.
+* Implementation is in `libpico/libpico_instrument.c`.
 
 > See the general build/test README for how to enable the instrumentation flag. Default build behavior is through declarative test files, and
   automation scripts for test orchestration, so the entrypoint for the build should always be [`scripts/submit_wrapper.sh`](../scripts/submit_wrapper.sh)
