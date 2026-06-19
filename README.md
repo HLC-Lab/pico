@@ -45,7 +45,7 @@ Built for researchers, developers, and system administrators, PICO streamlines t
  │    • Metadata
  │    • Archives
  └─ Post-processing utilities:
-      • plot/ • tracer/ • schedgen/
+      • plot/ • tracer/ • schedgen/ • selector/
 ```
 
 ## 🚀 Quickstart
@@ -141,7 +141,7 @@ scripts/submit_wrapper.sh \
 - `plot/` — Python package and CLI (`python -m plot …`) that turns CSV summaries into line charts, bar charts, heatmaps, and tables. See [plot/README.md](plot/README.md) for available subcommands and data pipelines.
 - `tracer/` — Tools for network-awareness studies (link utilization estimates, cluster job monitoring, scatterplots/boxplots). See [tracer/README.md](tracer/README.md) for details.
 - `schedgen/` — Adapted SPCL scheduler generator used to derive algorithm schedules from communication traces. See [schedgen/README.md](schedgen/README.md) for usage and built-in algorithms.
-- `selector/` — Dynamic rule selection helpers for Open MPI algorithm tuning.
+- `selector/` — Open MPI tuning rule generation (`generate_ompi_tuning.py`) and dynamic rule selection helpers.
 - `results/` — Storage for raw outputs, metadata CSVs (per system), and helper scripts such as `generate_metadata.py`.
 
 ## 💡 What Happens During a Run
@@ -167,6 +167,7 @@ python -m plot heatmap --system leonardo --nnodes 8 --collective allreduce
 python -m plot boxplot --system lumi --nnodes 8 --notes "production"
 ```
 - The tracer package (`tracer/trace_communications.py`) estimates traffic on global links for recorded allocations, while `tracer/sinfo` can processes week-long job snapshots from monitored clusters.
+- `selector/generate_ompi_tuning.py` — Produce Open MPI tuning rules from benchmark results, consumable by `OMPI_MCA_coll_tuned_dynamic_rules_filename`. See [selector/README_generate_ompi_tuning.md](selector/README_generate_ompi_tuning.md) for usage.
 
 ## 🧪 Instrumentation and Custom Collectives
 - Building with `-DPICO_INSTRUMENT` exposes the `PICO_TAG_BEGIN/END` macros defined in `include/libpico.h`. 
