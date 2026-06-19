@@ -39,16 +39,12 @@ Mathematically equivalent to `bandwidth` for a fixed `buffer_size`.
 
 ## Flags
 
-### Positional
-
-| Flag | Description |
-|------|-------------|
-| `system` | System name (e.g. `leonardo`, `mare_nostrum`) |
-
 ### Basic options
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--system` | — (required) | System name (e.g. `leonardo`, `mare_nostrum`) |
+| `--ompi-lib` | — (required) | OMPI library display name from environment config (e.g. `"Open MPI 4.1.6"`) |
 | `--results-dir` | `results/` | Path to results directory |
 | `--output, -o` | `results/<system>/ompi_tuning_rules_<system>.txt` | Output file path |
 
@@ -107,24 +103,30 @@ blocks:
 
 ```bash
 # Default (bandwidth, median)
-python selector/generate_ompi_tuning.py leonardo
+python selector/generate_ompi_tuning.py \
+    --system leonardo --ompi-lib "Open MPI 4.1.6"
 
 # Select by latency
-python selector/generate_ompi_tuning.py leonardo --criterion latency
+python selector/generate_ompi_tuning.py \
+    --system leonardo --ompi-lib "Open MPI 4.1.6" --criterion latency
 
 # Exclude a timestamp range
-python selector/generate_ompi_tuning.py leonardo \
+python selector/generate_ompi_tuning.py \
+    --system leonardo --ompi-lib "Open MPI 4.1.6" \
     -x 2025_04_04___18_21_29-2025_04_06___20_44_58
 
 # Filter by notes and custom output path
-python selector/generate_ompi_tuning.py mare_nostrum \
+python selector/generate_ompi_tuning.py \
+    --system mare_nostrum --ompi-lib "Open MPI 4.1.6" \
     --include-notes "rail 4" -o custom_rules.txt
 
 # Include only specific timestamps
-python selector/generate_ompi_tuning.py leonardo \
+python selector/generate_ompi_tuning.py \
+    --system leonardo --ompi-lib "Open MPI 4.1.6" \
     --include-timestamps 2025_04_05___10_00_00-2025_04_06___20_00_00
 
 # Annotate tuning rules with comments
-python selector/generate_ompi_tuning.py leonardo \
+python selector/generate_ompi_tuning.py \
+    --system leonardo --ompi-lib "Open MPI 4.1.6" \
     --include-notes "rail 4" --annotate -o annotated_rules.txt
 ```

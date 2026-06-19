@@ -14,27 +14,33 @@ filtering:
 
 Examples:
   # Only runs tagged with a specific rail config
-   python selector/generate_ompi_tuning.py leonardo --include-notes "rail 4"
+   python selector/generate_ompi_tuning.py \\
+       --system leonardo --ompi-lib "Open MPI 4.1.6" --include-notes "rail 4"
 
     # Exclude experimental/test runs
-    python selector/generate_ompi_tuning.py leonardo --exclude-notes "testing|fork"
+    python selector/generate_ompi_tuning.py \\
+        --system leonardo --ompi-lib "Open MPI 4.1.6" --exclude-notes "testing|fork"
 
    # Exclude a range of timestamps
-   python selector/generate_ompi_tuning.py leonardo -x 2025_04_04___18_21_29-2025_04_06___20_44_58
+   python selector/generate_ompi_tuning.py \\
+       --system leonardo --ompi-lib "Open MPI 4.1.6" -x 2025_04_04___18_21_29-2025_04_06___20_44_58
 
   # Discover available notes values
-  python selector/generate_ompi_tuning.py leonardo --list-notes
+  python selector/generate_ompi_tuning.py --system leonardo --ompi-lib "Open MPI 4.1.6" --list-notes
 
    # Single-rail runs with custom output path
-   python selector/generate_ompi_tuning.py mare_nostrum \\
+   python selector/generate_ompi_tuning.py \\
+       --system mare_nostrum --ompi-lib "Open MPI 4.1.6" \\
        --include-notes "UCX_MAX_RNDV_RAILS=1" \\
        -o custom_rules.txt
 
    # Select by latency instead of bandwidth (minimize execution time directly)
-   python selector/generate_ompi_tuning.py leonardo --criterion latency
+   python selector/generate_ompi_tuning.py \\
+       --system leonardo --ompi-lib "Open MPI 4.1.6" --criterion latency
 
    # Select by latency using median (default metric for both criteria)
-   python selector/generate_ompi_tuning.py leonardo --criterion latency --metric median
+   python selector/generate_ompi_tuning.py \\
+       --system leonardo --ompi-lib "Open MPI 4.1.6" --criterion latency --metric median
 """
 
 import os
@@ -117,15 +123,51 @@ def find_repo_root() -> Path:
     sys.exit(1)
 
 
-def load_metadata(results_dir: Path, system: str) -> pd.DataFrame:
+def resolve_ompi_library_config(repo_root: Path, system: str, lib_name: str) -> tuple[str, str]:
+    json_path = repo_root / "config" / "environment" / system / f"{system}_libraries.json"
+    if not json_path.is_file():
+        print(f"Error: library config not found: {json_path}", file=sys.stderr)
+        sys.exit(1)
+
+    with open(json_path) as f:
+        config = json.load(f)
+
+    libraries = config.get("LIBRARY", {})
+    if lib_name not in libraries:
+        print(f"Error: library '{lib_name}' not found in {json_path}", file=sys.stderr)
+        print(f"  Available libraries: {list(libraries.keys())}", file=sys.stderr)
+        sys.exit(1)
+
+    entry = libraries[lib_name]
+    lib_type = entry.get("lib_type", "")
+    version = entry.get("version", "")
+
+    lt = lib_type.strip().lower()
+    if "open" in lt and "mpi" in lt:
+        tag = "OMPI"
+    else:
+        print(f"Error: library '{lib_name}' has lib_type='{lib_type}', expected Open-MPI", file=sys.stderr)
+        sys.exit(1)
+
+    return tag, str(version)
+
+
+def load_metadata(results_dir: Path, system: str,
+                  mpi_lib_tag: str | None = None,
+                  mpi_lib_version: str | None = None) -> pd.DataFrame:
     metadata_path = results_dir / f"{system}_metadata.csv"
     if not metadata_path.is_file():
         print(f"Error: metadata file not found: {metadata_path}", file=sys.stderr)
         sys.exit(1)
 
     metadata = pd.read_csv(metadata_path)
-    ompi_mask = metadata["mpi_lib"].str.strip().str.upper() == "OMPI"
+    ompi_mask = metadata["mpi_lib"].str.strip().str.upper() == (mpi_lib_tag or "OMPI")
     ompi_metadata = metadata[ompi_mask].copy()
+
+    if mpi_lib_version is not None:
+        ompi_metadata = ompi_metadata[
+            ompi_metadata["mpi_lib_version"].astype(str) == mpi_lib_version
+        ]
 
     if ompi_metadata.empty:
         print(f"Warning: no OMPI tests found in {metadata_path}", file=sys.stderr)
@@ -191,6 +233,18 @@ def load_ompi_algorithms(repo_root: Path) -> dict:
             with open(algo_dir / fname) as f:
                 algorithms[coll] = json.load(f)
     return algorithms
+
+
+def version_le(v1: str, v2: str) -> bool:
+    try:
+        p1 = [int(x) for x in v1.split(".")]
+        p2 = [int(x) for x in v2.split(".")]
+        max_len = max(len(p1), len(p2))
+        p1 += [0] * (max_len - len(p1))
+        p2 += [0] * (max_len - len(p2))
+        return p1 <= p2
+    except (ValueError, AttributeError):
+        return v1 <= v2
 
 
 def ensure_summarized(repo_root: Path, results_dir: Path, system: str, timestamp: str) -> None:
@@ -296,15 +350,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  --metric sets the latency statistic to use (mean/median/percentile_90, default median)\n"
             "\n"
             "Examples:\n"
-            "  python selector/generate_ompi_tuning.py leonardo --include-notes \"rail 4\"\n"
-            "  python selector/generate_ompi_tuning.py leonardo --exclude-notes \"testing|fork\"\n"
-            "  python selector/generate_ompi_tuning.py leonardo --list-notes\n"
-            "  python selector/generate_ompi_tuning.py leonardo --criterion latency\n"
-            "  python selector/generate_ompi_tuning.py mare_nostrum \\\n"
+            "  python selector/generate_ompi_tuning.py \\\n"
+            "      --system leonardo --ompi-lib \"Open MPI 4.1.6\" --include-notes \"rail 4\"\n"
+            "  python selector/generate_ompi_tuning.py \\\n"
+            "      --system leonardo --ompi-lib \"Open MPI 4.1.6\" --exclude-notes \"testing|fork\"\n"
+            "  python selector/generate_ompi_tuning.py \\\n"
+            "      --system leonardo --ompi-lib \"Open MPI 4.1.6\" --list-notes\n"
+            "  python selector/generate_ompi_tuning.py \\\n"
+            "      --system leonardo --ompi-lib \"Open MPI 4.1.6\" --criterion latency\n"
+            "  python selector/generate_ompi_tuning.py \\\n"
+            "      --system mare_nostrum --ompi-lib \"Open MPI 4.1.6\" \\\n"
             "      --include-notes \"UCX_MAX_RNDV_RAILS=1\" -o custom_rules.txt"
         ),
     )
-    parser.add_argument("system", help="System name (e.g. mare_nostrum, leonardo)")
+    parser.add_argument("--system", required=True,
+                        help="System name (e.g. mare_nostrum, leonardo)")
+    parser.add_argument("--ompi-lib", required=True,
+                        help="OMPI library display name from environment config (e.g. 'Open MPI 4.1.6')")
     parser.add_argument("--results-dir", default="results",
                         help="Path to results directory (default: results/)")
     parser.add_argument("--output", "-o",
@@ -352,7 +414,8 @@ def main() -> None:
     quiet = args.quiet
     verbose = args.verbose
 
-    ompi_metadata = load_metadata(results_dir, system)
+    mpi_lib_tag, mpi_lib_version = resolve_ompi_library_config(repo_root, system, args.ompi_lib)
+    ompi_metadata = load_metadata(results_dir, system, mpi_lib_tag, mpi_lib_version)
 
     if args.list_notes:
         list_unique_notes(ompi_metadata)
@@ -406,6 +469,14 @@ def main() -> None:
                 continue
             if df.empty:
                 continue
+
+            df = df[
+                (df["mpi_lib"].str.strip().str.upper() == mpi_lib_tag) &
+                (df["mpi_lib_version"].astype(str) == mpi_lib_version)
+            ]
+            if df.empty:
+                continue
+
             all_results.append(df)
 
     if not all_results:
@@ -424,7 +495,11 @@ def main() -> None:
                 print(f"  Skipping {coll}: no OMPI algorithm definitions")
             continue
 
-        ompi_algo_keys = set(ompi_algos[coll_upper].keys()) - {"default_ompi"}
+        ompi_algo_keys = set(
+            name for name, info in ompi_algos[coll_upper].items()
+            if name != "default_ompi"
+            and version_le(info.get("version", "0"), mpi_lib_version)
+        )
         coll_data = combined[combined["collective_type"] == coll].copy()
         before = len(coll_data)
         coll_data = coll_data[coll_data["algo_name"].isin(ompi_algo_keys)]
