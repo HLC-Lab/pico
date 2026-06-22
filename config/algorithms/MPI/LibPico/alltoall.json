@@ -1,0 +1,123 @@
+{
+  "bine_over": {
+    "desc": "libpico external alltoall algorithm. This algorithm is used for small to medium messages",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "bine",
+      "external"
+    ]
+  },
+  "pairwise_ompi_over": {
+    "desc": "libpico pairwise algorithm, copied from Open MPI.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "pairwise",
+      "external"
+    ]
+  },
+  "twill_group_over": {
+    "desc": "TWILL alltoall with group-interleaved (smooth weighted round-robin) schedule for tapered topologies. Works at any comm size. Env: TWILL_WINDOW (default 32), TWILL_MAP (rank->group file) or TWILL_GROUP (integer N = uniform groups of size N, or 'node' = node=group, default), TWILL_CACHE (default 1).",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "twill",
+      "external",
+      "tapered"
+    ]
+  },
+  "twill_random_over": {
+    "desc": "TWILL alltoall with a pseudorandom matching schedule (zero system info baseline). Works at any comm size. Env: TWILL_WINDOW (default 32), TWILL_SEED (shared seed), TWILL_CACHE (default 1).",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "twill",
+      "external",
+      "tapered"
+    ]
+  },
+  "twill_shift_over": {
+    "desc": "TWILL alltoall with identity relabeling: classic (s+t) mod P shift through the same windowed nonblocking engine (isolates schedule effect from engine effect). Works at any comm size. Env: TWILL_WINDOW (default 32), TWILL_CACHE (default 1).",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "twill",
+      "external",
+      "tapered"
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "ring_nccl": {
+    "desc": "NCCL ring algorithm for Allgather: a simple peer‑to‑peer pipeline ring.",
+    "version": "2.5",
+    "selection": "ring",
+    "tags": [
+      "ring",
+      "allgather"
+    ]
+  },
+  "collnetdirect_nccl": {
+    "desc": "NCCL CollNetDirect algorithm for Allgather (2.14+): direct CollNet peer communications.",
+    "version": "2.14",
+    "selection": "collnetdirect",
+    "tags": [
+      "collnetdirect",
+      "allgather",
+      "nvlink_sharp"
+    ]
+  },
+  "nvls_nccl": {
+    "desc": "NCCL NVLS algorithm for Allgather (2.17+): NVLink SHARP‑offload enabled flat‑tree.",
+    "version": "2.17",
+    "selection": "nvls",
+    "tags": [
+      "nvls",
+      "allgather",
+      "nvlink_sharp"
+    ]
+  },
+  "nvlstree_nccl": {
+    "desc": "NCCL NVLSTree algorithm for Allgather (2.18+): NVLink SHARP‑offload enabled recursive‑doubling tree.",
+    "version": "2.18",
+    "selection": "nvlstree",
+    "tags": [
+      "nvlstree",
+      "allgather",
+      "nvlink_sharp"
+    ]
+  },
+  "pat_nccl": {
+    "desc": "NCCL PAT algorithm for Allgather (2.23+): PCI‑Atomic Tree algorithm optimized for PCIe topologies.",
+    "version": "2.23",
+    "selection": "pat",
+    "tags": [
+      "pat",
+      "allgather"
+    ]
+  }
+}

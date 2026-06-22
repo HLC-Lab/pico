@@ -1,0 +1,10 @@
+# Collective selection rules for replaying PMPI traces with schedgen.
+# Format:
+# <collective> <algorithm> <min_comm> <max_comm> <min_msg> <max_msg>
+# Use '*' to express an open upper bound. Bounds are inclusive.
+# Message sizes are in bytes (count * datatype size).
+
+# allreduce recursive_doubling 0 1024 0 131072
+allreduce recursive_doubling 0 * 0 16384
+allreduce reduce_scatter_allgather 0 * 16385 16777216
+allreduce ring 0 * 16777217 *

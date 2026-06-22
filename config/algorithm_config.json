@@ -1,0 +1,3787 @@
+{
+  "config_metadata": {
+    "schema_version": "2.6.15",
+    "created": "2024-01-30",
+    "last_modified": "2024-04-10",
+    "authors": [
+      "Daniele De Sensi e Saverio Pasqualoni"
+    ],
+    "description": "MPI collective algorithm configuration file for the test selection script"
+  },
+  "collective": {
+    "ALLREDUCE": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "smp_mpich": {
+        "desc": "MPICH SMP algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "smp",
+        "tags": [
+          "smp",
+          "internal"
+        ]
+      },
+      "recursive_doubling_mpich": {
+        "desc": "MPICH recursive doubling algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "recursive_doubling",
+        "tags": [
+          "recursive_doubling",
+          "internal"
+        ]
+      },
+      "recursive_multiplying_mpich": {
+        "desc": "MPICH recursive multiplying algorithm. Generalization of the recursive doubling algorithm. The env var MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL can be used to set the value of k. If k=2 it is equivalent to recursive doubling.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "recursive_multiplying",
+        "tags": [
+          "recursive_multiplying",
+          "internal"
+        ]
+      },
+      "rechexch_mpich": {
+        "desc": "MPICH recursive exchange algorithm.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "recexch",
+        "tags": [
+          "recexch",
+          "internal"
+        ]
+      },
+      "ring_mpich": {
+        "desc": "MPICH ring algorithm. Count must be greater or equal to comm_sz.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "ring",
+        "tags": [
+          "ring",
+          "internal"
+        ]
+      },
+      "rabenseifner_mpich": {
+        "desc": "MPICH Rabenseifner algorithm. It is called `reduce_scatter_allgather` in MPICH code. It works only with count >= comm_sz.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "reduce_scatter_allgather",
+        "tags": [
+          "rabenseifner",
+          "internal"
+        ]
+      },
+      "k_rabenseifner_mpich": {
+        "desc": "MPICH K-nomial Rabenseifner algorithm. Generalization of the rabenseifner algorithm that uses recursive multiplying instead of recursive doubling reduce scatter and allgather. Is called `k_reduce_scatter_allgather`. The variable `MPIR_CVAR_ALLREDUCE_RECURSIVE_MULTIPLYING_KVAL` can be used to set the value of k. If k=2 it is equivalent to rabenseifner.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "k_reduce_scatter_allgather",
+        "tags": [
+          "k_rabenseifner",
+          "internal"
+        ]
+      },
+      "tree_mpich": {
+        "desc": "MPICH tree algorithm. Segments the message to pipeline communication and reduction. Sends the segmented message into a tree topology created by the function itself. The variables `MPIR_CVAR_ALLREDUCE_TREE_TYPE` and `MPIR_CVAR_ALLREDUCE_TREE_KVAL` can be used to set the tree type and the value of k of knomial and kary trees.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "tree",
+        "tags": [
+          "tree",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm from `basic` module, consists in a Reduce to rank 0 followed by a Bcast. Both Reduce and Bcast are the one from the `basic` module. This algorithm is used for small messages. It can crash for big tests",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "small_sizes",
+          "can_crash",
+          "internal"
+        ]
+      },
+      "non_overlapping_ompi": {
+        "desc": "Open MPI non-overlapping algorithm, consists in a Reduce to rank 0 followed by a Bcast. Utilizes default Reduce and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 2,
+        "tags": [
+          "non_overlapping",
+          "small_sizes",
+          "can_crash",
+          "internal"
+        ]
+      },
+      "recursive_doubling_ompi": {
+        "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 3,
+        "tags": [
+          "recursive_doubling",
+          "small_sizes",
+          "medium_sizes",
+          "internal"
+        ]
+      },
+      "ring_ompi": {
+        "desc": "Open MPI ring algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 4,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "ring",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "ring_segmented_ompi": {
+        "desc": "Open MPI ring segmented algorithm. Not to be used if `count`<`comm_sz`. If invoked on `count`<`comm_sz` defaults to `recursive_doubling`. This algorithm is used for large messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 5,
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
+            "required": false,
+            "type": "int",
+            "default": 0
+          }
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "ring_segmented",
+          "ring",
+          "segmented",
+          "can_crash",
+          "additional_parameter",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "rabenseifner_ompi": {
+        "desc": "Open MPI Rabenseifner algorithm. Not to be used if `count`<`comm_sz`. Not to be used if `op` is not commutative. If used on not commutative `op` defaults to `OMPI_LINEAR`. This algorithm is used for medium to large messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 6,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "rabenseifner",
+          "medium_sizes",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "allgather_reduce_ompi": {
+        "desc": "Open MPI allgather reduce algorithm. This algorithm is used for small messages. It can crash for big tests",
+        "library": {
+          "ompi": "5.0.0",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 7,
+        "tags": [
+          "allgather_reduce",
+          "small_sizes",
+          "can_crash",
+          "rabenseifner",
+          "internal"
+        ]
+      },
+      "bine_lat_ompi": {
+        "desc": "Open MPI internal bine latency optimal algorithm of `OMPI_bine`. This algorithm is used for small to medium messages",
+        "library": {
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 8,
+        "tags": [
+          "bine_lat",
+          "bine",
+          "latency_optimal",
+          "small_sizes",
+          "medium_sizes",
+          "internal"
+        ]
+      },
+      "bine_bdw_memcpy_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version leverages a memcpy operation to send a contiguous buffer. This algorithm is used for medium to large messages",
+        "library": {
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 9,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_bdw_memcpy",
+          "bine",
+          "bandwidth_optimal",
+          "suboptimal",
+          "memcpy",
+          "medium_sizes",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "bine_bdw_dt_1_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation but requires the heap allocation, creation and destruction of 2*`comm_sz` derived datatypes. This algorithm is used for medium to large messages",
+        "library": {
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 10,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_bdw_dt_1",
+          "bine",
+          "bandwidth_optimal",
+          "suboptimal",
+          "derived_datatypes",
+          "medium_sizes",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "bine_bdw_dt_2_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version creates derived datatype to use a single send operation and receive the message to a continuous buffer. Does not require the heap allocation of datatype array since it utilizes a single stack allocated one, overwriting it each time. This algorithm is used for medium to large messages",
+        "library": {
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 11,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_bdw_dt_2",
+          "bine",
+          "bandwidth_optimal",
+          "suboptimal",
+          "derived_datatypes",
+          "medium_sizes",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "bine_bdw_segmented_ompi": {
+        "desc": "Open MPI internal bine bandwidth optimal algorithm of `OMPI_bine`. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version utilizes many pipelined asyncrhonous send/recv operation to overlap communication and reduction. It requires an additional parameter `segsize`. This algorithm is used for medium to large messages",
+        "library": {
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 12,
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
+            "required": false,
+            "type": "int",
+            "default": 0
+          }
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_bdw_segmented",
+          "bine",
+          "bandwidth_optimal",
+          "suboptimal",
+          "segmented",
+          "additional_parameter",
+          "medium_sizes",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "recursive_doubling_over": {
+        "desc": "libpico external recursive doubling algorithm. This algorithm is used for small to medium messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "recursive_doubling",
+          "small_sizes",
+          "medium_sizes",
+          "external"
+        ]
+      },
+      "ring_over": {
+        "desc": "libpico external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "ring",
+          "large_sizes",
+          "external"
+        ]
+      },
+      "rabenseifner_over": {
+        "desc": "libpico external Rabenseifner algorithm. Not to be used if `count`<`comm_sz` and for non commutative `op`. This algorithm is used for medium to large messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "rabenseifner",
+          "can_crash",
+          "medium_sizes",
+          "large_sizes",
+          "external"
+        ]
+      },
+      "bine_lat_over": {
+        "desc": "libpico external bine latency optimal algorithm. This algorithm is used for small to medium messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_lat",
+          "bine",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "bine_bdw_remap_over": {
+        "desc": "libpico external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_bdw_remap",
+          "bine",
+          "bandwidth_optimal",
+          "remap",
+          "external"
+        ]
+      },
+      "bine_block_by_block_any_even": {
+        "desc": "libpico external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with even processes. This version sends each data block/segment individually. It segments the message into segments of size `segsize  = count / comm_sz` ",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_block_by_block",
+          "bine",
+          "bandwidth_optimal",
+          "remap",
+          "external"
+        ]
+      },
+      "bine_bdw_remap_segmented_over": {
+        "desc": "libpico external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_bdw_remap_segmented",
+          "bine",
+          "is_segmented",
+          "bandwidth_optimal",
+          "remap",
+          "external"
+        ]
+      }
+    },
+    "ALLGATHER": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "brucks_mpich": {
+        "desc": "MPICH Brucks algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "brucks",
+        "tags": [
+          "brucks",
+          "internal"
+        ]
+      },
+      "k_brucks_mpich": {
+        "desc": "MPICH K-nomial Brucks algorithm. Generalization of the brucks algorithm that uses recursive multiplying instead of recursive doubling. Is called `k_brucks`. The variable `MPIR_CVAR_ALLGATHER_BRUCKS_KVAL` can be used to set the value of k. If k=2 it is equivalent to brucks.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "k_brucks",
+        "tags": [
+          "k_brucks",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH nonblocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "nb",
+        "tags": [
+          "nb",
+          "internal"
+        ]
+      },
+      "recursive_doubling_mpich": {
+        "desc": "MPICH recursive doubling algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "recursive_doubling",
+        "tags": [
+          "recursive_doubling",
+          "internal"
+        ]
+      },
+      "ring_mpich": {
+        "desc": "MPICH ring algorithm. Count must be greater or equal to comm_sz.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "ring",
+        "tags": [
+          "ring",
+          "internal"
+        ]
+      },
+      "recexch_mpich": {
+        "desc": "MPICH recexch distance doubling algorithm. It is a generalization of the recursive doubling to work with any `k` radix. The cvar `MPIR_CVAR_ALLGATHER_RECEXCH_KVAL` can be used to set the value of k. If k=1 the algorithm is a distance halving allgather and can be also called with its own cvar. If k=2 it is equivalent to recursive doubling.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "recexch_doubling",
+        "tags": [
+          "recexch_doubling",
+          "internal"
+        ]
+      },
+      "recexch_halving_mpich": {
+        "desc": "MPICH recexch distance halving algorithm. It uses the same code of `rechexch_mpich` but with `k=1`.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "recexch_halving",
+        "tags": [
+          "recexch_halving",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": " Open MPI linear algorithm, consists in a Gather to rank 0 of the whole message followed by a Bcast. Utilizes default Gather and Bcast algorithm selection. This algorithm is used for small messages. It can crash for big tests",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "small_sizes",
+          "can_crash",
+          "internal"
+        ]
+      },
+      "k_bruck_ompi": {
+        "desc": "Open MPI K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 2,
+        "additional_parameters": {
+          "radix": {
+            "desc": "Radix of the K-nomial tree. When not explicitly set it defaults to 2. Still don't know how to change it.",
+            "required": false,
+            "type": "int",
+            "default": 2
+          }
+        },
+        "tags": [
+          "k_bruck",
+          "can_crash",
+          "additional_parameter",
+          "medium_sizes",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "recursive_doubling_any_even_over": {
+        "desc": "libpico external recursive doubling algorithm. Works with non power of tow",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "recursive_doubling",
+          "small_sizes",
+          "medium_sizes",
+          "external"
+        ]
+      },
+      "recursive_doubling_ompi": {
+        "desc": "Open MPI recursive doubling algorithm. This algorithm is used for small to medium messages. Works only on power of 2 processes. When invoked on non power of 2 processes, it will fallback to k_bruck with `radix=2`",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 3,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "recursive_doubling",
+          "small_sizes",
+          "medium_sizes",
+          "internal"
+        ]
+      },
+      "recursivedoubling_hierarchy_over": {
+        "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "recursive_doubling",
+          "cuda",
+          "external"
+        ]
+      },
+      "recursivedoubling_hierarchy_local_parallel_over": {
+        "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "recursive_doubling",
+          "cuda",
+          "external"
+        ]
+      },
+      "ring_ompi": {
+        "desc": "Open MPI ring algorithm. This algorithm is used for large messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 4,
+        "tags": [
+          "ring",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "neighbor_ompi": {
+        "desc": "Open MPI neighbor exchange algorithm. This algorithm is used for large messages. Works only for even number of processes. When invoked on odd number of processes, it will fallback to ring",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 5,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "neighbor",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "two_proc_ompi": {
+        "desc": "Open MPI two processes algorithm. Works only for 2 processes",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 6,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 2
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "two_proc",
+          "internal"
+        ]
+      },
+      "k_bruck_over": {
+        "desc": "libpico external K-nomial Bruck algorithm. It requires an additional parameter `radix`. This algorithm is used for medium to large messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "additional_parameters": {
+          "radix": {
+            "desc": "Radix of the K-nomial tree",
+            "required": true,
+            "type": "int"
+          }
+        },
+        "tags": [
+          "k_bruck",
+          "cuda",
+          "additional_parameter",
+          "external"
+        ]
+      },
+      "recursive_doubling_over": {
+        "desc": "libpico external recursive doubling algorithm. Works only on power of 2 processes. Comm_sz must be greater or equal to count.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "recursive_doubling",
+          "cuda",
+          "external"
+        ]
+      },
+      "ring_over": {
+        "desc": "libpico external ring algorithm. This algorithm is used for large messages. Comm_sz must be greater or equal to count.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "ring",
+          "cuda",
+          "external"
+        ]
+      },
+      "sparbit_over": {
+        "desc": "libpico external sparse bit algorithm. Comm_sz must be greater or equal to count.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "sparbit",
+          "external"
+        ]
+      },
+      "bine_block_by_block_over": {
+        "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_block_by_block",
+          "block_by_block",
+          "bine",
+          "external"
+        ]
+      },
+      "bine_block_by_block_over_any_even": {
+        "desc": "libpico external bine block by block algorithm. Works for any number of even processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_block_by_block",
+          "block_by_block",
+          "bine",
+          "external"
+        ]
+      },
+      "bine_send_remap_over": {
+        "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_remap",
+          "bine",
+          "external"
+        ]
+      },
+      "bine_2_blocks_over": {
+        "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine",
+          "cuda",
+          "external"
+        ]
+      },
+      "bine_2_blocks_dtype_over": {
+        "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with derived datatypes.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine",
+          "dtype",
+          "cuda",
+          "external"
+        ]
+      },
+      "bine_permutation_over": {
+        "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine",
+          "dtype",
+          "cuda",
+          "external"
+        ]
+      }
+      ,
+      "bine_block_by_block_hierarcic_global_local_over": {
+        "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_block_by_block",
+          "block_by_block",
+          "bine",
+          "external"
+        ]
+      },
+      "bine_send_remap_hierarcic_global_local_over": {
+        "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          "bine_remap",
+          "bine",
+          "external"
+        ]
+      }
+    },
+    "ALLTOALL": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "brucks_mpich": {
+        "desc": "MPICH Brucks algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "brucks",
+        "tags": [
+          "brucks",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH nonblocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "nb",
+        "tags": [
+          "nb",
+          "internal"
+        ]
+      },
+      "pairwise_mpich": {
+        "desc": "MPICH pairwise exchange algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "pairwise",
+        "tags": [
+          "pairwise",
+          "internal"
+        ]
+      },
+      "pairwise_sendrecv_replace_mpich": {
+        "desc": "MPICH pairwise sendrecv_replace algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "pairwise_sendrecv_replace",
+        "tags": [
+          "pairwise_sendrecv_replace",
+          "internal"
+        ]
+      },
+      "scattered_mpich": {
+        "desc": "MPICH scattered algorithm. It works only with power of 2 processes.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "scattered",
+        "tags": [
+          "scattered",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "ignore",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Launches all non-blocking send/recv pairs and wait for them to complete.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "pairwise_ompi": {
+        "desc": "For comm size P, implemented as P rounds of blocking MPI_Sendrecv",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 2,
+        "tags": [
+          "pairwise",
+          "blocking",
+          "internal"
+        ]
+      },
+      "modified_bruck_ompi": {
+        "desc": "An algorithm exploiting network packet quantization to achieve O(log) time complexity. Typically best for very small message sizes.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 3,
+        "tags": [
+          "modified_bruck",
+          "log_time",
+          "internal"
+        ]
+      },
+      "linear_sync_ompi": {
+        "desc": "Keep N non-blocking MPI_Isend/Irecv pairs in flight at all times. N is set by the coll_tuned_alltoall_max_requests MCA variable.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 4,
+        "tags": [
+          "linear_sync",
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "two_proc_ompi": {
+        "desc": "An implementation tailored for alltoall between 2 ranks, otherwise it is not used.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 2
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 5,
+        "tags": [
+          "two_proc",
+          "small_rank",
+          "internal"
+        ]
+      },
+      "bine_over": {
+        "desc": "libpico external alltoall algorithm. This algorithm is used for small to medium messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "external"
+        ]
+      },
+      "pairwise_ompi_over": {
+        "desc": "libpico pairwise algorithm, copied from Open MPI.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "pairwise",
+          "external"
+        ]
+      }
+    },
+    "BCAST": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "smp_mpich": {
+        "desc": "MPICH smp algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "smp",
+        "tags": [
+          "smp",
+          "internal"
+        ]
+      },
+      "scatter_recursive_doubling_allgather_mpich": {
+        "desc": "MPICH scatter recursive-doubling allgather algorithm. It performs the broadcast pipelining a scatter followed by an allgather, both with recurisve doubling communication pattern.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "scatter_recursive_doubling_allgather",
+        "tags": [
+          "scatter_recursive_doubling_allgather",
+          "internal"
+        ]
+      },
+      "scatter_ring_allgather_mpich": {
+        "desc": "MPICH scatter ring allgather algorithm. This broadcast is based on a scatter followed by an allgather, both with ring communication pattern. Can outperform the recursive doubling variant for large messages or non power of two messages.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "scatter_ring_allgather",
+        "tags": [
+          "scatter_ring_allgather",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm. It performs the broadcast by sending messages to rank at comm_sz/2 away from the root. Those ranks become the roots of their own subtree and repeat the process until all ranks have received the message.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "tree_mpich": {
+        "desc": "MPICH general tree algorithm. It uses a k-nomial or k-ary tree to perform the broadcast. The variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` can be used to set the value of k and the type of tree.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "tree",
+        "tags": [
+          "tree",
+          "internal"
+        ]
+      },
+      "pipelined_tree_mpich": {
+        "desc": "MPICH pipelined tree based algorithm. It works like the tree based algorithm but segmenting the message into smaller chunks that are sent to the child processes in a pipelined fashion. It can outperform the tree based algorithm for large messages. Like the tree based algorithm it uses the variables `MPIR_CVAR_BCAST_TREE_KVAL` and `MPIR_CVAR_BCAST_TREE_TYPE` to set the value of k and the type of tree. Moreover it uses the variable `MPIR_CVAR_BCAST_TREE_PIPELINE_CHUNK_SIZE` to set the size of the chunks.",
+        "library": {
+          "mpich": "4.3.0"
+        },
+        "cvar": "pipelined_tree",
+        "tags": [
+          "pipelined_tree",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm, consists in root performing comm_sz - 1 send operations, one to each other process. All other processes perform a single receive operation. It can crash for big tests",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "can_crash",
+          "internal"
+        ]
+      },
+      "chain_ompi": {
+        "desc": "Open MPI chain algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process of a chain topology. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_chain` is responsible for the segmentation and the check/creation of the chain topology.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          },
+          "chains": {
+            "desc": "I think this is the number of chains. Not sure how to change it. For sure is a Communicator related parameter. Look for `faninout` for more details, I'll leave as it is.",
+            "required": false,
+            "type": "int32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 2,
+        "tags": [
+          "chain",
+          "segmented",
+          "suboptimal",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "pipeline_ompi": {
+        "desc": "Open MPI pipeline algorithm. Segments the message using the additional_parameter `segsize` pipelining their send operations to the next process into a pipeline. Each non process posts non blocking receive operations and sends the message to the next process. The actual broadcast is done by `ompi_coll_base_bcast_intra_generic` while `ompi_coll_base_bcast_intra_pipeline` is responsible for the segmentation and the check/creation of the pipelined topology.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation. When set to 0 (default) the tuned module uses heuristics to choose one. To select a different one, the third number of dynamic file rule (after algorithm number) must be changed.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 3,
+        "tags": [
+          "pipeline",
+          "segmented",
+          "suboptimal",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "split_binary_ompi": {
+        "desc": "Open MPI split‐binary tree broadcast. It divides the overall message into two halves and then uses a binary‐tree–based dissemination within each half, followed by a final exchange to “stitch” the two halves together where every process finds its pair in the other branch of the tree. Uses the additional parameter `segsize` to further segment the communications. If message is to small it will fallback to `chain_ompi`.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 4,
+        "tags": [
+          "split_binary",
+          "additional_parameter",
+          "segmented",
+          "internal"
+        ]
+      },
+      "binary_ompi": {
+        "desc": "Open MPI binary tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binary tree topology and for the segmentation of the message.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 5,
+        "tags": [
+          "binary",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the binomial tree topology and for the segmentation of the message.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 6,
+        "tags": [
+          "binomial",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "knomial_ompi": {
+        "desc": "Open MPI k-nomial tree broadcast. It uses the `ompi_coll_base_bcast_intra_generic` for the actual broadcast. This function is responsible for the check/creation of the k-nomial tree topology and for the segmentation of the message. It requires an additional parameter `radix`.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "additional_parameters": {
+          "radix": {
+            "desc": "Radix of the K-nomial tree",
+            "required": true,
+            "type": "int"
+          },
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 7,
+        "tags": [
+          "knomial",
+          "additional_parameter",
+          "segmented",
+          "internal"
+        ]
+      },
+      "scatter_allgather_ompi": {
+        "desc": "Open MPI scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 8,
+        "tags": [
+          "scatter_allgather",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "scatter_allgather_ring_ompi": {
+        "desc": "Open MPI scatter allgather ring algorithm. It consists of a binomial tree scatter followed by a ring allgather. It requires `count` to be greater than `comm_sz`. If not, it will fallback to `linear`'s bcast. It requires an additional parameter `segsize` but it appears by the code to not be used.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "additional_parameters": {
+          "segsize": {
+            "desc": "Size of the segments used to pipeline communication and computation.",
+            "required": false,
+            "type": "uint32_t",
+            "default": 0
+          }
+        },
+        "dynamic_rule": 9,
+        "tags": [
+          "scatter_allgather_ring",
+          "segmented",
+          "additional_parameter",
+          "internal"
+        ]
+      },
+      "linear_over": {
+        "desc": "libpico external linear algorithm. This algorithm uses a simple linear pattern of communication where the root sends data to each process one by one. Copied from open mpi linear algorithm.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "linear",
+          "external"
+        ]
+      },
+      "binomial_halving_over": {
+        "desc": "libpico external recursive halving (binomial) algorithm. This algorithm uses a binomial tree pattern of communication where each process that receives data from the root forwards it to other processes. Copied from MPICH binomial algorithm.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "recursive_halving",
+          "binomial",
+          "external"
+        ]
+      },
+      "binomial_doubling_over": {
+        "desc": "libpico external binomial doubling algorithm. At each step informed ranks send to a partner at distance 2^k, doubling the number of informed ranks.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "doubling",
+          "binomial",
+          "external"
+        ]
+      },
+      "scatter_allgather_over": {
+        "desc": "libpico external scatter allgather algorithm. It consists of a binomial tree scatter followed by a recursive doubling allgather. It requires `count` to be greater than `comm_sz`.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "scatter_allgather",
+          "segmented",
+          "external"
+        ]
+      },
+      "bine_lat_over": {
+        "desc": "libpico external bine latency optimal algorithm. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_lat",
+          "bine",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "bine_lat_reversed_over": {
+        "desc": "libpico external bine latency optimal algorithm with reversed peer selection. This algorithm uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_lat_reversed",
+          "bine",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "bine_lat_new_over": {
+        "desc": "New libpico external bine latency optimal algorithm.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_lat_new",
+          "bine",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "bine_lat_i_new_over": {
+        "desc": "New libpico external bine latency optimal algorithm with isend.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_lat_i_new",
+          "bine",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "bine_bdw_remap_over": {
+        "desc": "libpico external bine bandwidth optimal algorithm. This algorithm is a combination of a bine scatter and a bine allgather.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_bdw_remap",
+          "remap",
+          "bine",
+          "bandwidth_optimal",
+          "external"
+        ]
+      }
+    },
+    "GATHER": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm. It consists in the root receiving messages from all other processes.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree based algorithm.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 2,
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "linear_synch_ompi": {
+        "desc": "Open MPI linear synchronous algorithm. It consists in the root receiving messages from all other processes, but synchronizing messages by having them segmented by `segsize`. It can crash for big tests",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 3,
+        "tags": [
+          "linear",
+          "synchronous",
+          "internal"
+        ]
+      },
+      "linear_over": {
+        "desc": "libpico external linear algorithm. It consists in the root receiving messages from all other processes.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "linear",
+          "external"
+        ]
+      },
+      "bine_over": {
+        "desc": "libpico external bine algorithm. It uses a binomial tree pattern of communication choosing its peer utilizing `bine` peer selection method `pi`. It works only if `comm` is a power of 2 and root is 0.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "external"
+        ]
+      }
+    },
+    "REDUCE": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "rabenseifner_mpich": {
+        "desc": "MPICH Rabenseifner algorithm. Internally is called reduce_scatter_gather",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "reduce_scatter_gather",
+        "tags": [
+          "rabenseifner",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "internal"
+        ]
+      },
+      "chain_ompi": {
+        "desc": "Open MPI chain algorithm.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 2,
+        "tags": [
+          "chain",
+          "suboptimal",
+          "internal"
+        ]
+      },
+      "pipeline_ompi": {
+        "desc": "Open MPI pipeline algorithm.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 3,
+        "tags": [
+          "pipeline",
+          "suboptimal",
+          "internal"
+        ]
+      },
+      "binary_ompi": {
+        "desc": "Open MPI binary tree reduce.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 4,
+        "tags": [
+          "split_binary",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree reduce.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 5,
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "in_order_ompi": {
+        "desc": "Open MPI in order reduce.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "dynamic_rule": 6,
+        "tags": [
+          "in_order",
+          "internal"
+        ]
+      },
+      "rabenseifner_ompi": {
+        "desc": "Open MPI Rabenseifner reduce.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 7,
+        "tags": [
+          "rabenseifner",
+          "internal"
+        ]
+      },
+      "bine_lat_over": {
+        "desc": "libpico external bine latency optimal algorithm.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_lat",
+          "bine",
+          "latency_optimal",
+          "external"
+        ]
+      },
+      "bine_bdw_over": {
+        "desc": "libpico external bine bandwidth optimal algorithm.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine_bdw",
+          "bine",
+          "bandwidth_optimal",
+          "external"
+        ]
+      }
+    },
+    "REDUCE_SCATTER": {
+      "recursive_distance_doubling_gpu_over": {
+        "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "recursive_distance_doubling",
+          "external"
+        ]
+      },
+      "recursive_distance_doubling_hierarchical_local_parallel_over": {
+        "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "recursive_distance_doubling",
+          "external"
+        ]
+      },
+      "bine_send_remap_hierarchical_over": {
+        "desc": "libpico external bine remap send algorithm hierarchical. Works only with power of 2 processes.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "remap",
+          "send",
+          "external"
+        ]
+      },
+      "bine_block_by_block_hierarchical_over": {
+        "desc": "libpico external bine block by block algorithm hierarchical. Works only for power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "block_by_block",
+          "external"
+        ]
+      },
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "non_commutative_mpich": {
+        "desc": "MPICH non-commutative algorithm. Described in `An Improved Algorithm for (Non-commutative) Reduce-Scatter with an Application`, the implemented version requires comm_sz to be a power of 2 and the blocks of equal size.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "noncommutative",
+        "tags": [
+          "non_commutative",
+          "internal"
+        ]
+      },
+      "pairwise_mpich": {
+        "desc": "MPICH pairwise algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "pairwise",
+        "tags": [
+          "pairwise",
+          "internal"
+        ]
+      },
+      "recursive_doubling_mpich": {
+        "desc": "MPICH recursive doubling algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "recursive_doubling",
+        "tags": [
+          "recursive_doubling",
+          "internal"
+        ]
+      },
+      "recursive_halving_mpich": {
+        "desc": "MPICH recursive halving algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "recursive_halving",
+        "tags": [
+          "recursive_halving",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "non_overlapping_ompi": {
+        "desc": "Open MPI non-overlapping algorithm. Consists in a Reduce to rank 0 followed by a Scatterv. Utilizes default Reduce and Scatterv algorithm selection. This algorithm is used for small messages. It can crash for big tests",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 1,
+        "tags": [
+          "non_overlapping",
+          "small_sizes",
+          "can_crash",
+          "internal"
+        ]
+      },
+      "recursive_halving_ompi": {
+        "desc": "Open MPI recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 2,
+        "tags": [
+          "recursive_halving",
+          "small_sizes",
+          "medium_sizes",
+          "internal"
+        ]
+      },
+      "ring_ompi": {
+        "desc": "Open MPI ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 3,
+        "tags": [
+          "ring",
+          "large_sizes",
+          "internal"
+        ]
+      },
+      "butterfly_ompi": {
+        "desc": "Open MPI butterfly algorithm. This algorithm is used for small messages",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 4,
+        "tags": [
+          "butterfly",
+          "small_sizes",
+          "can_crash",
+          "internal"
+        ]
+      },
+      "recursive_distance_doubling_over": {
+        "desc": "libpico external recursive distance doubling algorithm. It works only with power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "recursive_distance_doubling",
+          "external"
+        ]
+      },
+      "recursive_halving_over": {
+        "desc": "libpico external recursive halving algorithm. Similar to `basic`'s reduce scatter. Works only for commutative `op`. This algorithm is used for small to medium messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "recursive_halving",
+          "small_sizes",
+          "medium_sizes",
+          "external"
+        ]
+      },
+      "ring_over": {
+        "desc": "libpico external ring algorithm. Works only on commutative `op`. This algorithm is used for large messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "ring",
+          "large_sizes",
+          "external"
+        ]
+      },
+      "butterfly_over": {
+        "desc": "libpico external butterfly algorithm. This algorithm is used for small messages",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "butterfly",
+          "small_sizes",
+          "can_crash",
+          "external"
+        ]
+      },
+      "bine_send_remap_over": {
+        "desc": "libpico external bine remap send algorithm. Works only with power of 2 processes.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "remap",
+          "send",
+          "external"
+        ]
+      },
+      "bine_permute_remap_over": {
+        "desc": "libpico external bine remap memcpy algorithm. Works only with power of 2 processes.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "remap",
+          "memcpy",
+          "external"
+        ]
+      },
+      "bine_block_by_block_over": {
+        "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "block_by_block",
+          "external"
+        ]
+      },
+      "bine_block_by_block_any_even": {
+        "desc": "libpico external bine block by block algorithm. Works only any even processes",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_even",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "block_by_block",
+          "external"
+        ]
+      }
+    },
+    "SCATTER": {
+      "default_mpich": {
+        "desc": "MPICH default algorithm selection",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "binomial_mpich": {
+        "desc": "MPICH binomial tree based algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "binomial",
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "non_blocking_mpich": {
+        "desc": "MPICH non-blocking algorithm.",
+        "library": {
+          "cray_mpich": "8.0.0",
+          "mpich": "4.3.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "nb",
+        "tags": [
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "default_ompi": {
+        "desc": "Open MPI default algorithm selection",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 0,
+        "tags": [
+          "default",
+          "internal"
+        ]
+      },
+      "linear_ompi": {
+        "desc": "Open MPI linear algorithm.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 1,
+        "tags": [
+          "linear",
+          "internal"
+        ]
+      },
+      "binomial_ompi": {
+        "desc": "Open MPI binomial tree based algorithm.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 2,
+        "tags": [
+          "binomial",
+          "internal"
+        ]
+      },
+      "linear_nb_ompi": {
+        "desc": "Open MPI linear nb algorithm.",
+        "library": {
+          "ompi": "4.1.5",
+          "ompi_bine": "5.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "dynamic_rule": 3,
+        "tags": [
+          "linear",
+          "non_blocking",
+          "internal"
+        ]
+      },
+      "linear_over": {
+        "desc": "libpico linear scatter copied from Open MPI basic",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "external"
+        ]
+      },
+      "bine_over": {
+        "desc": "libpico external bine algorithm.",
+        "library": {
+          "libpico": "1.0.0"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          },
+          {
+            "key": "root",
+            "conditions": [
+              {
+                "operator": "==",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "cvar": "auto",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "external"
+        ]
+      }
+    }
+  }
+}

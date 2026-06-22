@@ -1,0 +1,11 @@
+{
+  "ring_nccl": {
+    "desc": "NCCL ring algorithm for Broadcast: a simple peer‑to‑peer pipeline ring.",
+    "version": "2.5",
+    "selection": "ring",
+    "tags": [
+      "ring",
+      "bcast"
+    ]
+  }
+}

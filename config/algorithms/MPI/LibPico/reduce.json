@@ -1,0 +1,73 @@
+{
+  "bine_lat_over": {
+    "desc": "libpico external bine latency optimal algorithm.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "root",
+        "conditions": [
+          {
+            "operator": "==",
+            "value": 0
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "bine_lat",
+      "bine",
+      "latency_optimal",
+      "external"
+    ]
+  },
+  "bine_bdw_over": {
+    "desc": "libpico external bine bandwidth optimal algorithm.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      },
+      {
+        "key": "root",
+        "conditions": [
+          {
+            "operator": "==",
+            "value": 0
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "bine_bdw",
+      "bine",
+      "bandwidth_optimal",
+      "external"
+    ]
+  }
+}

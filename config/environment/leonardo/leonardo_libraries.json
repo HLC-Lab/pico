@@ -1,0 +1,161 @@
+{
+  "NETWORK_LIB": "ucx",
+  "NETWORK_LIB_VERSION": "1.13.0",
+  "LIBRARY": {
+    "Open MPI 4.1.6": {
+      "desc": "An open source Message Passing Interface implementation.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "mpicc",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--gcc--12.2.0"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "module",
+          "module": "cuda/12.1"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "12.2.0",
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.1"
+      }
+    },
+    "Open MPI Custom": {
+      "desc": "System custom Open MPI installation with additional algorithms.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "6.1.0",
+      "compiler": "mpicc",
+      "gpu": {
+        "support": false
+      },
+      "load": {
+        "type": "env_var",
+        "vars": {
+          "PATH": "$HOME/bin:$PATH",
+          "LD_LIBRARY_PATH": "$HOME/lib:$LD_LIBRARY_PATH",
+          "MANPATH": "$HOME/share:$MANPATH"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "15.1.1"
+      }
+    },
+    "Open MPI NVHPC 23.11": {
+      "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "mpicc",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--nvhpc--23.11"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "nvhpc",
+        "MPI_LIB_COMPILER_VERSION": "23.11",
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.3"
+      }
+    },
+    "Open MPI NVHPC 24.3": {
+      "desc": "Open MPI implementation of NVIDIA HPC SDK.",
+      "standard": "mpi",
+      "lib_type": "Open-MPI",
+      "version": "4.1.6",
+      "compiler": "mpicc",
+      "load": {
+        "type": "module",
+        "module": "openmpi/4.1.6--nvhpc--24.3"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "nvhpc",
+        "MPI_LIB_COMPILER_VERSION": "24.3",
+        "GPU_LIB": "CUDA",
+        "GPU_LIB_VERSION": "12.3"
+      }
+    },
+    "NCCL 2.19.1": {
+      "desc": "NVIDIA Collective Communications Library (NCCL) is a library that optimizes collective communication primitives for NVIDIA GPUs.",
+      "standard": "nccl",
+      "lib_type": "nccl",
+      "version": "2.19.1",
+      "compiler": "nvcc",
+      "load": {
+        "type": "module",
+        "module": "nccl/2.19.1-1--gcc--12.2.0-cuda-12.1"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.1"
+        }
+      }
+    },
+    "NCCL 2.19.3": {
+      "desc": "NVIDIA Collective Communications Library (NCCL) is a library that optimizes collective communication primitives for NVIDIA GPUs.",
+      "standard": "nccl",
+      "lib_type": "nccl",
+      "version": "2.19.3",
+      "compiler": "nvcc",
+      "load": {
+        "type": "module",
+        "module": "nccl/2.19.3-1--gcc--12.2.0-cuda-12.1"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.1"
+        }
+      }
+    },
+    "NCCL 2.22.3": {
+      "desc": "NVIDIA Collective Communications Library (NCCL) is a library that optimizes collective communication primitives for NVIDIA GPUs.",
+      "standard": "nccl",
+      "lib_type": "nccl",
+      "version": "2.22.3",
+      "compiler": "nvcc",
+      "load": {
+        "type": "module",
+        "module": "nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22,openmpi/4.1.6--gcc--12.2.0,cuda/12.2"
+      },
+      "gpu": {
+        "support": true,
+        "load": {
+          "type": "default"
+        },
+        "metadata": {
+          "GPU_LIB": "CUDA",
+          "GPU_LIB_VERSION": "12.2"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,372 @@
+{
+  "ALLREDUCE": {
+    "ring": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "ring_reduce_scatter",
+          "steps": "p - 1",
+          "send_to": "(r + 1) % p",
+          "message_size": "n / p"
+        },
+        {
+          "desc": "ring_allgather",
+          "steps": "p - 1",
+          "send_to": "(r - 1 + p) % p",
+          "message_size": "n / p"
+        }
+      ],
+      "total_steps": "2 * (p - 1)"
+    },
+    "recursive_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "recursive_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** s)",
+          "message_size": "n"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "bine_latency": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "recursive_doubling_bine",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "message_size": "n"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "rabenseifner": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "reduce_scatter",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** s)",
+          "message_size": "n / (2 ** (s + 1))"
+        },
+        {
+          "desc": "allgather",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** (k - s - 1))",
+          "message_size": "n / (2 ** (k - s))"
+        }
+      ],
+      "total_steps": "2 * log(p, 2)"
+    },
+    "bine_bandwidth": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "reduce_scatter",
+          "steps": "ceil(log(p, 2))",
+          "send_to": "fi(r, s, p)",
+          "message_size": "n / (2 ** (s + 1))"
+        },
+        {
+          "desc": "allgather",
+          "steps": "ceil(log(p, 2))",
+          "send_to": "fi(r, (k - s - 1), p)",
+          "message_size": "n / (2 ** (k - s))"
+        }
+      ],
+      "total_steps": "2 * log(p, 2)"
+    }
+  },
+  "ALLTOALL": {
+    "bruck": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "steps": "log(p, 2)",
+          "send_to": "(r + (2 ** s)) % p",
+          "message_size": "n / 2"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "bine": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "message_size": "n / 2"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    }
+  },
+  "REDUCE_SCATTER": {
+    "ring": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "ring_reduce_scatter",
+          "steps": "p - 1",
+          "send_to": "(r + 1) % p",
+          "message_size": "n / p"
+        }
+      ],
+      "total_steps": "(p - 1)"
+    },
+    "distance_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** s)",
+          "message_size": "n / (2 ** (s + 1))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "bine_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "message_size": "n / (2 ** (s + 1))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "distance_halving": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_halving",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** (k - s - 1))",
+          "message_size": "n / (2 ** (s + 1))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "bine_halving": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, (k - s - 1), p)",
+          "message_size": "n / (2 ** (s + 1))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    }
+  },
+  "ALLGATHER": {
+    "ring": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "ring_allgather",
+          "steps": "p - 1",
+          "send_to": "(r - 1 + p) % p",
+          "message_size": "n / p"
+        }
+      ],
+      "total_steps": "(p - 1)"
+    },
+    "distance_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** s)",
+          "message_size": "n / (2 ** (k - s))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "bine_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, s, p)",
+          "message_size": "n / (2 ** (k - s))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "distance_halving": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_halving",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** (k - s - 1))",
+          "message_size": "n / (2 ** (k - s))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "bine_halving": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "distance_halving",
+          "steps": "log(p, 2)",
+          "send_to": "fi(r, (k - s - 1), p)",
+          "message_size": "n / (2 ** (k - s))"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    }
+  },
+  "BCAST": {
+    "binomial_doubling": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "binomial_tree_distance_doubling",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** s)",
+          "message_size": "n",
+          "active_if": "(r < (2 ** s)) and ((r ^ (2 ** s)) < p)"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    },
+    "binomial_halving": {
+      "parameters": {
+        "num_ranks": "p",
+        "buffer_size": "n",
+        "rank": "r",
+        "step": "s",
+        "num_steps": "k"
+      },
+      "phases": [
+        {
+          "desc": "binomial_tree_distance_halving",
+          "steps": "log(p, 2)",
+          "send_to": "r ^ (2 ** (k - s - 1))",
+          "message_size": "n",
+          "active_if": "((r % (2 ** (k - s))) == 0) and ((r ^ (2 ** (k - s - 1))) < p)"
+        }
+      ],
+      "total_steps": "log(p, 2)"
+    }
+  }
+}

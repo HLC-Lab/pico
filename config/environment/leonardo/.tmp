@@ -1,0 +1,19 @@
+
+    "Intel MPI": {
+      "desc": "Intel MPI Library is a multifabric message-passing library that implements the open-source MPICH specification.",
+      "standard": "mpi",
+      "lib_type": "Intel-MPI",
+      "version": "2021.10",
+      "compiler": "mpiicc",
+      "load": {
+        "type": "module",
+        "module": "intel-oneapi-mpi/2021.10.0"
+      },
+      "gpu": {
+        "support": false
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "icx",
+        "MPI_LIB_COMPILER_VERSION": "2021.10"
+      }
+    },

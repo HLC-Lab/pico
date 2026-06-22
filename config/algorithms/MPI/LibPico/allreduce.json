@@ -1,0 +1,126 @@
+{
+  "recursive_doubling_over": {
+    "desc": "libpico external recursive doubling algorithm. This algorithm is used for small to medium messages",
+    "version": "1.0.0",
+    "selection": "pico",
+    "tags": [
+      "recursive_doubling",
+      "small_sizes",
+      "medium_sizes"
+    ]
+  },
+  "ring_over": {
+    "desc": "libpico external ring algorithm. Not to be used if `count`<`comm_sz`. This algorithm is used for large messages",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "ring",
+      "large_sizes"
+    ]
+  },
+  "rabenseifner_over": {
+    "desc": "libpico external Rabenseifner algorithm. Not to be used if `count`<`comm_sz` and for non commutative `op`. This algorithm is used for medium to large messages",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "rabenseifner",
+      "medium_sizes",
+      "large_sizes"
+    ]
+  },
+  "bine_lat_over": {
+    "desc": "libpico external bine latency optimal algorithm. This algorithm is used for small to medium messages",
+    "version": "1.0.0",
+    "selection": "pico",
+    "tags": [
+      "bine_lat",
+      "bine",
+      "latency_optimal"
+    ]
+  },
+  "bine_bdw_remap_over": {
+    "desc": "libpico external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers.",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "bine_bdw_remap",
+      "bine",
+      "bandwidth_optimal",
+      "remap"
+    ]
+  },
+  "bine_bdw_remap_segmented_over": {
+    "desc": "libpico external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
+    "version": "1.0.0",
+    "selection": "pico",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "bine_bdw_remap_segmented",
+      "bine",
+      "is_segmented",
+      "bandwidth_optimal",
+      "remap"
+    ]
+  }
+}
