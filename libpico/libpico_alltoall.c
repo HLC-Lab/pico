@@ -7,65 +7,77 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
-
+#include <math.h>
 #include "libpico.h"
 #include "libpico_utils.h"
-
 
 /* Alltoall pairwise implementation from Open MPI 5.0.1 base module.
  * Original file: ompi/mca/coll/base/coll_base_alltoall.c
  * Original function: ompi_coll_base_alltoall_intra_pairwise
  */
-int alltoall_pairwise_ompi(const void *sbuf, size_t scount, MPI_Datatype sdtype, 
-                           void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
+int alltoall_pairwise_ompi(const void *sbuf, size_t scount, MPI_Datatype sdtype,
+                           void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm)
 {
   int line = -1, err = 0, rank, size, step, sendto, recvfrom;
-  void * tmpsend, *tmprecv;
+  void *tmpsend, *tmprecv;
   ptrdiff_t lb, sext, rext;
 
-  if (MPI_IN_PLACE == sbuf) {
+  if (MPI_IN_PLACE == sbuf)
+  {
     err = MPI_ERR_ARG;
     line = __LINE__;
     goto err_hndl;
   }
 
-  MPI_Comm_rank (comm, &rank);
-  MPI_Comm_size (comm, &size);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
 
   err = MPI_Type_get_extent(sdtype, &lb, &sext);
-  if (err != MPI_SUCCESS) { line = __LINE__; goto err_hndl; }
+  if (err != MPI_SUCCESS)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
   err = MPI_Type_get_extent(rdtype, &lb, &rext);
-  if (err != MPI_SUCCESS) { line = __LINE__; goto err_hndl; }
-
+  if (err != MPI_SUCCESS)
+  {
+    line = __LINE__;
+    goto err_hndl;
+  }
 
   /* Perform pairwise exchange - starting from 1 so the local copy is last */
-  for (step = 1; step < size + 1; step++) {
+  for (step = 1; step < size + 1; step++)
+  {
 
     /* Determine sender and receiver for this step. */
-    sendto  = (rank + step) % size;
+    sendto = (rank + step) % size;
     recvfrom = (rank + size - step) % size;
 
     /* Determine sending and receiving locations */
-    tmpsend = (char*)sbuf + (ptrdiff_t)sendto * sext * (ptrdiff_t)scount;
-    tmprecv = (char*)rbuf + (ptrdiff_t)recvfrom * rext * (ptrdiff_t)rcount;
+    tmpsend = (char *)sbuf + (ptrdiff_t)sendto * sext * (ptrdiff_t)scount;
+    tmprecv = (char *)rbuf + (ptrdiff_t)recvfrom * rext * (ptrdiff_t)rcount;
 
     /* send and receive */
     err = MPI_Sendrecv(tmpsend, scount, sdtype, sendto, 0,
                        tmprecv, rcount, rdtype, recvfrom, 0,
                        comm, MPI_STATUS_IGNORE);
-    if (err != MPI_SUCCESS) { line = __LINE__; goto err_hndl;  }
+    if (err != MPI_SUCCESS)
+    {
+      line = __LINE__;
+      goto err_hndl;
+    }
   }
 
   return MPI_SUCCESS;
 
- err_hndl:
+err_hndl:
   fprintf(stderr, "\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
-  (void)line;  // silence compiler warning
+  (void)line; // silence compiler warning
   return err;
 }
 
 int alltoall_bine(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
-                   void *recvbuf, size_t r_count, MPI_Datatype r_dtype, MPI_Comm comm)
+                  void *recvbuf, size_t r_count, MPI_Datatype r_dtype, MPI_Comm comm)
 {
   assert(s_count == r_count);
   assert(s_dtype == r_dtype);
@@ -87,16 +99,18 @@ int alltoall_bine(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
   tmpbuf_size = sbuf_size * size;
   tmpbuf_size_real = tmpbuf_size + sizeof(uint) * size + sizeof(uint) * size;
 
-  tmpbuf = (char *) malloc(tmpbuf_size_real);
-  if(tmpbuf == NULL){
+  tmpbuf = (char *)malloc(tmpbuf_size_real);
+  if (tmpbuf == NULL)
+  {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
   }
-  resident_block = (uint *) (tmpbuf + tmpbuf_size);
-  resident_block_next = (uint *) (tmpbuf + tmpbuf_size + sizeof(uint) * size);
+  resident_block = (uint *)(tmpbuf + tmpbuf_size);
+  resident_block_next = (uint *)(tmpbuf + tmpbuf_size + sizeof(uint) * size);
 
   // At the beginning I only have my blocks
-  for(size_t i = 0; i < size; i++){
+  for (size_t i = 0; i < size; i++)
+  {
     resident_block[i] = i;
   }
 
@@ -104,16 +118,20 @@ int alltoall_bine(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
 
   // We use recvbuf to receive/send the data, and tmpbuf to organize the data to send at the next step
   // By doing so, we avoid a copy form tmpbuf to recvbuf at the end
-  inverse_mask = 0x1 << (int) (log_2(size) - 1);
+  inverse_mask = 0x1 << (int)(log_2(size) - 1);
   block_first_mask = ~(inverse_mask - 1);
 
-  while(mask < size){
+  while (mask < size)
+  {
     int partner;
-    int ntbn = negabinary_to_binary((mask << 1) -1);
-    if(rank % 2 == 0){
-      partner = mod(rank + ntbn, size); 
-    } else {
-      partner = mod(rank - ntbn, size); 
+    int ntbn = negabinary_to_binary((mask << 1) - 1);
+    if (rank % 2 == 0)
+    {
+      partner = mod(rank + ntbn, size);
+    }
+    else
+    {
+      partner = mod(rank - ntbn, size);
     }
     min_block_s = remap_rank(size, partner) & block_first_mask;
     max_block_s = min_block_s + inverse_mask - 1;
@@ -121,21 +139,26 @@ int alltoall_bine(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
     size_t block_recvd_cnt = 0, block_send_cnt = 0;
     size_t offset_send = 0, offset_keep = 0;
     num_resident_blocks_next = 0;
-    for(size_t i = 0; i < size; i++){
+    for (size_t i = 0; i < size; i++)
+    {
       uint block = resident_block[i % num_resident_blocks];
-      // Shall I send this block? Check the negabinary thing  
+      // Shall I send this block? Check the negabinary thing
       uint remap_block = remap_rank(size, block);
       size_t offset = i * sbuf_size;
 
       // I move to the beginning of tmpbuf the blocks I want to keep,
       // and I move to recvbuf the blocks I want to send.
-      if(remap_block >= min_block_s && remap_block <= max_block_s){
-        memcpy((char*) recvbuf + offset_send, tmpbuf + offset, sbuf_size);
+      if (remap_block >= min_block_s && remap_block <= max_block_s)
+      {
+        memcpy((char *)recvbuf + offset_send, tmpbuf + offset, sbuf_size);
         offset_send += sbuf_size;
         block_send_cnt++;
-      }else{
+      }
+      else
+      {
         // Copy the blocks we are not sending to the second half of recvbuf
-        if(offset != offset_keep){
+        if (offset != offset_keep)
+        {
           memcpy(tmpbuf + offset_keep, tmpbuf + offset, sbuf_size);
         }
         offset_keep += sbuf_size;
@@ -145,15 +168,18 @@ int alltoall_bine(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
         num_resident_blocks_next++;
       }
     }
-    assert(block_recvd_cnt == size/2);
-    assert(block_send_cnt == size/2);
+    assert(block_recvd_cnt == size / 2);
+    assert(block_send_cnt == size / 2);
     num_resident_blocks /= 2;
 
     // I receive data in the second half of tmpbuf (the first half contains the blocks I am keeping from previous iteration)
-    err = MPI_Sendrecv((char*) recvbuf, s_count * block_send_cnt, s_dtype, partner, 0,
-                       tmpbuf + (size / 2) * sbuf_size, s_count * block_send_cnt, s_dtype, partner, 0, 
+    err = MPI_Sendrecv((char *)recvbuf, s_count * block_send_cnt, s_dtype, partner, 0,
+                       tmpbuf + (size / 2) * sbuf_size, s_count * block_send_cnt, s_dtype, partner, 0,
                        comm, MPI_STATUS_IGNORE);
-    if(err != MPI_SUCCESS) { goto err_hndl; }
+    if (err != MPI_SUCCESS)
+    {
+      goto err_hndl;
+    }
 
     // Update resident blocks
     memcpy(resident_block, resident_block_next, sizeof(uint) * num_resident_blocks);
@@ -166,35 +192,169 @@ int alltoall_bine(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
   // Now I need to permute tmpbuf into recvbuf
   // Since I always received the new block on the right, and moved the blocks
   // I wanted to keep to the left, they are now sorted in the same order they reached this
-  // rank from their corresponding source ranks. 
+  // rank from their corresponding source ranks.
   // I.e., I should consider the "reverse tree" (with this rank at the bottom and all the other ranks on top),
   // which represent how the data arrived here.
   // This tree is basically the opposite that I used to send the data
   // I should consider the decreasing tree, and viceversa.
-  for(size_t i = 0; i < size; i++){
+  for (size_t i = 0; i < size; i++)
+  {
     int rotated_i = 0;
-    if((rank % 2) == 0){
+    if ((rank % 2) == 0)
+    {
       rotated_i = mod(i - rank, size);
-    } else {
+    }
+    else
+    {
       rotated_i = mod(rank - i, size);
     }
     int repr = 0;
-    if(in_range(rotated_i, log_2(size))){
+    if (in_range(rotated_i, log_2(size)))
+    {
       repr = binary_to_negabinary(rotated_i);
-    }else{
+    }
+    else
+    {
       repr = binary_to_negabinary(rotated_i - size);
     }
     int index = remap_distance_doubling(repr);
 
     size_t offset_src = index * sbuf_size;
     size_t offset_dst = i * sbuf_size;
-    memcpy((char*) recvbuf + offset_dst, tmpbuf + offset_src, sbuf_size);
+    memcpy((char *)recvbuf + offset_dst, tmpbuf + offset_src, sbuf_size);
   }
 
   free(tmpbuf);
   return MPI_SUCCESS;
 
 err_hndl:
-  if(tmpbuf != NULL) free(tmpbuf);
+  if (tmpbuf != NULL)
+    free(tmpbuf);
+  return err;
+}
+
+// This implementation follows the distance-halving Bine butterfly pattern described in the paper
+int alltoall_bine_DH(const void *sendbuf, size_t s_count, MPI_Datatype s_dtype,
+                     void *recvbuf, size_t r_count, MPI_Datatype r_dtype, MPI_Comm comm)
+{
+  assert(s_count == r_count);
+  assert(s_dtype == r_dtype);
+
+  int r, size, dtype, s, err = MPI_SUCCESS;
+  char *work_buffer = NULL;
+  char *send_buffer = NULL;
+  char *keep_buffer = NULL;
+  size_t block_size;
+  size_t header_size;
+  size_t packet_size;
+
+  err = MPI_Comm_rank(comm, &r);
+  if (err != MPI_SUCCESS)
+    goto err_hndl;
+
+  err = MPI_Comm_size(comm, &size);
+  if (err != MPI_SUCCESS)
+    goto err_hndl;
+
+  err = MPI_Type_size(s_dtype, &dtype);
+  if (err != MPI_SUCCESS)
+    goto err_hndl;
+
+  s = (int)log2((double)size);
+  assert((1 << s) == size);
+
+  block_size = s_count * (size_t)dtype;
+  header_size = 2 * sizeof(int);
+  packet_size = header_size + block_size;
+
+  work_buffer = malloc((size_t)size * packet_size);
+  send_buffer = malloc((size_t)size * packet_size);
+  keep_buffer = malloc((size_t)size * packet_size);
+
+  if (work_buffer == NULL || send_buffer == NULL || keep_buffer == NULL)
+  {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
+
+  for (int i = 0; i < size; i++)
+  {
+    char *rec = work_buffer + (size_t)i * packet_size;
+    int src = r;
+    int dst = i;
+
+    memcpy(rec, &src, sizeof(int));
+    memcpy(rec + sizeof(int), &dst, sizeof(int));
+    memcpy(rec + header_size,(const char *)sendbuf + (size_t)i * block_size,block_size);
+  }
+
+  for (int step = 0; step < s; step++)
+  {
+    int partner;
+    int send_count = 0;
+    int keep_count = 0;
+
+    if ((r % 2) == 0)
+      partner = mod(r + (1 - (int)pow(-2, s - step)) / 3, size);
+    else
+      partner = mod(r - (1 - (int)pow(-2, s - step)) / 3, size);
+
+    for (int j = 0; j < size; j++)
+    {
+      char *rec = work_buffer + (size_t)j * packet_size;
+      int src, dst;
+      int logical_dst;
+      int logical_partner;
+
+      memcpy(&src, rec, sizeof(int));
+      memcpy(&dst, rec + sizeof(int), sizeof(int));
+
+      logical_dst = logical_rank_for_bine_dh_root(dst, src, size);
+      logical_partner = logical_rank_for_bine_dh_root(partner, src, size);
+
+      if (same_prefix_negabinary(logical_dst, logical_partner,s,step + 1))
+      {
+        memcpy(send_buffer + (size_t)send_count * packet_size,rec,packet_size);
+        send_count++;
+      }
+      else
+      {
+        memcpy(keep_buffer + (size_t)keep_count * packet_size,rec,packet_size);
+        keep_count++;
+      }
+    }
+
+    err = MPI_Sendrecv(send_buffer,
+                       (int)((size_t)send_count * packet_size), MPI_BYTE, partner, 0,
+                       work_buffer + (size_t)keep_count * packet_size,
+                       (int)((size_t)send_count * packet_size), MPI_BYTE, partner, 0,
+                       comm, MPI_STATUS_IGNORE);
+    if (err != MPI_SUCCESS)
+      goto err_hndl;
+
+    memcpy(work_buffer,
+           keep_buffer,
+           (size_t)keep_count * packet_size);
+  }
+
+  for (int i = 0; i < size; i++)
+  {
+    char *rec = work_buffer + (size_t)i * packet_size;
+    int src, dst;
+
+    memcpy(&src, rec, sizeof(int));
+    memcpy(&dst, rec + sizeof(int), sizeof(int));
+
+    assert(dst == r);
+
+    memcpy((char *)recvbuf + (size_t)src * block_size,
+           rec + header_size,
+           block_size);
+  }
+
+err_hndl:
+  free(keep_buffer);
+  free(send_buffer);
+  free(work_buffer);
   return err;
 }
