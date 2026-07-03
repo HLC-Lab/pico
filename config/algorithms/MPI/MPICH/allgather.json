@@ -18,6 +18,85 @@
       "default"
     ]
   },
+  "bine_permute_mpich": {
+    "desc": "MPICH BINE algorithm with permute.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine"
+    ]
+  },
+  "bine_block_by_block_mpich": {
+    "desc": "MPICH BINE algorithm with block by block.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine",
+      "block_by_block"
+    ]
+  },
+  "bine_send_mpich": {
+    "desc": "MPICH BINE algorithm with send.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine",
+      "send"
+    ]
+  },
+  "bine_two_blocks_mpich": {
+    "desc": "MPICH BINE algorithm with two blocks.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine",
+      "two_blocks"
+    ]
+  },
   "brucks_mpich": {
     "desc": "MPICH Brucks algorithm.",
     "version": "4.3.0",

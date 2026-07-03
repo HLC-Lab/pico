@@ -157,6 +157,28 @@
         "GPU_LIB": "CUDA",
         "GPU_LIB_VERSION": "12.2"
       }
+    },
+    "MPICH Custom Bine": {
+      "desc": "Custom MPICH installation with additional bine algorithms.",
+      "standard": "mpi",
+      "lib_type": "MPICH",
+      "version": "5.0.0b1",
+      "compiler": "mpicc",
+      "gpu": {
+        "support": false
+      },
+      "load": {
+        "type": "env_var",
+        "vars": {
+          "PATH": "$HOME/mpich_install/bin:$PATH",
+          "LD_LIBRARY_PATH": "$HOME/mpich_install/lib:$LD_LIBRARY_PATH",
+          "MANPATH": "$HOME/share:$MANPATH"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "15.1.1"
+      }
     }
   }
 }

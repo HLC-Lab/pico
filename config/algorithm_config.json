@@ -673,6 +673,98 @@
           "internal"
         ]
       },
+      "bine_permute_mpich": {
+        "desc": "MPICH BINE permutation algorithm.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "tags": [
+          "bine",
+          "permute",
+          "internal"
+        ]
+      },
+      "bine_block_by_block_mpich": {
+        "desc": "MPICH BINE block_by_block algorithm.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "tags": [
+          "bine",
+          "block_by_block",
+          "internal"
+        ]
+      },
+      "bine_send_mpich": {
+        "desc": "MPICH BINE send algorithm.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "tags": [
+          "bine",
+          "send",
+          "internal"
+        ]
+      },
+      "bine_two_blocks_mpich": {
+        "desc": "MPICH BINE two_blocks algorithm.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "tags": [
+          "bine",
+          "two_blocks",
+          "internal"
+        ]
+      },
       "brucks_mpich": {
         "desc": "MPICH Brucks algorithm.",
         "library": {
@@ -1421,8 +1513,7 @@
           "cuda",
           "external"
         ]
-      }
-      ,
+      },
       "bine_block_by_block_hierarcic_global_local_over": {
         "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
         "library": {
@@ -1953,6 +2044,17 @@
         "cvar": "binomial",
         "tags": [
           "binomial",
+          "internal"
+        ]
+      },
+      "bine_mpich": {
+        "desc": "MPICH bine tree based algorithm. It performs the broadcast by sending messages to rank at comm_sz/2 away from the root. Those ranks become the roots of their own subtree and repeat the process until all ranks have received the message.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "cvar": "bine",
+        "tags": [
+          "bine",
           "internal"
         ]
       },
@@ -2979,6 +3081,140 @@
           "external"
         ]
       },
+      "bine_send_remap_mpich": {
+        "desc": "MPICH bine remap send algorithm. Works only with power of 2 processes.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "send_remap",
+          "external"
+        ]
+      },
+      "bine_permute_mpich": {
+        "desc": "MPICH bine permute algorithm. Works only with power of 2 processes.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "permute",
+          "send",
+          "external"
+        ]
+      },
+      "bine_block_by_block_mpich": {
+        "desc": "MPICH bine block by block algorithm. Works only with power of 2 processes.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "block_by_block",
+          "send",
+          "external"
+        ]
+      },
+      "bine_two_blocks_mpich": {
+        "desc": "MPICH bine two blocks algorithm. Works only with power of 2 processes.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          },
+          {
+            "key": "comm_sz",
+            "conditions": [
+              {
+                "operator": "is_power_of_two",
+                "value": true
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "dynamic_rule": 0,
+        "tags": [
+          "bine",
+          "two_blocks",
+          "external"
+        ]
+      },
       "bine_send_remap_hierarchical_over": {
         "desc": "libpico external bine remap send algorithm hierarchical. Works only with power of 2 processes.",
         "library": {
@@ -3600,6 +3836,28 @@
         "cvar": "binomial",
         "tags": [
           "binomial",
+          "internal"
+        ]
+      },
+      "bine_mpich": {
+        "desc": "MPICH bine tree based algorithm.",
+        "library": {
+          "mpich": "5.0.0b1"
+        },
+        "constraints": [
+          {
+            "key": "count",
+            "conditions": [
+              {
+                "operator": ">=",
+                "value": "comm_sz"
+              }
+            ]
+          }
+        ],
+        "cvar": "bine",
+        "tags": [
+          "bine",
           "internal"
         ]
       },
