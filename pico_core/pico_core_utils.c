@@ -80,6 +80,8 @@ static inline allocator_func_ptr get_allocator_cuda(coll_t collective) {
       return allgather_allocator_cuda;
     case ALLTOALL:
       return alltoall_allocator_cuda;
+    case ALLTOALLV:
+      return alltoallv_allocator_cuda;
     case BCAST:
       return bcast_allocator_cuda;
     case GATHER:
@@ -497,6 +499,9 @@ int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t ty
     case ALLTOALL:
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
+    case ALLTOALLV:
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      break;
     case BCAST:
       if (rank == 0) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
@@ -539,6 +544,9 @@ int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case ALLTOALL:
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      break;
+    case ALLTOALLV:
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case BCAST:

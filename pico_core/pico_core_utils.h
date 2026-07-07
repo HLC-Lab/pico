@@ -218,6 +218,7 @@ typedef struct {
 int allreduce_allocator_cuda(ALLOCATOR_ARGS);
 int allgather_allocator_cuda(ALLOCATOR_ARGS);
 int alltoall_allocator_cuda(ALLOCATOR_ARGS);
+int alltoallv_allocator_cuda(ALLOCATOR_ARGS);
 int bcast_allocator_cuda(ALLOCATOR_ARGS);
 int gather_allocator_cuda(ALLOCATOR_ARGS);
 int reduce_allocator_cuda(ALLOCATOR_ARGS);

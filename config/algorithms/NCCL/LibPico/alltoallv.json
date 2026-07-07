@@ -1,0 +1,35 @@
+{
+  "bine_dh_over": {
+    "desc": "LibPico external GPU-aware Alltoallv algorithm. This algorithm follows the distance-halving Bine butterfly communication pattern.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "alltoallv",
+      "bine",
+      "cuda",
+      "gpu-aware",
+      "distance-halving",
+      "external"
+    ]
+  }
+}
