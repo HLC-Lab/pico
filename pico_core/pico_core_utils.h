@@ -159,6 +159,7 @@ static inline int scatter_wrapper(SCATTER_MPI_ARGS){
 typedef ncclResult_t (*allreduce_func_ptr)(ALLREDUCE_NCCL_ARGS);
 typedef ncclResult_t (*allgather_func_ptr)(ALLGATHER_NCCL_ARGS);
 typedef ncclResult_t (*alltoall_func_ptr)(ALLTOALL_NCCL_ARGS);
+typedef int (*alltoallv_func_ptr)(ALLTOALLV_NCCL_ARGS);
 typedef ncclResult_t (*bcast_func_ptr)(BCAST_NCCL_ARGS);
 typedef ncclResult_t (*gather_func_ptr)(GATHER_NCCL_ARGS);
 typedef ncclResult_t (*reduce_func_ptr)(REDUCE_NCCL_ARGS);
@@ -368,6 +369,7 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times,        \
 DEFINE_TEST_LOOP(allreduce, ALLREDUCE_NCCL_ARGS, allreduce(sbuf, rbuf, count, dtype, ncclSum, nccl_comm, stream))
 DEFINE_TEST_LOOP(allgather, ALLGATHER_NCCL_ARGS, allgather(sbuf, rbuf, count, dtype, nccl_comm, stream))
 DEFINE_TEST_LOOP(alltoall, ALLTOALL_NCCL_ARGS, alltoall(sbuf, rbuf, count, dtype, nccl_comm, stream))
+DEFINE_TEST_LOOP(alltoallv, ALLTOALLV_NCCL_ARGS, alltoallv(sbuf, scounts, sdispls, rbuf, rcounts, rdispls, dtype, nccl_comm, stream))
 DEFINE_TEST_LOOP(bcast, BCAST_NCCL_ARGS, bcast(buf, count, dtype, 0, nccl_comm, stream))
 DEFINE_TEST_LOOP(gather, GATHER_NCCL_ARGS, gather(sbuf, rbuf, count, dtype, 0, nccl_comm, stream))
 DEFINE_TEST_LOOP(reduce, REDUCE_NCCL_ARGS, reduce(sbuf, rbuf, count, dtype, ncclSum, 0, nccl_comm, stream))

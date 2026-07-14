@@ -18,14 +18,21 @@ int alltoallv_allocator(ALLOCATOR_ARGS) {
 int alltoallv_allocator_cuda(ALLOCATOR_ARGS) {
   cudaError_t err;
 
-  PICO_CORE_CUDA_CHECK(cudaMalloc(d_sbuf, count * type_size), err);
+  PICO_CORE_CUDA_CHECK(cudaMalloc(sbuf, count * type_size), err);
   if (err != cudaSuccess) return -1;
 
-  PICO_CORE_CUDA_CHECK(cudaMalloc(d_rbuf, count * type_size), err);
-  if (err != cudaSuccess) return -1;
+  PICO_CORE_CUDA_CHECK(cudaMalloc(rbuf, count * type_size), err);
+  if (err != cudaSuccess) {
+    cudaFree(*sbuf);
+    return -1;
+  }
 
-  PICO_CORE_CUDA_CHECK(cudaMalloc(d_rbuf_gt, count * type_size), err);
-  if (err != cudaSuccess) return -1;
+  PICO_CORE_CUDA_CHECK(cudaMalloc(rbuf_gt, count * type_size), err);
+  if (err != cudaSuccess) {
+    cudaFree(*sbuf);
+    cudaFree(*rbuf);
+    return -1;
+  }
 
   return 0;
 }

@@ -181,9 +181,18 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
 }
 
 static inline alltoallv_func_ptr get_alltoallv_function(const char *algorithm){
+#ifndef PICO_NCCL
   CHECK_STR(algorithm, "bine_dh_over", alltoallv_bine_DH);
+
   PICO_CORE_DEBUG_PRINT_STR("MPI_Alltoallv");
   return alltoallv_wrapper;
+#else
+  CHECK_STR(algorithm, "nccl_spreadout_alltoallv_over", alltoallv_nccl_spreadout);
+  CHECK_STR(algorithm, "nccl_fanout_alltoallv_over", alltoallv_nccl_fanout);
+
+  fprintf(stderr, "Failed: unsupported NCCL Alltoallv algorithm: %s\n", algorithm);
+  exit(EXIT_FAILURE);
+#endif
 }
 
 /**
@@ -756,6 +765,39 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
     case ALLTOALL:
       ret = alltoall_test_loop(sbuf, rbuf, local_count, dtype, nccl_comm, stream,
                                iter, times, test_routine);
+        case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+
+      if (scounts == NULL || sdispls == NULL || rcounts_v == NULL || rdispls == NULL) {
+        free(scounts);
+        free(sdispls);
+        free(rcounts_v);
+        free(rdispls);
+        fprintf(stderr, "Error: malloc failed in NCCL Alltoallv test_loop\n");
+        return -1;
+      }
+
+      for (int i = 0; i < comm_sz; i++) {
+        scounts[i] = (int)local_count;
+        rcounts_v[i] = (int)local_count;
+        sdispls[i] = i * (int)local_count;
+        rdispls[i] = i * (int)local_count;
+      }
+
+      ret = alltoallv_test_loop(sbuf, scounts, sdispls,
+                                rbuf, rcounts_v, rdispls,
+                                dtype, nccl_comm, stream,
+                                iter, times, test_routine);
+
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+    }
     break;
     case BCAST:
       ret = bcast_test_loop(sbuf, count, dtype, 0, nccl_comm, stream, 
