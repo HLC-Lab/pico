@@ -898,5 +898,21 @@ static inline int logical_rank_for_bine_dh_root(int x, int root, int size)
         return mod(root - x, size);
 }
 
+static inline size_t num_bytes_fun(const int counts[],const int displs[],int dtype,int size)
+{
+    size_t num_bytes = 0;
+
+    for (int i = 0; i < size; i++)
+    {
+        if (counts[i] <= 0)
+            continue;
+        size_t end =((size_t)displs[i] + (size_t)counts[i]) *(size_t)dtype;
+        if (end > num_bytes)
+            num_bytes = end;
+    }
+
+    return num_bytes;
+}
+
 
 #endif // LIBPICO_UTILS_H
