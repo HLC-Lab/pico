@@ -40,12 +40,14 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
     assert((1 << s) == size);
     size_t num_bytes_send = num_bytes_fun(sendcounts,sdispls,  dtype, size);
     size_t num_bytes_recv = num_bytes_fun(recvcounts,rdispls ,dtype, size);
+    PICO_TAG_BEGIN("cudaMalloc cudaMemcpy");
     if (num_bytes_send > 0){
         BINE_CUDA_CHECK(cudaMallocHost((void **)&host_sendbuf, num_bytes_send));
         BINE_CUDA_CHECK(cudaMemcpy(host_sendbuf,sendbuf, num_bytes_send, cudaMemcpyDeviceToHost));
     }
     if (num_bytes_recv > 0)
         BINE_CUDA_CHECK(cudaMallocHost((void **)&host_recvbuf, num_bytes_recv));
+    PICO_TAG_END("cudaMalloc cudaMemcpy");
     size_t local_total_bytes = 0;
     size_t local_blocks = 0;
 
@@ -246,9 +248,11 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
         skip += packet_size;
     }
     PICO_TAG_END("permutation");
+    PICO_TAG_BEGIN("final cudaMemcpy");
     if (num_bytes_recv > 0){
         BINE_CUDA_CHECK(cudaMemcpy(recvbuf,host_recvbuf, num_bytes_recv, cudaMemcpyHostToDevice));
     }
+    PICO_TAG_END("final cudaMemcpy");
 err_hndl:
     free(work_buffer);
     if (host_sendbuf != NULL)
