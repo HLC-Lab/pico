@@ -40,14 +40,23 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
     assert((1 << s) == size);
     size_t num_bytes_send = num_bytes_fun(sendcounts,sdispls,  dtype, size);
     size_t num_bytes_recv = num_bytes_fun(recvcounts,rdispls ,dtype, size);
-    PICO_TAG_BEGIN("cudaMalloc cudaMemcpy");
+    PICO_TAG_BEGIN("malloc cudaMemcpy");
     if (num_bytes_send > 0){
-        BINE_CUDA_CHECK(cudaMallocHost((void **)&host_sendbuf, num_bytes_send));
+        host_sendbuf=malloc( num_bytes_send);
+        if(host_sendbuf==NULL){
+            err=MPI_ERR_NO_MEM;
+            goto err_hndl;
+        }
         BINE_CUDA_CHECK(cudaMemcpy(host_sendbuf,sendbuf, num_bytes_send, cudaMemcpyDeviceToHost));
     }
-    if (num_bytes_recv > 0)
-        BINE_CUDA_CHECK(cudaMallocHost((void **)&host_recvbuf, num_bytes_recv));
-    PICO_TAG_END("cudaMalloc cudaMemcpy");
+    if (num_bytes_recv > 0){
+        host_recvbuf=malloc(num_bytes_recv);
+        if(host_recvbuf==NULL){
+            err=MPI_ERR_NO_MEM;
+            goto err_hndl;
+        }
+    }
+    PICO_TAG_END("malloc cudaMemcpy");
     size_t local_total_bytes = 0;
     size_t local_blocks = 0;
 
@@ -255,10 +264,8 @@ int alltoallv_bine_DH(const void *sendbuf, const int sendcounts[], const int sdi
     PICO_TAG_END("final cudaMemcpy");
 err_hndl:
     free(work_buffer);
-    if (host_sendbuf != NULL)
-        BINE_CUDA_CHECK(cudaFreeHost(host_sendbuf));
-    if (host_recvbuf != NULL)
-        BINE_CUDA_CHECK(cudaFreeHost(host_recvbuf));
+    free(host_sendbuf);
+    free(host_recvbuf);
     return err;
 #else
     assert(sendtype == recvtype);
