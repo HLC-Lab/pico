@@ -146,6 +146,7 @@
       }
     ],
     "selection": "bine",
+    "bine_imp": "send_remap",
     "tags": [
       "bine",
       "send_remap"
@@ -175,6 +176,7 @@
       }
     ],
     "selection": "bine",
+    "bine_imp": "permute",
     "tags": [
       "bine",
       "permute"
@@ -204,6 +206,7 @@
       }
     ],
     "selection": "bine",
+    "bine_imp": "block_by_block",
     "tags": [
       "bine",
       "block_by_block"

@@ -690,9 +690,7 @@
           }
         ],
         "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "permute"
-        },
+        "bine_imp": "permute",
         "tags": [
           "bine",
           "permute",
@@ -716,9 +714,7 @@
           }
         ],
         "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "block_by_block"
-        },
+        "bine_imp": "block_by_block",
         "tags": [
           "bine",
           "block_by_block",
@@ -742,9 +738,7 @@
           }
         ],
         "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "send"
-        },
+        "bine_imp": "send",
         "tags": [
           "bine",
           "send",
@@ -768,9 +762,7 @@
           }
         ],
         "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "two_blocks"
-        },
+        "bine_imp": "two_blocks",
         "tags": [
           "bine",
           "two_blocks",
@@ -3119,9 +3111,7 @@
           }
         ],
         "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "send_remap"
-        },
+        "bine_imp": "send_remap",
         "dynamic_rule": 0,
         "tags": [
           "bine",
@@ -3155,9 +3145,7 @@
           }
         ],
         "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "permute"
-        },
+        "bine_imp": "permute",
         "dynamic_rule": 0,
         "tags": [
           "bine",
@@ -3192,50 +3180,11 @@
           }
         ],
         "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "block_by_block"
-        },
+        "bine_imp": "block_by_block",
         "dynamic_rule": 0,
         "tags": [
           "bine",
           "block_by_block",
-          "send",
-          "external"
-        ]
-      },
-      "bine_two_blocks_mpich": {
-        "desc": "MPICH bine two blocks algorithm. Works only with power of 2 processes.",
-        "library": {
-          "mpich": "5.0.0b1"
-        },
-        "constraints": [
-          {
-            "key": "count",
-            "conditions": [
-              {
-                "operator": ">=",
-                "value": "comm_sz"
-              }
-            ]
-          },
-          {
-            "key": "comm_sz",
-            "conditions": [
-              {
-                "operator": "is_power_of_two",
-                "value": true
-              }
-            ]
-          }
-        ],
-        "cvar": "bine",
-        "extra_cvar": {
-          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "two_blocks"
-        },
-        "dynamic_rule": 0,
-        "tags": [
-          "bine",
-          "two_blocks",
           "external"
         ]
       },
