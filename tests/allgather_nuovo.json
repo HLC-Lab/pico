@@ -1,0 +1,356 @@
+{
+  "environment": {
+    "desc": "Saverio's laptop.",
+    "name": "local",
+    "slurm": false
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 1,
+    "output_level": "minimal",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        32,
+        256,
+        2048,
+        16384,
+        131072,
+        1048576,
+        8388608,
+        67108864,
+        536870912
+      ],
+      "sizes_elements": [
+        8,
+        64,
+        512,
+        4096,
+        32768,
+        262144,
+        2097152,
+        16777216,
+        134217728
+      ],
+      "segsizes_bytes": [
+        16384,
+        131072,
+        1048576
+      ]
+    }
+  },
+  "libraries": [
+    {
+      "name": "MPICH Custom Bine",
+      "desc": "Custom MPICH installation with additional bine algorithms.",
+      "tests": {
+        "cpu": [
+          2
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "MPICH",
+      "version": "5.0.0b1",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": false,
+        "gpu_support_native": false
+      },
+      "lib_load": {
+        "type": "set_env",
+        "env_var": {
+          "PATH": "/home/angelo/mpich_install/bin:$PATH",
+          "LD_LIBRARY_PATH": "/home/angelo/mpich_install/lib:$LD_LIBRARY_PATH"
+        }
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "allgather": [
+          {
+            "name": "default_mpich",
+            "coll": "allgather",
+            "desc": "MPICH default algorithm selection",
+            "version": "4.3.0",
+            "selection": "auto",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "default"
+            ]
+          },
+          {
+            "name": "bine_send_remap_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine remap send algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "send_remap",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "send_remap"
+            ]
+          },
+          {
+            "name": "bine_permute_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine permute algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "permute",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "permute"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine block by block algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "block_by_block",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "block_by_block"
+            ]
+          },
+          {
+            "name": "bine_two_blocks_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine two blocks algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "two_blocks",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "two_blocks"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_over",
+            "coll": "allgather",
+            "desc": "libpico external bine block by block algorithm. Works only for power of 2 processes",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine_block_by_block",
+              "block_by_block",
+              "bine",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_send_remap_over",
+            "coll": "allgather",
+            "desc": "libpico external bine remap algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. This version remaps rank to allow the sending of contiguous buffers.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine_remap",
+              "bine",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_2_blocks_over",
+            "coll": "allgather",
+            "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz. It utilizes a recoursive distance doubling communication pattern (the other bine allgather instead use a recursive distance halving) and handles sparse data with one possible additional communication.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "cuda",
+              "external"
+            ]
+          },
+          {
+            "name": "bine_permutation_over",
+            "coll": "allgather",
+            "desc": "libpico external bine algorithm. Works only for power of 2 processes. Count must be greater or equal to comm_sz.",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "dtype",
+              "cuda",
+              "external"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

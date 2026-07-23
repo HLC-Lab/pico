@@ -1,0 +1,211 @@
+{
+  "environment": {
+    "desc": "Saverio's laptop.",
+    "name": "local",
+    "slurm": false,
+    "launcher": "mpiexec",
+    "launcher_flags": "--map-by :OVERSUBSCRIBE"
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 1,
+    "output_level": "minimal",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        32,
+        256,
+        2048,
+        16384,
+        131072,
+        1048576,
+        8388608,
+        67108864,
+        536870912
+      ],
+      "sizes_elements": [
+        8,
+        64,
+        512,
+        4096,
+        32768,
+        262144,
+        2097152,
+        16777216,
+        134217728
+      ],
+      "segsizes_bytes": [
+        16384,
+        131072,
+        1048576
+      ]
+    }
+  },
+  "libraries": [
+    {
+      "name": "MPICH Custom Bine",
+      "desc": "Custom MPICH installation with additional bine algorithms.",
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "15.1.1"
+      },
+      "tests": {
+        "cpu": [
+          2
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "MPICH",
+      "version": "5.0.0b1",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": false,
+        "gpu_support_native": false
+      },
+      "lib_load": {
+        "type": "set_env",
+        "env_var": {
+          "PATH": "/home/angelo/mpich_install/bin:$PATH",
+          "LD_LIBRARY_PATH": "/home/angelo/mpich_install/lib:$LD_LIBRARY_PATH"
+        }
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "allgather": [
+          {
+            "name": "bine_send_remap_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine remap send algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "send_remap",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "send_remap"
+            ]
+          },
+          {
+            "name": "bine_permute_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine permute algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "permute",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "permute"
+            ]
+          },
+          {
+            "name": "bine_block_by_block_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine block by block algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "block_by_block",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "block_by_block"
+            ]
+          },
+          {
+            "name": "bine_two_blocks_mpich",
+            "coll": "allgather",
+            "desc": "MPICH bine two blocks algorithm. Works only with power of 2 processes.",
+            "version": "5.0.0b1",
+            "selection": "bine",
+            "bine_imp": "two_blocks",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "two_blocks"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

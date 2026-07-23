@@ -616,6 +616,7 @@ class AlgorithmSelection:
     desc: str = ''
     version: str = ''
     selection: Union[str, int] = ''
+    bine_imp: Optional[str] = None
     constraints: Optional[List[Dict[str, Any]]] = None
     tags: Optional[List[str]] = None
 
@@ -631,6 +632,7 @@ class AlgorithmSelection:
         desc = algo_dict.get('desc', '')
         version = algo_dict.get('version', '')
         selection = algo_dict.get('selection', '')
+        bine_imp = algo_dict.get('bine_imp', '')
         constraints = algo_dict.get('constraints')
         tags = algo_dict.get('tags')
 
@@ -646,6 +648,7 @@ class AlgorithmSelection:
             coll=collective,
             version=version,
             selection=selection,
+            bine_imp=bine_imp,
             constraints=constraints,
             tags=tags
         )

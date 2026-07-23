@@ -62,6 +62,27 @@
         "MPI_LIB_COMPILER": "gcc",
         "MPI_LIB_COMPILER_VERSION": "15.1.1"
       }
+    },
+    "MPICH Custom Bine": {
+      "desc": "Custom MPICH installation with additional bine algorithms.",
+      "standard": "mpi",
+      "lib_type": "MPICH",
+      "version": "5.0.0b1",
+      "compiler": "mpicc",
+      "gpu": {
+        "support": false
+      },
+      "load": {
+        "type": "env_var",
+        "vars": {
+          "PATH": "/home/angelo/mpich_install/bin:$PATH",
+          "LD_LIBRARY_PATH": "/home/angelo/mpich_install/lib:$LD_LIBRARY_PATH"
+        }
+      },
+      "metadata": {
+        "MPI_LIB_COMPILER": "gcc",
+        "MPI_LIB_COMPILER_VERSION": "15.1.1"
+      }
     }
   }
 }

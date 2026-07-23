@@ -156,12 +156,15 @@ class AlgorithmsStep(StepScreen):
 
         desc = algo_meta.get("desc", "No description provided.")
         selection = algo_meta.get("selection")
+        bine_imp = algo_meta.get("bine_imp")
         tags = algo_meta.get("tags", [])
         constraints = algo_meta.get("constraints", [])
 
         extras = []
         if selection is not None:
             extras.append(f"selector value: {selection}")
+        if bine_imp is not None:
+            extras.append(f"bine_imp: {bine_imp}")
         if tags:
             extras.append(f"tags: {', '.join(tags)}")
         if constraints:

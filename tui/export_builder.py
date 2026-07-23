@@ -493,6 +493,7 @@ def render_shell_exports(config: JsonLike) -> str:
             skipped = []
             segmented = []
             cvars = []
+            bine_imps = []
             for entry in entries:
                 has_count_constraint = any(
                     constraint.get("key") == "count"
@@ -508,11 +509,17 @@ def render_shell_exports(config: JsonLike) -> str:
                 )
                 if is_mpich:
                     selection = entry["selection"]
+                    bine_val = entry.get("bine_imp")
+                    if not bine_val:
+                        bine_val = "none"
+                    bine_imps.append(str(bine_val))
                     cvars.append("auto" if selection == "pico" else selection)
             export(collective_prefix + "_SKIP", _csv(skipped))
             export(collective_prefix + "_IS_SEGMENTED", _csv(segmented))
             if is_mpich:
                 export(collective_prefix + "_CVARS", _csv(cvars))
+                if collective.upper() == "ALLGATHER" or collective.upper() == "REDUCE_SCATTER":
+                    export(collective_prefix + "_BINE_IMPS", _csv(bine_imps))
 
     return "\n".join(lines) + "\n"
 

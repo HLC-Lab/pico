@@ -1,0 +1,185 @@
+{
+  "environment": {
+    "desc": "Saverio's laptop.",
+    "name": "local",
+    "slurm": false
+  },
+  "test": {
+    "compile_only": false,
+    "debug_mode": false,
+    "dry_run": false,
+    "compress": true,
+    "delete": true,
+    "number_of_nodes": 1,
+    "output_level": "minimal",
+    "dimensions": {
+      "dtype": "int32",
+      "sizes_bytes": [
+        32,
+        256,
+        2048,
+        16384,
+        131072,
+        1048576,
+        8388608,
+        67108864,
+        536870912
+      ],
+      "sizes_elements": [
+        8,
+        64,
+        512,
+        4096,
+        32768,
+        262144,
+        2097152,
+        16777216,
+        134217728
+      ],
+      "segsizes_bytes": [
+        16384,
+        131072,
+        1048576
+      ]
+    }
+  },
+  "libraries": [
+    {
+      "name": "MPICH Custom Bine",
+      "desc": "Custom MPICH installation with additional bine algorithms.",
+      "tests": {
+        "cpu": [
+          1
+        ]
+      },
+      "standard": "MPI",
+      "lib_type": "MPICH",
+      "version": "5.0.0b1",
+      "compiler": "mpicc",
+      "gpu_support": {
+        "gpu": false,
+        "gpu_support_native": false
+      },
+      "lib_load": {
+        "type": "set_env",
+        "env_var": {
+          "PATH": "/home/angelo/mpich_install/bin:$PATH",
+          "LD_LIBRARY_PATH": "/home/angelo/mpich_install/lib:$LD_LIBRARY_PATH"
+        }
+      },
+      "pico_backend": true,
+      "algorithms": {
+        "allreduce": [
+          {
+            "name": "bine_lat_mpich",
+            "coll": "allreduce",
+            "desc": "MPICH bine based algorithm.",
+            "version": "5.0.0b1",
+            "selection": "bine_lat",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "bine_lat"
+            ]
+          },
+          {
+            "name": "bine_bdw_mpich",
+            "coll": "allreduce",
+            "desc": "MPICH bine based algorithm.",
+            "version": "5.0.0b1",
+            "selection": "bine_bdw",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine",
+              "bine_bdw"
+            ]
+          },
+          {
+            "name": "bine_lat_over",
+            "coll": "allreduce",
+            "desc": "libpico external bine latency optimal algorithm. This algorithm is used for small to medium messages",
+            "version": "1.0.0",
+            "selection": "pico",
+            "tags": [
+              "bine_lat",
+              "bine",
+              "latency_optimal"
+            ]
+          },
+          {
+            "name": "bine_bdw_remap_segmented_over",
+            "coll": "allreduce",
+            "desc": "libpico external bine bandwidth optimal algorithm. Not to be used if `count`<`comm_sz`. Works only with power of 2 processes. This version remaps rank to allow the sending of contiguous buffers. It segments the message into segments of size `segsize  = count / comm_sz` ",
+            "version": "1.0.0",
+            "selection": "pico",
+            "constraints": [
+              {
+                "key": "count",
+                "conditions": [
+                  {
+                    "operator": ">=",
+                    "value": "comm_sz"
+                  }
+                ]
+              },
+              {
+                "key": "comm_sz",
+                "conditions": [
+                  {
+                    "operator": "is_power_of_two",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "tags": [
+              "bine_bdw_remap_segmented",
+              "bine",
+              "is_segmented",
+              "bandwidth_optimal",
+              "remap"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
