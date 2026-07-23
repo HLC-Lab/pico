@@ -121,5 +121,121 @@
     "tags": [
       "recursive_halving"
     ]
+  },
+  "bine_send_remap_mpich": {
+    "desc": "MPICH bine remap send algorithm. Works only with power of 2 processes.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine",
+      "send_remap"
+    ]
+  },
+  "bine_permute_mpich": {
+    "desc": "MPICH bine permute algorithm. Works only with power of 2 processes.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine",
+      "permute"
+    ]
+  },
+  "bine_block_by_block_mpich": {
+    "desc": "MPICH bine block by block algorithm. Works only with power of 2 processes.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine",
+      "block_by_block"
+    ]
+  },
+  "bine_two_blocks_mpich": {
+    "desc": "MPICH bine two blocks algorithm. Works only with power of 2 processes.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine",
+      "two_blocks"
+    ]
   }
 }

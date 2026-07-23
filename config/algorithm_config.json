@@ -690,6 +690,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "permute"
+        },
         "tags": [
           "bine",
           "permute",
@@ -713,6 +716,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "block_by_block"
+        },
         "tags": [
           "bine",
           "block_by_block",
@@ -736,6 +742,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "send"
+        },
         "tags": [
           "bine",
           "send",
@@ -759,6 +768,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_ALLGATHER_BINE_TYPE": "two_blocks"
+        },
         "tags": [
           "bine",
           "two_blocks",
@@ -3107,6 +3119,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "send_remap"
+        },
         "dynamic_rule": 0,
         "tags": [
           "bine",
@@ -3140,6 +3155,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "permute"
+        },
         "dynamic_rule": 0,
         "tags": [
           "bine",
@@ -3174,6 +3192,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "block_by_block"
+        },
         "dynamic_rule": 0,
         "tags": [
           "bine",
@@ -3208,6 +3229,9 @@
           }
         ],
         "cvar": "bine",
+        "extra_cvar": {
+          "MPIR_CVAR_REDUCE_SCATTER_BINE_TYPE": "two_blocks"
+        },
         "dynamic_rule": 0,
         "tags": [
           "bine",

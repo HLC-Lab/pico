@@ -55,5 +55,24 @@
     "tags": [
       "non_blocking"
     ]
+  },
+  "bine_mpich": {
+    "desc": "MPICH bine tree based algorithm.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "bine",
+    "tags": [
+      "bine"
+    ]
   }
 }

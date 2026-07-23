@@ -171,8 +171,7 @@
         "type": "env_var",
         "vars": {
           "PATH": "$HOME/mpich_install/bin:$PATH",
-          "LD_LIBRARY_PATH": "$HOME/mpich_install/lib:$LD_LIBRARY_PATH",
-          "MANPATH": "$HOME/share:$MANPATH"
+          "LD_LIBRARY_PATH": "$HOME/mpich_install/lib:$LD_LIBRARY_PATH"
         }
       },
       "metadata": {

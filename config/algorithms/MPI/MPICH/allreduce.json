@@ -100,5 +100,61 @@
     "tags": [
       "tree"
     ]
+  },
+  "bine_lat_mpich": {
+    "desc": "MPICH bine based algorithm.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "bine_lat",
+    "tags": [
+      "bine"
+    ]
+  },
+  "bine_bdw_mpich": {
+    "desc": "MPICH bine based algorithm.",
+    "version": "5.0.0b1",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      },
+      {
+        "key": "comm_sz",
+        "conditions": [
+          {
+            "operator": "is_power_of_two",
+            "value": true
+          }
+        ]
+      }
+    ],
+    "selection": "bine_lat",
+    "tags": [
+      "bine"
+    ]
   }
 }

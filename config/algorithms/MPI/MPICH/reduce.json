@@ -41,5 +41,25 @@
     "tags": [
       "rabenseifner"
     ]
+  },
+  "bine_mpich_lat": {
+    "desc": "MPICH bine tree based algorithm.",
+    "version": "5.0.0b1",
+    "selection": "bine_lat",
+    "tags": [
+      "bine",
+      "bine_lat",
+      "internal"
+    ]
+  },
+  "bine_mpich_bdw": {
+    "desc": "MPICH bine based algorithm.",
+    "version": "5.0.0b1",
+    "selection": "bine_bdw",
+    "tags": [
+      "bine",
+      "bine_bdw",
+      "internal"
+    ]
   }
 }
