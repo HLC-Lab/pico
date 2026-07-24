@@ -79,7 +79,7 @@ int gather_bine(const void *sendbuf, size_t sendcount, MPI_Datatype dt, void *re
   size_t min_block_resident = rank, max_block_resident = rank;
   int vrank = mod(rank - root, size); // mod computes math modulo rather than reminder
   int extension_direction = 1; // Down
-  if(rank % 2){
+  if(vrank % 2){
     extension_direction = -1; // Up
   }
   int mask = 0x1;

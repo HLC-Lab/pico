@@ -486,7 +486,7 @@ int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case BCAST:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       }
       break;
@@ -500,7 +500,7 @@ int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case SCATTER:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       }
       break;
@@ -530,17 +530,17 @@ int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case BCAST:
-      if (rank != 0) {
+      if (rank != PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
     case GATHER:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
     case REDUCE:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
@@ -583,15 +583,15 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
       
     break;
     case BCAST:
-      ret = test_routine.function.bcast(sbuf, count, dtype, 0, comm);
+      ret = test_routine.function.bcast(sbuf, count, dtype, PICO_ROOT_RANK, comm);
       break;
     case GATHER:
       ret = test_routine.function.gather(sbuf, local_count, dtype,
-                         rbuf, local_count, dtype, 0, comm);
+                         rbuf, local_count, dtype, PICO_ROOT_RANK, comm);
     
       break;
     case REDUCE:
-      ret = test_routine.function.reduce(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm);
+      ret = test_routine.function.reduce(sbuf, rbuf, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm);
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
@@ -601,7 +601,7 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
       break;
     case SCATTER:
       ret = test_routine.function.scatter(sbuf, local_count, dtype,
-                          rbuf, local_count, dtype, 0, comm);
+                          rbuf, local_count, dtype, PICO_ROOT_RANK, comm);
       break;
     default:
       fprintf(stderr, "still not implemented, aborting...");
@@ -639,16 +639,16 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                            comm, iter, times, test_routine);
     break;
     case BCAST:
-      ret = bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
+      ret = bcast_test_loop(sbuf, count, dtype, PICO_ROOT_RANK, comm, iter, times,
                         test_routine);
       break;
     case GATHER:
       ret = gather_test_loop(sbuf, local_count, dtype,
-                         rbuf, local_count, dtype, 0, comm,
+                         rbuf, local_count, dtype, PICO_ROOT_RANK, comm,
                          iter, times, test_routine);
       break;
     case REDUCE:
-      ret = reduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm,
+      ret = reduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm,
                              iter, times, test_routine);
       break;
     case REDUCE_SCATTER:
@@ -661,7 +661,7 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
     case SCATTER:
       ret = scatter_test_loop(sbuf, local_count, dtype,
                           rbuf, local_count, dtype,
-                          0, comm, iter, times, test_routine);
+                          PICO_ROOT_RANK, comm, iter, times, test_routine);
       break;
     default:
       fprintf(stderr, "still not implemented, aborting...");
@@ -693,15 +693,15 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                                iter, times, test_routine);
     break;
     case BCAST:
-      ret = bcast_test_loop(sbuf, count, dtype, 0, nccl_comm, stream, 
+      ret = bcast_test_loop(sbuf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream, 
                             iter, times, test_routine);
       break;
     case GATHER:
-      ret = gather_test_loop(sbuf, rbuf, local_count, dtype, 0, nccl_comm, stream,
+      ret = gather_test_loop(sbuf, rbuf, local_count, dtype, PICO_ROOT_RANK, nccl_comm, stream,
                              iter, times, test_routine);
       break;
     case REDUCE:
-      ret = reduce_test_loop(sbuf, rbuf, count, dtype, ncclSum, 0, nccl_comm, stream,
+      ret = reduce_test_loop(sbuf, rbuf, count, dtype, ncclSum, PICO_ROOT_RANK, nccl_comm, stream,
                              iter, times, test_routine);
       break;
     case REDUCE_SCATTER:
@@ -709,7 +709,7 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                                 iter, times, test_routine);
       break;
     case SCATTER:
-      ret = scatter_test_loop(sbuf, rbuf, local_count, dtype, 0, nccl_comm, stream,
+      ret = scatter_test_loop(sbuf, rbuf, local_count, dtype, PICO_ROOT_RANK, nccl_comm, stream,
                               iter, times, test_routine);
       break;
     default:
@@ -743,21 +743,21 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       break;
     case BCAST:
-      if(rank == 0) {
+      if(rank == PICO_ROOT_RANK) {
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
-      PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
+      PMPI_Bcast(rbuf_gt, count, dtype, PICO_ROOT_RANK, comm);
       GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
       break;
     case GATHER:
-      PMPI_Gather(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, 0, comm);
-      if (rank == 0) {
+      PMPI_Gather(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, PICO_ROOT_RANK, comm);
+      if (rank == PICO_ROOT_RANK) {
         GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       }
       break;
     case REDUCE:
-      PMPI_Reduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, 0, comm);
-      if(rank == 0){ 
+      PMPI_Reduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm);
+      if(rank == PICO_ROOT_RANK){ 
         GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       }
       break;
@@ -769,7 +769,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       free(rcounts);
       break;
     case SCATTER:
-      PMPI_Scatter(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, 0, comm);
+      PMPI_Scatter(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, PICO_ROOT_RANK, comm);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       break;
     default:
@@ -1050,7 +1050,7 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   
   // For BCAST and SCATTER, only rank 0 generates the sendbuf
   if((test_routine.collective == BCAST || test_routine.collective == SCATTER)
-      && rank != 0) {
+      && rank != PICO_ROOT_RANK) {
     return 0;
   }
 
@@ -1259,7 +1259,7 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
   // For BCAST and SCATTER, only rank 0 generates the sendbuf
   if((test_routine.collective == BCAST || test_routine.collective == SCATTER)
-      && rank != 0) {
+      && rank != PICO_ROOT_RANK) {
     return 0;
   }
 

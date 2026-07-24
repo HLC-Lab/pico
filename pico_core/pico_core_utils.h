@@ -18,6 +18,8 @@
 #include "pico_mpi_nccl_mapper.h"
 #include "libpico.h"
 
+#define PICO_ROOT_RANK 0
+
 #if defined(__GNUC__) || defined(__clang__)
   #define PICO_CORE_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
@@ -298,11 +300,11 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times,  \
 DEFINE_TEST_LOOP(allreduce, ALLREDUCE_MPI_ARGS, allreduce(sbuf, rbuf, count, dtype, MPI_SUM, comm))
 DEFINE_TEST_LOOP(allgather, ALLGATHER_MPI_ARGS, allgather(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
 DEFINE_TEST_LOOP(alltoall, ALLTOALL_MPI_ARGS, alltoall(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
-DEFINE_TEST_LOOP(bcast, BCAST_MPI_ARGS, bcast(buf, count, dtype, 0, comm))
-DEFINE_TEST_LOOP(gather, GATHER_MPI_ARGS, gather(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
-DEFINE_TEST_LOOP(reduce, REDUCE_MPI_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm))
+DEFINE_TEST_LOOP(bcast, BCAST_MPI_ARGS, bcast(buf, count, dtype, PICO_ROOT_RANK, comm))
+DEFINE_TEST_LOOP(gather, GATHER_MPI_ARGS, gather(sbuf, scount, sdtype, rbuf, rcount, rdtype, PICO_ROOT_RANK, comm))
+DEFINE_TEST_LOOP(reduce, REDUCE_MPI_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm))
 DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_MPI_ARGS, reduce_scatter(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm))
-DEFINE_TEST_LOOP(scatter, SCATTER_MPI_ARGS, scatter(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
+DEFINE_TEST_LOOP(scatter, SCATTER_MPI_ARGS, scatter(sbuf, scount, sdtype, rbuf, rcount, rdtype, PICO_ROOT_RANK, comm))
 
 #else
 
@@ -359,11 +361,11 @@ static inline int OP_NAME##_test_loop(ARGS, int iter, double *times,        \
 DEFINE_TEST_LOOP(allreduce, ALLREDUCE_NCCL_ARGS, allreduce(sbuf, rbuf, count, dtype, ncclSum, nccl_comm, stream))
 DEFINE_TEST_LOOP(allgather, ALLGATHER_NCCL_ARGS, allgather(sbuf, rbuf, count, dtype, nccl_comm, stream))
 DEFINE_TEST_LOOP(alltoall, ALLTOALL_NCCL_ARGS, alltoall(sbuf, rbuf, count, dtype, nccl_comm, stream))
-DEFINE_TEST_LOOP(bcast, BCAST_NCCL_ARGS, bcast(buf, count, dtype, 0, nccl_comm, stream))
-DEFINE_TEST_LOOP(gather, GATHER_NCCL_ARGS, gather(sbuf, rbuf, count, dtype, 0, nccl_comm, stream))
-DEFINE_TEST_LOOP(reduce, REDUCE_NCCL_ARGS, reduce(sbuf, rbuf, count, dtype, ncclSum, 0, nccl_comm, stream))
+DEFINE_TEST_LOOP(bcast, BCAST_NCCL_ARGS, bcast(buf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream))
+DEFINE_TEST_LOOP(gather, GATHER_NCCL_ARGS, gather(sbuf, rbuf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream))
+DEFINE_TEST_LOOP(reduce, REDUCE_NCCL_ARGS, reduce(sbuf, rbuf, count, dtype, ncclSum, PICO_ROOT_RANK, nccl_comm, stream))
 DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_NCCL_ARGS, reduce_scatter(sbuf, rbuf, rcount, dtype, ncclSum, nccl_comm, stream))
-DEFINE_TEST_LOOP(scatter, SCATTER_NCCL_ARGS, scatter(sbuf, rbuf, count, dtype, 0, nccl_comm, stream))
+DEFINE_TEST_LOOP(scatter, SCATTER_NCCL_ARGS, scatter(sbuf, rbuf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream))
 
 #endif
 

@@ -79,7 +79,7 @@ int scatter_bine(const void *sendbuf, size_t sendcount, MPI_Datatype dt,
 
   vrank = mod(rank - root, size); // mod computes math modulo rather than reminder
   halving_direction = 1; // Down -- send bottom half
-  if(rank % 2){
+  if(vrank % 2){
     halving_direction = -1; // Up -- send top half
   }
   // The gather started with these directions. Thus this will
@@ -96,7 +96,7 @@ int scatter_bine(const void *sendbuf, size_t sendcount, MPI_Datatype dt,
   //   and subtracted 2^1, 2^3, 2^5, ... from min_resident_block
   // Odd ranks subtracted 2^0, 2^2, 2^4, ... from min_resident_block
   //      and added 2^1, 2^3, 2^5, ... to max_resident_block
-  if(rank % 2 == 0){    
+  if(vrank % 2 == 0){    
     max_resident_block = mod((rank + 0x55555555) & ((0x1 << (int) log_2(size)) - 1), size);
     min_resident_block = mod((rank - 0xAAAAAAAA) & ((0x1 << (int) log_2(size)) - 1), size);
   }else{
@@ -174,7 +174,7 @@ int scatter_bine(const void *sendbuf, size_t sendcount, MPI_Datatype dt,
 
         sbuf_offset = mod(rank - recv_start, size);
       }
-      if(recv_end >= recv_start){ 
+      if(recv_end >= recv_start || partner != root){ 
         err = MPI_Recv((char*) rbuf, recvcount * num_blocks, dt, partner, 0, comm, MPI_STATUS_IGNORE);
         if(err != MPI_SUCCESS){ goto err_hndl; }
       } else {
