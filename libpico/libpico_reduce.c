@@ -83,9 +83,8 @@ err_hndl:
 int reduce_bine_bdw(const void *sendbuf, void *recvbuf, size_t count,
                      MPI_Datatype dt, MPI_Op op, int root, MPI_Comm comm)
 {
-  assert(root == 0); // TODO: Generalize
   int size, rank, dtsize, err = MPI_SUCCESS, steps, step;
-  int count_per_rank, rem, mask = 0x1, inverse_mask;
+  int vrank, count_per_rank, rem, mask = 0x1, inverse_mask;
   int block_first_mask, remapped_rank, receiving_mask;
   int *rindex = NULL, *sindex = NULL, *rcount = NULL, *scount = NULL;
   char* resbuf = NULL, *tmpbuf = NULL;
@@ -93,6 +92,7 @@ int reduce_bine_bdw(const void *sendbuf, void *recvbuf, size_t count,
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
+  vrank = mod(rank - root, size);
 
   steps = log_2(size);
   if(!is_power_of_two(size)) { err = MPI_ERR_SIZE; goto err_hndl; }
@@ -117,7 +117,7 @@ int reduce_bine_bdw(const void *sendbuf, void *recvbuf, size_t count,
   mask = 0x1;
   inverse_mask = 0x1 << (int) (log_2(size) - 1);
   block_first_mask = ~(inverse_mask - 1);
-  remapped_rank = remap_rank(size, rank);
+  remapped_rank = remap_rank(size, vrank);
 
   /***** Reduce_scatter *****/
   rindex = malloc(sizeof(int) * steps);
@@ -126,16 +126,17 @@ int reduce_bine_bdw(const void *sendbuf, void *recvbuf, size_t count,
   scount = malloc(sizeof(int) * steps);
   step = 0;
   while(mask < size){
-    int partner;
+    int vpartner;
     int nbtb = negabinary_to_binary((mask << 1) - 1);
-    if(rank % 2 == 0){
-      partner = mod(rank + nbtb, size); 
+    if(vrank % 2 == 0){
+      vpartner = mod(vrank + nbtb, size);
     }else{
-      partner = mod(rank - nbtb, size); 
+      vpartner = mod(vrank - nbtb, size);
     }
+    int partner = mod(vpartner + root, size);
 
     // Compute send block boundaries inline
-    int send_block_first = remap_rank(size, partner) & block_first_mask;
+    int send_block_first = remap_rank(size, vpartner) & block_first_mask;
     int send_block_last = send_block_first + inverse_mask - 1;
     sindex[step] = count_per_rank * send_block_first + (send_block_first < rem ? send_block_first : rem);
     scount[step] = count_per_rank * (send_block_last - send_block_first + 1)
@@ -172,13 +173,14 @@ int reduce_bine_bdw(const void *sendbuf, void *recvbuf, size_t count,
   receiving_mask = 0x1 << (ffs(remapped_rank) - 1); // ffs starts counting from 1, thus -1
   step = steps - 1;
   while(mask > 0){
-    int partner;
+    int vpartner;
     int nbtb = negabinary_to_binary((mask << 1) - 1);
-    if(rank % 2 == 0){
-      partner = mod(rank + nbtb, size); 
+    if(vrank % 2 == 0){
+      vpartner = mod(vrank + nbtb, size);
     }else{
-      partner = mod(rank - nbtb, size); 
+      vpartner = mod(vrank - nbtb, size);
     }
+    int partner = mod(vpartner + root, size);
 
     // Only the one with 0 in the i-th bit starting from the left (i is the step) survives
     if(inverse_mask & receiving_mask){

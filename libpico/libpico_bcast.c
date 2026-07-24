@@ -417,12 +417,6 @@ int bcast_bine_lat(void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Co
     err = MPI_ERR_SIZE;
     goto cleanup_and_return;
   }
-  // Only root = 0 logic is done
-  if(root != 0){
-    line = __LINE__;
-    err = MPI_ERR_ROOT;
-    goto cleanup_and_return;
-  }
 
   // TODO: CHANGE THIS
   // Use an auxiliary array to record visited node in order
@@ -507,12 +501,6 @@ int bcast_bine_lat_reversed(void *buf, size_t count, MPI_Datatype dtype, int roo
   if(size != (1 << steps)) {
     line = __LINE__;
     err = MPI_ERR_SIZE;
-    goto cleanup_and_return;
-  }
-  // Only root = 0 logic is done
-  if(root != 0){
-    line = __LINE__;
-    err = MPI_ERR_ROOT;
     goto cleanup_and_return;
   }
 
@@ -668,11 +656,11 @@ err_hndl:
 
 
 int bcast_bine_bdw_remap(void *buffer, size_t count, MPI_Datatype dt, int root, MPI_Comm comm){
-  assert(root == 0); // TODO: Generalize
   int size, rank, dtsize, err = MPI_SUCCESS;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
+  int vrank = mod(rank - root, size);
 
   int* displs = (int*) malloc(size*sizeof(int));
   int* recvcounts = (int*) malloc(size*sizeof(int));
@@ -690,7 +678,7 @@ int bcast_bine_bdw_remap(void *buffer, size_t count, MPI_Datatype dt, int root, 
   int mask = 0x1;
   int inverse_mask = 0x1 << (int) (log_2(size) - 1);
   int block_first_mask = ~(inverse_mask - 1);
-  int remapped_rank = remap_rank(size, rank);
+  int remapped_rank = remap_rank(size, vrank);
   int receiving_mask = inverse_mask << 1; // Root never receives. By having a large mask inverse_mask will always be < receiving_mask
   // I receive in the step corresponding to the position (starting from right)
   // of the first 1 in my remapped rank -- this indicates the step when the data reaches me
@@ -701,17 +689,18 @@ int bcast_bine_bdw_remap(void *buffer, size_t count, MPI_Datatype dt, int root, 
   /***** Scatter *****/
   int recvd = (root == rank);
   while(mask < size){
-    int partner;
-    if(rank % 2 == 0){
-      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    int vpartner;
+    if(vrank % 2 == 0){
+      vpartner = mod(vrank + negabinary_to_binary((mask << 1) - 1), size);
     }else{
-      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+      vpartner = mod(vrank - negabinary_to_binary((mask << 1) - 1), size);
     }
+    int partner = mod(vpartner + root, size);
   
     // For sure I need to send my (remapped) partner's data
     // the actual start block however must be aligned to 
     // the power of two
-    int send_block_first = remap_rank(size, partner) & block_first_mask;
+    int send_block_first = remap_rank(size, vpartner) & block_first_mask;
     int send_block_last = send_block_first + inverse_mask - 1;
     int send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];
     // Something similar for the block to recv.
@@ -741,12 +730,13 @@ int bcast_bine_bdw_remap(void *buffer, size_t count, MPI_Datatype dt, int root, 
   while(mask > 0){
     int spartner, rpartner;
     int send_block_first = 0, send_block_last = 0, send_count = 0, recv_block_first = 0, recv_block_last = 0, recv_count = 0;
-    int partner;
-    if(rank % 2 == 0){
-      partner = mod(rank + negabinary_to_binary((mask << 1) - 1), size); 
+    int vpartner;
+    if(vrank % 2 == 0){
+      vpartner = mod(vrank + negabinary_to_binary((mask << 1) - 1), size);
     }else{
-      partner = mod(rank - negabinary_to_binary((mask << 1) - 1), size); 
+      vpartner = mod(vrank - negabinary_to_binary((mask << 1) - 1), size);
     }
+    int partner = mod(vpartner + root, size);
 
     rpartner = (inverse_mask < receiving_mask) ? MPI_PROC_NULL : partner;
     spartner = (inverse_mask == receiving_mask) ? MPI_PROC_NULL : partner;
@@ -757,7 +747,7 @@ int bcast_bine_bdw_remap(void *buffer, size_t count, MPI_Datatype dt, int root, 
       send_count = displs[send_block_last] - displs[send_block_first] + recvcounts[send_block_last];  
     }
     if(rpartner != MPI_PROC_NULL){
-      recv_block_first = remap_rank(size, rpartner) & block_first_mask;
+      recv_block_first = remap_rank(size, vpartner) & block_first_mask;
       recv_block_last = recv_block_first + inverse_mask - 1;
       recv_count = displs[recv_block_last] - displs[recv_block_first] + recvcounts[recv_block_last];
     }

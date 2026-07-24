@@ -15,7 +15,7 @@ int scatter_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
   MPI_Comm_size(comm, &comm_sz);
   MPI_Comm_rank(comm, &rank);
 
-  if (rank == 0) {
+  if (rank == PICO_ROOT_RANK) {
     *sbuf = (char *) malloc(count * type_size);
     if (*sbuf == NULL) {
       fprintf(stderr, "Error: Memory allocation failed. Aborting...");
@@ -42,7 +42,7 @@ int scatter_allocator_cuda(void **d_sbuf, void **d_rbuf, void **d_rbuf_gt, size_
 
   cudaError_t err;
 
-  if (rank == 0) {
+  if (rank == PICO_ROOT_RANK) {
     PICO_CORE_CUDA_CHECK(cudaMalloc(d_sbuf, count * type_size), err);
   }
 

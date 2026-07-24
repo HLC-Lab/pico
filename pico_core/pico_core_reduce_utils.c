@@ -21,7 +21,7 @@ int reduce_allocator(void **sbuf, void **rbuf, void **rbuf_gt, size_t count,
     return -1;
   }
 
-  if(rank == 0){
+  if(rank == PICO_ROOT_RANK){
     *rbuf = (char *) calloc(count, type_size);
     *rbuf_gt = (char *) calloc(count, type_size);
     if (*rbuf == NULL || *rbuf_gt == NULL) {
@@ -44,7 +44,7 @@ int reduce_allocator_cuda(void **d_sbuf, void **d_rbuf, void **d_rbuf_gt, size_t
 
   PICO_CORE_CUDA_CHECK(cudaMalloc(d_sbuf, count * type_size), err);
 
-  if (rank == 0){
+  if (rank == PICO_ROOT_RANK){
     PICO_CORE_CUDA_CHECK(cudaMalloc(d_rbuf, count * type_size), err);
     PICO_CORE_CUDA_CHECK(cudaMemset(*d_rbuf, 0, count * type_size), err);
 
