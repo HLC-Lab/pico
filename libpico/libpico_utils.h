@@ -102,28 +102,52 @@ static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
   }                                                 \
 } while(0)
 
-static inline int pico_task_on_node() {
-  int current_tasks_per_node;
+static inline int pico_task_on_node(int *tasks_per_node) {
+  char *end = NULL;
+  char *tasks_per_node_env;
+  long parsed_tasks;
 
-  char* tasks_per_node_env = getenv("CURRENT_TASKS_PER_NODE");
-  if (tasks_per_node_env == NULL) {
+  if(tasks_per_node == NULL) {
+    return MPI_ERR_ARG;
+  }
+
+  tasks_per_node_env = getenv("CURRENT_TASKS_PER_NODE");
+  if(tasks_per_node_env == NULL) {
     fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE environment variable is not set.\n");
     return MPI_ERR_COMM;
   }
-  current_tasks_per_node = atoi(tasks_per_node_env);
-  if (current_tasks_per_node <= 0) {
+
+  errno = 0;
+  parsed_tasks = strtol(tasks_per_node_env, &end, 10);
+  if(errno == ERANGE || end == tasks_per_node_env || *end != '\0' ||
+     parsed_tasks <= 0 || parsed_tasks > INT_MAX) {
     fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE must be a positive integer.\n");
     return MPI_ERR_COMM;
   }
 
-  return current_tasks_per_node;
+  *tasks_per_node = (int)parsed_tasks;
+  return MPI_SUCCESS;
 }
 
-static inline void pico_get_group_config(int *node_size, int *node_rank, int *node_offset, int *local_rank, int task_on_node, int size, int rank) {
+static inline int pico_get_group_config(int *node_size, int *node_rank,
+                                        int *node_offset, int *local_rank,
+                                        int task_on_node, int size, int rank) {
+  if(node_size == NULL || node_rank == NULL || node_offset == NULL ||
+     local_rank == NULL) {
+    return MPI_ERR_ARG;
+  }
+  if(task_on_node <= 0 || size <= 0 || task_on_node > size ||
+     size % task_on_node != 0 || rank < 0 || rank >= size) {
+    fprintf(stderr,
+            "Error: CURRENT_TASKS_PER_NODE must evenly divide the communicator size.\n");
+    return MPI_ERR_DIMS;
+  }
+
   *node_rank = rank / task_on_node;
   *node_size = size / task_on_node;
   *node_offset = *node_rank * task_on_node;
   *local_rank = rank % task_on_node;
+  return MPI_SUCCESS;
 }
 
 #define BINE_NCCL_CHECK(cmd)                              \

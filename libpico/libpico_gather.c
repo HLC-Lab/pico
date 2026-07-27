@@ -62,10 +62,16 @@ int gather_linear(const void *sbuf, size_t scount, MPI_Datatype sdtype,
 }
 
 int gather_bine(const void *sendbuf, size_t sendcount, MPI_Datatype dt, void *recvbuf, size_t recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm){
-  assert(sendcount == recvcount && dt == recvtype);
   int size, rank, dtsize, err = MPI_SUCCESS;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
+
+  if(size < 2 || !is_power_of_two(size)) {
+    BINE_DEBUG_PRINT("ERROR! bine gather works only with at least two po2 ranks!");
+    return MPI_ERR_ARG;
+  }
+
+  assert(sendcount == recvcount && dt == recvtype);
   MPI_Type_size(dt, &dtsize);
 
   if(rank != root){
