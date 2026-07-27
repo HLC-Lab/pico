@@ -1126,17 +1126,22 @@ run_bench() {
 
     if [[ "$DRY_RUN" == "yes" ]]; then
         inform "Would run: $command"
+        return 0
     else
         if [[ "$DEBUG_MODE" == "yes" ]]; then
-            $command
+            $command || {
+                error "Benchmark failed for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type"
+                return 1
+            }
         else
-            # WARN: Removed panic mode for full cluster run
-            #
-            # $command || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; cleanup; }
             [[ "$LOCATION" == "mare_nostrum" || "$LOCATION" == "leonardo" ]] && sleep 1  # To avoid step timeout due to previous srun still not finalized
-            $command
+            $command || {
+                error "Benchmark failed for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type"
+                return 1
+            }
         fi
     fi
+    return 0
 }
 export -f run_bench
 
@@ -1277,7 +1282,7 @@ run_bench_with_nccl_protocols() {
             export NCCL_PROTO="$explicit_proto"
             [[ "$DEBUG_MODE" == "yes" ]] && inform "NCCL ring protocol: $NCCL_PROTO"
             run_bench "$size" "$algo" "$type"
-            return 0
+            return $?
         fi
 
         local proto
@@ -1286,12 +1291,13 @@ run_bench_with_nccl_protocols() {
             local bench_algo="${algo}_${proto_suffix}"
             export NCCL_PROTO="$proto"
             [[ "$DEBUG_MODE" == "yes" ]] && inform "NCCL ring protocol: $NCCL_PROTO"
-            run_bench "$size" "$bench_algo" "$type"
+            run_bench "$size" "$bench_algo" "$type" || return 1
         done
     else
         [[ "$MPI_LIB" == "NCCL" ]] && unset NCCL_PROTO
-        run_bench "$size" "$algo" "$type"
+        run_bench "$size" "$algo" "$type" || return 1
     fi
+    return 0
 }
 export -f run_bench_with_nccl_protocols
 
@@ -1301,7 +1307,10 @@ export -f run_bench_with_nccl_protocols
 run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
-        update_algorithm $algo $i || { error "Failed to update algorithm $algo" ; cleanup; }
+        update_algorithm "$algo" "$i" || {
+            error "Failed to update algorithm $algo"
+            return 1
+        }
         export SEGMENTED=${IS_SEGMENTED[$i]}
         inform "Segmented: $SEGMENTED"
 
@@ -1317,17 +1326,18 @@ run_all_tests() {
                 for type in ${TYPES//,/ }; do
                     for segment_size in ${SEGMENT_SIZES//,/ }; do
                         export SEGSIZE=$segment_size
-                        run_bench_with_nccl_protocols $size $algo $type
+                        run_bench_with_nccl_protocols "$size" "$algo" "$type" || return 1
                     done
                 done
             else
                 for type in ${TYPES//,/ }; do
-                    run_bench_with_nccl_protocols $size $algo $type
+                    run_bench_with_nccl_protocols "$size" "$algo" "$type" || return 1
                 done
             fi
         done
         ((i++))
     done
+    return 0
 }
 export -f run_all_tests
 
@@ -1521,7 +1531,7 @@ run_mode_once() {
     fi
 
     print_sanity_checks
-    run_all_tests
+    run_all_tests || return 1
     ((_iter_ref++))
     return 0
 }
@@ -1694,8 +1704,9 @@ export -f cli_prepare_metadata
 cli_run_one_iteration() {
     local -n _iter_ref=$1
     print_sanity_checks
-    run_all_tests
+    run_all_tests || return 1
     ((_iter_ref++))
+    return 0
 }
 export -f cli_run_one_iteration
 
@@ -1718,7 +1729,7 @@ cli_run_cpu_set() {
 
         # pass the ORIGINAL name downstream
         cli_prepare_metadata "$iter_name" || return 1
-        cli_run_one_iteration "$iter_name"
+        cli_run_one_iteration "$iter_name" || return 1
 
         if [[ -n "$FORCE_TASKS" ]]; then
             warning "--ntasks is set, skipping possible --tasks-per-node values"
@@ -1737,6 +1748,6 @@ cli_run_gpu_once() {
     success "📄 Config ${TEST_CONFIG} parsed (GPU, gpus per node=${CURRENT_TASKS_PER_NODE})"
 
     cli_prepare_metadata "$iter_name" || return 1
-    cli_run_one_iteration "$iter_name"
+    cli_run_one_iteration "$iter_name" || return 1
 }
 export -f cli_run_gpu_once
