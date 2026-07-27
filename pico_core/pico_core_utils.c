@@ -740,7 +740,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
     case ALLTOALL:
       PMPI_Alltoall(sbuf, count / (size_t) comm_sz, dtype, \
              rbuf_gt, count / (size_t) comm_sz, dtype, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count / (size_t) comm_sz, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
     case BCAST:
       if(rank == PICO_ROOT_RANK) {
@@ -1056,8 +1056,7 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
   size_t real_sbuf_count =
     (test_routine.collective == ALLGATHER ||
-     test_routine.collective == GATHER    ||
-     test_routine.collective == ALLTOALL) ?
+     test_routine.collective == GATHER) ?
                                         count / (size_t) comm_sz : count;
 
   for(size_t i = 0; i < real_sbuf_count; i++) {
@@ -1130,6 +1129,12 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     float epsilon = comm_sz * PICO_CORE_BASE_EPSILON_FLOAT * 100.0f;
 
     for(size_t i = 0; i < count; i++) {
+      if(isnan(b1[i]) || isnan(b2[i])) {
+        if(!(isnan(b1[i]) && isnan(b2[i]))) {
+          return -1;
+        }
+        continue;
+      }
       if(fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
@@ -1141,6 +1146,12 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     double epsilon = comm_sz * PICO_CORE_BASE_EPSILON_DOUBLE * 100.0;
 
     for(size_t i = 0; i < count; i++) {
+      if(isnan(b1[i]) || isnan(b2[i])) {
+        if(!(isnan(b1[i]) && isnan(b2[i]))) {
+          return -1;
+        }
+        continue;
+      }
       if(fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
@@ -1265,8 +1276,7 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
   size_t real_sbuf_count =
     (test_routine.collective == ALLGATHER ||
-     test_routine.collective == GATHER    ||
-     test_routine.collective == ALLTOALL) ?
+     test_routine.collective == GATHER) ?
                                         count / (size_t) comm_sz : count;
 
   for(int i=0; i< real_sbuf_count; i++){

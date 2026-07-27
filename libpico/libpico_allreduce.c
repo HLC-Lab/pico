@@ -1104,6 +1104,13 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
   if (segsize == 0) {
     segcount = count;
     segsize = segcount * extent;
+  } else if (segcount == 0) {
+    /*
+     * A non-zero byte segment smaller than one datatype extent still has to
+     * make progress.  Treat it as a one-element segment.
+     */
+    segcount = 1;
+    segsize = extent;
   }
 
   // Allocate temporary buffer for send/recv and reduce operations
@@ -1197,12 +1204,16 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
         r_index[step] = s_index[step] + s_count[step];
       }
 
-      num_phases = (r_count[step] > s_count[step]) ?
-                      (int) (r_count[step] / segcount) :
-                      (int) (s_count[step] / segcount);
+      size_t max_phase_count = (r_count[step] > s_count[step]) ?
+                                 (size_t)r_count[step] :
+                                 (size_t)s_count[step];
+      num_phases = (int)(max_phase_count / segcount
+                         + (max_phase_count % segcount != 0));
 
-      phase_scount = (s_count[step] > segcount) ? segcount : s_count[step];
-      phase_rcount = (r_count[step] > segcount) ? segcount : r_count[step];
+      phase_scount = ((size_t)s_count[step] > segcount) ?
+                       (int)segcount : s_count[step];
+      phase_rcount = ((size_t)r_count[step] > segcount) ?
+                       (int)segcount : r_count[step];
 
       inbi = 0;
       err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
@@ -1215,11 +1226,21 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
       tmp_recv = (char *)rbuf + r_index[step] * extent;
 
       for(int phase = 0; phase < num_phases - 1; phase++){
-        char *tmp_recv_phase = tmp_recv + (ptrdiff_t)(phase * phase_rcount * extent);
-        char *tmp_send_phase = tmp_send + (ptrdiff_t)((phase + 1) * phase_scount * extent);
+        size_t phase_offset = (size_t)phase * segcount;
+        size_t next_phase_offset = (size_t)(phase + 1) * segcount;
+        int next_phase_rcount =
+          (next_phase_offset < (size_t)r_count[step]) ?
+            (int)min(segcount, (size_t)r_count[step] - next_phase_offset) : 0;
+        int next_phase_scount =
+          (next_phase_offset < (size_t)s_count[step]) ?
+            (int)min(segcount, (size_t)s_count[step] - next_phase_offset) : 0;
+        char *tmp_recv_phase =
+          tmp_recv + (ptrdiff_t)(phase_offset * (size_t)extent);
+        char *tmp_send_phase =
+          tmp_send + (ptrdiff_t)(next_phase_offset * (size_t)extent);
         inbi = inbi ^ 0x1;
 
-        err = MPI_Irecv(inbuf[inbi], phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
+        err = MPI_Irecv(inbuf[inbi], next_phase_rcount, dtype, dest, 0, comm, &reqs[inbi]);
         if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
         err = MPI_Wait(&reqs[inbi ^ 0x1], MPI_STATUS_IGNORE);
@@ -1232,15 +1253,19 @@ int allreduce_bine_bdw_remap_segmented(const void *sbuf, void *rbuf, size_t coun
         if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 #endif
 
-        err = MPI_Send(tmp_send_phase, phase_scount, dtype, dest, 0, comm);
+        err = MPI_Send(tmp_send_phase, next_phase_scount, dtype, dest, 0, comm);
         if(MPI_SUCCESS != err) { goto cleanup_and_return; }
+
+        phase_rcount = next_phase_rcount;
+        phase_scount = next_phase_scount;
       }
 
       err = MPI_Wait(&reqs[inbi], MPI_STATUS_IGNORE);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
       if(num_phases != 0){
-        tmp_recv += (ptrdiff_t)((num_phases - 1) * phase_rcount * extent);
+        tmp_recv += (ptrdiff_t)((size_t)(num_phases - 1) * segcount
+                                * (size_t)extent);
       }
 #ifdef PICO_MPI_CUDA_AWARE
       BINE_CUDA_CHECK(reduce_wrapper(inbuf[inbi], tmp_recv, phase_rcount, dtype, op, 1));

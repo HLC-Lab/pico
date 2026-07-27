@@ -1880,6 +1880,10 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
   void *perm_buff = NULL, *global_temp = NULL;
   int task_on_node = pico_task_on_node();
   MPI_Request requests[task_on_node * 2];
+  int num_reqs = 0;
+  for(int i = 0; i < task_on_node * 2; ++i) {
+    requests[i] = MPI_REQUEST_NULL;
+  }
 
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
@@ -1958,7 +1962,6 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
   } 
 
   // local exchange
-  int num_reqs = 0;
   tmpsend = global_temp;
   for (int i = 0; i < task_on_node; i++)
   {
@@ -1974,7 +1977,7 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     num_reqs++;
   }
-  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
 
 #ifdef PICO_MPI_CUDA_AWARE
@@ -1989,12 +1992,34 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
   }
 #endif
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(perm_buff));
+#else
+  free(perm_buff);
+#endif
 
   return MPI_SUCCESS;
 
 err_hndl:
   BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
+  for(int i = 0; i < num_reqs; ++i) {
+    if(requests[i] != MPI_REQUEST_NULL) {
+      (void)MPI_Cancel(&requests[i]);
+    }
+  }
+  for(int i = 0; i < num_reqs; ++i) {
+    if(requests[i] != MPI_REQUEST_NULL) {
+      (void)MPI_Wait(&requests[i], MPI_STATUS_IGNORE);
+    }
+  }
+  if (perm_buff != NULL) {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(perm_buff));
+#else
+    free(perm_buff);
+#endif
+  }
   return err;
 }
 

@@ -288,12 +288,13 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
     if(vrank & mask) {
       int parent = (rank - mask + comm_size) % comm_size;
       /* Compute an upper bound on recv block size */
-      recv_count = count - vrank * scatter_count;
-      if(recv_count <= 0) {
+      size_t recv_offset = (size_t)vrank * scatter_count;
+      recv_count = (recv_offset < count) ? count - recv_offset : 0;
+      if(recv_count == 0) {
         curr_count = 0;
       } else {
         /* Recv data from parent */
-        err = MPI_Recv((char *)buf + (ptrdiff_t)vrank * scatter_count * extent,
+        err = MPI_Recv((char *)buf + (ptrdiff_t)recv_offset * extent,
                     recv_count, dtype, parent, 0, comm, &status);
         if(MPI_SUCCESS != err) { goto cleanup_and_return; }
         /* Get received count */
@@ -309,7 +310,9 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
   mask >>= 1;
   while (mask > 0) {
     if(vrank + mask < comm_size) {
-      send_count = curr_count - scatter_count * mask;
+      size_t child_offset = scatter_count * (size_t)mask;
+      send_count = (child_offset < curr_count) ?
+                     curr_count - child_offset : 0;
       if(send_count > 0) {
         int child = (rank + mask) % comm_size;
         err = MPI_Send((char *)buf + (ptrdiff_t)scatter_count * (vrank + mask) * extent,
@@ -325,10 +328,9 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
    * Allgather by recursive doubling
    * Each process has the curr_count elems in the buf[vrank * scatter_count, ...]
    */
-  size_t rem_count = count - vrank * scatter_count;
+  size_t local_offset = (size_t)vrank * scatter_count;
+  size_t rem_count = (local_offset < count) ? count - local_offset : 0;
   curr_count = (scatter_count < rem_count) ? scatter_count : rem_count;
-  if(curr_count < 0)
-    curr_count = 0;
 
   mask = 0x1;
   while (mask < comm_size) {
@@ -339,13 +341,16 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
     int vremote_tree_root = rounddown(vremote, mask);
 
     if(vremote < comm_size) {
-      ptrdiff_t send_offset = vrank_tree_root * scatter_count * extent;
-      ptrdiff_t recv_offset = vremote_tree_root * scatter_count * extent;
-      recv_count = count - vremote_tree_root * scatter_count;
-      if(recv_count < 0)
-        recv_count = 0;
-      err = MPI_Sendrecv((char *)buf + send_offset, curr_count, dtype, remote, 0,
-                         (char *)buf + recv_offset, recv_count, dtype, remote, 0,
+      size_t send_elem_offset = (size_t)vrank_tree_root * scatter_count;
+      size_t recv_elem_offset = (size_t)vremote_tree_root * scatter_count;
+      recv_count = (recv_elem_offset < count) ?
+                     count - recv_elem_offset : 0;
+      void *send_ptr = (curr_count > 0) ?
+                         (char *)buf + (ptrdiff_t)send_elem_offset * extent : buf;
+      void *recv_ptr = (recv_count > 0) ?
+                         (char *)buf + (ptrdiff_t)recv_elem_offset * extent : buf;
+      err = MPI_Sendrecv(send_ptr, curr_count, dtype, remote, 0,
+                         recv_ptr, recv_count, dtype, remote, 0,
                           comm, &status);
       if(MPI_SUCCESS != err) { goto cleanup_and_return; }
       MPI_Get_count(&status, dtype, &tmp_count);
@@ -360,7 +365,12 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
      */
     if(vremote_tree_root + mask > comm_size) {
       int nprocs_alldata = comm_size - vrank_tree_root - mask;
-      ptrdiff_t offset = scatter_count * (vrank_tree_root + mask);
+      size_t elem_offset = scatter_count *
+                           (size_t)(vrank_tree_root + mask);
+      size_t recv_capacity = (elem_offset < count) ?
+                               count - elem_offset : 0;
+      void *transfer_ptr = (recv_capacity > 0) ?
+                             (char *)buf + (ptrdiff_t)elem_offset * extent : buf;
       for(int rhalving_mask = mask >> 1; rhalving_mask > 0; rhalving_mask >>= 1) {
         vremote = vrank ^ rhalving_mask;
         remote = (vremote + root) % comm_size;
@@ -372,14 +382,13 @@ int bcast_scatter_allgather(void *buf, size_t count, MPI_Datatype dtype, int roo
          */
         if((vremote > vrank) && (vrank < tree_root + nprocs_alldata)
           && (vremote >= tree_root + nprocs_alldata)) {
-          err = MPI_Send((char *)buf + (ptrdiff_t)offset * extent,
-                      recv_count, dtype, remote, 0, comm);
+          err = MPI_Send(transfer_ptr, recv_count, dtype, remote, 0, comm);
           if(MPI_SUCCESS != err) { goto cleanup_and_return; }
 
         } else if((vremote < vrank) && (vremote < tree_root + nprocs_alldata)
                && (vrank >= tree_root + nprocs_alldata)) {
-          err = MPI_Recv((char *)buf + (ptrdiff_t)offset * extent,
-                      count, dtype, remote, 0, comm, &status);
+          err = MPI_Recv(transfer_ptr, recv_capacity, dtype,
+                         remote, 0, comm, &status);
           if(MPI_SUCCESS != err) { goto cleanup_and_return; }
           MPI_Get_count(&status, dtype, &tmp_count);
           recv_count = (size_t) tmp_count;

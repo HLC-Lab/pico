@@ -81,6 +81,23 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 
+  bool requires_equal_partition =
+    test_routine.collective == ALLGATHER ||
+    test_routine.collective == ALLTOALL ||
+    test_routine.collective == GATHER ||
+    test_routine.collective == REDUCE_SCATTER ||
+    test_routine.collective == SCATTER;
+  if(requires_equal_partition && count % (size_t)comm_sz != 0) {
+    if(rank == 0) {
+      fprintf(stderr,
+              "Error: count (%zu) must be divisible by the communicator size "
+              "(%d) for this collective.\n",
+              count, comm_sz);
+    }
+    line = __LINE__;
+    goto err_hndl;
+  }
+
 #ifndef DEBUG
   if (get_data_saving_options(&test_routine, count, algorithm, type_string) == -1) {
     line = __LINE__;
@@ -198,27 +215,24 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-
-  void *tmpsbuf = sbuf;
-  void *tmprbuf = rbuf;
-  sbuf = d_sbuf;
-  rbuf = d_rbuf;
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
 
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
 #ifndef PICO_NCCL
-  if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, comm, iter, times) != 0){
+#ifdef PICO_MPI_CUDA_AWARE
+  if(test_loop(test_routine, d_sbuf, d_rbuf, count, loop_dtype, comm, iter, times) != 0){
 #else
-  if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, nccl_comm, stream, iter, times) != 0){
+  if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, comm, iter, times) != 0){
+#endif // PICO_MPI_CUDA_AWARE
+#else
+  if(test_loop(test_routine, d_sbuf, d_rbuf, count, loop_dtype, nccl_comm, stream, iter, times) != 0){
 #endif // PICO_NCCL
     line = __LINE__;
     goto err_hndl;
   }
 
 #if defined PICO_MPI_CUDA_AWARE || defined PICO_NCCL
-  rbuf = tmprbuf;
-  sbuf = tmpsbuf;
   if (coll_memcpy_device_to_host(&d_rbuf, &rbuf, count, type_size, test_routine.collective) != 0){
     line = __LINE__;
     goto err_hndl;

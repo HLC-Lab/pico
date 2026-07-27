@@ -745,9 +745,21 @@ static inline uint32_t reverse(uint32_t x){
 }
 
 static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, uint32_t rank){
-    binary_to_negabinary(rank);
+    if(BINE_UNLIKELY(num_ranks == 0 || num_ranks > INT_MAX ||
+                     rank >= num_ranks)) {
+        return UINT32_MAX;
+    }
+
+    if(num_ranks == 1) {
+        return 0;
+    }
+
     uint32_t nba = UINT32_MAX, nbb = UINT32_MAX;
     size_t num_bits = log_2(num_ranks);
+    if(BINE_UNLIKELY(num_bits >= BINE_MAX_STEPS || num_bits > 32)) {
+        return UINT32_MAX;
+    }
+
     if(rank % 2){
         if(in_range(rank, num_bits)){
             nba = binary_to_negabinary(rank);
@@ -771,7 +783,7 @@ static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, ui
     }else if(nba != UINT32_MAX && nbb == UINT32_MAX){
         return nba;
     }else{ // Check MSB
-        if(nba & (80000000 >> (32 - num_bits))){
+        if(nba & (UINT32_C(0x80000000) >> (32 - num_bits))){
             return nba;
         }else{
             return nbb;
@@ -781,6 +793,14 @@ static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, ui
 
 static inline uint32_t remap_rank(uint32_t num_ranks, uint32_t rank){
     uint32_t remap_rank = get_rank_negabinary_representation(num_ranks, rank);    
+    if(BINE_UNLIKELY(remap_rank == UINT32_MAX)) {
+        return UINT32_MAX;
+    }
+
+    if(num_ranks == 1) {
+        return 0;
+    }
+
     remap_rank = remap_rank ^ (remap_rank >> 1);
     size_t num_bits = log_2(num_ranks);
     remap_rank = reverse(remap_rank) >> (32 - num_bits);
@@ -788,6 +808,15 @@ static inline uint32_t remap_rank(uint32_t num_ranks, uint32_t rank){
 }
 
 static inline uint32_t inverse_rank(uint32_t num_ranks, uint32_t rank){
+    if(BINE_UNLIKELY(num_ranks == 0 || num_ranks > INT_MAX ||
+                     rank >= num_ranks)) {
+        return UINT32_MAX;
+    }
+
+    if(num_ranks == 1) {
+        return 0;
+    }
+
     size_t num_bits = log_2(num_ranks);
     return reverse(rank) >> (32 - num_bits);
 }
