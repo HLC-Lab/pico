@@ -410,7 +410,10 @@ class ConfigureStep(StepScreen):
             ),
             "output-select": (
                 "Output Level",
-                "Choose between full iteration logs, statistics, minimal, or summary output."
+                "Full saves every rank for every iteration; Statistics saves "
+                "cross-rank statistics per iteration; Minimal saves the slowest "
+                "rank per iteration; Summarized saves one aggregate row after "
+                "discarding the first 20% of samples."
             ),
             "compress-switch": (
                 "Compress Results",

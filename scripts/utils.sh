@@ -247,7 +247,9 @@ EOF
 usage_data() {
 inform "Data saving options:"
       cat <<EOF
-  --output-level      Specify which test data to save. Allowed values: summarized, all.
+  --output-level      Specify which test data to save.
+                      Allowed values: full, all, statistics, minimal, summarized.
+                      "all" is an alias for "full".
                       [default: "${DEFAULT_OUTPUT_LEVEL}"]
   --compress          Compress result dir into a tar.gz.
                       [default: "${DEFAULT_COMPRESS}"]
@@ -511,7 +513,8 @@ validate_args() {
         done
     fi
 
-    check_enum "$OUTPUT_LEVEL" "--output-level" "data" "summarized,all" || return 1
+    check_enum "$OUTPUT_LEVEL" "--output-level" "data" \
+        "full,all,statistics,minimal,summarized" || return 1
     check_enum "$COMPRESS" "--compress" "data" "yes,no" || return 1
     check_enum "$DELETE" "--delete" "data" "yes,no" || return 1
 

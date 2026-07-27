@@ -291,13 +291,13 @@ class OutputLevel(Enum):
     @classmethod
     def from_str(cls, value: str):
         value = value.lower()
-        if value == 'full':
+        if value in ('full', 'all'):
             return cls.FULL
         elif value == 'statistics':
             return cls.STATISTICS
         elif value == 'minimal':
             return cls.MINIMAL
-        elif value == 'summary':
+        elif value in ('summary', 'summarized'):
             return cls.SUMMARIZED
         else:
             raise ValueError(f"Unknown output level: {value}")
@@ -824,4 +824,3 @@ class SessionConfig:
         return f"Environment: {env}\n\n" \
                f"Test Configuration:\n{test}\n\n" \
                f"Libraries:\n{libs}"
-

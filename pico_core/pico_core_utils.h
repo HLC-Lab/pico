@@ -529,9 +529,10 @@ int write_instrument_output_to_file(test_routine_t test_routine, double* times, 
  * @brief Writes the timing results to a specified output file in CSV format.
  *
  * The ammount of data to save is determined by the `output_level` parameter.
- * If `output_level` is set to "all", the timing results for all ranks across all
- * iterations will be saved. If `output_level` is set to "summarized", only the
- * highest timing value for each iteration will be saved.
+ * "full" (or its "all" alias) saves every rank for every iteration,
+ * "statistics" saves cross-rank statistics for every iteration, "minimal"
+ * saves the highest rank time for every iteration, and "summarized" saves one
+ * aggregate statistics row after discarding the first 20 percent of samples.
  *
  * @param test_routine The test routine structure containing the output level and file path
  * @param highest An array containing the highest timing values for each iteration.

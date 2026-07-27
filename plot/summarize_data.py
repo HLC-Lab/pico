@@ -22,6 +22,24 @@ DTYPE_TO_BYTES = {
     'int': 4
 }
 
+SUMMARY_COLUMNS = {
+    'mean',
+    'median',
+    'std',
+    'min',
+    'max',
+    'n_iter',
+    'percentile_10',
+    'percentile_25',
+    'percentile_75',
+    'percentile_90',
+    'iqr',
+    'standard_error',
+    'ci_lower',
+    'ci_upper',
+    'num_outliers',
+}
+
 
 def _meta_value(meta_row: pd.Series, column: str):
     """Return column value from metadata row, normalising missing/null entries."""
@@ -31,6 +49,53 @@ def _meta_value(meta_row: pd.Series, column: str):
     if isinstance(value, str) and value.lower() == "null":
         return None
     return value
+
+
+def _read_pre_summarized_data(df, file_path):
+    """Validate and return the single aggregate row written by pico_core."""
+    missing = SUMMARY_COLUMNS.difference(df.columns)
+    if missing:
+        print(
+            f"Missing summarized columns in {file_path}: {', '.join(sorted(missing))}",
+            file=sys.stderr,
+        )
+        return None
+    if len(df) != 1:
+        print(
+            f"Summarized benchmark file must contain exactly one row: {file_path}",
+            file=sys.stderr,
+        )
+        return None
+
+    row = df.iloc[0]
+    stats = {}
+    for column in SUMMARY_COLUMNS:
+        try:
+            stats[column] = float(row[column])
+        except (TypeError, ValueError):
+            print(
+                f"Invalid summarized value for '{column}' in {file_path}",
+                file=sys.stderr,
+            )
+            return None
+
+    if not all(np.isfinite(stats[column]) for column in SUMMARY_COLUMNS):
+        print(f"Non-finite summarized value in {file_path}", file=sys.stderr)
+        return None
+
+    n_iter = stats['n_iter']
+    num_outliers = stats['num_outliers']
+    if n_iter <= 0 or not n_iter.is_integer():
+        print(f"Invalid summarized n_iter in {file_path}", file=sys.stderr)
+        return None
+    if num_outliers < 0 or not num_outliers.is_integer():
+        print(f"Invalid summarized num_outliers in {file_path}", file=sys.stderr)
+        return None
+
+    stats['n_iter'] = int(n_iter)
+    stats['num_outliers'] = int(num_outliers)
+    stats['var'] = stats['std'] ** 2
+    return stats
 
 
 def process_benchmark_file(file_path, warmup_ratio=0.2):
@@ -46,15 +111,8 @@ def process_benchmark_file(file_path, warmup_ratio=0.2):
         return None
 
     if "highest" not in df.columns:
-        print(f"Missing 'highest' column in file: {file_path}", file=sys.stderr)
-        return None
+        return _read_pre_summarized_data(df, file_path)
 
-    if "fugaku" in file_path:
-        # Discard last line
-        df = df.iloc[:-1]
-        # Warmup already done before printing data
-        warmup_ratio = 0.0
-        
     warmup_count = int(len(df) * warmup_ratio)
     df = df.iloc[warmup_count:]
 

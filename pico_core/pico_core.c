@@ -120,11 +120,21 @@ int main(int argc, char *argv[]) {
 
   // Allocate memory for buffers independent of collective type
   times = (double *)calloc(iter, sizeof(double));
+#ifndef DEBUG
   if(rank == 0) {
-    all_times = (double *)malloc(comm_sz * iter * sizeof(double));
     highest = (double *)malloc(iter * sizeof(double));
+    if(test_routine.output_level == ALL || test_routine.output_level == STATISTICS) {
+      all_times = (double *)malloc(comm_sz * iter * sizeof(double));
+    }
   }
-  if(times == NULL || (rank == 0 && (all_times == NULL || highest == NULL))){
+  if(times == NULL ||
+      (rank == 0 &&
+       (highest == NULL ||
+        ((test_routine.output_level == ALL || test_routine.output_level == STATISTICS) &&
+         all_times == NULL)))){
+#else
+  if(times == NULL) {
+#endif
     fprintf(stderr, "Error: Memory allocation failed. Aborting...");
     line = __LINE__;
     goto err_hndl;
@@ -248,9 +258,12 @@ int main(int argc, char *argv[]) {
 #ifndef DEBUG
 
 #if !(defined PICO_INSTRUMENT && !defined PICO_NCCL)
-  // Gather all process times to rank 0 and find the highest execution time of each iteration
-  PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
+  // Full and per-iteration statistics output need every rank's samples.
+  if(test_routine.output_level == ALL || test_routine.output_level == STATISTICS) {
+    PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
+  }
 
+  // Every compact output mode is based on the slowest rank for each iteration.
   if(test_routine.collective != REDUCE) {
     PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
   } else {
