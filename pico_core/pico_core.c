@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include "pico_core_utils.h"
 #include "pico_mpi_nccl_mapper.h"
