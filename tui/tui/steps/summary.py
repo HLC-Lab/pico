@@ -14,6 +14,7 @@ from textual.app import ComposeResult
 from tui.steps.base import StepScreen
 from textual.screen import Screen
 from config_loader import PICO_DIR
+from summary_builder import build_effective_summary
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
 JsonLike = Union[Dict[str, Any], str, Path]
@@ -519,7 +520,7 @@ class SummaryStep(StepScreen):
         yield Header(show_clock=True)
 
         self.__json = self.session.to_dict()
-        self.__summary = self.session.get_summary()
+        self.__summary = build_effective_summary(self.session, PICO_DIR)
         json_log = RichLog(markup=False, classes="summary-box", id="json-log", wrap=True, auto_scroll=False)
         summary_log = RichLog(markup=False, classes="summary-box", id="summary-log", wrap=True, auto_scroll=False)
         json_log.write(json.dumps(self.__json, indent=2))
@@ -532,7 +533,7 @@ class SummaryStep(StepScreen):
                 classes="summary-container"
             ),
             Vertical(
-                Static("Short Summary", classes="field-label"),
+                Static("Effective Execution Plan", classes="field-label"),
                 summary_log,
                 classes="summary-container"
             ),
@@ -550,8 +551,7 @@ class SummaryStep(StepScreen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "prev":
-            from tui.steps.algorithms import AlgorithmsStep
-            self.prev(AlgorithmsStep)
+            self.prev()
         elif event.button.id == "next":
             self.app.push_screen(SaveScreen(self.__json))
 
@@ -560,7 +560,7 @@ class SummaryStep(StepScreen):
         focused = self.focused
         default = (
             "Review & Export",
-            "Inspect the generated JSON and short summary, then save the bundle into tests/."
+            "Inspect the generated JSON and effective execution plan, then save the bundle into tests/."
         )
 
         if not focused or not getattr(focused, "id", None):
@@ -575,8 +575,8 @@ class SummaryStep(StepScreen):
             )
         if fid == "summary-log":
             return (
-                "Short Summary",
-                "Condensed view of environment, nodes, dimensions, and libraries."
+                "Effective Execution Plan",
+                "Review resources, resolved libraries and selectors, benchmark case counts, output behavior, provenance, and warnings."
             )
         if fid == "prev":
             return (
