@@ -1,4 +1,11 @@
-# [PICO](https://github.com/HLC-Lab/pico) — Performance Insights for Collective Operations
+<p align="center">
+  <img
+    src="assets/pico-banner-dark.svg"
+    alt="PICO — Performance Insights for Collective Operations"
+    width="100%"
+  />
+</p>
+
 
 [![GitHub stars](https://img.shields.io/github/stars/HLC-Lab/pico?style=social)](https://github.com/HLC-Lab/pico/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
