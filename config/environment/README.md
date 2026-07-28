@@ -26,6 +26,8 @@ config/environment/<name>/
 | `name` | string | yes | Environment identifier |
 | `desc` | string | yes | Human-readable description |
 | `slurm` | bool | yes | `true` for SLURM clusters, `false` for local execution |
+| `launcher` | string | recommended | MPI launcher command (for example, `"srun"` or `"mpiexec"`); legacy descriptors fall back to `srun`/`mpirun` based on `slurm` |
+| `launcher_flags` | string | no | Arguments passed to every launcher invocation |
 | `python_module` | string | no | Module to load for Python (e.g. `"python/3.11"`) |
 | `other_var` | object | no | Extra environment variables to export (e.g. `{"UCX_IB_SL": "1"}`) |
 
@@ -96,7 +98,9 @@ config/environment/<name>/
 {
   "name": "mybox",
   "desc": "My development machine.",
-  "slurm": false
+  "slurm": false,
+  "launcher": "mpiexec",
+  "launcher_flags": "--map-by :OVERSUBSCRIBE"
 }
 ```
 
@@ -150,6 +154,7 @@ config/environment/<name>/
   "name": "supercloud",
   "desc": "SuperCloud HPC cluster.",
   "slurm": true,
+  "launcher": "srun",
   "python_module": "python/3.12.0",
   "other_var": {
     "UCX_MAX_RNDV_RAILS": "2"

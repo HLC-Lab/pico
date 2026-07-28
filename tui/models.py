@@ -157,6 +157,8 @@ class EnvironmentSelection:
     desc: str = ''
     name: str = ''
     slurm: bool = False
+    launcher: Optional[str] = None
+    launcher_flags: Optional[str] = None
     python_module: Optional[str] = None
     other_var: Optional[Dict[str, Any]] = None
     partition: Optional[PartitionSelection] = None
@@ -171,6 +173,8 @@ class EnvironmentSelection:
         self.desc = env_json.get('desc', '')
         self.name = env_json.get('name', '')
         self.slurm = env_json.get('slurm', False)
+        self.launcher = env_json.get('launcher')
+        self.launcher_flags = env_json.get('launcher_flags')
         self.python_module = env_json.get('python_module')
         self.other_var = env_json.get('other_var')
 
@@ -734,6 +738,7 @@ class TestType(Enum):
 class LibrarySelection:
     name: str = ''
     desc: str = ''
+    metadata: Dict[str, Any] = field(default_factory=dict)
     tests: Dict[TestType, List[int]] = field(default_factory=dict)
     standard: StdType = StdType.UNKNOWN
     lib_type: LibType = LibType.UNKNOWN
@@ -760,6 +765,9 @@ class LibrarySelection:
         desc = lib_json.get('desc', '')
         version = lib_json.get('version', '')
         compiler = lib_json.get('compiler', '')
+        metadata = lib_json.get('metadata', {})
+        if not isinstance(metadata, dict):
+            raise ValueError(f"Library {name} metadata must be a dictionary")
         standard = StdType.from_str(lib_json.get('standard', ''))
         library = LibType.from_str(lib_json.get('lib_type', ''))
         gpu_support = GPUSupport.from_dict(lib_json.get('gpu', {}))
@@ -770,6 +778,7 @@ class LibrarySelection:
         return cls(
             name=name,
             desc=desc,
+            metadata=metadata.copy(),
             standard=standard,
             lib_type=library,
             version=version,

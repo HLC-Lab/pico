@@ -157,13 +157,10 @@ def _warnings(session: SessionConfig, counts: CaseCounts) -> List[str]:
         warnings.append(
             f"{counts.preflight_invalid} case(s) violate algorithm constraints."
         )
-    if test.exclude_nodes:
+    if not session.environment.launcher:
         warnings.append(
-            "Excluded nodes are shown in JSON but are not yet exported to EXCLUDE_NODES."
-        )
-    if test.job_dependency:
-        warnings.append(
-            "Job dependency is shown in JSON but is not yet exported to JOB_DEP."
+            "The environment does not define a launcher; the compatibility "
+            "fallback will be used."
         )
     if test.dry_run and session.environment.slurm:
         warnings.append(
@@ -180,9 +177,16 @@ def _warnings(session: SessionConfig, counts: CaseCounts) -> List[str]:
 
     for library in session.libraries:
         if library.tests.get(TestType.GPU):
-            warnings.append(
-                f"{library.name}: GPU metadata is not yet preserved by the TUI model."
-            )
+            missing_gpu_metadata = [
+                key
+                for key in ("GPU_LIB", "GPU_LIB_VERSION")
+                if not library.metadata.get(key)
+            ]
+            if missing_gpu_metadata:
+                warnings.append(
+                    f"{library.name}: missing GPU metadata: "
+                    f"{', '.join(missing_gpu_metadata)}."
+                )
         if library.lib_type == LibType.NCCL:
             for algorithms in library.algorithms.values():
                 if any(algorithm.selection == "pico" for algorithm in algorithms):
@@ -234,11 +238,14 @@ def build_effective_summary(
         "",
         "Environment & resources",
         f"  Site: {environment.name}",
-        f"  Launcher: {'srun' if environment.slurm else 'mpirun'}",
+        f"  Launcher: "
+        f"{environment.launcher or ('srun' if environment.slurm else 'mpirun')}",
         f"  Nodes: {test.number_of_nodes}",
     ]
     if partition:
         lines.append(f"  Partition: {partition.name}")
+    if environment.launcher_flags:
+        lines.append(f"  Launcher flags: {environment.launcher_flags}")
     if qos:
         lines.append(f"  QoS: {qos.name}")
     if test.test_time:
@@ -272,6 +279,8 @@ def build_effective_summary(
             f"  [{index}] {library.name} {library.version}",
             f"      Standard/type: {library.standard} / {library.lib_type}",
             f"      Compiler: {library.compiler}",
+            f"      Library metadata: "
+            f"{_csv(f'{key}={value}' for key, value in library.metadata.items())}",
             f"      Load: {load}",
             f"      CPU tasks/node: {_csv(cpu_tasks)}",
             f"      GPU tasks/node: {_csv(gpu_tasks)}",

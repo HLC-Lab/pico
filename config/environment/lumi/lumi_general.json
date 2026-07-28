@@ -2,5 +2,6 @@
   "name": "lumi",
   "desc": "Lumi HPC Cluster.",
   "slurm": true,
+  "launcher": "srun",
   "python_module": "cray-python/3.11.5"
 }

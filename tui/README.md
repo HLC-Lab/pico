@@ -92,8 +92,12 @@ Once all mandatory data are valid, `Next` becomes available.
   measurement and output behavior, repository provenance, and known warnings.
 - Saving writes two files under `tests/`:
   - `<name>.json` — the full configuration
-  - `<name>.sh` — an executable wrapper created via `json_to_exports`, exporting
-    the environment variables consumed by `submit_wrapper.sh`
+  - `<name>.sh` — an executable wrapper created by `tui/export_builder.py`,
+    exporting the environment variables consumed by `submit_wrapper.sh`
+- Export validation is mode-aware: incomplete runtime, GPU, or compile-only
+  descriptors are rejected before either output file is created.
+- Launcher commands and flags come from the environment descriptor. Older
+  descriptors retain the `srun`/`mpirun` compatibility fallback.
 - Filenames are auto-suffixed to avoid overwriting existing tests.
 
 ## Data Sources

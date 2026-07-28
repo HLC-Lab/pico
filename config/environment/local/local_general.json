@@ -1,5 +1,7 @@
 {
   "name": "local",
   "desc": "Saverio's laptop.",
-  "slurm": false
+  "slurm": false,
+  "launcher": "mpiexec",
+  "launcher_flags": "--map-by :OVERSUBSCRIBE"
 }

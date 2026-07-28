@@ -2,6 +2,7 @@
   "name": "leonardo",
   "desc": "Leonardo HPC cluster.",
   "slurm": true,
+  "launcher": "srun",
   "python_module": "python/3.11.7",
   "other_var": {
     "UCX_IB_SL": "1"
