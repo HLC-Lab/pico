@@ -163,7 +163,7 @@ static inline int pico_get_group_config(int *node_size, int *node_rank,
   } while (0)
 
 #ifdef PICO_NCCL
-size_t pico_get_nccl_type_size(ncclDataType_t type)
+static inline size_t pico_get_nccl_type_size(ncclDataType_t type)
 {
   switch (type)
   {

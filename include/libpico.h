@@ -82,7 +82,7 @@ int allgather_bine_send_remap_hierarcic_global_local(ALLGATHER_MPI_ARGS);
 // write here the prototype of NCCL allgather functions
 #ifdef PICO_NCCL
 // int allgather_nccl_custom(ALLGATHER_NCCL_ARGS)
-int allgather_bine_block_by_block_nccl(ALLGATHER_NCCL_ARGS);
+ncclResult_t allgather_bine_block_by_block_nccl(ALLGATHER_NCCL_ARGS);
 #endif
 
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);

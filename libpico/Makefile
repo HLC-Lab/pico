@@ -11,7 +11,7 @@ endif
 
 NVCCFLAGS := -Xcompiler "-fPIC" -I$(PICO_DIR)/include -I.
 
-NVCCFLAGS += -Xcompiler "-MMD -MP"
+NVCCFLAGS += -MMD -MP
 
 # Aggiunge i flag condizionali (DEBUG, INSTRUMENT) a NVCC
 ifeq ($(DEBUG),1)

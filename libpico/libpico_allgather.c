@@ -2063,23 +2063,28 @@ err_hndl:
 
 // write NCCL implementations here
 #ifdef PICO_NCCL
-int allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t count, ncclDataType_t dtype, ncclComm_t nccl_comm, cudaStream_t stream){
-  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+ncclResult_t allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t count, ncclDataType_t dtype, ncclComm_t nccl_comm, cudaStream_t stream){
+  int line = -1, rank = -1, size, steps, remote;
+  ncclResult_t err = ncclSuccess;
   int *s_bitmap = NULL, *r_bitmap = NULL;
-  ptrdiff_t rlb, rext;
+  ptrdiff_t rext;
   char *tmpsend = NULL, *tmprecv = NULL;
 
-  ncclCommUserRank(nccl_comm, &rank);
-  ncclCommCount(nccl_comm, &size);
+  err = ncclCommUserRank(nccl_comm, &rank);
+  if(ncclSuccess != err) { line = __LINE__; goto err_hndl; }
+  err = ncclCommCount(nccl_comm, &size);
+  if(ncclSuccess != err) { line = __LINE__; goto err_hndl; }
 
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
     BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
-    return MPI_ERR_ARG;
+    return ncclInvalidArgument;
   }
 
   rext = pico_get_nccl_type_size(dtype);
-  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  if(rext == 0) {
+    return ncclInvalidArgument;
+  }
 
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
@@ -2091,13 +2096,12 @@ int allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t coun
   r_bitmap = (int *) malloc(size * sizeof(int));
   if(s_bitmap == NULL || r_bitmap == NULL){
     line = __LINE__;
-    err = MPI_ERR_NO_MEM;
+    err = ncclSystemError;
     goto err_hndl;
   }
 
 
   for(int step = steps - 1; step >= 0; step--) {
-    int num_reqs = 0;
     remote = pi(rank, step, size);
 
     memset(s_bitmap, 0, size * sizeof(int));
@@ -2123,7 +2127,7 @@ int allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t coun
   free(s_bitmap);
   free(r_bitmap);
 
-  return MPI_SUCCESS;
+  return ncclSuccess;
 
 err_hndl:
   BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);
