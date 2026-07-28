@@ -1,13 +1,23 @@
+.DEFAULT_GOAL := all
+
 CFLAGS = $(CFLAGS_COMMON)
 NVCC ?= nvcc
 
-NVCCFLAGS := -O3 -Xcompiler "-fPIC" -I$(PICO_DIR)/include -I.
+.PHONY: all clean FORCE
+
+ifeq ($(DEBUG),1)
+    CFLAGS := $(filter-out -O%,$(CFLAGS)) -O0
+endif
+
+NVCCFLAGS := -Xcompiler "-fPIC" -I$(PICO_DIR)/include -I.
 
 NVCCFLAGS += -Xcompiler "-MMD -MP"
 
 # Aggiunge i flag condizionali (DEBUG, INSTRUMENT) a NVCC
 ifeq ($(DEBUG),1)
-    NVCCFLAGS += -DDEBUG -g
+    NVCCFLAGS += -O0 -DDEBUG -g
+else
+    NVCCFLAGS += -O3
 endif
 ifeq ($(PICO_INSTRUMENT),1)
     NVCCFLAGS += -DPICO_INSTRUMENT
@@ -30,18 +40,20 @@ LIB_SRC := $(wildcard *.c)
 LIB_OBJ_DIR ?= ../obj/lib
 LIB_OBJS := $(patsubst %.c,$(LIB_OBJ_DIR)/%.o,$(LIB_SRC))
 LIB_DEPS := $(patsubst %.o,%.d,$(LIB_OBJS))
+LIB_CONFIG := $(LIB_OBJ_DIR)/.build-config
 LIBPICO := $(LIB_DIR)/libpico.a
 
-PICO_CORE_OBJ_DIR_CUDA ?= ../obj/lib_cuda
+LIB_OBJ_DIR_CUDA ?= ../obj/lib_cuda
+LIB_CONFIG_CUDA := $(LIB_OBJ_DIR_CUDA)/.build-config
 LIBPICO_CUDA := $(LIB_DIR)/libpico_cuda.a
 
 LIB_SRC_C_FILES_CUDA := $(wildcard *.c)
 LIB_SRC_CU_FILES_CUDA := $(wildcard *.cu)
 
-LIB_OBJS_C_CUDA := $(patsubst %.c,$(PICO_CORE_OBJ_DIR_CUDA)/%.o,$(LIB_SRC_C_FILES_CUDA))
+LIB_OBJS_C_CUDA := $(patsubst %.c,$(LIB_OBJ_DIR_CUDA)/%.o,$(LIB_SRC_C_FILES_CUDA))
 LIB_DEPS_C_CUDA := $(patsubst %.o,%.d,$(LIB_OBJS_C_CUDA))
 
-LIB_OBJS_CU_CUDA := $(patsubst %.cu,$(PICO_CORE_OBJ_DIR_CUDA)/%.o,$(LIB_SRC_CU_FILES_CUDA))
+LIB_OBJS_CU_CUDA := $(patsubst %.cu,$(LIB_OBJ_DIR_CUDA)/%.o,$(LIB_SRC_CU_FILES_CUDA))
 LIB_DEPS_CU_CUDA := $(patsubst %.o,%.d,$(LIB_OBJS_CU_CUDA))
 
 LIB_OBJS_CUDA := $(LIB_OBJS_C_CUDA) $(LIB_OBJS_CU_CUDA)
@@ -51,7 +63,32 @@ LIB_DEPS_CUDA := $(LIB_DEPS_C_CUDA) $(LIB_DEPS_CU_CUDA)
 LIB_OBJ_DIR_NCCL ?= ../obj/lib_nccl
 LIB_OBJS_NCCL    := $(patsubst %.c, $(LIB_OBJ_DIR_NCCL)/%.o, $(LIB_SRC))
 LIB_DEPS_NCCL    := $(patsubst %.c, $(LIB_OBJ_DIR_NCCL)/%.d, $(LIB_SRC))
+LIB_CONFIG_NCCL  := $(LIB_OBJ_DIR_NCCL)/.build-config
 LIBPICO_NCCL     := $(LIB_DIR)/libpico_nccl.a
+
+FORCE:
+
+$(LIB_CONFIG): FORCE
+	@mkdir -p $(dir $@)
+	@printf '%s\n' "PICOCC=$(PICOCC)" "CFLAGS=$(CFLAGS)" > "$@.tmp"
+	@if cmp -s "$@.tmp" "$@"; then rm -f "$@.tmp"; else mv "$@.tmp" "$@"; fi
+
+$(LIB_CONFIG_CUDA): FORCE
+	@mkdir -p $(dir $@)
+	@printf '%s\n' "PICOCC=$(PICOCC)" "CFLAGS=$(CFLAGS)" \
+		"CFLAGS_CUDA=$(CFLAGS_CUDA)" "NVCC=$(NVCC)" \
+		"NVCCFLAGS=$(NVCCFLAGS)" > "$@.tmp"
+	@if cmp -s "$@.tmp" "$@"; then rm -f "$@.tmp"; else mv "$@.tmp" "$@"; fi
+
+$(LIB_CONFIG_NCCL): FORCE
+	@mkdir -p $(dir $@)
+	@printf '%s\n' "PICOCC=$(PICOCC)" "CFLAGS=$(CFLAGS)" \
+		"NCCL_FLAG=$(NCCL_FLAG)" "LDLIBS=$(LDLIBS)" > "$@.tmp"
+	@if cmp -s "$@.tmp" "$@"; then rm -f "$@.tmp"; else mv "$@.tmp" "$@"; fi
+
+$(LIB_OBJS): $(LIB_CONFIG)
+$(LIB_OBJS_CUDA): $(LIB_CONFIG_CUDA)
+$(LIB_OBJS_NCCL): $(LIB_CONFIG_NCCL)
 
 
 ifeq ($(PICO_MPI_CUDA_AWARE),1)
@@ -88,14 +125,14 @@ $(LIBPICO_CUDA): $(LIB_OBJS_CUDA)
 	ar rcs $@ $^
 
 # Regola per file .c (compilati con PICOCC)
-$(PICO_CORE_OBJ_DIR_CUDA)/%.o: %.c
-	@mkdir -p $(PICO_CORE_OBJ_DIR_CUDA)
+$(LIB_OBJ_DIR_CUDA)/%.o: %.c
+	@mkdir -p $(LIB_OBJ_DIR_CUDA)
 	@echo -e "$(YELLOW)[CC] Compiling CUDA $< -> $@...$(NC)"
 	$(PICOCC) $(CFLAGS) $(CFLAGS_CUDA) -c $< -o $@
 
 # Regola per file .cu (compilati con NVCC)
-$(PICO_CORE_OBJ_DIR_CUDA)/%.o: %.cu
-	@mkdir -p $(PICO_CORE_OBJ_DIR_CUDA)
+$(LIB_OBJ_DIR_CUDA)/%.o: %.cu
+	@mkdir -p $(LIB_OBJ_DIR_CUDA)
 	@echo -e "$(YELLOW)[CC] Compiling CUDA $< -> $@...$(NC)"
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
@@ -119,4 +156,4 @@ $(LIB_OBJ_DIR_NCCL)/%.o: %.c
 
 clean:
 	@echo -e "[CLEAN] Removing object files and library..."
-	@rm -rf $(LIB_OBJ_DIR) $(PICO_CORE_OBJ_DIR_CUDA) $(LIBPICO) $(LIBPICO_CUDA) $(LIB_OBJ_DIR_NCCL) $(LIBPICO_NCCL)
+	@rm -rf $(LIB_OBJ_DIR) $(LIB_OBJ_DIR_CUDA) $(LIBPICO) $(LIBPICO_CUDA) $(LIB_OBJ_DIR_NCCL) $(LIBPICO_NCCL)

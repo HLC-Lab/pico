@@ -5,6 +5,7 @@ compile_commands.json
 bin/
 obj/
 lib/
+build/
 schedgen/traces/hpc/
 schedgen/cmdline.c
 schedgen/cmdline.h

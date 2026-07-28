@@ -795,6 +795,37 @@ export -f restore_lib_env
 
 
 ###############################################################################
+# Create submission-private build and runtime files
+###############################################################################
+prepare_job_workspace() {
+    if [[ -z "${PICO_DIR:-}" ]]; then
+        error "PICO_DIR is not set; cannot prepare the job workspace."
+        return 1
+    fi
+
+    local workspace_id="${TIMESTAMP:-pico}_${BASHPID}"
+    export PICO_BUILD_DIR="${PICO_BUILD_DIR:-$PICO_DIR/build/$workspace_id}"
+
+    local selector_dir="$PICO_BUILD_DIR/selector"
+    local selector_template="$PICO_DIR/selector/ompi_dynamic_rules.txt"
+    export ALGO_CHANGE_SCRIPT="$PICO_DIR/selector/change_dynamic_rules.py"
+    export DYNAMIC_RULE_FILE="$selector_dir/ompi_dynamic_rules.txt"
+
+    mkdir -p "$selector_dir" || {
+        error "Unable to create job workspace: $PICO_BUILD_DIR"
+        return 1
+    }
+    cp "$selector_template" "$DYNAMIC_RULE_FILE" || {
+        error "Unable to create the job-private Open MPI rules file."
+        return 1
+    }
+
+    return 0
+}
+export -f prepare_job_workspace
+
+
+###############################################################################
 # Activate virtual environment and install required packages
 ###############################################################################
 activate_virtualenv() {
@@ -832,6 +863,28 @@ activate_virtualenv() {
 ###############################################################################
 # WARN: will be deprecated
 compile_code() {
+    if [[ -z "${PICO_BUILD_DIR:-}" ]]; then
+        error "PICO_BUILD_DIR is not set; call prepare_job_workspace before compiling."
+        return 1
+    fi
+
+    local out_bin="$PICO_BUILD_DIR/bin"
+    local out_lib="$PICO_BUILD_DIR/lib"
+    local out_obj="$PICO_BUILD_DIR/obj"
+    mkdir -p "$out_bin" "$out_lib" "$out_obj" || {
+        error "Unable to create build directories under $PICO_BUILD_DIR"
+        return 1
+    }
+
+    export BIN_DIR="$out_bin"
+    export LIB_DIR="$out_lib"
+    export PICO_CORE_OBJ_DIR="$out_obj/pico_core"
+    export PICO_CORE_OBJ_DIR_CUDA="$out_obj/pico_core_cuda"
+    export PICO_CORE_OBJ_DIR_NCCL="$out_obj/pico_core_nccl"
+    export LIB_OBJ_DIR="$out_obj/lib"
+    export LIB_OBJ_DIR_CUDA="$out_obj/lib_cuda"
+    export LIB_OBJ_DIR_NCCL="$out_obj/lib_nccl"
+
     [[ "$BEAR_COMPILE" == "yes" ]] && make_command="bear -- make all" || make_command="make all" # Used to create compile_command.json file for lsp
     [[ "$DEBUG_MODE" == "yes" ]] && make_command+=" DEBUG=1" ||  make_command+=" -s"
     [[ "$INSTRUMENT" == "yes" ]] && make_command+=" PICO_INSTRUMENT=1" && inform "Instrumented build requested"
@@ -872,12 +925,15 @@ compile_code() {
 
 # INFO: new function to compile libraries, will replace the previous one
 compile_all_libraries_tui() {
-    make clean
-
     local count="${LIB_COUNT:-0}"
     if ! [[ "$count" =~ ^[0-9]+$ ]] || (( count == 0 )); then
         warning "LIB_COUNT is zero or unset; nothing to compile"
         return 0
+    fi
+
+    if [[ -z "${PICO_BUILD_DIR:-}" ]]; then
+        error "PICO_BUILD_DIR is not set; call prepare_job_workspace before compiling."
+        return 1
     fi
 
     local mk_debug=0
@@ -936,16 +992,22 @@ compile_all_libraries_tui() {
         trace_compiler_wrapper "$PICOCC"
 
         # Per-lib output dirs
-        local OUT_BIN="$PICO_DIR/bin/lib_${i}"
-        local OUT_LIB="$PICO_DIR/lib/lib_${i}"
-        local OUT_OBJ="$PICO_DIR/obj/lib_${i}"
-        mkdir -p "$OUT_BIN" "$OUT_LIB" "$OUT_OBJ" || true
+        local OUT_BIN="$PICO_BUILD_DIR/bin/lib_${i}"
+        local OUT_LIB="$PICO_BUILD_DIR/lib/lib_${i}"
+        local OUT_OBJ="$PICO_BUILD_DIR/obj/lib_${i}"
+        mkdir -p "$OUT_BIN" "$OUT_LIB" "$OUT_OBJ" || {
+            error "Unable to create build directories for library $i"
+            restore_lib_context "$i"
+            return 1
+        }
 
-        # Single make call; top-level Makefile: all -> force_rebuild + build
+        # Single make call into this submission's private build directories
         local mk="make -C \"$PICO_DIR\" all"
         mk+=" BIN_DIR=\"$OUT_BIN\" LIB_DIR=\"$OUT_LIB\""
         mk+=" PICO_CORE_OBJ_DIR=\"$OUT_OBJ/pico_core\" PICO_CORE_OBJ_DIR_CUDA=\"$OUT_OBJ/pico_core_cuda\""
+        mk+=" PICO_CORE_OBJ_DIR_NCCL=\"$OUT_OBJ/pico_core_nccl\""
         mk+=" LIB_OBJ_DIR=\"$OUT_OBJ/lib\" LIB_OBJ_DIR_CUDA=\"$OUT_OBJ/lib_cuda\""
+        mk+=" LIB_OBJ_DIR_NCCL=\"$OUT_OBJ/lib_nccl\""
         mk+=" DEBUG=$mk_debug"
         mk+=" PICO_INSTRUMENT=$this_instrument"
         if (( need_nccl_build )); then
