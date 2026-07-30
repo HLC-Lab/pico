@@ -42,7 +42,7 @@
       "rabenseifner"
     ]
   },
-  "bine_mpich_lat": {
+  "bine_lat_mpich": {
     "desc": "MPICH bine tree based algorithm.",
     "version": "5.0.0b1",
     "selection": "bine_lat",
@@ -52,7 +52,7 @@
       "internal"
     ]
   },
-  "bine_mpich_bdw": {
+  "bine_bdw_mpich": {
     "desc": "MPICH bine based algorithm.",
     "version": "5.0.0b1",
     "selection": "bine_bdw",

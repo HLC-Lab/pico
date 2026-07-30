@@ -126,7 +126,8 @@
     ],
     "selection": "bine_lat",
     "tags": [
-      "bine"
+      "bine",
+      "bine_lat"
     ]
   },
   "bine_bdw_mpich": {
@@ -154,7 +155,9 @@
     ],
     "selection": "bine_bdw",
     "tags": [
-      "bine"
+      "bine",
+      "bine_bdw",
+      "is_segmented"
     ]
   }
 }

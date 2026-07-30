@@ -211,34 +211,5 @@
       "bine",
       "block_by_block"
     ]
-  },
-  "bine_two_blocks_mpich": {
-    "desc": "MPICH bine two blocks algorithm. Works only with power of 2 processes.",
-    "version": "5.0.0b1",
-    "constraints": [
-      {
-        "key": "count",
-        "conditions": [
-          {
-            "operator": ">=",
-            "value": "comm_sz"
-          }
-        ]
-      },
-      {
-        "key": "comm_sz",
-        "conditions": [
-          {
-            "operator": "is_power_of_two",
-            "value": true
-          }
-        ]
-      }
-    ],
-    "selection": "bine",
-    "tags": [
-      "bine",
-      "two_blocks"
-    ]
   }
 }
