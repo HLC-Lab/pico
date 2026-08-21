@@ -75,8 +75,8 @@
       "load": {
         "type": "env_var",
         "vars": {
-          "PATH": "/home/angelo/mpich_install/bin:$PATH",
-          "LD_LIBRARY_PATH": "/home/angelo/mpich_install/lib:$LD_LIBRARY_PATH"
+          "PATH": "$HOME/mpich_install/bin:$PATH",
+          "LD_LIBRARY_PATH": "$HOME/mpich_install/lib:$LD_LIBRARY_PATH"
         }
       },
       "metadata": {
