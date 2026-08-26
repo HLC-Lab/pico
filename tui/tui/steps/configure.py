@@ -7,26 +7,83 @@ from textual.widgets import Static, Select, Switch, Footer, Header, Button, Inpu
 from textual.widgets.selection_list import Selection
 from .base import StepScreen
 from config_loader import conf_list_environments, conf_get_general, conf_get_slurm_opts
-from models import SessionConfig, EnvironmentSelection, PartitionSelection, TestDimension, CDtype, OutputLevel
+from models import EnvironmentSelection, PartitionSelection, TestDimension, CDtype, OutputLevel
 from typing import Tuple, Optional
 
 class ConfigureStep(StepScreen):
     __buffer_sizes =  ["32  Byte", "256 Byte", "2   KiB", "16  KiB", "128 KiB", "1   MiB", "8   MiB", "64  MiB", "512 MiB"]
     __segment_sizes = ["0   Byte", "16  KiB", "128 KiB", "1   MiB"]
     def compose(self):
+        self.__hydrating = True
+        environment = self.session.environment
+        test = self.session.test
+        dimensions = test.dimensions
+        partition = environment.partition
+        qos = partition.qos if partition else None
+
+        self.__slurm_opts = {}
+        if environment.name and environment.slurm:
+            self.__slurm_opts = conf_get_slurm_opts(environment.name)
+
+        environment_select_args = {}
+        if environment.name:
+            environment_select_args["value"] = environment.name
+
+        partition_options = []
+        partition_select_args = {}
+        if self.__slurm_opts:
+            partition_options = [
+                (name, name) for name in self.__slurm_opts.get("PARTITIONS", {})
+            ]
+        if partition and partition.name:
+            partition_select_args["value"] = partition.name
+
+        qos_options = []
+        qos_select_args = {}
+        if partition and partition.name:
+            qos_options = [
+                (name, name)
+                for name in self.__slurm_opts.get("PARTITIONS", {})
+                .get(partition.name, {})
+                .get("QOS", {})
+            ]
+        if qos and qos.name:
+            qos_select_args["value"] = qos.name
+
+        has_saved_configuration = bool(environment.name)
+        slurm_ready = bool(environment.slurm and environment.validate())
+        runtime_enabled = slurm_ready and not test.compile_only
+
         yield Header(show_clock=True)
         yield Horizontal(
             Vertical(
                 Static("Environment:", classes="field-label"),
-                Select([(e, e) for e in conf_list_environments()], prompt="Environment:", id="env-select")
+                Select(
+                    [(e, e) for e in conf_list_environments()],
+                    prompt="Environment:",
+                    id="env-select",
+                    **environment_select_args,
+                )
             ),
             Vertical(
                 Static("Partition:", classes="field-label"),
-                Select([], prompt="Partition:", id="partition-select", disabled=True)
+                Select(
+                    partition_options,
+                    prompt="Partition:",
+                    id="partition-select",
+                    disabled=not bool(environment.slurm and environment.name),
+                    **partition_select_args,
+                )
             ),
             Vertical(
                 Static("QOS:", classes="field-label"),
-                Select([], prompt="QOS:", id="qos-select", disabled=True)
+                Select(
+                    qos_options,
+                    prompt="QOS:",
+                    id="qos-select",
+                    disabled=not bool(partition and partition.name),
+                    **qos_select_args,
+                )
             ),
             classes="row"
         )
@@ -35,28 +92,30 @@ class ConfigureStep(StepScreen):
         yield Horizontal(
             Vertical(
                 Static("Compile Only", classes="field-label"),
-                Switch(id="compile-switch", value=False)
+                Switch(id="compile-switch", value=test.compile_only, disabled=test.dry_run)
             ),
             Vertical(
                 Static("Debug Mode", classes="field-label"),
-                Switch(id="debug-switch", value=False)
+                Switch(id="debug-switch", value=test.debug_mode)
             ),
             Vertical(
                 Static("Dry Run Mode", classes="field-label"),
-                Switch(id="dry-switch", value=False)
+                Switch(id="dry-switch", value=test.dry_run, disabled=test.compile_only)
             ),
             Horizontal(
                 Vertical(
                     Static("Number of Nodes",  classes="field-label"),
                     Input(placeholder=f"Insert number of nodes",
-                        disabled=True, id="nodes-input"),
+                        value=str(test.number_of_nodes) if slurm_ready else "",
+                        disabled=not runtime_enabled, id="nodes-input"),
                     Label("", id="nodes-error", classes="error"),
                     classes="field",
                 ),
                 Vertical(
                     Static("Test Time", classes="field-label"),
                     Input(placeholder=f"Insert time in HH:MM:SS",
-                        id="time-input", disabled=True),
+                        value=test.test_time or "",
+                        id="time-input", disabled=not runtime_enabled),
                     Label("", id="time-error", classes="error"),
                     classes="field"
                 ),
@@ -67,37 +126,50 @@ class ConfigureStep(StepScreen):
         yield Horizontal(
             Vertical(
                 Static("Exclude Nodes", classes="field-label"),
-                Switch(id="exclude-switch", value=False, disabled=True),
+                Switch(
+                    id="exclude-switch",
+                    value=bool(test.exclude_nodes),
+                    disabled=not runtime_enabled,
+                ),
                 classes="switch-col",
             ),
             Vertical(
                 Static(" ", classes="field-label"),
                 Input(placeholder="What nodes do you want to exclude?",
-                    id="excluded-nodes", disabled=True),
+                    value=test.exclude_nodes or "",
+                    id="excluded-nodes",
+                    disabled=not (runtime_enabled and test.exclude_nodes)),
                 Label("", id="excluded-nodes-error", classes="error"),
                 classes="field",
             ),
             Vertical(
                 Static("Start After", classes="field-label"),
-                Switch(id="dep-switch", value=False, disabled=True),
+                Switch(
+                    id="dep-switch",
+                    value=bool(test.job_dependency),
+                    disabled=not runtime_enabled,
+                ),
                 classes="switch-col",
             ),
             Vertical(
                 Static(" ", classes="field-label"),
                 Input(placeholder="Insert here job ID",
-                    id="dep-input", disabled=True),
+                    value=str(test.job_dependency) if test.job_dependency else "",
+                    id="dep-input",
+                    disabled=not (runtime_enabled and test.job_dependency)),
                 Label("", id="dep-error", classes="error"),
                 classes="field",
             ),
             Vertical(
                 Static("Inject Params", classes="field-label"),
-                Switch(id="inject-switch", value=False),
+                Switch(id="inject-switch", value=bool(test.inject_params)),
                 classes="switch-col"
             ),
             Vertical(
                 Static(" ", classes="field-label"),
                 Input(placeholder="Insert here any sbatch param or env",
-                      id="inject-params", disabled=True),
+                      value=test.inject_params or "",
+                      id="inject-params", disabled=not bool(test.inject_params)),
                 classes="field",
             ),
             classes="row"
@@ -121,30 +193,82 @@ class ConfigureStep(StepScreen):
             ("Summarized", OutputLevel.SUMMARIZED),
         ]
 
-        buffer_items =  [Selection(f"{label.replace('Byte', '  B')}", self.__parse_size(label), True) for label in self.__buffer_sizes]
-        segment_items = [Selection(f"{label.replace('Byte', '  B')}", self.__parse_size(label), True) for label in self.__segment_sizes]
-        segment_items[0] = Selection("No Segment", 0)
+        selected_buffers = (
+            set(dimensions.sizes_bytes)
+            if dimensions and dimensions.sizes_bytes
+            else {self.__parse_size(label) for label in self.__buffer_sizes}
+        )
+        selected_segments = (
+            set(dimensions.segsizes_bytes)
+            if dimensions and dimensions.segsizes_bytes
+            else {self.__parse_size(label) for label in self.__segment_sizes[1:]}
+        )
+        buffer_items = [
+            Selection(
+                label.replace("Byte", "  B"),
+                self.__parse_size(label),
+                self.__parse_size(label) in selected_buffers,
+            )
+            for label in self.__buffer_sizes
+        ]
+        segment_items = [
+            Selection(
+                "No Segment" if index == 0 else label.replace("Byte", "  B"),
+                self.__parse_size(label),
+                self.__parse_size(label) in selected_segments,
+            )
+            for index, label in enumerate(self.__segment_sizes)
+        ]
+
+        dtype = (
+            dimensions.dtype
+            if dimensions and dimensions.dtype != CDtype.UNKNOWN
+            else CDtype.INT32
+        )
+        output_level = test.output_level or OutputLevel.MINIMAL
+        compress = test.compress if has_saved_configuration else True
+        delete = test.delete if has_saved_configuration else True
 
         yield Horizontal(
             Vertical(
                 Vertical(
                     Static("Data Type", classes = "field-label"),
-                    Select( dtypes, prompt="Select Data Type", id="data-type-select", value=CDtype.INT32)
+                    Select(
+                        dtypes,
+                        prompt="Select Data Type",
+                        id="data-type-select",
+                        value=dtype,
+                        disabled=test.compile_only,
+                    )
                 ),
                 Vertical(
                     Static("Output Level", classes="field-label"),
-                    Select( output_lev, id="output-select", prompt="Select Output Level", value=OutputLevel.MINIMAL)
+                    Select(
+                        output_lev,
+                        id="output-select",
+                        prompt="Select Output Level",
+                        value=output_level,
+                        disabled=test.compile_only,
+                    )
                 ),
                 classes="field-small"
             ),
             Vertical(
                 Vertical(
                     Static("Compress Res.", classes="field-label"),
-                    Switch(id="compress-switch", value=True),
+                    Switch(
+                        id="compress-switch",
+                        value=compress,
+                        disabled=test.compile_only,
+                    ),
                 ),
                 Vertical(
                     Static("Delete Uncompr.", classes="field-label"),
-                    Switch(id="delete-switch", value=True),
+                    Switch(
+                        id="delete-switch",
+                        value=delete,
+                        disabled=test.compile_only or not compress,
+                    ),
                 ),
                 classes="field-mini"
             ),
@@ -152,7 +276,8 @@ class ConfigureStep(StepScreen):
                 Static("Buffer Sizes", classes="field-label"),
                 SelectionList[int](
                     *buffer_items,
-                    id="buffer-size-select"
+                    id="buffer-size-select",
+                    disabled=test.compile_only,
                 ),
                 classes="field"
             ),
@@ -160,7 +285,8 @@ class ConfigureStep(StepScreen):
                 Static("Segment Sizes", classes="field-label"),
                 SelectionList[int](
                     *segment_items,
-                    id="segment-size-select"
+                    id="segment-size-select",
+                    disabled=test.compile_only,
                 ),
                 classes="field"
             ),
@@ -171,24 +297,34 @@ class ConfigureStep(StepScreen):
         yield Footer()
 
     def on_mount(self):
-        self.session = SessionConfig()
-        self.__slurm_opts = {}
+        super().on_mount()
+        self.__label_selection_list()
+        self.__update_next()
+        self.call_after_refresh(self.__finish_hydration)
+
+    def __finish_hydration(self) -> None:
+        self.__hydrating = False
 
     # TODO: GPU switch does not exist anymore
     def on_select_changed(self, event):
+        if self.__hydrating:
+            return
         sel = event.control
         part_w = self.query_one("#partition-select", Select)
         qos_w = self.query_one("#qos-select", Select)
 
         if sel.id == "env-select":
             env = event.value
+            previous_environment = self.session.environment.name
             self.reset_select(part_w)
             self.reset_select(qos_w)
 
             self.session.environment = EnvironmentSelection()
             self.__slurm_opts = {}
+            if env != previous_environment:
+                self.session.libraries = []
 
-            if env is not Select.BLANK:
+            if not sel.is_blank():
                 env_json = conf_get_general(env)
                 self.session.environment.from_dict(env_json)
 
@@ -201,7 +337,7 @@ class ConfigureStep(StepScreen):
             self.reset_select(qos_w)
             self.session.environment.init_partition()
 
-            if event.value is not Select.BLANK:
+            if not sel.is_blank():
                 if not isinstance(self.session.environment.partition, PartitionSelection):
                     raise ValueError("Partition must be a PartitionSelection instance.")
                 self.session.environment.partition.from_dict(self.__slurm_opts, event.value)
@@ -218,7 +354,7 @@ class ConfigureStep(StepScreen):
                 raise ValueError("Partition must be a PartitionSelection instance.")
             self.session.environment.partition.init_qos()
 
-            if event.value is not Select.BLANK:
+            if not sel.is_blank():
                 self.session.environment.partition.qos.from_dict(self.__slurm_opts, event.value)
 
         # Data type changed
@@ -236,6 +372,8 @@ class ConfigureStep(StepScreen):
         self.__update_next()
 
     def on_input_changed(self, event):
+        if self.__hydrating:
+            return
         self.__update_test_selections()
         value = event.input.value
         if event.input.id == "nodes-input":
@@ -270,10 +408,14 @@ class ConfigureStep(StepScreen):
     # on_selection_list_changed does not get called.
     @on(SelectionList.SelectedChanged)
     def sel_list_handler(self):
+        if self.__hydrating:
+            return
         self.__update_test_selections()
         self.__update_next()
 
     def on_switch_changed(self, event):
+        if self.__hydrating:
+            return
         switch = event.control
         value = switch.value
 
@@ -410,7 +552,10 @@ class ConfigureStep(StepScreen):
             ),
             "output-select": (
                 "Output Level",
-                "Choose between full iteration logs, statistics, minimal, or summary output."
+                "Full saves every rank for every iteration; Statistics saves "
+                "cross-rank statistics per iteration; Minimal saves the slowest "
+                "rank per iteration; Summarized saves one aggregate row after "
+                "discarding the first 20% of samples."
             ),
             "compress-switch": (
                 "Compress Results",

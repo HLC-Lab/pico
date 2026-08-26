@@ -24,12 +24,22 @@ int allgather_recursivedoubling_hierarchy_local_parallel(const void *sbuf, size_
   int node_sub_group, remapped_node_rank, remaining_node, node_data_to_send, node_data_to_recv, remapped_peer;
   int local_sub_group, local_data_to_send, local_data_to_recv, remapped_local_rank, remaning_local, req_index;
   ptrdiff_t rlb, rext;
-  int task_on_node = pico_task_on_node();
-  MPI_Request send_reqs[task_on_node], recv_reqs[task_on_node];
+  int task_on_node;
   char *tmprecv = NULL, *tmpsend = NULL, *tmprecv_buff = NULL;
 
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
+
+  err = pico_task_on_node(&task_on_node);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  err = pico_get_group_config(&node_size, &node_rank, &node_offset,
+                              &local_rank, task_on_node, size, rank);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  MPI_Request send_reqs[task_on_node], recv_reqs[task_on_node];
 
   err = MPI_Type_get_extent(rdtype, &rlb, &rext);
   if (MPI_SUCCESS != err)
@@ -67,8 +77,6 @@ int allgather_recursivedoubling_hierarchy_local_parallel(const void *sbuf, size_
     }
   }
 #endif
-  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
-
   // local allgather
   local_sub_group = floor_power_of_two(task_on_node);
   remaning_local = task_on_node - local_sub_group;
@@ -313,10 +321,20 @@ int allgather_recursivedoubling_hierarchy(const void *sbuf, size_t scount, MPI_D
   int local_sub_group, local_data_to_send, local_data_to_recv, remapped_local_rank, remaning_local;
   ptrdiff_t rlb, rext;
   char *tmprecv = NULL, *tmpsend = NULL, *tmprecv_buff = NULL;
-  int task_on_node = pico_task_on_node();
+  int task_on_node;
 
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
+
+  err = pico_task_on_node(&task_on_node);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  err = pico_get_group_config(&node_size, &node_rank, &node_offset,
+                              &local_rank, task_on_node, size, rank);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
 
   err = MPI_Type_get_extent(rdtype, &rlb, &rext);
   if (MPI_SUCCESS != err)
@@ -354,8 +372,6 @@ int allgather_recursivedoubling_hierarchy(const void *sbuf, size_t scount, MPI_D
     }
   }
 #endif
-  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
-
   // local allgather
   local_sub_group = floor_power_of_two(task_on_node);
   remaning_local = task_on_node - local_sub_group;
@@ -1322,6 +1338,12 @@ int allgather_bine_block_by_block_any_even(const void *sendbuf, size_t sendcount
   int size, rank, dtsize, err = MPI_SUCCESS;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
+
+  if(size < 2) {
+    BINE_DEBUG_PRINT("ERROR! bine any-even allgather requires at least two ranks!");
+    return MPI_ERR_ARG;
+  }
+
   MPI_Type_size(recvtype, &dtsize);
   MPI_Request *requests = NULL;
   COPY_BUFF_DIFF_DT(sendbuf, sendcount, recvtype, (char*) recvbuf + sendcount * rank * dtsize, recvcount, recvtype);
@@ -1769,12 +1791,20 @@ int allgather_bine_block_by_block_hierarcic_global_local(const void *sbuf, size_
   ptrdiff_t rlb, rext;
   char *tmpsend = NULL, *tmprecv = NULL;
   MPI_Request *requests = NULL;
-  int task_on_node = pico_task_on_node();
+  int task_on_node;
 
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+  err = pico_task_on_node(&task_on_node);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  err = pico_get_group_config(&node_size, &node_rank, &node_offset,
+                              &local_rank, task_on_node, size, rank);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
 
   steps = log_2(node_size);
   if(!is_power_of_two(size) || (steps < 1 && node_size > 1)) {
@@ -1878,13 +1908,25 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
   ptrdiff_t rlb, rext;
   char *tmpsend = NULL, *tmprecv = NULL;
   void *perm_buff = NULL, *global_temp = NULL;
-  int task_on_node = pico_task_on_node();
-  MPI_Request requests[task_on_node * 2];
+  int task_on_node;
 
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
 
-  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
+  err = pico_task_on_node(&task_on_node);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  err = pico_get_group_config(&node_size, &node_rank, &node_offset,
+                              &local_rank, task_on_node, size, rank);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  MPI_Request requests[task_on_node * 2];
+  int num_reqs = 0;
+  for(int i = 0; i < task_on_node * 2; ++i) {
+    requests[i] = MPI_REQUEST_NULL;
+  }
 
   /*
    * Current implementation only handles power-of-two number of processes.
@@ -1958,7 +2000,6 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
   } 
 
   // local exchange
-  int num_reqs = 0;
   tmpsend = global_temp;
   for (int i = 0; i < task_on_node; i++)
   {
@@ -1974,7 +2015,7 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
     if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
     num_reqs++;
   }
-  err = MPI_Waitall(num_reqs, requests, MPI_STATUS_IGNORE);
+  err = MPI_Waitall(num_reqs, requests, MPI_STATUSES_IGNORE);
   if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
 
 #ifdef PICO_MPI_CUDA_AWARE
@@ -1989,34 +2030,61 @@ int allgather_bine_send_remap_hierarcic_global_local(const void *sbuf, size_t sc
   }
 #endif
 
+#ifdef PICO_MPI_CUDA_AWARE
+  BINE_CUDA_CHECK(cudaFree(perm_buff));
+#else
+  free(perm_buff);
+#endif
 
   return MPI_SUCCESS;
 
 err_hndl:
   BINE_DEBUG_PRINT("\n%s:%4d\tRank %d Error occurred %d\n\n", __FILE__, line, rank, err);
   (void)line;  // silence compiler warning
+  for(int i = 0; i < num_reqs; ++i) {
+    if(requests[i] != MPI_REQUEST_NULL) {
+      (void)MPI_Cancel(&requests[i]);
+    }
+  }
+  for(int i = 0; i < num_reqs; ++i) {
+    if(requests[i] != MPI_REQUEST_NULL) {
+      (void)MPI_Wait(&requests[i], MPI_STATUS_IGNORE);
+    }
+  }
+  if (perm_buff != NULL) {
+#ifdef PICO_MPI_CUDA_AWARE
+    BINE_CUDA_CHECK(cudaFree(perm_buff));
+#else
+    free(perm_buff);
+#endif
+  }
   return err;
 }
 
 // write NCCL implementations here
 #ifdef PICO_NCCL
-int allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t count, ncclDataType_t dtype, ncclComm_t nccl_comm, cudaStream_t stream){
-  int line = -1, rank, size, steps, err = MPI_SUCCESS, remote;
+ncclResult_t allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t count, ncclDataType_t dtype, ncclComm_t nccl_comm, cudaStream_t stream){
+  int line = -1, rank = -1, size, steps, remote;
+  ncclResult_t err = ncclSuccess;
   int *s_bitmap = NULL, *r_bitmap = NULL;
-  ptrdiff_t rlb, rext;
+  ptrdiff_t rext;
   char *tmpsend = NULL, *tmprecv = NULL;
 
-  ncclCommUserRank(nccl_comm, &rank);
-  ncclCommCount(nccl_comm, &size);
+  err = ncclCommUserRank(nccl_comm, &rank);
+  if(ncclSuccess != err) { line = __LINE__; goto err_hndl; }
+  err = ncclCommCount(nccl_comm, &size);
+  if(ncclSuccess != err) { line = __LINE__; goto err_hndl; }
 
   steps = log_2(size);
   if(!is_power_of_two(size) || steps < 1) {
     BINE_DEBUG_PRINT("ERROR! bine static allgather works only with po2 ranks!");
-    return MPI_ERR_ARG;
+    return ncclInvalidArgument;
   }
 
   rext = pico_get_nccl_type_size(dtype);
-  if(MPI_SUCCESS != err) { line = __LINE__; goto err_hndl; }
+  if(rext == 0) {
+    return ncclInvalidArgument;
+  }
 
   if(MPI_IN_PLACE != sbuf) {
     tmpsend = (char*) sbuf;
@@ -2028,13 +2096,12 @@ int allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t coun
   r_bitmap = (int *) malloc(size * sizeof(int));
   if(s_bitmap == NULL || r_bitmap == NULL){
     line = __LINE__;
-    err = MPI_ERR_NO_MEM;
+    err = ncclSystemError;
     goto err_hndl;
   }
 
 
   for(int step = steps - 1; step >= 0; step--) {
-    int num_reqs = 0;
     remote = pi(rank, step, size);
 
     memset(s_bitmap, 0, size * sizeof(int));
@@ -2060,7 +2127,7 @@ int allgather_bine_block_by_block_nccl(const void *sbuf, void* rbuf, size_t coun
   free(s_bitmap);
   free(r_bitmap);
 
-  return MPI_SUCCESS;
+  return ncclSuccess;
 
 err_hndl:
   BINE_DEBUG_PRINT("\n%s:%4d\tError occurred %d, rank %2d\n\n", __FILE__, line, err, rank);

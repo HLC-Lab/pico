@@ -12,25 +12,67 @@ from typing import Optional, Tuple
 
 
 class LibRow(Horizontal):
-    def __init__(self, index: int, session, libs, used_libs):
+    def __init__(
+        self,
+        index: int,
+        session,
+        libs,
+        used_libs,
+        selection: Optional[LibrarySelection] = None,
+    ):
         super().__init__()
         self.index = index
         self.session = session
         self.available_libs = libs
         self.used_libs = used_libs
+        self.selection = selection
 
     def compose(self) -> ComposeResult:
-        opts = [(lib, lib) for lib in self.available_libs if lib not in self.used_libs]
+        selected_name = self.selection.name if self.selection else None
+        opts = [
+            (lib, lib)
+            for lib in self.available_libs
+            if lib not in self.used_libs or lib == selected_name
+        ]
+        select_args = {"value": selected_name} if selected_name else {}
+        cpu_tasks = (
+            ",".join(map(str, self.selection.tests.get(TestType.CPU, [])))
+            if self.selection
+            else ""
+        )
+        gpu_tasks = (
+            ",".join(map(str, self.selection.tests.get(TestType.GPU, [])))
+            if self.selection
+            else ""
+        )
+        cpu_disabled = not self.selection or "nccl" in self.selection.name.lower()
+        gpu_disabled = not self.selection or not self.selection.gpu_support.gpu
         yield Horizontal(
-            Select(opts, prompt="Library", id=f"lib-sel-{self.index}", classes="field"),
+            Select(
+                opts,
+                prompt="Library",
+                id=f"lib-sel-{self.index}",
+                classes="field",
+                **select_args,
+            ),
             Horizontal(
                 Vertical(
-                    Input(id=f"cpu-tasks-{self.index}", disabled=True, placeholder="CPU tasks"),
+                    Input(
+                        id=f"cpu-tasks-{self.index}",
+                        value=cpu_tasks,
+                        disabled=cpu_disabled,
+                        placeholder="CPU tasks",
+                    ),
                     Label("", id=f"cpu-error-{self.index}", classes="error"),
                     classes="field"
                 ),
                 Vertical(
-                    Input(id=f"gpu-tasks-{self.index}", disabled=True, placeholder="GPU tasks"),
+                    Input(
+                        id=f"gpu-tasks-{self.index}",
+                        value=gpu_tasks,
+                        disabled=gpu_disabled,
+                        placeholder="GPU tasks",
+                    ),
                     Label("", id=f"gpu-error-{self.index}", classes="error"),
                     classes="field"
                 ),
@@ -38,9 +80,19 @@ class LibRow(Horizontal):
             ),
             #WARN: Visualization problems of buttons when sceen is small
             Horizontal(
-                Switch(id=f"pico-backend-{self.index}", disabled=True, classes="switch-compact"),
+                Switch(
+                    id=f"pico-backend-{self.index}",
+                    value=self.selection.pico_backend if self.selection else False,
+                    disabled=not self.selection,
+                    classes="switch-compact",
+                ),
                 Button("–", id=f"remove-{self.index}", disabled=(self.index == 1), classes="btn-grow"),
-                Button("+", id=f"add-{self.index}", disabled=True, classes="btn-grow"),
+                Button(
+                    "+",
+                    id=f"add-{self.index}",
+                    disabled=not self.selection,
+                    classes="btn-grow",
+                ),
                 classes="row-task-actions",
             ),
             classes="row-task"
@@ -73,7 +125,7 @@ class LibrariesStep(StepScreen):
         yield self.lib_list_container
 
         yield Static("Select collectives to use in this test", classes='field-label')
-        libs = [
+        collectives = [
             "Allgather",
             "Allreduce",
             "Alltoall",
@@ -84,9 +136,18 @@ class LibrariesStep(StepScreen):
             "ReduceScatter",
             "Scatter"
         ]
+        selected_collectives = {
+            collective
+            for library in self.session.libraries
+            for collective in library.algorithms
+        }
         self.checkboxes = []
-        for idx, lib in enumerate(libs):
-            cb = Checkbox(lib, id=f"checkbox-{idx}")
+        for idx, collective in enumerate(collectives):
+            cb = Checkbox(
+                collective,
+                id=f"checkbox-{idx}",
+                value=CollectiveType.from_str(collective) in selected_collectives,
+            )
             self.checkboxes.append(cb)
 
         half = (len(self.checkboxes) + 1) // 2
@@ -104,12 +165,18 @@ class LibrariesStep(StepScreen):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.session.libraries = []
+        super().on_mount()
         self.__lib_data = lib_get_libraries(self.session.environment.name)
         self.__available_libs = list(self.__lib_data.get('LIBRARY', {}).keys())
-        self.__already_used = []
+        saved_libraries = list(self.session.libraries)
+        self.__already_used = [library.name for library in saved_libraries]
+        self.__lib_counter = 0
         self.__next_lib_id = 0
-        self.__add_lib()
+        if saved_libraries:
+            for library in saved_libraries:
+                self.__add_lib(library)
+        else:
+            self.__add_lib()
 
     def on_select_changed(self, event) -> None:
         sel = event.control
@@ -121,9 +188,8 @@ class LibrariesStep(StepScreen):
             pico_switch = self.query_one(f"#pico-backend-{ind}", Switch)
             selected_lib = sel.value
 
-            self.__enable_inputs(cpu_input, gpu_input, selected_lib)
-
-            disabled = (selected_lib is Select.BLANK)
+            disabled = sel.is_blank()
+            self.__enable_inputs(cpu_input, gpu_input, selected_lib, disabled)
             add_button.disabled = disabled
             pico_switch.disabled = disabled
             if disabled:
@@ -163,45 +229,13 @@ class LibrariesStep(StepScreen):
     def on_button_pressed(self, event) -> None:
         button = event.control
         if button.id == "next":
-            collectives = {
-                CollectiveType.from_str(str(cb.label)) : [] 
-                for cb in self.checkboxes if cb.value
-            }
-            if not collectives:
-                raise ValueError("At least one collective must be selected.")
-
-
-
-            for lib_row in self.lib_list_container.query(LibRow):
-                sel = lib_row.query_one(Select)
-                pico_switch = lib_row.query_one(Switch)
-                inputs = lib_row.query(Input)
-                cpu_input, gpu_input = inputs
-                if not sel.value or sel.value is Select.BLANK:
-                    continue
-
-                lib_name = str(sel.value)
-                data = self.__lib_data["LIBRARY"][lib_name]
-                library = LibrarySelection.from_dict(data, lib_name)
-                library.algorithms = collectives
-                library.pico_backend = pico_switch.value
-                tests = {}
-                if cpu_input.value:
-                    tests[TestType.CPU] = [int(x.strip()) for x in cpu_input.value.split(',')]
-                if gpu_input.value:
-                    tests[TestType.GPU] = [int(x.strip()) for x in gpu_input.value.split(',')]
-                library.tests = tests
-                self.session.libraries.append(library)
-                if not library.validate():
-                    raise ValueError(f"Library {lib_name} is not valid for the current environment.")
-
-
+            self.__store_selections(require_valid=True)
             from tui.steps.algorithms import AlgorithmsStep
             self.next(AlgorithmsStep)
 
         elif button.id == "prev":
-            from tui.steps.configure import ConfigureStep
-            self.prev(ConfigureStep)
+            self.__store_selections(require_valid=False)
+            self.prev()
 
         elif button.id.startswith("add-"):
             self.__add_lib()
@@ -211,6 +245,68 @@ class LibrariesStep(StepScreen):
             self.__remove_lib(index)
 
         self.__update_next_button()
+
+    def __store_selections(self, *, require_valid: bool) -> None:
+        collective_types = [
+            CollectiveType.from_str(str(checkbox.label))
+            for checkbox in self.checkboxes
+            if checkbox.value
+        ]
+        if require_valid and not collective_types:
+            raise ValueError("At least one collective must be selected.")
+
+        previous_libraries = {
+            library.name: library for library in self.session.libraries
+        }
+        selected_libraries = []
+        for library_row in self.lib_list_container.query(LibRow):
+            select = library_row.query_one(Select)
+            if select.is_blank():
+                continue
+
+            library_name = str(select.value)
+            library_data = self.__lib_data["LIBRARY"][library_name]
+            library = LibrarySelection.from_dict(library_data, library_name)
+            library.pico_backend = library_row.query_one(Switch).value
+
+            previous = previous_libraries.get(library_name)
+            library.algorithms = {
+                collective: list(
+                    previous.algorithms.get(collective, [])
+                    if previous else []
+                )
+                for collective in collective_types
+            }
+
+            cpu_input, gpu_input = library_row.query(Input)
+            tests = {}
+            for test_type, input_widget in (
+                (TestType.CPU, cpu_input),
+                (TestType.GPU, gpu_input),
+            ):
+                if not input_widget.value:
+                    continue
+                try:
+                    tests[test_type] = [
+                        int(value.strip())
+                        for value in input_widget.value.split(",")
+                    ]
+                except ValueError:
+                    if require_valid:
+                        raise ValueError(
+                            f"Library {library_name} contains an invalid task list."
+                        )
+                    if previous and previous.tests.get(test_type):
+                        tests[test_type] = list(previous.tests[test_type])
+            library.tests = tests
+
+            if require_valid and not library.validate():
+                raise ValueError(
+                    f"Library {library_name} is not valid for the current environment."
+                )
+            selected_libraries.append(library)
+
+        self.session.libraries = selected_libraries
 
 
     def get_help_desc(self) -> Tuple[str, str]:
@@ -242,7 +338,7 @@ class LibrariesStep(StepScreen):
         if fid.startswith("lib-sel-"):
             idx = fid.split("-")[-1]
             select = self.query_one(f"#lib-sel-{idx}", Select)
-            current = select.value if (select and select.value is not Select.BLANK) else None
+            current = select.value if select and not select.is_blank() else None
             lib_repo = getattr(self, "_LibrariesStep__lib_data", {}).get("LIBRARY", {})
             if current:
                 meta = lib_repo.get(current, {})
@@ -316,15 +412,24 @@ class LibrariesStep(StepScreen):
 
         return default
 
-    def __add_lib(self) -> None:
-        self.__update_already_used()
+    def __add_lib(self, selection: Optional[LibrarySelection] = None) -> None:
+        if selection is None:
+            self.__update_already_used()
         self.__lib_counter += 1
         self.__next_lib_id += 1
-        self.lib_list_container.mount(LibRow(self.__next_lib_id, self.session, self.__available_libs, self.__already_used))
+        self.lib_list_container.mount(
+            LibRow(
+                self.__next_lib_id,
+                self.session,
+                self.__available_libs,
+                self.__already_used,
+                selection,
+            )
+        )
 
     def __remove_lib(self, index: int):
         sel = self.query_one(f"#lib-sel-{index}", Select)
-        if sel.value and sel.value != Select.BLANK:
+        if not sel.is_blank():
             self.__already_used.remove(sel.value)
         for child in list(self.lib_list_container.children):
             if isinstance(child, LibRow) and child.index == index:
@@ -337,7 +442,7 @@ class LibrariesStep(StepScreen):
         already_used = []
         for lib_row in self.lib_list_container.query(LibRow):
             sel = self.query_one(f"#lib-sel-{lib_row.index}", Select)
-            if sel.value and sel.value != Select.BLANK:
+            if not sel.is_blank():
                 already_used.append(sel.value)
 
         self.__already_used = already_used
@@ -354,7 +459,7 @@ class LibrariesStep(StepScreen):
 
         for lib_row in self.lib_list_container.query(LibRow):
             sel = lib_row.query_one(Select)
-            if not sel.value or sel.value is Select.BLANK:
+            if sel.is_blank():
                 continue
 
             cpu_input, gpu_input = lib_row.query(Input)
@@ -385,8 +490,14 @@ class LibrariesStep(StepScreen):
         next_button.disabled = False
 
 
-    def __enable_inputs(self, cpu_input: Input, gpu_input: Input, selected_lib) -> None:
-        if selected_lib == Select.BLANK:
+    def __enable_inputs(
+        self,
+        cpu_input: Input,
+        gpu_input: Input,
+        selected_lib,
+        is_blank: bool,
+    ) -> None:
+        if is_blank:
             self.reset_input(cpu_input)
             self.reset_input(gpu_input)
             return

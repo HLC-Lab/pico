@@ -193,7 +193,7 @@
       "external"
     ]
   },
-  "bine_block_by_block_over_any_even": {
+  "bine_block_by_block_any_even_over": {
     "desc": "libpico external bine block by block algorithm. Works for any number of even processes",
     "version": "1.0.0",
     "selection": "pico",

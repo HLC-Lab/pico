@@ -102,28 +102,52 @@ static int largest_negabinary[BINE_MAX_STEPS] = {0, 1, 1, 5, 5, 21, 21, 85, 85,
   }                                                 \
 } while(0)
 
-static inline int pico_task_on_node() {
-  int current_tasks_per_node;
+static inline int pico_task_on_node(int *tasks_per_node) {
+  char *end = NULL;
+  char *tasks_per_node_env;
+  long parsed_tasks;
 
-  char* tasks_per_node_env = getenv("CURRENT_TASKS_PER_NODE");
-  if (tasks_per_node_env == NULL) {
+  if(tasks_per_node == NULL) {
+    return MPI_ERR_ARG;
+  }
+
+  tasks_per_node_env = getenv("CURRENT_TASKS_PER_NODE");
+  if(tasks_per_node_env == NULL) {
     fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE environment variable is not set.\n");
     return MPI_ERR_COMM;
   }
-  current_tasks_per_node = atoi(tasks_per_node_env);
-  if (current_tasks_per_node <= 0) {
+
+  errno = 0;
+  parsed_tasks = strtol(tasks_per_node_env, &end, 10);
+  if(errno == ERANGE || end == tasks_per_node_env || *end != '\0' ||
+     parsed_tasks <= 0 || parsed_tasks > INT_MAX) {
     fprintf(stderr, "Error: CURRENT_TASKS_PER_NODE must be a positive integer.\n");
     return MPI_ERR_COMM;
   }
 
-  return current_tasks_per_node;
+  *tasks_per_node = (int)parsed_tasks;
+  return MPI_SUCCESS;
 }
 
-static inline void pico_get_group_config(int *node_size, int *node_rank, int *node_offset, int *local_rank, int task_on_node, int size, int rank) {
+static inline int pico_get_group_config(int *node_size, int *node_rank,
+                                        int *node_offset, int *local_rank,
+                                        int task_on_node, int size, int rank) {
+  if(node_size == NULL || node_rank == NULL || node_offset == NULL ||
+     local_rank == NULL) {
+    return MPI_ERR_ARG;
+  }
+  if(task_on_node <= 0 || size <= 0 || task_on_node > size ||
+     size % task_on_node != 0 || rank < 0 || rank >= size) {
+    fprintf(stderr,
+            "Error: CURRENT_TASKS_PER_NODE must evenly divide the communicator size.\n");
+    return MPI_ERR_DIMS;
+  }
+
   *node_rank = rank / task_on_node;
   *node_size = size / task_on_node;
   *node_offset = *node_rank * task_on_node;
   *local_rank = rank % task_on_node;
+  return MPI_SUCCESS;
 }
 
 #define BINE_NCCL_CHECK(cmd)                              \
@@ -745,9 +769,21 @@ static inline uint32_t reverse(uint32_t x){
 }
 
 static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, uint32_t rank){
-    binary_to_negabinary(rank);
+    if(BINE_UNLIKELY(num_ranks == 0 || num_ranks > INT_MAX ||
+                     rank >= num_ranks)) {
+        return UINT32_MAX;
+    }
+
+    if(num_ranks == 1) {
+        return 0;
+    }
+
     uint32_t nba = UINT32_MAX, nbb = UINT32_MAX;
     size_t num_bits = log_2(num_ranks);
+    if(BINE_UNLIKELY(num_bits >= BINE_MAX_STEPS || num_bits > 32)) {
+        return UINT32_MAX;
+    }
+
     if(rank % 2){
         if(in_range(rank, num_bits)){
             nba = binary_to_negabinary(rank);
@@ -771,7 +807,7 @@ static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, ui
     }else if(nba != UINT32_MAX && nbb == UINT32_MAX){
         return nba;
     }else{ // Check MSB
-        if(nba & (80000000 >> (32 - num_bits))){
+        if(nba & (UINT32_C(0x80000000) >> (32 - num_bits))){
             return nba;
         }else{
             return nbb;
@@ -781,6 +817,14 @@ static inline uint32_t get_rank_negabinary_representation(uint32_t num_ranks, ui
 
 static inline uint32_t remap_rank(uint32_t num_ranks, uint32_t rank){
     uint32_t remap_rank = get_rank_negabinary_representation(num_ranks, rank);    
+    if(BINE_UNLIKELY(remap_rank == UINT32_MAX)) {
+        return UINT32_MAX;
+    }
+
+    if(num_ranks == 1) {
+        return 0;
+    }
+
     remap_rank = remap_rank ^ (remap_rank >> 1);
     size_t num_bits = log_2(num_ranks);
     remap_rank = reverse(remap_rank) >> (32 - num_bits);
@@ -788,6 +832,15 @@ static inline uint32_t remap_rank(uint32_t num_ranks, uint32_t rank){
 }
 
 static inline uint32_t inverse_rank(uint32_t num_ranks, uint32_t rank){
+    if(BINE_UNLIKELY(num_ranks == 0 || num_ranks > INT_MAX ||
+                     rank >= num_ranks)) {
+        return UINT32_MAX;
+    }
+
+    if(num_ranks == 1) {
+        return 0;
+    }
+
     size_t num_bits = log_2(num_ranks);
     return reverse(rank) >> (32 - num_bits);
 }

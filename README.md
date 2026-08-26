@@ -1,4 +1,11 @@
-# [PICO](https://github.com/HLC-Lab/pico) — Performance Insights for Collective Operations
+<p align="center">
+  <img
+    src="assets/pico-banner-dark.svg"
+    alt="PICO — Performance Insights for Collective Operations"
+    width="100%"
+  />
+</p>
+
 
 [![GitHub stars](https://img.shields.io/github/stars/HLC-Lab/pico?style=social)](https://github.com/HLC-Lab/pico/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -176,7 +183,7 @@ scripts/submit_wrapper.sh \
 5. Outputs are written under `results/<location>/<timestamp>/`; in non-debug runs the directory can be tarred and optionally deleted.
 
 ## 📈 Results and Analysis
-- CSV files follow the `<count>_<algorithm>_<datatype>.csv` naming scheme (or `<count>_<algorithm>_<segsize>_<datatype>.csv` for segmented collectives). Instrumented builds append `_instrument` before the extension. Rows contain per-iteration timing or summary statistics depending on `--output-level` (supported values: `all`, `minimal`).
+- CSV files follow the `<count>_<algorithm>_<datatype>.csv` naming scheme (or `<count>_<algorithm>_<segsize>_<datatype>.csv` for segmented collectives). Instrumented builds append `_instrument` before the extension. `--output-level` supports `full` (`all` is an alias), `statistics`, `minimal`, and `summarized`: respectively all rank samples, per-iteration cross-rank statistics, the slowest rank per iteration, or one aggregate row after discarding the first 20% of samples. This sample policy is platform-independent; historical Fugaku results are no longer given a special trailing-sample exception.
 - Allocation maps (`alloc_<tasks>.csv`) record rank-to-node placement. GPU runs append `_GPU`.
 - SLURM logs reside alongside the CSVs (`slurm_<jobid>.out/.err`) unless in debug mode.
 - Metadata is appended to `results/<location>_metadata.csv`, enabling cross-run filtering by timestamp, collective, library version, GPU involvement, and notes.

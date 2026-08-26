@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include "pico_core_utils.h"
 #include "pico_mpi_nccl_mapper.h"
@@ -81,6 +82,23 @@ int main(int argc, char *argv[]) {
     goto err_hndl;
   }
 
+  bool requires_equal_partition =
+    test_routine.collective == ALLGATHER ||
+    test_routine.collective == ALLTOALL ||
+    test_routine.collective == GATHER ||
+    test_routine.collective == REDUCE_SCATTER ||
+    test_routine.collective == SCATTER;
+  if(requires_equal_partition && count % (size_t)comm_sz != 0) {
+    if(rank == 0) {
+      fprintf(stderr,
+              "Error: count (%zu) must be divisible by the communicator size "
+              "(%d) for this collective.\n",
+              count, comm_sz);
+    }
+    line = __LINE__;
+    goto err_hndl;
+  }
+
 #ifndef DEBUG
   if (get_data_saving_options(&test_routine, count, algorithm, type_string) == -1) {
     line = __LINE__;
@@ -103,11 +121,21 @@ int main(int argc, char *argv[]) {
 
   // Allocate memory for buffers independent of collective type
   times = (double *)calloc(iter, sizeof(double));
+#ifndef DEBUG
   if(rank == 0) {
-    all_times = (double *)malloc(comm_sz * iter * sizeof(double));
     highest = (double *)malloc(iter * sizeof(double));
+    if(test_routine.output_level == ALL || test_routine.output_level == STATISTICS) {
+      all_times = (double *)malloc(comm_sz * iter * sizeof(double));
+    }
   }
-  if(times == NULL || (rank == 0 && (all_times == NULL || highest == NULL))){
+  if(times == NULL ||
+      (rank == 0 &&
+       (highest == NULL ||
+        ((test_routine.output_level == ALL || test_routine.output_level == STATISTICS) &&
+         all_times == NULL)))){
+#else
+  if(times == NULL) {
+#endif
     fprintf(stderr, "Error: Memory allocation failed. Aborting...");
     line = __LINE__;
     goto err_hndl;
@@ -198,27 +226,24 @@ int main(int argc, char *argv[]) {
     line = __LINE__;
     goto err_hndl;
   }
-
-  void *tmpsbuf = sbuf;
-  void *tmprbuf = rbuf;
-  sbuf = d_sbuf;
-  rbuf = d_rbuf;
 #endif // PICO_MPI_CUDA_AWARE || PICO_NCCL
 
   // Perform the test based on the collective type and algorithm
   // The test is performed iter times
 #ifndef PICO_NCCL
-  if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, comm, iter, times) != 0){
+#ifdef PICO_MPI_CUDA_AWARE
+  if(test_loop(test_routine, d_sbuf, d_rbuf, count, loop_dtype, comm, iter, times) != 0){
 #else
-  if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, nccl_comm, stream, iter, times) != 0){
+  if(test_loop(test_routine, sbuf, rbuf, count, loop_dtype, comm, iter, times) != 0){
+#endif // PICO_MPI_CUDA_AWARE
+#else
+  if(test_loop(test_routine, d_sbuf, d_rbuf, count, loop_dtype, nccl_comm, stream, iter, times) != 0){
 #endif // PICO_NCCL
     line = __LINE__;
     goto err_hndl;
   }
 
 #if defined PICO_MPI_CUDA_AWARE || defined PICO_NCCL
-  rbuf = tmprbuf;
-  sbuf = tmpsbuf;
   if (coll_memcpy_device_to_host(&d_rbuf, &rbuf, count, type_size, test_routine.collective) != 0){
     line = __LINE__;
     goto err_hndl;
@@ -234,9 +259,12 @@ int main(int argc, char *argv[]) {
 #ifndef DEBUG
 
 #if !(defined PICO_INSTRUMENT && !defined PICO_NCCL)
-  // Gather all process times to rank 0 and find the highest execution time of each iteration
-  PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
+  // Full and per-iteration statistics output need every rank's samples.
+  if(test_routine.output_level == ALL || test_routine.output_level == STATISTICS) {
+    PMPI_Gather(times, iter, MPI_DOUBLE, all_times, iter, MPI_DOUBLE, 0, comm);
+  }
 
+  // Every compact output mode is based on the slowest rank for each iteration.
   if(test_routine.collective != REDUCE) {
     PMPI_Reduce(times, highest, iter, MPI_DOUBLE, MPI_MAX, 0, comm);
   } else {

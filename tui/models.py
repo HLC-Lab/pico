@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Union, Optional, Dict, List, Any, cast
+from typing import Union, Optional, Dict, Hashable, Iterable, List, Any, Tuple, cast
 from datetime import timedelta
 import re
 
@@ -157,6 +157,8 @@ class EnvironmentSelection:
     desc: str = ''
     name: str = ''
     slurm: bool = False
+    launcher: Optional[str] = None
+    launcher_flags: Optional[str] = None
     python_module: Optional[str] = None
     other_var: Optional[Dict[str, Any]] = None
     partition: Optional[PartitionSelection] = None
@@ -171,6 +173,8 @@ class EnvironmentSelection:
         self.desc = env_json.get('desc', '')
         self.name = env_json.get('name', '')
         self.slurm = env_json.get('slurm', False)
+        self.launcher = env_json.get('launcher')
+        self.launcher_flags = env_json.get('launcher_flags')
         self.python_module = env_json.get('python_module')
         self.other_var = env_json.get('other_var')
 
@@ -291,13 +295,13 @@ class OutputLevel(Enum):
     @classmethod
     def from_str(cls, value: str):
         value = value.lower()
-        if value == 'full':
+        if value in ('full', 'all'):
             return cls.FULL
         elif value == 'statistics':
             return cls.STATISTICS
         elif value == 'minimal':
             return cls.MINIMAL
-        elif value == 'summary':
+        elif value in ('summary', 'summarized'):
             return cls.SUMMARIZED
         else:
             raise ValueError(f"Unknown output level: {value}")
@@ -649,6 +653,73 @@ class AlgorithmSelection:
             tags=tags
         )
 
+
+def get_algorithm_constraint_issue(
+    metadata: Dict[str, Any],
+    communicator_sizes: Iterable[int],
+    root: int = 0,
+) -> Optional[str]:
+    sizes = sorted(set(communicator_sizes))
+
+    for constraint in metadata.get("constraints") or []:
+        key = constraint.get("key")
+        for condition in constraint.get("conditions") or []:
+            operator = condition.get("operator")
+            expected = condition.get("value")
+
+            if key == "comm_sz":
+                invalid_sizes: List[int] = []
+                if operator == "==" and isinstance(expected, int):
+                    invalid_sizes = [size for size in sizes if size != expected]
+                elif operator == ">=" and isinstance(expected, int):
+                    invalid_sizes = [size for size in sizes if size < expected]
+                elif operator == "<=" and isinstance(expected, int):
+                    invalid_sizes = [size for size in sizes if size > expected]
+                elif operator == "is_even" and expected is True:
+                    invalid_sizes = [size for size in sizes if size % 2 != 0]
+                elif operator == "is_power_of_two" and expected is True:
+                    invalid_sizes = [
+                        size for size in sizes
+                        if size <= 0 or size & (size - 1)
+                    ]
+
+                if invalid_sizes:
+                    values = ", ".join(map(str, invalid_sizes))
+                    if operator == "==":
+                        return f"requires {expected} ranks; configured {values}"
+                    if operator == ">=":
+                        return f"requires at least {expected} ranks; configured {values}"
+                    if operator == "<=":
+                        return f"requires at most {expected} ranks; configured {values}"
+                    if operator == "is_even":
+                        return f"requires an even rank count; configured {values}"
+                    if operator == "is_power_of_two":
+                        return f"requires power-of-two ranks; configured {values}"
+
+            if key == "root" and operator == "==" and root != expected:
+                return f"requires root {expected}; benchmark root is {root}"
+
+    return None
+
+
+def has_algorithm_coverage(
+    required_libraries: Iterable[Hashable],
+    required_collectives: Iterable[Hashable],
+    selected_pairs: Iterable[Tuple[Hashable, Hashable]],
+) -> bool:
+    libraries = set(required_libraries)
+    collectives = set(required_collectives)
+    pairs = set(selected_pairs)
+    selected_libraries = {library for library, _ in pairs}
+    selected_collectives = {collective for _, collective in pairs}
+    return (
+        bool(libraries)
+        and bool(collectives)
+        and libraries <= selected_libraries
+        and collectives <= selected_collectives
+    )
+
+
 class TestType(Enum):
     CPU = 'cpu'
     GPU = 'gpu'
@@ -670,6 +741,7 @@ class TestType(Enum):
 class LibrarySelection:
     name: str = ''
     desc: str = ''
+    metadata: Dict[str, Any] = field(default_factory=dict)
     tests: Dict[TestType, List[int]] = field(default_factory=dict)
     standard: StdType = StdType.UNKNOWN
     lib_type: LibType = LibType.UNKNOWN
@@ -696,6 +768,9 @@ class LibrarySelection:
         desc = lib_json.get('desc', '')
         version = lib_json.get('version', '')
         compiler = lib_json.get('compiler', '')
+        metadata = lib_json.get('metadata', {})
+        if not isinstance(metadata, dict):
+            raise ValueError(f"Library {name} metadata must be a dictionary")
         standard = StdType.from_str(lib_json.get('standard', ''))
         library = LibType.from_str(lib_json.get('lib_type', ''))
         gpu_support = GPUSupport.from_dict(lib_json.get('gpu', {}))
@@ -706,6 +781,7 @@ class LibrarySelection:
         return cls(
             name=name,
             desc=desc,
+            metadata=metadata.copy(),
             standard=standard,
             lib_type=library,
             version=version,
@@ -741,16 +817,8 @@ class LibrarySelection:
                 return False
 
         if validate_algo:
-            to_delete = []
-            for coll, algos in self.algorithms.items():
-                if not algos:
-                    to_delete.append(coll)
-                    continue
-            for coll in to_delete:
-                del self.algorithms[coll]
-                if not self.algorithms:
-                    #if r: raise  ValueError("8")
-                    return False
+            if not self.algorithms or not any(self.algorithms.values()):
+                return False
 
             for coll, algos in self.algorithms.items():
                 for algo in algos:
@@ -827,4 +895,3 @@ class SessionConfig:
         return f"Environment: {env}\n\n" \
                f"Test Configuration:\n{test}\n\n" \
                f"Libraries:\n{libs}"
-

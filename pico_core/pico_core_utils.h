@@ -18,6 +18,8 @@
 #include "pico_mpi_nccl_mapper.h"
 #include "libpico.h"
 
+#define PICO_ROOT_RANK 0
+
 #if defined(__GNUC__) || defined(__clang__)
   #define PICO_CORE_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
@@ -308,11 +310,11 @@ DEFINE_TEST_LOOP(allreduce, ALLREDUCE_MPI_ARGS, allreduce(sbuf, rbuf, count, dty
 DEFINE_TEST_LOOP(allgather, ALLGATHER_MPI_ARGS, allgather(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
 DEFINE_TEST_LOOP(alltoall, ALLTOALL_MPI_ARGS, alltoall(sbuf, scount, sdtype, rbuf, rcount, rdtype, comm))
 DEFINE_TEST_LOOP(alltoallv, ALLTOALLV_MPI_ARGS, alltoallv(sbuf, scounts, sdispls, sdtype, rbuf, rcounts, rdispls, rdtype, comm))
-DEFINE_TEST_LOOP(bcast, BCAST_MPI_ARGS, bcast(buf, count, dtype, 0, comm))
-DEFINE_TEST_LOOP(gather, GATHER_MPI_ARGS, gather(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
-DEFINE_TEST_LOOP(reduce, REDUCE_MPI_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm))
+DEFINE_TEST_LOOP(bcast, BCAST_MPI_ARGS, bcast(buf, count, dtype, PICO_ROOT_RANK, comm))
+DEFINE_TEST_LOOP(gather, GATHER_MPI_ARGS, gather(sbuf, scount, sdtype, rbuf, rcount, rdtype, PICO_ROOT_RANK, comm))
+DEFINE_TEST_LOOP(reduce, REDUCE_MPI_ARGS, reduce(sbuf, rbuf, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm))
 DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_MPI_ARGS, reduce_scatter(sbuf, rbuf, rcounts, dtype, MPI_SUM, comm))
-DEFINE_TEST_LOOP(scatter, SCATTER_MPI_ARGS, scatter(sbuf, scount, sdtype, rbuf, rcount, rdtype, 0, comm))
+DEFINE_TEST_LOOP(scatter, SCATTER_MPI_ARGS, scatter(sbuf, scount, sdtype, rbuf, rcount, rdtype, PICO_ROOT_RANK, comm))
 
 #else
 
@@ -370,11 +372,11 @@ DEFINE_TEST_LOOP(allreduce, ALLREDUCE_NCCL_ARGS, allreduce(sbuf, rbuf, count, dt
 DEFINE_TEST_LOOP(allgather, ALLGATHER_NCCL_ARGS, allgather(sbuf, rbuf, count, dtype, nccl_comm, stream))
 DEFINE_TEST_LOOP(alltoall, ALLTOALL_NCCL_ARGS, alltoall(sbuf, rbuf, count, dtype, nccl_comm, stream))
 DEFINE_TEST_LOOP(alltoallv, ALLTOALLV_NCCL_ARGS, alltoallv(sbuf, scounts, sdispls, rbuf, rcounts, rdispls, dtype, nccl_comm, stream))
-DEFINE_TEST_LOOP(bcast, BCAST_NCCL_ARGS, bcast(buf, count, dtype, 0, nccl_comm, stream))
-DEFINE_TEST_LOOP(gather, GATHER_NCCL_ARGS, gather(sbuf, rbuf, count, dtype, 0, nccl_comm, stream))
-DEFINE_TEST_LOOP(reduce, REDUCE_NCCL_ARGS, reduce(sbuf, rbuf, count, dtype, ncclSum, 0, nccl_comm, stream))
+DEFINE_TEST_LOOP(bcast, BCAST_NCCL_ARGS, bcast(buf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream))
+DEFINE_TEST_LOOP(gather, GATHER_NCCL_ARGS, gather(sbuf, rbuf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream))
+DEFINE_TEST_LOOP(reduce, REDUCE_NCCL_ARGS, reduce(sbuf, rbuf, count, dtype, ncclSum, PICO_ROOT_RANK, nccl_comm, stream))
 DEFINE_TEST_LOOP(reduce_scatter, REDUCE_SCATTER_NCCL_ARGS, reduce_scatter(sbuf, rbuf, rcount, dtype, ncclSum, nccl_comm, stream))
-DEFINE_TEST_LOOP(scatter, SCATTER_NCCL_ARGS, scatter(sbuf, rbuf, count, dtype, 0, nccl_comm, stream))
+DEFINE_TEST_LOOP(scatter, SCATTER_NCCL_ARGS, scatter(sbuf, rbuf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream))
 
 #endif
 
@@ -538,9 +540,10 @@ int write_instrument_output_to_file(test_routine_t test_routine, double* times, 
  * @brief Writes the timing results to a specified output file in CSV format.
  *
  * The ammount of data to save is determined by the `output_level` parameter.
- * If `output_level` is set to "all", the timing results for all ranks across all
- * iterations will be saved. If `output_level` is set to "summarized", only the
- * highest timing value for each iteration will be saved.
+ * "full" (or its "all" alias) saves every rank for every iteration,
+ * "statistics" saves cross-rank statistics for every iteration, "minimal"
+ * saves the highest rank time for every iteration, and "summarized" saves one
+ * aggregate statistics row after discarding the first 20 percent of samples.
  *
  * @param test_routine The test routine structure containing the output level and file path
  * @param highest An array containing the highest timing values for each iteration.

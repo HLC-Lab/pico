@@ -2,7 +2,7 @@
 
 .PHONY: all clean libpico pico_core
 
-CFLAGS_COMMON = -O3 -I$(PICO_DIR)/include -MMD -MP
+CFLAGS_COMMON = -I$(PICO_DIR)/include -MMD -MP
 
 ifneq ($(filter nvcc,$(notdir $(PICOCC))),)
 	CFLAGS_COMMON += -Xcompiler -Wall
@@ -11,7 +11,9 @@ else
 endif
 
 ifeq ($(DEBUG),1)
-	CFLAGS_COMMON += -DDEBUG -g
+	CFLAGS_COMMON += -O0 -DDEBUG -g
+else
+	CFLAGS_COMMON += -O3
 endif
 
 ifeq ($(PICO_INSTRUMENT),1)
@@ -37,4 +39,5 @@ pico_core: libpico
 
 clean:
 	@echo -e "${RED}[CLEAN] Cleaning all builds...$(NC)"
-	@rm -rf bin/ obj/ lib/
+	$(MAKE) -C pico_core clean
+	$(MAKE) -C libpico clean

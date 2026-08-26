@@ -10,6 +10,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <math.h>
+#include <float.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 
@@ -472,15 +473,15 @@ int get_data_saving_options(test_routine_t *test_routine, size_t count,
     return -1;
   }
 
-  if(strcmp(output_level, "all") == 0) {
+  if(strcmp(output_level, "all") == 0 || strcmp(output_level, "full") == 0) {
     test_routine->output_level = ALL;
-  // TODO:
-  // } else if(strcmp(output_level, "statistics") == 0) {
-  //   test_routine->output_level = STATISTICS;
-  // } else if(strcmp(output_level, "summarized") == 0) {
-  //   test_routine->output_level = SUMMARIZED;
+  } else if(strcmp(output_level, "statistics") == 0) {
+    test_routine->output_level = STATISTICS;
   } else if(strcmp(output_level, "minimal") == 0) {
     test_routine->output_level = MINIMAL;
+  } else if(strcmp(output_level, "summarized") == 0 ||
+            strcmp(output_level, "summary") == 0) {
+    test_routine->output_level = SUMMARIZED;
   } else {
     fprintf(stderr, "Error: Invalid OUTPUT_LEVEL value. Aborting...");
     return -1;
@@ -512,7 +513,7 @@ int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case BCAST:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       }
       break;
@@ -526,7 +527,7 @@ int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
     case SCATTER:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       }
       break;
@@ -559,17 +560,17 @@ int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case BCAST:
-      if (rank != 0) {
+      if (rank != PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
     case GATHER:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
     case REDUCE:
-      if (rank == 0) {
+      if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       }
       break;
@@ -634,15 +635,15 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
       break;
       }
     case BCAST:
-      ret = test_routine.function.bcast(sbuf, count, dtype, 0, comm);
+      ret = test_routine.function.bcast(sbuf, count, dtype, PICO_ROOT_RANK, comm);
       break;
     case GATHER:
       ret = test_routine.function.gather(sbuf, local_count, dtype,
-                         rbuf, local_count, dtype, 0, comm);
+                         rbuf, local_count, dtype, PICO_ROOT_RANK, comm);
     
       break;
     case REDUCE:
-      ret = test_routine.function.reduce(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm);
+      ret = test_routine.function.reduce(sbuf, rbuf, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm);
       break;
     case REDUCE_SCATTER:
       rcounts = (int *)malloc(comm_sz * sizeof(int));
@@ -652,7 +653,7 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
       break;
     case SCATTER:
       ret = test_routine.function.scatter(sbuf, local_count, dtype,
-                          rbuf, local_count, dtype, 0, comm);
+                          rbuf, local_count, dtype, PICO_ROOT_RANK, comm);
       break;
     default:
       fprintf(stderr, "still not implemented, aborting...");
@@ -713,16 +714,16 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
       break;
     }
     case BCAST:
-      ret = bcast_test_loop(sbuf, count, dtype, 0, comm, iter, times,
+      ret = bcast_test_loop(sbuf, count, dtype, PICO_ROOT_RANK, comm, iter, times,
                         test_routine);
       break;
     case GATHER:
       ret = gather_test_loop(sbuf, local_count, dtype,
-                         rbuf, local_count, dtype, 0, comm,
+                         rbuf, local_count, dtype, PICO_ROOT_RANK, comm,
                          iter, times, test_routine);
       break;
     case REDUCE:
-      ret = reduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, 0, comm,
+      ret = reduce_test_loop(sbuf, rbuf, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm,
                              iter, times, test_routine);
       break;
     case REDUCE_SCATTER:
@@ -735,7 +736,7 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
     case SCATTER:
       ret = scatter_test_loop(sbuf, local_count, dtype,
                           rbuf, local_count, dtype,
-                          0, comm, iter, times, test_routine);
+                          PICO_ROOT_RANK, comm, iter, times, test_routine);
       break;
     default:
       fprintf(stderr, "still not implemented, aborting...");
@@ -800,15 +801,15 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
     }
     break;
     case BCAST:
-      ret = bcast_test_loop(sbuf, count, dtype, 0, nccl_comm, stream, 
+      ret = bcast_test_loop(sbuf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream, 
                             iter, times, test_routine);
       break;
     case GATHER:
-      ret = gather_test_loop(sbuf, rbuf, local_count, dtype, 0, nccl_comm, stream,
+      ret = gather_test_loop(sbuf, rbuf, local_count, dtype, PICO_ROOT_RANK, nccl_comm, stream,
                              iter, times, test_routine);
       break;
     case REDUCE:
-      ret = reduce_test_loop(sbuf, rbuf, count, dtype, ncclSum, 0, nccl_comm, stream,
+      ret = reduce_test_loop(sbuf, rbuf, count, dtype, ncclSum, PICO_ROOT_RANK, nccl_comm, stream,
                              iter, times, test_routine);
       break;
     case REDUCE_SCATTER:
@@ -816,7 +817,7 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                                 iter, times, test_routine);
       break;
     case SCATTER:
-      ret = scatter_test_loop(sbuf, rbuf, local_count, dtype, 0, nccl_comm, stream,
+      ret = scatter_test_loop(sbuf, rbuf, local_count, dtype, PICO_ROOT_RANK, nccl_comm, stream,
                               iter, times, test_routine);
       break;
     default:
@@ -847,7 +848,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
     case ALLTOALL:
       PMPI_Alltoall(sbuf, count / (size_t) comm_sz, dtype, \
              rbuf_gt, count / (size_t) comm_sz, dtype, comm);
-      GT_CHECK_BUFFER(rbuf, rbuf_gt, count / (size_t) comm_sz, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
     case ALLTOALLV: {
       int *scounts = malloc(comm_sz * sizeof(int));
@@ -871,21 +872,21 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       break;
     }
     case BCAST:
-      if(rank == 0) {
+      if(rank == PICO_ROOT_RANK) {
         memcpy(rbuf_gt, sbuf, count * type_size);
       }
-      PMPI_Bcast(rbuf_gt, count, dtype, 0, comm);
+      PMPI_Bcast(rbuf_gt, count, dtype, PICO_ROOT_RANK, comm);
       GT_CHECK_BUFFER(sbuf, rbuf_gt, count, dtype, comm);
       break;
     case GATHER:
-      PMPI_Gather(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, 0, comm);
-      if (rank == 0) {
+      PMPI_Gather(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, PICO_ROOT_RANK, comm);
+      if (rank == PICO_ROOT_RANK) {
         GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       }
       break;
     case REDUCE:
-      PMPI_Reduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, 0, comm);
-      if(rank == 0){ 
+      PMPI_Reduce(sbuf, rbuf_gt, count, dtype, MPI_SUM, PICO_ROOT_RANK, comm);
+      if(rank == PICO_ROOT_RANK){ 
         GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       }
       break;
@@ -897,7 +898,7 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
       free(rcounts);
       break;
     case SCATTER:
-      PMPI_Scatter(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, 0, comm);
+      PMPI_Scatter(sbuf, count / (size_t) comm_sz, dtype, rbuf_gt, count / (size_t) comm_sz, dtype, PICO_ROOT_RANK, comm);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       break;
     default:
@@ -986,23 +987,41 @@ static inline int write_all_output_to_file(const char *fullpath, double *highest
   }
 
   // Write the header with ranks from rank0 to rankN
-  fprintf(output_file, "highest");
-  for(int rank = 0; rank < comm_sz; rank++) {
-    fprintf(output_file, ",rank%d", rank);
+  if(fprintf(output_file, "highest") < 0) {
+    fclose(output_file);
+    return -1;
   }
-  fprintf(output_file, "\n");
+  for(int rank = 0; rank < comm_sz; rank++) {
+    if(fprintf(output_file, ",rank%d", rank) < 0) {
+      fclose(output_file);
+      return -1;
+    }
+  }
+  if(fprintf(output_file, "\n") < 0) {
+    fclose(output_file);
+    return -1;
+  }
 
   // Write the timing data
   for(int i = 0; i < iter; i++) {
-    fprintf(output_file, "%" PRId64, (int64_t)(highest[i] * 1e9));
-    for(int j = 0; j < comm_sz; j++) {
-      fprintf(output_file, ",%" PRId64, (int64_t)(all_times[j * iter + i] * 1e9));
+    if(fprintf(output_file, "%" PRId64, (int64_t)(highest[i] * 1e9)) < 0) {
+      fclose(output_file);
+      return -1;
     }
-    fprintf(output_file, "\n");
+    for(int j = 0; j < comm_sz; j++) {
+      if(fprintf(output_file, ",%" PRId64,
+                 (int64_t)(all_times[j * iter + i] * 1e9)) < 0) {
+        fclose(output_file);
+        return -1;
+      }
+    }
+    if(fprintf(output_file, "\n") < 0) {
+      fclose(output_file);
+      return -1;
+    }
   }
 
-  fclose(output_file);
-  return 0;
+  return fclose(output_file) == 0 ? 0 : -1;
 }
 
 /**
@@ -1024,20 +1043,161 @@ static inline int write_minimal_output_to_file(const char *fullpath, double *hig
   }
 
   // Write the header with ranks from rank0 to rankN
-  fprintf(output_file, "highest\n");
+  if(fprintf(output_file, "highest\n") < 0) {
+    fclose(output_file);
+    return -1;
+  }
 
   // Write the timing data
   for(int i = 0; i < iter; i++) {
-    fprintf(output_file, "%" PRId64"\n", (int64_t)(highest[i] * 1e9));
+    if(fprintf(output_file, "%" PRId64"\n", (int64_t)(highest[i] * 1e9)) < 0) {
+      fclose(output_file);
+      return -1;
+    }
   }
 
-  fclose(output_file);
-  return 0;
+  return fclose(output_file) == 0 ? 0 : -1;
 }
 
-int write_statistics_output_to_file(const char *fullpath, double *highest, int iter) {
-  // TODO: Implement the statistics output file writing
-  return 0;
+static inline int write_statistics_output_to_file(const char *fullpath, double *highest,
+                                                  double *all_times, int iter) {
+  int comm_sz;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+
+  FILE *output_file = fopen(fullpath, "w");
+  if(output_file == NULL) {
+    fprintf(stderr, "Error: Opening file %s for writing", fullpath);
+    return -1;
+  }
+
+  if(fprintf(output_file, "highest,lowest,rank_mean,rank_stddev\n") < 0) {
+    fclose(output_file);
+    return -1;
+  }
+
+  for(int i = 0; i < iter; i++) {
+    double lowest = DBL_MAX;
+    double sum = 0.0;
+
+    for(int rank = 0; rank < comm_sz; rank++) {
+      double rank_ns = (double)(int64_t)(all_times[rank * iter + i] * 1e9);
+      if(rank_ns < lowest) {
+        lowest = rank_ns;
+      }
+      sum += rank_ns;
+    }
+
+    double mean = sum / comm_sz;
+    double squared_deviations = 0.0;
+    for(int rank = 0; rank < comm_sz; rank++) {
+      double rank_ns = (double)(int64_t)(all_times[rank * iter + i] * 1e9);
+      double delta = rank_ns - mean;
+      squared_deviations += delta * delta;
+    }
+    double variance = squared_deviations / comm_sz;
+    double stddev = sqrt(variance);
+    if(fprintf(output_file, "%" PRId64 ",%.17g,%.17g,%.17g\n",
+               (int64_t)(highest[i] * 1e9), lowest, mean, stddev) < 0) {
+      fclose(output_file);
+      return -1;
+    }
+  }
+
+  return fclose(output_file) == 0 ? 0 : -1;
+}
+
+static int compare_double(const void *lhs, const void *rhs) {
+  const double left = *(const double *)lhs;
+  const double right = *(const double *)rhs;
+  return (left > right) - (left < right);
+}
+
+static inline double percentile(const double *sorted, int count, double fraction) {
+  const double position = (count - 1) * fraction;
+  const int lower = (int)floor(position);
+  const int upper = (int)ceil(position);
+  const double weight = position - lower;
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * weight;
+}
+
+static inline int write_summarized_output_to_file(const char *fullpath,
+                                                  double *highest, int iter) {
+  // Keep this aligned with plot/summarize_data.py's default warmup policy.
+  const double warmup_ratio = 0.2;
+  int warmup_count = (int)(iter * warmup_ratio);
+  int sample_count = iter - warmup_count;
+  if(sample_count <= 0) {
+    fprintf(stderr, "Error: No samples remain after warmup removal.");
+    return -1;
+  }
+
+  double *samples = malloc((size_t)sample_count * sizeof(*samples));
+  if(samples == NULL) {
+    fprintf(stderr, "Error: Unable to allocate summarized output samples.");
+    return -1;
+  }
+
+  double sum = 0.0;
+  for(int i = 0; i < sample_count; i++) {
+    samples[i] = (double)(int64_t)(highest[warmup_count + i] * 1e9);
+    sum += samples[i];
+  }
+  qsort(samples, (size_t)sample_count, sizeof(*samples), compare_double);
+
+  const double mean = sum / sample_count;
+  double squared_deviations = 0.0;
+  for(int i = 0; i < sample_count; i++) {
+    const double delta = samples[i] - mean;
+    squared_deviations += delta * delta;
+  }
+
+  const double stddev = sqrt(squared_deviations / sample_count);
+  const double median = percentile(samples, sample_count, 0.5);
+  const double percentile_10 = percentile(samples, sample_count, 0.10);
+  const double percentile_25 = percentile(samples, sample_count, 0.25);
+  const double percentile_75 = percentile(samples, sample_count, 0.75);
+  const double percentile_90 = percentile(samples, sample_count, 0.90);
+  const double iqr = percentile_75 - percentile_25;
+  const double lower_outlier_bound = percentile_25 - 1.5 * iqr;
+  const double upper_outlier_bound = percentile_75 + 1.5 * iqr;
+  int num_outliers = 0;
+  for(int i = 0; i < sample_count; i++) {
+    if(samples[i] < lower_outlier_bound || samples[i] > upper_outlier_bound) {
+      num_outliers++;
+    }
+  }
+
+  const double standard_error =
+    sample_count > 1 ? stddev / sqrt((double)sample_count) : 0.0;
+  const double ci_lower =
+    sample_count > 1 ? mean - 1.96 * standard_error : mean;
+  const double ci_upper =
+    sample_count > 1 ? mean + 1.96 * standard_error : mean;
+
+  FILE *output_file = fopen(fullpath, "w");
+  if(output_file == NULL) {
+    fprintf(stderr, "Error: Opening file %s for writing", fullpath);
+    free(samples);
+    return -1;
+  }
+
+  int write_result = fprintf(
+    output_file,
+    "mean,median,std,min,max,n_iter,percentile_10,percentile_25,"
+    "percentile_75,percentile_90,iqr,standard_error,ci_lower,ci_upper,"
+    "num_outliers\n"
+    "%.17g,%.17g,%.17g,%.17g,%.17g,%d,%.17g,%.17g,%.17g,%.17g,"
+    "%.17g,%.17g,%.17g,%.17g,%d\n",
+    mean, median, stddev, samples[0], samples[sample_count - 1],
+    sample_count, percentile_10, percentile_25, percentile_75,
+    percentile_90, iqr, standard_error, ci_lower, ci_upper, num_outliers);
+
+  free(samples);
+  if(write_result < 0) {
+    fclose(output_file);
+    return -1;
+  }
+  return fclose(output_file) == 0 ? 0 : -1;
 }
 
 int write_output_to_file(test_routine_t test_routine, double *highest, double *all_times, int iter)
@@ -1046,9 +1206,11 @@ int write_output_to_file(test_routine_t test_routine, double *highest, double *a
     case ALL:
       return write_all_output_to_file(test_routine.output_data_file, highest, all_times, iter);
     case STATISTICS:
-      return write_statistics_output_to_file(test_routine.output_data_file, highest, iter);
+      return write_statistics_output_to_file(test_routine.output_data_file, highest, all_times, iter);
     case MINIMAL:
       return write_minimal_output_to_file(test_routine.output_data_file, highest, iter);
+    case SUMMARIZED:
+      return write_summarized_output_to_file(test_routine.output_data_file, highest, iter);
     default:
       fprintf(stderr, "Error: Output level not recognized. Aborting...");
       return -1;
@@ -1178,15 +1340,13 @@ int rand_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
   
   // For BCAST and SCATTER, only rank 0 generates the sendbuf
   if((test_routine.collective == BCAST || test_routine.collective == SCATTER)
-      && rank != 0) {
+      && rank != PICO_ROOT_RANK) {
     return 0;
   }
 
   size_t real_sbuf_count =
     (test_routine.collective == ALLGATHER ||
-     test_routine.collective == GATHER    ||
-     test_routine.collective == ALLTOALL  ||
-     test_routine.collective == ALLTOALLV) ?
+     test_routine.collective == GATHER) ?
                                         count / (size_t) comm_sz : count;
 
   for(size_t i = 0; i < real_sbuf_count; i++) {
@@ -1259,6 +1419,12 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     float epsilon = comm_sz * PICO_CORE_BASE_EPSILON_FLOAT * 100.0f;
 
     for(size_t i = 0; i < count; i++) {
+      if(isnan(b1[i]) || isnan(b2[i])) {
+        if(!(isnan(b1[i]) && isnan(b2[i]))) {
+          return -1;
+        }
+        continue;
+      }
       if(fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
@@ -1270,6 +1436,12 @@ int are_equal_eps(const void *buf_1, const void *buf_2, size_t count,
     double epsilon = comm_sz * PICO_CORE_BASE_EPSILON_DOUBLE * 100.0;
 
     for(size_t i = 0; i < count; i++) {
+      if(isnan(b1[i]) || isnan(b2[i])) {
+        if(!(isnan(b1[i]) && isnan(b2[i]))) {
+          return -1;
+        }
+        continue;
+      }
       if(fabs(b1[i] - b2[i]) > epsilon) {
         return -1;
       }
@@ -1388,16 +1560,14 @@ int debug_sbuf_generator(void *sbuf, MPI_Datatype dtype, size_t count,
 
   // For BCAST and SCATTER, only rank 0 generates the sendbuf
   if((test_routine.collective == BCAST || test_routine.collective == SCATTER)
-      && rank != 0) {
+      && rank != PICO_ROOT_RANK) {
     return 0;
   }
 
   size_t real_sbuf_count =
-  (test_routine.collective == ALLGATHER ||
-   test_routine.collective == GATHER    ||
-   test_routine.collective == ALLTOALL  ||
-   test_routine.collective == ALLTOALLV) ?
-                                      count / (size_t) comm_sz : count;
+    (test_routine.collective == ALLGATHER ||
+     test_routine.collective == GATHER) ?
+                                        count / (size_t) comm_sz : count;
 
   for(int i=0; i< real_sbuf_count; i++){
     if(dtype == MPI_INT64_T) {

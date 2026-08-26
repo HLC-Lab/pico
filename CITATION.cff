@@ -1,0 +1,55 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the following paper."
+title: "PICO: Performance Insights for Collective Operations"
+type: software
+version: "1.1.0"
+authors:
+  - family-names: Pasqualoni
+    given-names: Saverio
+  - family-names: Bonato
+    given-names: Tommaso
+  - family-names: Piarulli
+    given-names: Lorenzo
+  - family-names: Hoefler
+    given-names: Torsten
+  - family-names: Canini
+    given-names: Marco
+  - family-names: De Sensi
+    given-names: Daniele
+preferred-citation:
+  type: conference-paper
+  title: "PICO: Performance Insights for Collective Operations"
+  authors:
+    - family-names: Pasqualoni
+      given-names: Saverio
+    - family-names: Bonato
+      given-names: Tommaso
+    - family-names: Piarulli
+      given-names: Lorenzo
+    - family-names: Hoefler
+      given-names: Torsten
+    - family-names: Canini
+      given-names: Marco
+    - family-names: De Sensi
+      given-names: Daniele
+  collection-title: "ISC High Performance 2026 Research Paper Proceedings (41st International Conference)"
+  year: 2026
+  start: 1
+  end: 14
+  doi: "10.23919/ISC.2026.11520486"
+  keywords:
+    - Collective Operations
+    - High performance computing
+    - Performance analysis
+    - Computer networks
+    - Message passing
+    - Software tools
+doi: "10.23919/ISC.2026.11520486"
+date-released: "2026-07-28"
+keywords:
+  - Collective Operations
+  - High performance computing
+  - Performance analysis
+  - Computer networks
+  - Message passing
+  - Software tools

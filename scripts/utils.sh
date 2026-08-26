@@ -247,7 +247,9 @@ EOF
 usage_data() {
 inform "Data saving options:"
       cat <<EOF
-  --output-level      Specify which test data to save. Allowed values: summarized, all.
+  --output-level      Specify which test data to save.
+                      Allowed values: full, all, statistics, minimal, summarized.
+                      "all" is an alias for "full".
                       [default: "${DEFAULT_OUTPUT_LEVEL}"]
   --compress          Compress result dir into a tar.gz.
                       [default: "${DEFAULT_COMPRESS}"]
@@ -511,7 +513,8 @@ validate_args() {
         done
     fi
 
-    check_enum "$OUTPUT_LEVEL" "--output-level" "data" "summarized,all" || return 1
+    check_enum "$OUTPUT_LEVEL" "--output-level" "data" \
+        "full,all,statistics,minimal,summarized" || return 1
     check_enum "$COMPRESS" "--compress" "data" "yes,no" || return 1
     check_enum "$DELETE" "--delete" "data" "yes,no" || return 1
 
@@ -792,6 +795,37 @@ export -f restore_lib_env
 
 
 ###############################################################################
+# Create submission-private build and runtime files
+###############################################################################
+prepare_job_workspace() {
+    if [[ -z "${PICO_DIR:-}" ]]; then
+        error "PICO_DIR is not set; cannot prepare the job workspace."
+        return 1
+    fi
+
+    local workspace_id="${TIMESTAMP:-pico}_${BASHPID}"
+    export PICO_BUILD_DIR="${PICO_BUILD_DIR:-$PICO_DIR/build/$workspace_id}"
+
+    local selector_dir="$PICO_BUILD_DIR/selector"
+    local selector_template="$PICO_DIR/selector/ompi_dynamic_rules.txt"
+    export ALGO_CHANGE_SCRIPT="$PICO_DIR/selector/change_dynamic_rules.py"
+    export DYNAMIC_RULE_FILE="$selector_dir/ompi_dynamic_rules.txt"
+
+    mkdir -p "$selector_dir" || {
+        error "Unable to create job workspace: $PICO_BUILD_DIR"
+        return 1
+    }
+    cp "$selector_template" "$DYNAMIC_RULE_FILE" || {
+        error "Unable to create the job-private Open MPI rules file."
+        return 1
+    }
+
+    return 0
+}
+export -f prepare_job_workspace
+
+
+###############################################################################
 # Activate virtual environment and install required packages
 ###############################################################################
 activate_virtualenv() {
@@ -829,6 +863,28 @@ activate_virtualenv() {
 ###############################################################################
 # WARN: will be deprecated
 compile_code() {
+    if [[ -z "${PICO_BUILD_DIR:-}" ]]; then
+        error "PICO_BUILD_DIR is not set; call prepare_job_workspace before compiling."
+        return 1
+    fi
+
+    local out_bin="$PICO_BUILD_DIR/bin"
+    local out_lib="$PICO_BUILD_DIR/lib"
+    local out_obj="$PICO_BUILD_DIR/obj"
+    mkdir -p "$out_bin" "$out_lib" "$out_obj" || {
+        error "Unable to create build directories under $PICO_BUILD_DIR"
+        return 1
+    }
+
+    export BIN_DIR="$out_bin"
+    export LIB_DIR="$out_lib"
+    export PICO_CORE_OBJ_DIR="$out_obj/pico_core"
+    export PICO_CORE_OBJ_DIR_CUDA="$out_obj/pico_core_cuda"
+    export PICO_CORE_OBJ_DIR_NCCL="$out_obj/pico_core_nccl"
+    export LIB_OBJ_DIR="$out_obj/lib"
+    export LIB_OBJ_DIR_CUDA="$out_obj/lib_cuda"
+    export LIB_OBJ_DIR_NCCL="$out_obj/lib_nccl"
+
     [[ "$BEAR_COMPILE" == "yes" ]] && make_command="bear -- make all" || make_command="make all" # Used to create compile_command.json file for lsp
     [[ "$DEBUG_MODE" == "yes" ]] && make_command+=" DEBUG=1" ||  make_command+=" -s"
     [[ "$INSTRUMENT" == "yes" ]] && make_command+=" PICO_INSTRUMENT=1" && inform "Instrumented build requested"
@@ -869,12 +925,15 @@ compile_code() {
 
 # INFO: new function to compile libraries, will replace the previous one
 compile_all_libraries_tui() {
-    make clean
-
     local count="${LIB_COUNT:-0}"
     if ! [[ "$count" =~ ^[0-9]+$ ]] || (( count == 0 )); then
         warning "LIB_COUNT is zero or unset; nothing to compile"
         return 0
+    fi
+
+    if [[ -z "${PICO_BUILD_DIR:-}" ]]; then
+        error "PICO_BUILD_DIR is not set; call prepare_job_workspace before compiling."
+        return 1
     fi
 
     local mk_debug=0
@@ -933,16 +992,22 @@ compile_all_libraries_tui() {
         trace_compiler_wrapper "$PICOCC"
 
         # Per-lib output dirs
-        local OUT_BIN="$PICO_DIR/bin/lib_${i}"
-        local OUT_LIB="$PICO_DIR/lib/lib_${i}"
-        local OUT_OBJ="$PICO_DIR/obj/lib_${i}"
-        mkdir -p "$OUT_BIN" "$OUT_LIB" "$OUT_OBJ" || true
+        local OUT_BIN="$PICO_BUILD_DIR/bin/lib_${i}"
+        local OUT_LIB="$PICO_BUILD_DIR/lib/lib_${i}"
+        local OUT_OBJ="$PICO_BUILD_DIR/obj/lib_${i}"
+        mkdir -p "$OUT_BIN" "$OUT_LIB" "$OUT_OBJ" || {
+            error "Unable to create build directories for library $i"
+            restore_lib_context "$i"
+            return 1
+        }
 
-        # Single make call; top-level Makefile: all -> force_rebuild + build
+        # Single make call into this submission's private build directories
         local mk="make -C \"$PICO_DIR\" all"
         mk+=" BIN_DIR=\"$OUT_BIN\" LIB_DIR=\"$OUT_LIB\""
         mk+=" PICO_CORE_OBJ_DIR=\"$OUT_OBJ/pico_core\" PICO_CORE_OBJ_DIR_CUDA=\"$OUT_OBJ/pico_core_cuda\""
+        mk+=" PICO_CORE_OBJ_DIR_NCCL=\"$OUT_OBJ/pico_core_nccl\""
         mk+=" LIB_OBJ_DIR=\"$OUT_OBJ/lib\" LIB_OBJ_DIR_CUDA=\"$OUT_OBJ/lib_cuda\""
+        mk+=" LIB_OBJ_DIR_NCCL=\"$OUT_OBJ/lib_nccl\""
         mk+=" DEBUG=$mk_debug"
         mk+=" PICO_INSTRUMENT=$this_instrument"
         if (( need_nccl_build )); then
@@ -1123,17 +1188,22 @@ run_bench() {
 
     if [[ "$DRY_RUN" == "yes" ]]; then
         inform "Would run: $command"
+        return 0
     else
         if [[ "$DEBUG_MODE" == "yes" ]]; then
-            $command
+            $command || {
+                error "Benchmark failed for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type"
+                return 1
+            }
         else
-            # WARN: Removed panic mode for full cluster run
-            #
-            # $command || { error "Failed to run bench for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type" ; cleanup; }
             [[ "$LOCATION" == "mare_nostrum" || "$LOCATION" == "leonardo" ]] && sleep 1  # To avoid step timeout due to previous srun still not finalized
-            $command
+            $command || {
+                error "Benchmark failed for coll=$COLLECTIVE_TYPE, algo=$algo, size=$size, dtype=$type"
+                return 1
+            }
         fi
     fi
+    return 0
 }
 export -f run_bench
 
@@ -1274,7 +1344,7 @@ run_bench_with_nccl_protocols() {
             export NCCL_PROTO="$explicit_proto"
             [[ "$DEBUG_MODE" == "yes" ]] && inform "NCCL ring protocol: $NCCL_PROTO"
             run_bench "$size" "$algo" "$type"
-            return 0
+            return $?
         fi
 
         local proto
@@ -1283,12 +1353,13 @@ run_bench_with_nccl_protocols() {
             local bench_algo="${algo}_${proto_suffix}"
             export NCCL_PROTO="$proto"
             [[ "$DEBUG_MODE" == "yes" ]] && inform "NCCL ring protocol: $NCCL_PROTO"
-            run_bench "$size" "$bench_algo" "$type"
+            run_bench "$size" "$bench_algo" "$type" || return 1
         done
     else
         [[ "$MPI_LIB" == "NCCL" ]] && unset NCCL_PROTO
-        run_bench "$size" "$algo" "$type"
+        run_bench "$size" "$algo" "$type" || return 1
     fi
+    return 0
 }
 export -f run_bench_with_nccl_protocols
 
@@ -1298,7 +1369,10 @@ export -f run_bench_with_nccl_protocols
 run_all_tests() {
     local i=0
     for algo in ${ALGOS[@]}; do
-        update_algorithm $algo $i || { error "Failed to update algorithm $algo" ; cleanup; }
+        update_algorithm "$algo" "$i" || {
+            error "Failed to update algorithm $algo"
+            return 1
+        }
         export SEGMENTED=${IS_SEGMENTED[$i]}
         inform "Segmented: $SEGMENTED"
 
@@ -1314,17 +1388,18 @@ run_all_tests() {
                 for type in ${TYPES//,/ }; do
                     for segment_size in ${SEGMENT_SIZES//,/ }; do
                         export SEGSIZE=$segment_size
-                        run_bench_with_nccl_protocols $size $algo $type
+                        run_bench_with_nccl_protocols "$size" "$algo" "$type" || return 1
                     done
                 done
             else
                 for type in ${TYPES//,/ }; do
-                    run_bench_with_nccl_protocols $size $algo $type
+                    run_bench_with_nccl_protocols "$size" "$algo" "$type" || return 1
                 done
             fi
         done
         ((i++))
     done
+    return 0
 }
 export -f run_all_tests
 
@@ -1518,7 +1593,7 @@ run_mode_once() {
     fi
 
     print_sanity_checks
-    run_all_tests
+    run_all_tests || return 1
     ((_iter_ref++))
     return 0
 }
@@ -1691,8 +1766,9 @@ export -f cli_prepare_metadata
 cli_run_one_iteration() {
     local -n _iter_ref=$1
     print_sanity_checks
-    run_all_tests
+    run_all_tests || return 1
     ((_iter_ref++))
+    return 0
 }
 export -f cli_run_one_iteration
 
@@ -1715,7 +1791,7 @@ cli_run_cpu_set() {
 
         # pass the ORIGINAL name downstream
         cli_prepare_metadata "$iter_name" || return 1
-        cli_run_one_iteration "$iter_name"
+        cli_run_one_iteration "$iter_name" || return 1
 
         if [[ -n "$FORCE_TASKS" ]]; then
             warning "--ntasks is set, skipping possible --tasks-per-node values"
@@ -1734,6 +1810,6 @@ cli_run_gpu_once() {
     success "📄 Config ${TEST_CONFIG} parsed (GPU, gpus per node=${CURRENT_TASKS_PER_NODE})"
 
     cli_prepare_metadata "$iter_name" || return 1
-    cli_run_one_iteration "$iter_name"
+    cli_run_one_iteration "$iter_name" || return 1
 }
 export -f cli_run_gpu_once

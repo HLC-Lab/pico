@@ -26,22 +26,31 @@ int reduce_scatter_recursive_doubling_hierarchical_local_parallel(const void *sb
   int node_rank, node_size, peer_node;
   int peer, dist_mask, rem_data;
   int send_index = 0, recv_index = 0;
-  int task_on_node = pico_task_on_node();
+  int task_on_node;
   size_t send_size, recv_size;
   ptrdiff_t *disps = NULL;
-  MPI_Request send_req[task_on_node];
-  MPI_Request recv_req[task_on_node];
   int req_index, node_offset;
 
   err = MPI_Comm_size(comm, &size);
   err = MPI_Comm_rank(comm, &rank);
+
+  err = pico_task_on_node(&task_on_node);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  err = pico_get_group_config(&node_size, &node_rank, &node_offset,
+                              &local_rank, task_on_node, size, rank);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  MPI_Request send_req[task_on_node];
+  MPI_Request recv_req[task_on_node];
 
   /* get datatype information */
   MPI_Type_get_extent(dtype, &lb, &extent);
   MPI_Type_get_true_extent(dtype, &gap, &true_extent);
 
   // calculate memory needed for the buffer
-  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
   local_inverse = inverse_rank(task_on_node, local_rank);
 
   data_sub_group = 0;
@@ -486,14 +495,18 @@ int reduce_scatter_recursivehalving(const void *sbuf, void *rbuf, const int rcou
 
   /* Allocate temporary receive buffer. */
   recv_buf_free = (char*) malloc(buf_size);
-  recv_buf = recv_buf_free - gap;
   if(NULL == recv_buf_free) {
     err = MPI_ERR_NO_MEM;
     goto cleanup;
   }
+  recv_buf = recv_buf_free - gap;
 
   /* allocate temporary buffer for results */
   result_buf_free = (char*) malloc(buf_size);
+  if(NULL == result_buf_free) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup;
+  }
   result_buf = result_buf_free - gap;
 
   /* copy local buffer into the temporary results */
@@ -734,16 +747,19 @@ int reduce_scatter_recursive_distance_doubling(const void *sbuf, void *rbuf, con
 
   /* Allocate temporary receive buffer. */
   recv_buf_free = (char*) malloc(buf_size);
+  if(NULL == recv_buf_free) {
+    err = MPI_ERR_NO_MEM;
+    goto cleanup;
+  }
   recv_buf = recv_buf_free - gap;
 
   /* allocate temporary buffer for results */
   result_buf_free = (char*) malloc(buf_size);
-  result_buf = result_buf_free - gap;
-  
-  if(NULL == recv_buf_free || NULL == result_buf_free) {
+  if(NULL == result_buf_free) {
     err = MPI_ERR_NO_MEM;
     goto cleanup;
   }
+  result_buf = result_buf_free - gap;
 
   /* copy local buffer into the temporary results */
   err = copy_buffer_different_dt(sbuf, count, dtype, result_buf, count, dtype);
@@ -1195,25 +1211,37 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
   int size, rank, dtsize, err = MPI_SUCCESS, partner;
   int node_size, node_rank, node_offset, local_rank;
   int recv_count, send_count;
-  int task_on_node = pico_task_on_node();
-  MPI_Request send_reqs[task_on_node], recv_reqs[task_on_node];
+  int task_on_node;
   int send_reqc, recv_reqc;
   MPI_Comm_size(comm, &size);
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
 
+  err = pico_task_on_node(&task_on_node);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  err = pico_get_group_config(&node_size, &node_rank, &node_offset,
+                              &local_rank, task_on_node, size, rank);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  MPI_Request send_reqs[task_on_node], recv_reqs[task_on_node];
+
   int count = 0;
+  void *tmpbuf = NULL, *resbuf = NULL;
   int *displs = (int *)malloc(size * sizeof(int));
   int *step_to_send = (int *)malloc(size * sizeof(int));
+  if(NULL == displs || NULL == step_to_send) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   for (int i = 0; i < size; i++)
   {
     displs[i] = count;
     count += recvcounts[i];
   }
 
-  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
-
-  void *tmpbuf = NULL, *resbuf = NULL;
   int upper_index, lower_index;
   size_t buffer_size_unit;
   lower_index = local_rank * node_size;
@@ -1228,7 +1256,7 @@ int reduce_scatter_bine_send_remap_hierarchical(const void *sendbuf, void *recvb
   tmpbuf = malloc(buffer_size_unit * max((task_on_node - 1), 1) * dtsize);
   resbuf = malloc(buffer_size_unit * dtsize);
 #endif
-  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
+  if (NULL == tmpbuf || NULL == resbuf)
   {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
@@ -1426,15 +1454,19 @@ int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int
   MPI_Type_size(dt, &dtsize);
 
   int count = 0;
+  void *tmpbuf = NULL, *resbuf = NULL;
   int *displs = (int *)malloc(size * sizeof(int));
   int *step_to_send = (int *)malloc(size * sizeof(int));
+  if(NULL == displs || NULL == step_to_send) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   for (int i = 0; i < size; i++)
   {
     displs[i] = count;
     count += recvcounts[i];
   }
 
-  void *tmpbuf = NULL, *resbuf = NULL;
 #ifdef PICO_MPI_CUDA_AWARE
   BINE_CUDA_CHECK(cudaMalloc((void **)&tmpbuf, count * dtsize));
   BINE_CUDA_CHECK(cudaMalloc((void **)&resbuf, count * dtsize));
@@ -1442,7 +1474,7 @@ int reduce_scatter_bine_send_remap(const void *sendbuf, void *recvbuf, const int
   tmpbuf = malloc(count * dtsize);
   resbuf = malloc(count * dtsize);
 #endif
-  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
+  if (NULL == tmpbuf || NULL == resbuf)
   {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
@@ -1551,15 +1583,19 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
   int count = 0;
+  void *tmpbuf = NULL, *resbuf = NULL;
   int *displs = (int *)malloc(size * sizeof(int));
   int *step_to_send = (int *)malloc(size * sizeof(int));
+  if(NULL == displs || NULL == step_to_send) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   for (int i = 0; i < size; i++)
   {
     displs[i] = count;
     count += recvcounts[i];
   }
 
-  void *tmpbuf, *resbuf;
 #ifdef PICO_MPI_CUDA_AWARE
   BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, count * dtsize));
   BINE_CUDA_CHECK(cudaMalloc(&resbuf, count * dtsize));
@@ -1567,7 +1603,7 @@ int reduce_scatter_bine_permute_remap(const void *sendbuf, void *recvbuf, const 
   tmpbuf = malloc(count * dtsize);
   resbuf = malloc(count * dtsize);
 #endif
-  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf)
+  if (NULL == tmpbuf || NULL == resbuf)
   {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
@@ -1683,20 +1719,34 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
   int count = 0;
+  int task_on_node;
 
-  int *displs = (int *)malloc(size * sizeof(int));
-  int *step_to_send = (int *)malloc(size * sizeof(int));
+  err = pico_task_on_node(&task_on_node);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
+  err = pico_get_group_config(&node_size, &node_rank, &node_offset,
+                              &local_rank, task_on_node, size, rank);
+  if(MPI_SUCCESS != err) {
+    return err;
+  }
 
-  int task_on_node = pico_task_on_node();
+  int *displs = NULL, *step_to_send = NULL, *inverse_remapping = NULL;
+  MPI_Request *send_req = NULL, *recv_req = NULL;
+  void *tmpbuf = NULL, *resbuf = NULL;
+
+  displs = (int *)malloc(size * sizeof(int));
+  step_to_send = (int *)malloc(size * sizeof(int));
+  if(NULL == displs || NULL == step_to_send) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   for (int i = 0; i < size; i++)
   {
     displs[i] = count;
     count += recvcounts[i];
   }
 
-  pico_get_group_config(&node_size, &node_rank, &node_offset, &local_rank, task_on_node, size, rank);
-
-  void *tmpbuf, *resbuf;
 #ifdef PICO_MPI_CUDA_AWARE
   BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, (count / task_on_node * max((task_on_node - 1), 1)) * dtsize));
   BINE_CUDA_CHECK(cudaMalloc(&resbuf, (count / task_on_node) * dtsize));
@@ -1705,11 +1755,12 @@ int reduce_scatter_bine_block_by_block_hierarchical(const void *sendbuf, void *r
   resbuf = malloc((count / task_on_node) * dtsize);
 #endif
 
-  int *inverse_remapping = (int *)malloc(node_size * sizeof(int));  
-  MPI_Request *send_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
-  MPI_Request *recv_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
+  inverse_remapping = (int *)malloc(node_size * sizeof(int));
+  send_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
+  recv_req = (MPI_Request *)malloc(node_size * max((task_on_node - 1), 1) * sizeof(MPI_Request));
 
-  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping || NULL == send_req || NULL == recv_req)
+  if (NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping ||
+      NULL == send_req || NULL == recv_req)
   {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
@@ -1938,6 +1989,13 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
   int *displs = (int *)malloc(size * sizeof(int));
   int *step_to_send = (int *)malloc(size * sizeof(int));
   int *inverse_remapping = (int *)malloc(size * sizeof(int));
+  void *tmpbuf = NULL, *resbuf = NULL;
+  MPI_Request *reqs = NULL;
+
+  if(NULL == displs || NULL == step_to_send || NULL == inverse_remapping) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   for (int i = 0; i < size; i++)
   {
     displs[i] = count;
@@ -1945,7 +2003,6 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
     inverse_remapping[remap_rank(size, i)] = i;
   }
 
-  void *tmpbuf, *resbuf;
 #ifdef PICO_MPI_CUDA_AWARE
   BINE_CUDA_CHECK(cudaMalloc(&tmpbuf, count * dtsize));
   BINE_CUDA_CHECK(cudaMalloc(&resbuf, count * dtsize));
@@ -1953,9 +2010,7 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
   tmpbuf = malloc(count * dtsize);
   resbuf = malloc(count * dtsize);
 #endif
-  MPI_Request *reqs = NULL;
-
-  if (NULL == displs || NULL == step_to_send || NULL == tmpbuf || NULL == resbuf || NULL == inverse_remapping)
+  if (NULL == tmpbuf || NULL == resbuf)
   {
     err = MPI_ERR_NO_MEM;
     goto err_hndl;
@@ -1968,6 +2023,10 @@ int reduce_scatter_bine_block_by_block(const void *sendbuf, void *recvbuf, const
   int block_first_mask = ~(inverse_mask - 1);
   int remapped_rank = remap_rank(size, rank);
   reqs = (MPI_Request *)malloc(size * sizeof(MPI_Request));
+  if(NULL == reqs) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   while (mask < size)
   {
     int partner;
@@ -2112,21 +2171,36 @@ int reduce_scatter_bine_block_by_block_any_even(const void *sendbuf, void *recvb
   MPI_Comm_rank(comm, &rank);
   MPI_Type_size(dt, &dtsize);
   int count = 0;
+  void *tmpbuf = NULL, *resbuf = NULL;
+  MPI_Request *reqs_s = NULL, *reqs_r = NULL;
+  int *blocks_to_recv = NULL;
   int *displs = (int *)malloc(size * sizeof(int));
+  if(NULL == displs) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   for (int i = 0; i < size; i++)
   {
     displs[i] = count;
     count += recvcounts[i];
   }
 
-  void *tmpbuf = malloc(count * dtsize);
-  void *resbuf = malloc(count * dtsize);
+  tmpbuf = malloc(count * dtsize);
+  resbuf = malloc(count * dtsize);
+  if(NULL == tmpbuf || NULL == resbuf) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   memcpy(resbuf, sendbuf, count * dtsize);
 
   int mask = 0x1;
-  MPI_Request *reqs_s = (MPI_Request *)malloc(size * sizeof(MPI_Request));
-  MPI_Request *reqs_r = (MPI_Request *)malloc(size * sizeof(MPI_Request));
-  int *blocks_to_recv = (int *)malloc(size * sizeof(int));
+  reqs_s = (MPI_Request *)malloc(size * sizeof(MPI_Request));
+  reqs_r = (MPI_Request *)malloc(size * sizeof(MPI_Request));
+  blocks_to_recv = (int *)malloc(size * sizeof(int));
+  if(NULL == reqs_s || NULL == reqs_r || NULL == blocks_to_recv) {
+    err = MPI_ERR_NO_MEM;
+    goto err_hndl;
+  }
   int next_req_s = 0, next_req_r = 0;
   int reverse_step = log_2(size) - 1;
   int last_recv_done = 0;

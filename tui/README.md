@@ -28,7 +28,8 @@ The app targets Textual ≥ 0.39; we actively test with 0.50+.
 ## Workflow Overview
 
 The UI is split into four screens that exchange state through a shared
-`SessionConfig` object (see `tui/models.py`).
+`SessionConfig` object (see `tui/models.py`). Moving backward keeps the
+current screen values, and reopening a later step restores its saved choices.
 
 ### 1. Configure
 
@@ -71,21 +72,32 @@ Once all mandatory data are valid, `Next` becomes available.
   `config/algorithms/<standard>/<lib_type>/<collective>.json`.
 - Version gating ensures only algorithms compatible with the configured
   library version can be checked.
+- Communicator-size and root constraints are evaluated against the configured
+  test matrix; incompatible algorithms are disabled with an explanation.
 - If the library row has `PICO backend` enabled, additional PICO-only entries
   are shown (annotated with “PICO custom”).
+- Existing selections are restored when returning from the summary.
 - `Next` stays disabled until every selected collective has at least one
-  algorithm, and every library contributes at least one entry.
+  compatible algorithm and every selected library contributes at least one
+  algorithm. A library does not need an algorithm for every collective.
 
 ### 4. Summary & Save
 
 `tui/tui/steps/summary.py`
 
 - Presents both the raw JSON configuration (`session.to_dict()`) and a readable
-  summary derived from `SessionConfig.get_summary()`.
+  effective execution plan.
+- The plan reports resolved resources, library load/compiler information,
+  algorithms and selectors, planned/runnable/skipped benchmark invocations,
+  measurement and output behavior, repository provenance, and known warnings.
 - Saving writes two files under `tests/`:
   - `<name>.json` — the full configuration
-  - `<name>.sh` — an executable wrapper created via `json_to_exports`, exporting
-    the environment variables consumed by `submit_wrapper.sh`
+  - `<name>.sh` — an executable wrapper created by `tui/export_builder.py`,
+    exporting the environment variables consumed by `submit_wrapper.sh`
+- Export validation is mode-aware: incomplete runtime, GPU, or compile-only
+  descriptors are rejected before either output file is created.
+- Launcher commands and flags come from the environment descriptor. Older
+  descriptors retain the `srun`/`mpirun` compatibility fallback.
 - Filenames are auto-suffixed to avoid overwriting existing tests.
 
 ## Data Sources

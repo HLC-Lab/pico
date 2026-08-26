@@ -57,6 +57,8 @@ fi
 
 [[ -z "$PICO_ACCOUNT" && "$LOCATION" != "local" ]] && warning "PICO_ACCOUNT environment variable not set, please export it with your slurm project's name" && exit 0
 
+prepare_job_workspace || exit 1
+
 # 5. Load required modules
 # TUI: only load general modules here; per-library modules are loaded during compilation
 # CLI: load all modules here
@@ -86,12 +88,9 @@ export OUTPUT_DIR="$PICO_DIR/results/$LOCATION/$TIMESTAMP"
 
 if [[ -z "$TUI_FILE" ]]; then
     # CLI/back-compat: single-binary layout
-    export PICO_EXEC_CPU=$PICO_DIR/bin/pico_core
-    [[ "$GPU_AWARENESS" == "yes" ]] && export PICO_EXEC_GPU=$PICO_DIR/bin/pico_core_cuda
+    export PICO_EXEC_CPU=$PICO_BUILD_DIR/bin/pico_core
+    [[ "$GPU_AWARENESS" == "yes" ]] && export PICO_EXEC_GPU=$PICO_BUILD_DIR/bin/pico_core_cuda
 fi
-
-export ALGO_CHANGE_SCRIPT=$PICO_DIR/selector/change_dynamic_rules.py
-export DYNAMIC_RULE_FILE=$PICO_DIR/selector/ompi_dynamic_rules.txt
 
 # 9. Create output directories if not in debug mode or dry run
 if [[ "$DEBUG_MODE" == "no" && "$DRY_RUN" == "no" ]]; then

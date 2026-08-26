@@ -125,13 +125,11 @@ class StepScreen(Screen):
             classes="button-row"
         )
 
-    def reset_select(self, widget: Select, disable: bool = True, clear = True):
+    def reset_select(self, widget: Select, disable: bool = True, clear: bool = True) -> None:
         """Clear out options, reset value to blank, disable."""
         if clear:
-            widget._options = []
-            widget._setup_variables_for_options([])
-            widget._setup_options_renderables()
-        widget.value = Select.NULL
+            widget.set_options([])
+        widget.clear()
         widget.disabled = disable
 
     def reset_input(self, widget: Input, disable: bool = True):
@@ -149,12 +147,10 @@ class StepScreen(Screen):
     # ─── Navigation Helpers ─────────────────────────────────────────────────────
 
     def next(self, next_screen_cls):
-        self.app.pop_screen()
         self.app.push_screen(next_screen_cls(self.session))
 
-    def prev(self, prev_screen_cls):
+    def prev(self, _prev_screen_cls=None):
         self.app.pop_screen()
-        self.app.push_screen(prev_screen_cls(self.session))
 
 
     # ─── Bound Actions ──────────────────────────────────────────────────────────
