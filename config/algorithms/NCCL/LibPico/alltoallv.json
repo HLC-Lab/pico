@@ -1,0 +1,53 @@
+{
+  "nccl_spreadout_alltoallv_over": {
+    "desc": "LibPico external NCCL spread-out Alltoallv algorithm. This implementation uses NCCL point-to-point ncclSend/ncclRecv operations arranged in size - 1 communication rounds.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "alltoallv",
+      "nccl",
+      "cuda",
+      "gpu",
+      "spread-out",
+      "sendrecv",
+      "external"
+    ]
+  },
+
+  "nccl_fanout_alltoallv_over": {
+    "desc": "LibPico external NCCL fan-out Alltoallv algorithm. This implementation posts all ncclSend/ncclRecv operations inside a single ncclGroupStart/ncclGroupEnd region.",
+    "version": "1.0.0",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": "pico",
+    "tags": [
+      "alltoallv",
+      "nccl",
+      "cuda",
+      "gpu",
+      "fan-out",
+      "sendrecv",
+      "external"
+    ]
+  }
+}

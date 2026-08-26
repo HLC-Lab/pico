@@ -28,6 +28,7 @@ static inline coll_t get_collective_from_string(const char *coll_str) {
   CHECK_STR(coll_str, "ALLREDUCE", ALLREDUCE);
   CHECK_STR(coll_str, "ALLGATHER", ALLGATHER);
   CHECK_STR(coll_str, "ALLTOALL", ALLTOALL);
+  CHECK_STR(coll_str, "ALLTOALLV", ALLTOALLV);
   CHECK_STR(coll_str, "BCAST", BCAST);
   CHECK_STR(coll_str, "GATHER", GATHER);
   CHECK_STR(coll_str, "REDUCE", REDUCE);
@@ -54,6 +55,8 @@ static inline allocator_func_ptr get_allocator(coll_t collective) {
       return allgather_allocator;
     case ALLTOALL:
       return alltoall_allocator;
+    case ALLTOALLV:
+      return alltoallv_allocator;
     case BCAST:
       return bcast_allocator;
     case GATHER:
@@ -78,6 +81,8 @@ static inline allocator_func_ptr get_allocator_cuda(coll_t collective) {
       return allgather_allocator_cuda;
     case ALLTOALL:
       return alltoall_allocator_cuda;
+    case ALLTOALLV:
+      return alltoallv_allocator_cuda;
     case BCAST:
       return bcast_allocator_cuda;
     case GATHER:
@@ -166,13 +171,28 @@ static inline alltoall_func_ptr get_alltoall_function(const char *algorithm) {
 #ifndef PICO_NCCL
   CHECK_STR(algorithm, "bine_over", alltoall_bine);
   CHECK_STR(algorithm, "pairwise_ompi_over", alltoall_pairwise_ompi);
-
+  CHECK_STR(algorithm, "bine_dh_over", alltoall_bine_DH);
   PICO_CORE_DEBUG_PRINT_STR("MPI_Alltoall");
   return alltoall_wrapper;
 #else
   fprintf(stderr, "Failed: nccl doesn't support AllToAll operation\n");
   exit(EXIT_FAILURE);
   //return ncclAllToAll;
+#endif
+}
+
+static inline alltoallv_func_ptr get_alltoallv_function(const char *algorithm){
+#ifndef PICO_NCCL
+  CHECK_STR(algorithm, "bine_dh_over", alltoallv_bine_DH);
+
+  PICO_CORE_DEBUG_PRINT_STR("MPI_Alltoallv");
+  return alltoallv_wrapper;
+#else
+  CHECK_STR(algorithm, "nccl_spreadout_alltoallv_over", alltoallv_nccl_spreadout);
+  CHECK_STR(algorithm, "nccl_fanout_alltoallv_over", alltoallv_nccl_fanout);
+
+  fprintf(stderr, "Failed: unsupported NCCL Alltoallv algorithm: %s\n", algorithm);
+  exit(EXIT_FAILURE);
 #endif
 }
 
@@ -339,6 +359,9 @@ int get_routine(test_routine_t *test_routine, const char *algorithm) {
     case ALLTOALL:
       test_routine->function.alltoall = get_alltoall_function(algorithm);
       break;
+    case ALLTOALLV:
+      test_routine->function.alltoallv = get_alltoallv_function(algorithm);
+      break;
     case BCAST:
       test_routine->function.bcast = get_bcast_function(algorithm);
       break;
@@ -486,6 +509,9 @@ int coll_memcpy_host_to_device(void** d_buf, void** buf, size_t count, size_t ty
     case ALLTOALL:
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
       break;
+    case ALLTOALLV:
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
+      break;
     case BCAST:
       if (rank == PICO_ROOT_RANK) {
         PICO_CORE_CUDA_CHECK(cudaMemcpy(*d_buf, *buf, count * type_size, cudaMemcpyHostToDevice), err);
@@ -528,6 +554,9 @@ int coll_memcpy_device_to_host(void** d_buf, void** buf, size_t count, size_t ty
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case ALLTOALL:
+      PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
+      break;
+    case ALLTOALLV:
       PICO_CORE_CUDA_CHECK(cudaMemcpy(*buf, *d_buf, count * type_size, cudaMemcpyDeviceToHost), err);
       break;
     case BCAST:
@@ -583,6 +612,28 @@ int run_coll_once(test_routine_t test_routine, void *sbuf, void *rbuf,
                            rbuf, local_count, dtype, comm);
       
     break;
+    case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+
+      for (int i = 0; i < comm_sz; i++) {
+         scounts[i] = (int)local_count;
+         rcounts_v[i] = (int)local_count;
+         sdispls[i] = i * (int)local_count;
+         rdispls[i] = i * (int)local_count;
+        }
+
+      ret = test_routine.function.alltoallv(sbuf, scounts, sdispls, dtype,
+                                        rbuf, rcounts_v, rdispls, dtype, comm);
+
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+      }
     case BCAST:
       ret = test_routine.function.bcast(sbuf, count, dtype, PICO_ROOT_RANK, comm);
       break;
@@ -639,6 +690,29 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
                            rbuf, local_count, dtype,
                            comm, iter, times, test_routine);
     break;
+    case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+
+      for (int i = 0; i < comm_sz; i++) {
+        scounts[i] = (int)local_count;
+        rcounts_v[i] = (int)local_count;
+        sdispls[i] = i * (int)local_count;
+        rdispls[i] = i * (int)local_count;
+      }
+
+      ret = alltoallv_test_loop(sbuf, scounts, sdispls, dtype,
+                            rbuf, rcounts_v, rdispls, dtype,
+                            comm, iter, times, test_routine);
+
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+    }
     case BCAST:
       ret = bcast_test_loop(sbuf, count, dtype, PICO_ROOT_RANK, comm, iter, times,
                         test_routine);
@@ -692,6 +766,39 @@ int test_loop(test_routine_t test_routine, void *sbuf, void *rbuf, size_t count,
     case ALLTOALL:
       ret = alltoall_test_loop(sbuf, rbuf, local_count, dtype, nccl_comm, stream,
                                iter, times, test_routine);
+        case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+
+      if (scounts == NULL || sdispls == NULL || rcounts_v == NULL || rdispls == NULL) {
+        free(scounts);
+        free(sdispls);
+        free(rcounts_v);
+        free(rdispls);
+        fprintf(stderr, "Error: malloc failed in NCCL Alltoallv test_loop\n");
+        return -1;
+      }
+
+      for (int i = 0; i < comm_sz; i++) {
+        scounts[i] = (int)local_count;
+        rcounts_v[i] = (int)local_count;
+        sdispls[i] = i * (int)local_count;
+        rdispls[i] = i * (int)local_count;
+      }
+
+      ret = alltoallv_test_loop(sbuf, scounts, sdispls,
+                                rbuf, rcounts_v, rdispls,
+                                dtype, nccl_comm, stream,
+                                iter, times, test_routine);
+
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+    }
     break;
     case BCAST:
       ret = bcast_test_loop(sbuf, count, dtype, PICO_ROOT_RANK, nccl_comm, stream, 
@@ -743,6 +850,27 @@ int ground_truth_check(test_routine_t test_routine, void *sbuf, void *rbuf,
              rbuf_gt, count / (size_t) comm_sz, dtype, comm);
       GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
       break;
+    case ALLTOALLV: {
+      int *scounts = malloc(comm_sz * sizeof(int));
+      int *sdispls = malloc(comm_sz * sizeof(int));
+      int *rcounts_v = malloc(comm_sz * sizeof(int));
+      int *rdispls = malloc(comm_sz * sizeof(int));
+      size_t local_count = count / (size_t)comm_sz;
+      for (int i = 0; i < comm_sz; i++) {
+        scounts[i] = (int)local_count;
+        rcounts_v[i] = (int)local_count;
+        sdispls[i] = i * (int)local_count;
+        rdispls[i] = i * (int)local_count;
+      }
+      PMPI_Alltoallv(sbuf, scounts, sdispls, dtype,
+                 rbuf_gt, rcounts_v, rdispls, dtype, comm);
+      GT_CHECK_BUFFER(rbuf, rbuf_gt, count, dtype, comm);
+      free(scounts);
+      free(sdispls);
+      free(rcounts_v);
+      free(rdispls);
+      break;
+    }
     case BCAST:
       if(rank == PICO_ROOT_RANK) {
         memcpy(rbuf_gt, sbuf, count * type_size);

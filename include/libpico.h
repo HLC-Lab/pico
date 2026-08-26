@@ -19,6 +19,8 @@
                                   void* rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm
 #define ALLTOALL_MPI_ARGS         const void *sbuf, size_t scount, MPI_Datatype sdtype, \
                                   void *rbuf, size_t rcount, MPI_Datatype rdtype, MPI_Comm comm
+#define ALLTOALLV_MPI_ARGS        const void *sbuf, const int scounts[], const int sdispls[], MPI_Datatype sdtype, \
+                                  void *rbuf, const int rcounts[], const int rdispls[], MPI_Datatype rdtype, MPI_Comm comm
 #define BCAST_MPI_ARGS            void *buf, size_t count, MPI_Datatype dtype, int root, MPI_Comm comm
 #define GATHER_MPI_ARGS           const void *sbuf, size_t scount, MPI_Datatype sdtype, \
                                   void *rbuf, size_t rcount, MPI_Datatype rdtype, int root, MPI_Comm comm
@@ -37,6 +39,9 @@
 #define ALLGATHER_NCCL_ARGS       const void *sbuf, void* rbuf, size_t count, \
                                   ncclDataType_t dtype, ncclComm_t nccl_comm, cudaStream_t stream
 #define ALLTOALL_NCCL_ARGS        const void *sbuf, void* rbuf, size_t count,\
+                                  ncclDataType_t dtype, ncclComm_t nccl_comm, cudaStream_t stream
+#define ALLTOALLV_NCCL_ARGS       const void *sbuf, const int scounts[], const int sdispls[], \
+                                  void *rbuf, const int rcounts[], const int rdispls[], \
                                   ncclDataType_t dtype, ncclComm_t nccl_comm, cudaStream_t stream
 #define BCAST_NCCL_ARGS           void *buf, size_t count, ncclDataType_t dtype, \
                                   int root, ncclComm_t nccl_comm, cudaStream_t stream
@@ -87,9 +92,17 @@ ncclResult_t allgather_bine_block_by_block_nccl(ALLGATHER_NCCL_ARGS);
 
 int alltoall_pairwise_ompi(ALLTOALL_MPI_ARGS);
 int alltoall_bine(ALLTOALL_MPI_ARGS);
+int alltoall_bine_DH(ALLTOALL_MPI_ARGS);
 // write here the prototype of NCCL alltoall functions
 #ifdef PICO_NCCL
 // int alltoall_nccl_custom(ALLTOALL_NCCL_ARGS)
+#endif
+
+int alltoallv_bine_DH(ALLTOALLV_MPI_ARGS);
+
+#ifdef PICO_NCCL
+int alltoallv_nccl_spreadout(ALLTOALLV_NCCL_ARGS);
+int alltoallv_nccl_fanout(ALLTOALLV_NCCL_ARGS);
 #endif
 
 int bcast_linear(BCAST_MPI_ARGS);

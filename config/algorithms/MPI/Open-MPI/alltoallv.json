@@ -1,0 +1,66 @@
+{
+  "default_ompi": {
+    "desc": "Open MPI default Alltoallv algorithm selection.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": 0,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "ignore"
+    ]
+  },
+  "basic_linear_ompi": {
+    "desc": "Open MPI basic linear Alltoallv algorithm.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": 1,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "basic_linear",
+      "linear"
+    ]
+  },
+  "pairwise_ompi": {
+    "desc": "Open MPI pairwise Alltoallv algorithm.",
+    "version": "4.1.5",
+    "constraints": [
+      {
+        "key": "count",
+        "conditions": [
+          {
+            "operator": ">=",
+            "value": "comm_sz"
+          }
+        ]
+      }
+    ],
+    "selection": 2,
+    "cuda_support": "yes",
+    "rocm_support": "ucx",
+    "tags": [
+      "pairwise"
+    ]
+  }
+}
