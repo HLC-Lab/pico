@@ -1274,7 +1274,7 @@ export -f nccl_protocol_from_algo_name
 
 update_algorithm() {
     local algo="$1"
-    local cvar_indx="$2"
+    local indx="$2"
     case "$MPI_LIB" in
         "OMPI_BINE" | "OMPI")
             success "Updating dynamic rule file for algorithm $algo..."
@@ -1282,13 +1282,22 @@ update_algorithm() {
             export OMPI_MCA_coll_tuned_dynamic_rules_filename="${DYNAMIC_RULE_FILE}"
             ;;
         "MPICH")
-            local cvar="${CVARS[$cvar_indx]}"
-            local var_name="MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"
+            local cvar="${CVARS[$indx]}"
+            local bine_imp="${BINE_IMPS[$indx]}"
+            if [[ "$bine_imp" == "none" ]]; then
+                bine_imp=""
+            fi
+            local var_name="MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"
+            local bine_type="MPICH_${COLLECTIVE_TYPE}_BINE_TYPE"
             export "${var_name}"="$cvar"
-            success "Setting MPICH_CVAR_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
+            success "Setting MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM=$cvar for algorithm $algo..."
+            if [ -n "$bine_imp" ]; then
+                export "${bine_type}"="$bine_imp"
+                success "Setting MPICH_${COLLECTIVE_TYPE}_BINE_TYPE=$bine_imp for algorithm $algo..."
+            fi
             ;;
         "CRAY_MPICH")
-            local cvar="${CVARS[$cvar_indx]}"
+            local cvar="${CVARS[$indx]}"
             local var_name="MPICH_${COLLECTIVE_TYPE}_INTRA_ALGORITHM"
             local var_name_2="MPICH_${COLLECTIVE_TYPE}_DEVICE_COLLECTIVE"
             export MPICH_COLL_OPT_OFF=1
@@ -1388,6 +1397,11 @@ run_all_tests() {
                 for type in ${TYPES//,/ }; do
                     for segment_size in ${SEGMENT_SIZES//,/ }; do
                         export SEGSIZE=$segment_size
+                        if [[ "$MPI_LIB" == "MPICH" && "${CVARS[$i]}" == "tree" && ( "$COLLECTIVE_TYPE" == "BCAST" || "$COLLECTIVE_TYPE" == "IBCAST" ||
+                              "$COLLECTIVE_TYPE" == "IREDUCE" || "$COLLECTIVE_TYPE" == "ALLREDUCE" || "$COLLECTIVE_TYPE" == "IALLREDUCE" ) ]]; then
+                            export "MPICH_${COLLECTIVE_TYPE}_TREE_PIPELINE_CHUNK_SIZE=$segment_size"
+                            success "Setting MPICH_${COLLECTIVE_TYPE}_TREE_PIPELINE_CHUNK_SIZE=$segment_size for algorithm $algo..."
+                        fi
                         run_bench_with_nccl_protocols "$size" "$algo" "$type" || return 1
                     done
                 done
@@ -1558,6 +1572,7 @@ prepare_collective_vars() {
     fi
 
     unset CVARS
+    unset BINE_IMPS
     if [[ "$MPI_LIB" == "MPICH" || "$MPI_LIB" == "CRAY_MPICH" ]]; then
         local CVARS_CSV="$(_get_var "LIB_${i}_${COLL_UPPER}_ALGORITHMS_CVARS")"
         if [[ -z "$CVARS_CSV" ]]; then
@@ -1565,6 +1580,13 @@ prepare_collective_vars() {
             return 1
         fi
         IFS=',' read -r -a CVARS <<< "$CVARS_CSV"
+
+        local BINE_IMPS_CSV="$(_get_var "LIB_${i}_${COLL_UPPER}_ALGORITHMS_BINE_IMPS")"
+        if [[ -n "$BINE_IMPS_CSV" ]]; then
+            IFS=',' read -r -a BINE_IMPS <<< "$BINE_IMPS_CSV"
+        else
+            BINE_IMPS=()
+        fi
     fi
 
     return 0

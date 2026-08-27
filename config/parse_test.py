@@ -127,6 +127,7 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
     skip_algorithms = []
     is_segmented = []
     cvars = []
+    bine_imps = []
 
     if collective not in algorithm_config["collective"]:
         print(f"{__file__}: collective {collective} not found in ALGORITHM_CONFIG_FILE.", file=sys.stderr)
@@ -166,6 +167,7 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
             skip_algorithms.append(algo_name)
         if mpi_type.lower() in require_cvars:
             cvars.append(algo_data["cvar"])
+            bine_imps.append(algo_data.get("bine_imp", "none"))
 
         matching_algorithms.append(algo_name)
 
@@ -182,11 +184,11 @@ def get_matching_algorithms(algorithm_config, test_config, comm_sz: int, mpi_typ
         print(f"{__file__}: no cvars found for MPI_LIB={mpi_type}.", file=sys.stderr)
         sys.exit(1)
 
-    return matching_algorithms, skip_algorithms, is_segmented, cvars
+    return matching_algorithms, skip_algorithms, is_segmented, cvars, bine_imps
 
 
 
-def export_environment_variables(matching_algorithms, skip_algorithms, is_segmented, cvars,
+def export_environment_variables(matching_algorithms, skip_algorithms, is_segmented, cvars, bine_imps,
                                  test_config, output_file: str | os.PathLike) -> None:
     """Export environment variables for the shell script."""
     collective = test_config["collective"]
@@ -199,6 +201,7 @@ def export_environment_variables(matching_algorithms, skip_algorithms, is_segmen
     skip_names = " ".join(skip_algorithms)
     segmented = " ".join(is_segmented)
     cvars_str = " ".join(cvars) if cvars else ""
+    bine_imps_str = " ".join(bine_imps) if bine_imps else ""
 
     # Write the environment variables to a shell script that will be sourced
     try:
@@ -211,6 +214,8 @@ def export_environment_variables(matching_algorithms, skip_algorithms, is_segmen
             f.write(f"export IS_SEGMENTED=({segmented})\n")
             if cvars_str:
                 f.write(f"export CVARS=({cvars_str})\n")
+            if bine_imps_str:
+                f.write(f"export BINE_IMPS=({bine_imps_str})\n")
     except IOError as e:
         print(f"{__file__}: Error writing to {output_file}: {e}", file=sys.stderr)
         sys.exit(1)
@@ -251,11 +256,11 @@ def main():
 
 
     # Get matching algorithms
-    matching_algorithms, skip_algorithms, is_segmented, cvars = get_matching_algorithms(
+    matching_algorithms, skip_algorithms, is_segmented, cvars, bine_imps = get_matching_algorithms(
         algorithm_config, test_config, number_of_nodes, mpi_type, mpi_version, cuda)
 
     # Write environment variables to a shell script to be sourced
-    export_environment_variables(matching_algorithms, skip_algorithms, is_segmented, cvars, test_config, output_file)
+    export_environment_variables(matching_algorithms, skip_algorithms, is_segmented, cvars, bine_imps, test_config, output_file)
     
 
 if __name__ == "__main__":
