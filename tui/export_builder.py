@@ -43,7 +43,10 @@ def _load_config(config: JsonLike) -> Dict[str, Any]:
 
 
 def _shell_quote(value: Any) -> str:
-    return "'" + str(value).replace("'", "'\"'\"'") + "'"
+    if "$" in str(value):
+        return '"' + str(value).replace("'", "'\"'\"'") + '"'
+    else:
+        return "'" + str(value).replace("'", "'\"'\"'") + "'"
 
 
 def _csv(values: Iterable[Any]) -> str:
